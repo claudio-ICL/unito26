@@ -1,0 +1,17 @@
+name: unito26
+channels:
+  - conda-forge
+  - nodefaults
+dependencies:
+  - python>=3.12
+  - ipython
+  - ipykernel
+  - matplotlib
+  - numpy
+  - pandas
+  - pyarrow
+  - scipy
+  - scikit-learn
+  - pytest
+  - pip:
+    - -e .

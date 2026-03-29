@@ -1,0 +1,48 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*.so
+
+# Conda / virtual environments
+env/
+venv/
+*.conda
+*.egg-info/
+
+# Jupyter checkpoints
+.ipynb_checkpoints/
+
+# macOS
+.DS_Store
+
+# Build artifacts
+build/
+dist/
+
+# Data files
+data/
+*.parquet
+*.csv
+*.h5
+
+# Notebooks scratch
+notebooks/scratchbook.ipynb
+
+# Documentation build artifacts
+*.aux
+*.pdf
+*.dvi
+*.lof
+*.lot
+documentation/tex/*.bbl
+documentation/tex/*.blg
+documentation/tex/*.out
+documentation/tex/*.log
+documentation/tex/*.lol
+documentation/tex/*.toc
+documentation/tex/*/*.aux
+documentation/tex/*/*.out
+documentation/tex/*/*.log
+documentation/tex/*/*.toc
+documentation/tex/*/figures/
+documentation/tex/figures/
