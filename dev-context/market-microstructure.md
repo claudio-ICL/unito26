@@ -23,4 +23,6 @@ _TBD_
 
 ## References
 
-_TBD_
+- [`documentation/order-driven-markets-notation.md`](../documentation/order-driven-markets-notation.md)
+  — the notation and mechanics of order-driven markets, as fixed in the notes
+  (`documentation/tex/notes/orderdriven/`) and used by the `market-microstructure` skill.

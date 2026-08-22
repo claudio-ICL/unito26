@@ -61,6 +61,10 @@ python -m pytest tests/           # run tests
 - Lectures and exercises live as **notebooks** in `notebooks/`; reusable,
   tested code lives in the **`unito26`** package.
 - Add modules to `unito26/__init__.py` as they are actually built.
+- Before writing or reviewing code on limit order books or market microstructure,
+  invoke the **`market-microstructure`** skill: it carries the notation, the mechanics
+  and the invariants fixed in
+  [`documentation/order-driven-markets-notation.md`](documentation/order-driven-markets-notation.md).
 
 ## Workflow
 
