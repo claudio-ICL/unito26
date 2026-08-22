@@ -1,0 +1,52 @@
+% Template: the frames for one chapter.
+% Copy to documentation/tex/slides/sections/<topic>.tex, then add
+%   \section{Chapter title}
+%   \include{sections/<topic>}
+% to slides/main.tex, in the same position the chapter has in the notes.
+
+\begin{frame}
+  \frametitle{Outline}
+% One \nocite per line -- a multi-key \nocite spanning lines breaks bibtex.
+\nocite{Bou18tra}
+\nocite{CJP15alg}
+Two or three sentences saying what this chapter is about,
+in the same voice as the notes.
+
+Say what the student should be able to do afterwards.
+\end{frame}
+
+\subsection{First idea}
+
+\begin{frame}
+  \frametitle{First idea}
+One idea per frame.
+Keep the lines short enough to read from the back of the room.
+
+\pause
+
+Use \pause between beats,
+so that the frame is revealed in the order you talk through it.
+\end{frame}
+
+\begin{frame}
+  \frametitle{A statement}
+\begin{defi}
+\label{def.something}
+Reuse the label the notes give this statement,
+so the two stay in step.
+\[
+x_t := 0.
+\]
+\end{defi}
+
+\pause
+
+Unnumbered display maths on slides uses \[ ... \],
+not the equation environment.
+\end{frame}
+
+\begin{frame}
+  \frametitle{What to take away}
+Close the chapter with the two or three things
+that should survive the lecture.
+\end{frame}

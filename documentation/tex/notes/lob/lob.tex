@@ -1,0 +1,38 @@
+\chapter{Limit order books}
+\label{chap.lob}
+
+This chapter opens the strand of the course devoted to market microstructure.
+It describes how a modern electronic market actually works,
+at the level of the individual orders that traders send to an exchange.
+
+The material is deliberately concrete.
+Before we model prices as stochastic processes,
+it is worth seeing the object that produces them:
+a queue of orders,
+sorted by a rule,
+matched by an algorithm.
+Much of what later chapters assume ---
+that a price exists,
+that it can be observed,
+that a trade can be executed at it ---
+is an approximation of the mechanism described here.
+
+The chapter can be read independently from the rest of the course.
+It requires no probability beyond the notion of a counting process,
+which is recalled where it is needed.
+
+\section{Order-driven markets}
+\label{sec.orderDrivenMarkets}
+\input{order_driven_markets}
+
+\section{The limit order book}
+\label{sec.theBook}
+\input{the_book}
+
+\section{Order flow}
+\label{sec.orderFlow}
+\input{order_flow}
+
+\section{Conclusions}
+\label{sec.lobConclusions}
+\input{concl_lob}

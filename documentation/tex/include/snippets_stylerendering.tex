@@ -1,0 +1,26 @@
+%% CODE SNIPPETS %%
+\usepackage{listings}
+\definecolor{stringcolor}{rgb}{0.3,0.0,0.0}
+\definecolor{commentedcode}{rgb}{0.1,0.2,0.1}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{backcolour}{rgb}{0.965,0.965,0.965}
+\lstdefinestyle{mystyle}{
+    backgroundcolor=\color{backcolour},
+    commentstyle=\color{commentedcode},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{stringcolor},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,
+    breaklines=true,
+    captionpos=t,
+    keepspaces=true,
+    numbers=left,
+    numbersep=5pt,
+    showspaces=false,
+    showstringspaces=false,
+    showtabs=false,
+    tabsize=4
+}
+\lstset{style=mystyle}
+\lstset{language=Python}
+\newcommand{\codehl}[1]{\colorbox{gray!8}{\texttt{\small #1}}}

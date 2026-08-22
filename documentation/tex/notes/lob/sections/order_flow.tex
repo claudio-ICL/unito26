@@ -1,0 +1,87 @@
+The book of Section \ref{sec.theBook} is a snapshot.
+This section describes how that snapshot changes.
+
+Exactly three kinds of event modify a limit order book:
+the \emph{submission} of a new limit order,
+the \emph{cancellation} of a resting one,
+and the \emph{execution} of a resting one against an incoming market order.
+Everything a venue publishes is a sequence of such events,
+and a model of the book is a model of their arrival.
+
+It is natural to describe these arrivals with counting processes.
+Fix a price level and a side, say the bid.
+Let $\bidArrivals$ count the units of volume added at that level up to time $t$,
+by submission,
+and let $\bidDepartures$ count the units removed,
+by cancellation or execution.
+The queue at that level is then
+\begin{equation}
+\label{eq.queueDynamics}
+\bidQueue = \bidQueue[0] + \bidArrivals - \bidDepartures,
+\end{equation}
+and the book is the collection of such queues across price levels.
+
+Equation \eqref{eq.queueDynamics} is trivial as an accounting identity,
+and it becomes a model as soon as one specifies the law of $\arrivals$ and $\departures$.
+The simplest choice takes them to be independent Poisson processes with level-dependent
+rates,
+as in \cite{CST10sto}.
+The resulting model is analytically tractable and reproduces the shape of the average book,
+but it misses a feature that is impossible to ignore in real data:
+order flow is strongly \emph{clustered} in time,
+and events of one type make events of other types more likely.
+Capturing that requires self- and cross-exciting processes,
+whose intensity $\intensity$ depends on the history of the flow itself.
+
+\begin{remark}
+\label{remark.eventsAreNotIndependent}
+The empirical autocorrelation of the signs of market orders
+decays slowly, over hours rather than seconds.
+This is not evidence of a predictable price:
+it is mostly the footprint of large trades being split into many small ones.
+Section \ref{sec.lobConclusions} returns to this point.
+\end{remark}
+
+A convenient one-number summary of the flow is the \emph{order flow imbalance}.
+Over a time interval $(s,t]$ it aggregates the signed changes at the best quotes,
+\begin{equation}
+\label{eq.orderFlowImbalance}
+\OFI_{s,t} :=
+\big(\bidArrivals[t] - \bidArrivals[s]\big)
+- \big(\bidDepartures[t] - \bidDepartures[s]\big)
+- \big(\askArrivals[t] - \askArrivals[s]\big)
++ \big(\askDepartures[t] - \askDepartures[s]\big),
+\end{equation}
+counting as positive whatever pushes the price up and as negative whatever pushes it down.
+\cite{CKS14pri} show that contemporaneous mid-price changes are close to linear in
+$\OFI_{s,t}$,
+with a slope that scales with the inverse of the depth.
+This is one of the cleanest empirical regularities in microstructure,
+and it is a good first exercise on real data.
+
+\subsection{Price impact}
+\label{sec.priceImpact}
+
+A trade moves the price against the trader who initiated it.
+This is \emph{price impact},
+and it is the dominant cost of trading at institutional size.
+
+The mechanism is visible directly in the book.
+A market order to buy consumes the ask queue from the best price upwards,
+so the next unit is bought at a worse price than the previous one,
+and after the order has passed the best ask has moved up.
+Part of that move persists,
+because other participants read the trade as information;
+part of it decays,
+as new limit orders replenish the consumed level.
+
+Impact is the reason a large order cannot simply be sent to the market.
+It is instead split into many small \emph{child} orders,
+released over a period of time,
+which is the subject of optimal execution;
+\cite{AC01opt} is the classical reference,
+and \cite{CJP15alg} gives the modern treatment.
+The trade-off is exactly the one identified in
+Section \ref{sec.orderDrivenMarkets}:
+trading slowly reduces impact but increases exposure to price risk over the execution
+window.

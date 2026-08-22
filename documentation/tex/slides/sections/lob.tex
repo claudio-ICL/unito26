@@ -1,0 +1,207 @@
+\begin{frame}
+  \frametitle{Outline}
+\nocite{Bou18tra}
+\nocite{CJP15alg}
+\nocite{CST10sto}
+\nocite{CKS14pri}
+\nocite{GPFA13lim}
+Most instruments trade on \emph{order-driven} markets:
+the participants supply the prices,
+and the venue only matches them.
+
+We describe the object that produces the prices we later model:
+a pair of queues of resting orders,
+sorted by a rule,
+matched by an algorithm.
+
+We then look at how that object changes over time,
+and at the cost this imposes on anyone who trades size.
+\end{frame}
+
+\subsection{Order-driven markets}
+
+\begin{frame}
+  \frametitle{Two kinds of order}
+A \emph{limit order} carries a price.
+It transacts at that price or better, never worse,
+and it waits if no counterpart is available.
+It \emph{supplies} liquidity.
+
+\pause
+
+A \emph{market order} carries no price.
+It transacts immediately, at whatever price the book offers.
+It \emph{consumes} liquidity.
+
+\pause
+
+The sender of a limit order chooses the price but not the time of execution;
+the sender of a market order chooses the time but not the price.
+Nearly everything that follows is a consequence of this asymmetry.
+\end{frame}
+
+\subsection{The limit order book}
+
+\begin{frame}
+  \frametitle{The book}
+\begin{defi}
+\label{def.limitOrderBook}
+The \emph{limit order book} at time $t$ is the pair of functions
+\[
+p \mapsto \bidVolumePriceP, \qquad p \mapsto \askVolumePriceP, \qquad p \in \tickSizeOfLOB \Z,
+\]
+giving the total size of the buy and of the sell limit orders resting at price $p$.
+\end{defi}
+
+\pause
+
+Two queues facing one another across a gap:
+the bid side at the low prices,
+the ask side at the high prices.
+Prices live on the grid set by the tick size $\tickSizeOfLOB$.
+\end{frame}
+
+\begin{frame}
+  \frametitle{Top of the book}
+\begin{defi}
+\label{def.bestQuotes}
+The \emph{best bid} and \emph{best ask} prices at time $t$ are
+\[
+\bestBidPrice_t := \max \lbrace p : \bidVolumePriceP > 0 \rbrace,
+\qquad
+\bestAskPrice_t := \min \lbrace p : \askVolumePriceP > 0 \rbrace,
+\]
+and $\bestBidVolume_t$, $\bestAskVolume_t$ are the volumes resting there.
+\end{defi}
+
+\pause
+
+The sides never overlap, so the \emph{bid-ask spread} satisfies
+\[
+\LOBspread_t = \bestAskPrice_t - \bestBidPrice_t \geq \tickSizeOfLOB.
+\]
+It is the price of immediacy:
+buy at the ask and sell at the bid, and you have paid $\LOBspread_t$ per unit
+for not having waited.
+\end{frame}
+
+\begin{frame}
+  \frametitle{Mid-price and imbalance}
+The \emph{mid-price}
+\[
+\midPrice_t = \frac{\bestBidPrice_t + \bestAskPrice_t}{2}
+\]
+is the usual answer to ``what is the price?'',
+though nobody can trade at it.
+
+\pause
+
+The \emph{queue imbalance}
+\[
+\volumeImbalance_t = \frac{\bestBidVolume_t - \bestAskVolume_t}{\bestBidVolume_t + \bestAskVolume_t} \in [-1,1]
+\]
+measures how lopsided the top of the book is.
+It is among the most robust short-horizon predictors of the next mid-price move.
+\end{frame}
+
+\begin{frame}
+  \frametitle{Execution priority}
+\begin{defi}
+\label{def.executionPriority}
+A resting buy limit order with price $p$ submitted at time $s$
+has \emph{higher priority} than one with price $p\derivative$ submitted at $s\derivative$ if
+\[
+p > p\derivative,
+\qquad \text{ or } \qquad
+p = p\derivative \, \text{ and } \, s < s\derivative.
+\]
+\end{defi}
+
+\pause
+
+Price-time priority makes a limit order a queueing problem.
+Your position in the queue is an asset,
+and cancelling forfeits it.
+\end{frame}
+
+\subsection{Order flow}
+
+\begin{frame}
+  \frametitle{Three events, and nothing else}
+A book changes only by
+\emph{i.} submission of a new limit order;
+\emph{ii.} cancellation of a resting one;
+\emph{iii.} execution against an incoming market order.
+
+\pause
+
+Per price level, with $\arrivals$ counting volume added and $\departures$ volume removed,
+\[
+\bidQueue = \bidQueue[0] + \bidArrivals - \bidDepartures.
+\]
+An accounting identity; it becomes a model once the law of $\arrivals$ and $\departures$
+is specified.
+
+\pause
+
+Poisson arrivals give a tractable model \citep{CST10sto},
+but real order flow is clustered,
+which calls for self- and cross-exciting intensities $\intensity$.
+\end{frame}
+
+\begin{frame}
+  \frametitle{Order flow imbalance}
+Aggregate the signed changes at the best quotes over $(s,t]$:
+\[
+\OFI_{s,t} =
+\big(\bidArrivals[t] - \bidArrivals[s]\big)
+- \big(\bidDepartures[t] - \bidDepartures[s]\big)
+- \big(\askArrivals[t] - \askArrivals[s]\big)
++ \big(\askDepartures[t] - \askDepartures[s]\big).
+\]
+
+\pause
+
+Contemporaneous mid-price changes are close to linear in $\OFI_{s,t}$,
+with slope scaling as the inverse of the depth \citep{CKS14pri}.
+
+This is one of the cleanest empirical regularities in microstructure,
+and a good first exercise on real data.
+\end{frame}
+
+\begin{frame}
+  \frametitle{Price impact}
+A market order to buy consumes the ask queue upwards:
+each unit is bought worse than the last,
+and the best ask ends up higher.
+
+\pause
+
+Part of the move persists --- others read the trade as information ---
+and part decays as the level is replenished.
+
+\pause
+
+Hence a large order is split into many small ones released over time.
+The trade-off is the one we started from:
+trading slowly reduces impact,
+but increases exposure to price risk over the execution window.
+\end{frame}
+
+\begin{frame}
+  \frametitle{What to take away}
+There is no such thing as \emph{the} price:
+best bid, best ask, mid, last traded --- they differ,
+and the wrong choice quietly corrupts a calculation.
+
+\pause
+
+Liquidity is finite and is consumed,
+so the cost of a trade is a function of its size.
+
+\pause
+
+The book is a queueing system.
+Counting processes and their intensities are the natural tools,
+which is where this strand of the course meets the rest of it.
+\end{frame}

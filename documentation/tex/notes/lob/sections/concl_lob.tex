@@ -1,0 +1,35 @@
+This chapter has described the mechanism that produces the prices
+which the rest of the course takes as given.
+
+Three points are worth carrying forward.
+
+First,
+there is no such thing as \emph{the} price.
+There is a best bid, a best ask, a mid-price, a last traded price,
+and they differ.
+Which one is appropriate depends on what is being computed,
+and a great deal of sloppy quantitative work begins with the wrong choice.
+
+Second,
+liquidity is finite and it is consumed.
+The size that can be traded at the best quote is a small fraction of a typical
+institutional order,
+so the cost of a trade is a function of its size,
+not a constant per unit.
+
+Third,
+the book is a queueing system,
+and the tools that describe it are counting processes and their intensities.
+This is the natural point of contact between market microstructure and
+the stochastic-process material of the course.
+
+The accompanying notebook reconstructs a limit order book from a message file,
+computes the quantities defined in Section \ref{sec.theBook},
+and reproduces the linear relation between order flow imbalance and price change
+discussed in Section \ref{sec.orderFlow}.
+The exercise is a good test of whether the definitions above have been understood:
+they are all easy to state and easy to get subtly wrong in code.
+
+For a broad and readable treatment of the empirical facts, see \cite{Bou18tra};
+for the classical theory of informed trading, see \cite{Kyl85con} and \cite{GM85bid};
+and for a survey of limit order book models, see \cite{GPFA13lim}.

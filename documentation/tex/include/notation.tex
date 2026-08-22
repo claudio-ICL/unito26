@@ -1,0 +1,127 @@
+%% NOTATION %%
+% Shared by the lecture notes and the slides.
+% Every recurring symbol of the course lives here and nowhere else.
+% Names are descriptive: prefer \volatilityCoefficient to \sig.
+
+%% SETS AND SPACES %%
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\Rd}{\R^{d}}
+\newcommand{\Rn}{\R^{n}}
+\newcommand{\Rnn}{\R^{n\times n}}
+\newcommand{\N}{\mathbb{N}}
+\newcommand{\Z}{\mathbb{Z}}
+\newcommand{\C}{\mathbb{C}}
+\newcommand{\positiveReals}{\R_{+}}
+
+%% DECORATIONS %%
+% Suffix macros: they attach to whatever precedes them.
+\newcommand{\squared}{^{2}}
+\newcommand{\derivative}{^{\prime}}
+\newcommand{\inverse}{^{-1}}
+\newcommand{\transpose}{^{\mathsf{T}}}
+\newcommand{\half}{\frac{1}{2}}
+\newcommand{\abs}[1]{\left\lvert {#1} \right\rvert}
+\newcommand{\norm}[1][\cdot]{\left\lVert {#1} \right\rVert}
+\newcommand{\suchThat}{\text{ s.t. }}
+\newcommand{\argmin}{\mathrm{argmin}}
+\newcommand{\argmax}{\mathrm{argmax}}
+\newcommand{\indicator}[1]{\mathbf{1}_{\lbrace {#1} \rbrace}}
+
+%% DERIVATIVES %%
+\newcommand{\gradient}{\nabla}
+\newcommand{\gradx}{\nabla_{x}}
+\newcommand{\Hessianx}{\nabla^{2}_{xx}}
+\newcommand{\partialij}{\partial^{2}_{i,j}}
+
+%% TIME %%
+\newcommand{\timeHorizon}{T}
+\newcommand{\timeWindow}{{[0,\timeHorizon]}}
+\newcommand{\tzero}{t_{0}}
+\newcommand{\partition}{\pi}
+\newcommand{\intzerot}{\int_{0}^{t}}
+\newcommand{\intZeroTimeHorizon}{\int_{0}^{\timeHorizon}}
+
+%% PROBABILITY %%
+\newcommand{\Prob}{\mathbb{P}}
+\newcommand{\probabilityQ}{\mathbb{Q}}
+\newcommand{\Expectation}{\mathbb{E}}
+\newcommand{\Variance}{\mathrm{Var}}
+\newcommand{\CoVariance}{\mathrm{Cov}}
+\newcommand{\correlation}{\mathrm{corr}}
+\newcommand{\probabilityLaw}{\text{Law}}
+\newcommand{\probabilityDensity}{p}
+\newcommand{\likelihood}{\mathcal{L}}
+\newcommand{\loglikelihood}{\log \likelihood}
+\newcommand{\sigmaAlgebra}{\mathfrak{F}}
+\newcommand{\filtrationF}{\sigmaAlgebra}
+\newcommand{\probabilitySpace}{\big(\Omega,\sigmaAlgebra, \Prob \big)}
+\newcommand{\stochasticBase}{\big(\Omega,\sigmaAlgebra, (\sigmaAlgebra_t)_t , \Prob \big)}
+\newcommand{\iid}{\overset{\text{i.i.d.}}{\sim}}
+\newcommand{\gaussian}[2]{\mathcal{N}({#1},{#2})}
+\newcommand{\normalCDF}{N}
+\newcommand{\brownianMotion}{W}
+\newcommand{\martingale}{M}
+\newcommand{\semimartingale}{S}
+\newcommand{\compensator}{\Lambda}
+\newcommand{\intensity}[1][e]{\lambda_{#1}}
+\newcommand{\countingProc}[1][e]{N_{#1}}
+\newcommand{\multiCountingProc}{N}
+\newcommand{\arrivalTimes}[1][e]{T^{#1}}
+
+%% OPTION PRICING %%
+\newcommand{\pricePath}{S}
+\newcommand{\strike}{K}
+\newcommand{\maturity}{\timeHorizon}
+\newcommand{\interestRate}{r}
+\newcommand{\risklessAsset}{S^{0}}
+\newcommand{\volatilityCoefficient}{\sigma}
+\newcommand{\impliedVolatility}{\volatilityCoefficient_{\mathrm{imp}}}
+\newcommand{\forwardPrice}{F}
+\newcommand{\portfolioValue}{V}
+\newcommand{\pricingMeasure}{\probabilityQ}
+\newcommand{\pricingExpectation}{\Expectation_{\pricingMeasure}}
+\newcommand{\payoff}{f}
+\newcommand{\DeltaHedge}{\mathtt{Delta}}
+\newcommand{\GammaHedge}{\mathtt{Gamma}}
+\newcommand{\VegaHedge}{\mathtt{Vega}}
+
+%% LIMIT ORDER BOOKS %%
+% Kept identical to the notation of the thesis, so that the course and the
+% thesis denote the same objects in the same way.
+\newcommand{\price}{P}
+\newcommand{\volume}{V}
+\newcommand{\tickSizeOfLOB}{\tau}
+\newcommand{\midPrice}{\price^{m}}
+\newcommand{\midprice}{\midPrice}
+\newcommand{\microPrice}{\price^{\mu}}
+\newcommand{\bestBidPrice}{\price^{b}}
+\newcommand{\bestAskPrice}{\price^{a}}
+\newcommand{\nthBestBidPrice}[1][1]{\price^{b,{#1}}}
+\newcommand{\nthBestAskPrice}[1][1]{\price^{a,{#1}}}
+\newcommand{\bestBidVolume}{\volume^{b}}
+\newcommand{\bestAskVolume}{\volume^{a}}
+\newcommand{\nthBestBidVolume}[1][1]{\volume^{b,{#1}}}
+\newcommand{\nthBestAskVolume}[1][1]{\volume^{a,{#1}}}
+\newcommand{\bidVolumePriceP}[1][t]{\volume^{b}_{{#1}}(p)}
+\newcommand{\askVolumePriceP}[1][t]{\volume^{a}_{{#1}}(p)}
+\newcommand{\LOBspread}{\phi}
+\newcommand{\volumeImbalance}{I}
+\newcommand{\queueImb}{\volumeImbalance}
+\newcommand{\OFI}{\text{OFI}}
+\newcommand{\orderFlowImbalance}{\OFI}
+\newcommand{\arrivals}[1][ ]{A_{{#1}}}
+\newcommand{\departures}[1][ ]{D_{{#1}}}
+\newcommand{\queue}[1][ ]{Q_{{#1}}}
+\newcommand{\bidQueue}[1][t]{Q^{b}_{{#1}}}
+\newcommand{\askQueue}[1][t]{Q^{a}_{{#1}}}
+\newcommand{\bidArrivals}[1][t]{A^{b}_{{#1}}}
+\newcommand{\askArrivals}[1][t]{A^{a}_{{#1}}}
+\newcommand{\bidDepartures}[1][t]{D^{b}_{{#1}}}
+\newcommand{\askDepartures}[1][t]{D^{a}_{{#1}}}
+\newcommand{\bidArrivalTimes}[1][j]{T^{b, A}_{{#1}}}
+\newcommand{\askArrivalTimes}[1][j]{T^{a, A}_{{#1}}}
+\newcommand{\bidDepartureTimes}[1][j]{T^{b, D}_{{#1}}}
+\newcommand{\askDepartureTimes}[1][j]{T^{a, D}_{{#1}}}
+\newcommand{\quantityToLiquidate}{Q}
+\newcommand{\metaorderSize}{Q_{0}}
+\newcommand{\impactProfile}{\mathtt{imp}}
