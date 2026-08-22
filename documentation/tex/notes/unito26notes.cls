@@ -10,8 +10,8 @@
 \def\input@path{
     {./}{../}
     {../include/}
-    {./lob/}
-    {./lob/sections/}
+    {./orderdriven/}
+    {./orderdriven/sections/}
 }
 \makeatother
 
@@ -32,7 +32,7 @@
 \usepackage{graphicx}
 \graphicspath{
     {./figures/}
-    {./lob/figures/}
+    {./orderdriven/figures/}
 }
 \usepackage{booktabs}
 \usepackage{pdflscape} %make landscape orientation available
