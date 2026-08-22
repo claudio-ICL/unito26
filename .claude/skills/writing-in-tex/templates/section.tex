@@ -1,0 +1,38 @@
+% Template: one section of a chapter.
+% Copy to documentation/tex/notes/<topic>/sections/<section>.tex.
+% This file contains prose only: no preamble, and no \section command --
+% the sectioning lives in the parent chapter file.
+
+Open directly with the prose.
+Break the source at clause boundaries,
+one sentence or one clause per line,
+so that a diff shows exactly which sentence changed.
+
+Define terms with \emph{} on first use,
+and give every symbol a macro in include/notation.tex
+rather than writing it out here.
+
+\begin{defi}
+\label{def.something}
+The \emph{something} at time $t$ is
+\begin{equation}
+\label{eq.something}
+x_t := 0.
+\end{equation}
+\end{defi}
+
+Refer back with the noun spelled out:
+Definition \ref{def.something} and equation \eqref{eq.something},
+and cite as \cite{Bou18tra}.
+
+\begin{remark}
+\label{remark.something}
+Use remarks for the caveat that a careful reader would raise,
+and that a student would otherwise get wrong in code.
+\end{remark}
+
+\subsection{A subsection, if the section needs one}
+\label{sec.aSubsection}
+
+Subsections do live in the section file;
+only \section belongs to the parent.

@@ -66,3 +66,12 @@ python -m pytest tests/           # run tests
 
 - Course material is developed on the **`lecturer`** branch and merged into
   `main` once reviewed. Don't commit or push unless asked.
+
+
+
+## Writing
+
+LaTeX lecture notes and slides live in `documentation/tex/` — one notes book, one slide
+deck, files named after their topic. Before writing or editing any `.tex` file, invoke the
+**`writing-in-tex`** skill: it carries the house style (derived from Claudio's thesis), the
+shared notation, and the templates for adding a chapter.
