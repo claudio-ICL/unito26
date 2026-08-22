@@ -189,7 +189,7 @@ The second is exactly the part that rests in the book.
 
 \pause
 
-A market order \emph{walks the book} when $\marketOrderSize > \nthBestBidVolume[1]_t$:
+A market order \emph{walks the book} when $\marketOrderSize > \nthBestBidVolume[1]_{t-}$:
 it eats past the best level, each unit worse than the last.
 Trades are market orders with $\marketOrderSize > 0$.
 \end{frame}

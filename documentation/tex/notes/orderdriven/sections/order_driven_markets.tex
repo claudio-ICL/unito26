@@ -71,7 +71,7 @@ $\pi\derivative d \leq p d$),
 then
 $(t, q, p, d)$ is executed first against $(s, \rho, \pi, -d)$
 and only its outstanding part $(t, \tilde{q}, p, d)$ after this transaction
-is executed against $(s\derivative, \rho\derivative, \pi\derivative -d)$.
+is executed against $(s\derivative, \rho\derivative, \pi\derivative, -d)$.
 
 \begin{lemma}
 \label{lemma.orderingOfOrders}
@@ -230,7 +230,7 @@ $(\bestAskPrice_t, \bestBidPrice_t, \lbrace (\nthBestAskVolume[i]_t, \nthBestBid
 \end{prop}
 \begin{proof}
  The processing of the sell limit order $(t,q,p,-1)$ is equivalent to the processing of the stream
- $(t,\nthBestBidVolume[1]_{t-},\nthBestBidPrice[1]_{t-},-1), \dots, (t,\nthBestBidVolume[N]_{t-},\nthBestBidPrice[N]_{t-},-1), (t,q^{N}, p -1)$,
+ $(t,\nthBestBidVolume[1]_{t-},\nthBestBidPrice[1]_{t-},-1), \dots, (t,\nthBestBidVolume[N]_{t-},\nthBestBidPrice[N]_{t-},-1), (t,q^{N}, p, -1)$,
  where the priority is from left to right.
  Hence, we are reduced to discuss the following three cases.
  \begin{enumerate}[label={\emph{\roman{*}}.}]
@@ -277,7 +277,7 @@ $(\bestAskPrice_t, \bestBidPrice_t, \lbrace (\nthBestAskVolume[i]_t, \nthBestBid
   $\bestAskPrice_t = p$, $\nthBestAskVolume[1]_t = q-\nthBestBidVolume[1]_{t-}$,
   and the volume index $k$ shifted by the number of levels in the spread at time $t-$.
   Since with $q>\nthBestBidVolume[1]_{t-}$ it holds $q^{\infty} = q-\nthBestBidVolume[1]_{t-}$
-  and $\delta\bestAskPrice_t = \LOBspread_{t-}$ this is confirmed.
+  and $\delta\bestAskPrice_t = -\LOBspread_{t-}$ this is confirmed.
  \end{enumerate}
 \end{proof}
 
@@ -354,8 +354,9 @@ Even in such cases, we keep our convention of referring to the fraction of a lim
 that is executed upon submission as market order.}
 
 A sell market order $(t,\marketOrderSize,0,-1)$ is said to 'walk the book'
-if $\marketOrderSize > \nthBestBidVolume[1]_t$;
-this corresponds to the case $N\geq 1 $ in the notation of Proposition \ref{prop.lobUpdate}.
+if $\marketOrderSize > \nthBestBidVolume[1]_{t-}$;
+this implies $N\geq 1 $ in the notation of Proposition \ref{prop.lobUpdate},
+the converse failing when the order exactly clears the best level.
 Similarly, a buy market order walks the book
 if its size is larger than the volume of offers on the first ask level.
 
