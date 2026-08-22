@@ -30,19 +30,26 @@ notebooks/scratchbook.ipynb
 
 # Documentation build artifacts
 *.aux
-*.pdf
 *.dvi
 *.lof
 *.lot
-documentation/tex/*.bbl
-documentation/tex/*.blg
-documentation/tex/*.out
-documentation/tex/*.log
-documentation/tex/*.lol
-documentation/tex/*.toc
-documentation/tex/*/*.aux
-documentation/tex/*/*.out
-documentation/tex/*/*.log
-documentation/tex/*/*.toc
-documentation/tex/*/figures/
-documentation/tex/figures/
+documentation/**/*.bbl
+documentation/**/*.blg
+documentation/**/*.bcf
+documentation/**/*.out
+documentation/**/*.log
+documentation/**/*.lol
+documentation/**/*.toc
+documentation/**/*.nav
+documentation/**/*.snm
+documentation/**/*.fls
+documentation/**/*.fdb_latexmk
+documentation/**/*.synctex.gz
+
+# Large binaries: kept out of the repository wherever they turn up.
+*.pdf
+*.jpg
+*.jpeg
+
+# Figures are generated, not stored: regenerate them rather than commit them.
+documentation/tex/**/figures/
