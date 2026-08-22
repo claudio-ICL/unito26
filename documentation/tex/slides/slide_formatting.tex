@@ -1,0 +1,49 @@
+%% SLIDE FORMATTING %%
+\definecolor{unitoblue}{rgb}{0.000, 0.243, 0.455}
+
+\usetheme{default}
+\setbeamercolor{title}{fg=unitoblue}
+\setbeamercolor{frametitle}{fg=unitoblue}
+\setbeamercolor{section in toc}{fg=unitoblue}
+\setbeamercolor{structure}{fg=unitoblue}
+\setbeamertemplate{navigation symbols}{}
+
+\setbeamertemplate{footline}
+{%
+    \begin{picture}(0,0)
+        \put(20,20){%
+            \rule{320pt}{0.4pt}
+        }
+        \put(20,8){%
+          \scriptsize\color{unitoblue}\insertshortdate
+        }
+        \put(120,8){%
+          \scriptsize\color{unitoblue}\emph{\insertshorttitle}
+        }
+        \put(250,8){%
+          \scriptsize\color{unitoblue}\insertshortauthor
+        }
+        \put(330,8){%
+            \scriptsize\color{unitoblue}\insertframenumber
+        }
+    \end{picture}%
+}
+
+\newcommand{\inserttitleframe}{
+\begin{frame}[plain]
+\titlepage
+\end{frame}
+}
+\newcommand{\inserttableofcontents}{
+\begin{frame}
+\frametitle{Table of Contents}
+  \tableofcontents[hideallsubsections]
+\end{frame}
+}
+\AtBeginSection[]
+{
+\begin{frame}
+  \frametitle{Table of Contents}
+\tableofcontents[currentsection, hideothersubsections]
+\end{frame}
+}
