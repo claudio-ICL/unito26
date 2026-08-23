@@ -69,8 +69,7 @@ jupyter notebook                  # from inside the env: plotly renders server-s
 
 ## Workflow
 
-- Course material is developed on the **`lecturer`** branch and merged into
-  `main` once reviewed. Don't commit or push unless asked.
+- Don't commit or push unless asked.
 
 
 
