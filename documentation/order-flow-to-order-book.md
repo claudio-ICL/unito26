@@ -54,44 +54,36 @@ in `TickGrid.to_ticks`.
 
 ## 2. Aggregation and identity
 
-This is the organising result of the strand,
-and it is new relative to the existing notes.
+The organising idea of the strand: what the aggregate state settles, and where it stops.
 
-Let the **aggregate state** be the pair of maps from price to volume,
+The **aggregate state** is the object §3 of the notation already defines,
 
-$$\mathcal{A}_t = \big(\{(p, V^b_t(p))\},\ \{(p, V^a_t(p))\}\big),$$
+$$\mathcal{B}_t := \big(P^a_t,\ P^b_t,\ \{(V^{a,i}_t, V^{b,i}_t) : i = 1, 2, \dots\}\big),$$
 
-using $V^b_t(p)$, $V^a_t(p)$ (`\bidVolumePriceP`, `\askVolumePriceP`)
-for the volume resting at the absolute price $p$ on each side.
+reusing the $\mathcal{B}$ of §1 above, since the book state is what the fold accumulates.
+The code keys levels by absolute price where the notation indexes them relative to the touch;
+the two are the same state in different coordinates,
+$V^{a,i}_t$ being the volume at $P^a_t + (i-1)\tau$.
 
-> **Proposition (`prop.aggregationSufficiency`).**
-> For a stream of orders $(t,q,p,d)$, the map
-> $$(\mathcal{A}_{t-},\ (t,q,p,d)) \longmapsto \big(\mathcal{A}_t,\ \{(\pi, \text{size})\}\big)$$
-> is well defined on the aggregate state alone.
-> The same holds for a withdrawal that names a quantity at a price.
+Everything in §3–§4 of the notation follows from $\mathcal{B}$ by definition:
+the prevailing prices and the volumes resting at them, the spread, the mid-price, the imbalance.
+The content worth stating is not that, but the dynamics —
+`prop.lobUpdate` is written **entirely in terms of $\mathcal{B}$**,
+so the aggregate state is closed under the arrival of an order,
+and the queue inside a level never has to be represented in order to reproduce the public book.
+That map is what `AggregateBook` implements.
 
-*Proof.*
-Matching consumes the eligible prices in the order given by price-time priority.
-At a price $\pi$ with resting volume $V(\pi)$ and $q'$ still to execute,
-the amount transacted is $\min(q', V(\pi))$,
-and the resting volume becomes $V(\pi) - \min(q', V(\pi))$.
-Neither depends on how $V(\pi)$ decomposes into individual orders:
-FIFO order within the level fixes *which* orders are consumed,
-but not *how much* is consumed there, nor at what price.
-Iterating over the eligible prices in order, and resting any remainder at $p$,
-determines $\mathcal{A}_t$ and the fills aggregated by price. $\square$
-
-Two consequences, and the second is the important one.
-
-- The queue inside a level **never has to be represented**
-  in order to reproduce the public book.
-  Everything in §3–§4 of the notation — $P^a$, $P^b$, $V^{a,i}$, $V^{b,i}$,
-  $\phi$, $P^m$, $I^n$ — follows from $\mathcal{A}$.
-- The proposition is silent about *who* traded.
-  The fills it determines are aggregated by price;
-  the allocation among the resting orders at that price is exactly what it drops.
-
-So aggregation fails as soon as a question concerns a **named order**:
+What $\mathcal{B}$ drops is *whose* volume traded.
+It fixes how much is consumed at each price and at what price it prints,
+because $\min(q', V(\pi))$ does not depend on how $V(\pi)$ decomposes into individual orders —
+and the allocation among the orders resting at $\pi$ is exactly the discarded half.
+So no quantity that names an order can be computed from it:
+queue position and the fill probability that depends on it,
+the adverse-selection term of §7 that depends on *that*,
+attribution of a fill to an account, per-account inventory and PnL,
+and cancellation addressed by order identifier.
+A withdrawal that names a quantity at a price is a different matter —
+it is one more signed delta, which is why it costs nothing here.
 
 | the question | state required |
 | --- | --- |
@@ -100,21 +92,13 @@ So aggregation fails as soon as a question concerns a **named order**:
 | whose fill was that? what is account $X$'s position and PnL? | order-level, id-indexed |
 
 The two perspectives that force the second row are the trader,
-who needs her queue position because it drives fill probability
-and with it the adverse-selection term of §7,
+who needs her queue position because it drives fill probability,
 and the venue, which must attribute every fill to an account.
-
-**Cancellation is a consequence, not a cause.**
-A withdrawal carrying $(p, q)$ is one more signed delta on $\mathcal{A}$ and breaks nothing.
-A withdrawal carrying only an order identifier is another question about a named order,
-and falls on the identity side with everything else there.
-This is why the ladder places quantity-addressed withdrawal *before* the break:
-it looks as though it should force identity, and it does not.
 
 | leg | where |
 | --- | --- |
 | formulae | this entry |
-| code | `unito26.lob.orderbook.AggregateBook` — the whole class is the proposition's content; `AggregateBook.withdraw` is the "near miss" |
+| code | `unito26.lob.orderbook.AggregateBook` — the whole class is the closure made concrete; `AggregateBook.withdraw` is the quantity-addressed case |
 | tests | `tests/lob/test_aggregate_book.py::TestCaseA`, `::TestCaseB`, `::TestPassiveOrdersAndWithdrawals` |
 
 ---
@@ -150,11 +134,32 @@ The code returns `None` for a best price rather than a number,
 and the derived quantities propagate the `None` instead of inventing one.
 
 **The market-order remainder.**
-A genuine market order carries the sentinel price $p = 0$ (sell) or $p = \infty$ (buy).
-Its unfilled remainder must **never** rest:
-without the guard, an oversized market sell rests at price $0$
-and then matches every subsequent buy,
-corrupting the book silently from that point on.
+A market order carries a sentinel price, $p = 0$ (sell) or $p = \infty$ (buy),
+which is a price *specification* guaranteeing execution and not a point on the grid.
+So its remainder cannot rest where it was sent.
+It rests instead at the price it last executed against —
+the **market-to-limit** rule, and what venues that accept market orders do with the untraded part.
+Xetra states it plainly: any unexecuted part of a market-to-limit order is entered into the book,
+at the price it executed at.
+
+The one remainder that cannot rest at all is a market order that executed *nothing*,
+which has no price to inherit.
+That arises only against an empty opposite side,
+where there was no liquidity to take at any price,
+so refusing it costs nothing;
+`SubmitResult.unfilled` reports the shares rather than dropping them silently.
+
+What must never happen is resting at the sentinel itself.
+A fill trades at the **resting** order's price,
+so a residual left at $p = \infty$ would print later fills at `sys.maxsize`,
+and one left at $p = 0$ — a value indistinguishable from a real, very low price —
+would hand every subsequent buyer free shares.
+The objection is to the price, not to the resting.
+
+Note what market-to-limit needs: the last traded price, which is not part of $\mathcal{B}$.
+Closure survives only because those fills happened in the *same* message,
+and the case where none did is exactly the case that is refused.
+It is the narrowest the closure of §2 ever gets.
 
 The level changes a message causes are returned as `LevelDelta` values.
 These carry the **new absolute volume** at a price, not a signed change,
@@ -170,25 +175,272 @@ because every index shifts by $\delta P^a_t/\tau$, exactly as in §5.
 | code | `AggregateBook.submit` (both parts), `AggregateBook.withdraw`, `messages.LevelDelta` |
 | tests | `tests/lob/test_aggregate_book.py::TestCaseB` (walks the book, residual inside the spread, index shift, empty levels), `::TestExhaustedSide`, `::TestMarketOrders`; `tests/lob/test_replay_and_simulate.py::TestTaps::test_delta_volumes_are_absolute_and_so_are_idempotent` |
 
-The worked example of §8 is reproduced verbatim as the fixture.
-Case B is canonical because it exercises everything that usually breaks at once.
+The worked examples are a catalogue rather than a single fixture,
+and it is indexed by the branch of the update rule each one pins,
+not by the story each one tells.
+Case B remains canonical because it exercises several branches at once.
+
+<!-- begin generated: worked examples -->
+
+### The catalogue of transitions
+
+One example per branch of `prop.lobUpdate`, which is what makes it possible to
+argue the set is complete rather than merely plausible.
+Each is a fixture in `unito26.lob.worked_examples`,
+run against every book variant by the test suite,
+with the expected state derived from the notation rather than captured from a run.
+The sell-side mirror of each is generated by reflecting prices and flipping $d$.
+
+**1. A passive buy joins an occupied level** &mdash; `buy 75 @ 999`.
+
+*Branch:* N = 0, q^inf = q; the remainder lands where volume already rests.
+
+```
+    1003  #########################      180  ask
+    1002  #################              120  ask
+          ----------------------------  spread 2
+    1000  ##############                 100  bid
+     999  ############################   200  bid
+     998  #####################          150  bid
+
+    ---- becomes ----
+
+    1003  ##################             180  ask
+    1002  ############                   120  ask
+          ----------------------------  spread 2
+    1000  ##########                     100  bid
+     999  ############################   275  bid
+     998  ###############                150  bid
+```
+
+**2. A passive buy rests inside the spread** &mdash; `buy 50 @ 1001`.
+
+*Branch:* N = 0, q^inf = q; the best bid improves and the spread narrows.
+
+```
+    1003  #########################      180  ask
+    1002  #################              120  ask
+          ----------------------------  spread 2
+    1000  ##############                 100  bid
+     999  ############################   200  bid
+     998  #####################          150  bid
+
+    ---- becomes ----
+
+    1003  #########################      180  ask
+    1002  #################              120  ask
+          ----------------------------  spread 1
+    1001  #######                         50  bid
+    1000  ##############                 100  bid
+     999  ############################   200  bid
+     998  #####################          150  bid
+```
+
+**3. A sell takes part of the best bid** &mdash; `sell 50 @ 1000`.
+
+*Branch:* N_v bites at n = 1, so N = 0: one price prints and the best is unmoved.
+
+```
+    1003  #########################      180  ask
+    1002  #################              120  ask
+          ----------------------------  spread 2
+    1000  ##############                 100  bid
+     999  ############################   200  bid
+     998  #####################          150  bid
+
+    ---- becomes ----
+
+    1003  #########################      180  ask
+    1002  #################              120  ask
+          ----------------------------  spread 2
+    1000  #######                         50  bid
+     999  ############################   200  bid
+     998  #####################          150  bid
+```
+
+**4. A sell clears the best bid exactly** &mdash; `sell 100 @ 1000`.
+
+*Branch:* N = 1 with nothing walked -- the converse of section 6 failing.
+
+```
+    1003  #########################      180  ask
+    1002  #################              120  ask
+          ----------------------------  spread 2
+    1000  ##############                 100  bid
+     999  ############################   200  bid
+     998  #####################          150  bid
+
+    ---- becomes ----
+
+    1003  #########################      180  ask
+    1002  #################              120  ask
+          ----------------------------  spread 3
+     999  ############################   200  bid
+     998  #####################          150  bid
+```
+
+**5. Section 8 case a: executed in full, no remainder** &mdash; `sell 250 @ 999`.
+
+*Branch:* N_p bites before N_v; q^inf = 0, so the ask side is untouched.
+
+```
+    1003  #########################      180  ask
+    1002  #################              120  ask
+          ----------------------------  spread 2
+    1000  ##############                 100  bid
+     999  ############################   200  bid
+     998  #####################          150  bid
+
+    ---- becomes ----
+
+    1003  ############################   180  ask
+    1002  ###################            120  ask
+          ----------------------------  spread 3
+     999  ########                        50  bid
+     998  #######################        150  bid
+```
+
+**6. Section 8 case b: walks the book and rests the remainder** &mdash; `sell 400 @ 999`.
+
+*Branch:* q^inf > 0 inside the old spread; ask indices shift, two levels empty.
+
+```
+    1003  #########################      180  ask
+    1002  #################              120  ask
+          ----------------------------  spread 2
+    1000  ##############                 100  bid
+     999  ############################   200  bid
+     998  #####################          150  bid
+
+    ---- becomes ----
+
+    1003  ############################   180  ask
+    1002  ###################            120  ask
+     999  ################               100  ask
+          ----------------------------  spread 1
+     998  #######################        150  bid
+```
+
+**7. A sell consumes the whole bid side** &mdash; `sell 500 @ 998`.
+
+*Branch:* N_v = +inf: the side empties and P^b is undefined.
+
+```
+    1003  #########################      180  ask
+    1002  #################              120  ask
+          ----------------------------  spread 2
+    1000  ##############                 100  bid
+     999  ############################   200  bid
+     998  #####################          150  bid
+
+    ---- becomes ----
+
+    1003  ############################   180  ask
+    1002  ###################            120  ask
+     998  ########                        50  ask
+```
+
+**8. A market sell larger than the book** &mdash; `market sell 1000`.
+
+*Branch:* market-to-limit: the remainder rests at the price last executed against.
+
+```
+    1003  #########################      180  ask
+    1002  #################              120  ask
+          ----------------------------  spread 2
+    1000  ##############                 100  bid
+     999  ############################   200  bid
+     998  #####################          150  bid
+
+    ---- becomes ----
+
+    1003  #########                      180  ask
+    1002  ######                         120  ask
+     998  ############################   550  ask
+```
+
+**9. A market buy into an empty ask side** &mdash; `market buy 60`.
+
+*Branch:* no fill, so no price to inherit: the remainder cannot rest.
+
+```
+    1000  ############################   100  bid
+
+    ---- becomes ----
+
+    1000  ############################   100  bid
+```
+
+60 shares are reported as `unfilled`: they neither executed nor rested.
+
+**10. A withdrawal away from the best** &mdash; `withdraw 60 from the buy side at 999`.
+
+*Branch:* a signed delta on one level; the best price does not move.
+
+```
+    1003  #########################      180  ask
+    1002  #################              120  ask
+          ----------------------------  spread 2
+    1000  ##############                 100  bid
+     999  ############################   200  bid
+     998  #####################          150  bid
+
+    ---- becomes ----
+
+    1003  ############################   180  ask
+    1002  ###################            120  ask
+          ----------------------------  spread 2
+    1000  ################               100  bid
+     999  ######################         140  bid
+     998  #######################        150  bid
+```
+
+**11. A withdrawal that empties the best bid** &mdash; `withdraw 100 from the buy side at 1000`.
+
+*Branch:* the best price moves *down* and the spread widens -- only cancellation does this.
+
+```
+    1003  #########################      180  ask
+    1002  #################              120  ask
+          ----------------------------  spread 2
+    1000  ##############                 100  bid
+     999  ############################   200  bid
+     998  #####################          150  bid
+
+    ---- becomes ----
+
+    1003  #########################      180  ask
+    1002  #################              120  ask
+          ----------------------------  spread 3
+     999  ############################   200  bid
+     998  #####################          150  bid
+```
+
+<!-- end generated: worked examples -->
 
 ---
 
 ## 4. Finding the best price: complexity, and what was actually measured
 
-Write $L$ for the number of occupied levels on a side and $W$ for the width of the price band in ticks.
-Matching itself is the same in every variant;
-**the ladder is entirely about finding the best price**,
-so each variant overrides `best_price` and inherits the rest.
+Write $L$ for the number of occupied levels on a side
+and $W$ for the width of the price band in ticks.
+Matching is identical in every variant;
+**the ladder is entirely about finding the best price.**
 
-| variant | best-price lookup | update |
+The first four keep the dicts as storage and add an index beside them,
+so each overrides `best_price` and the `set_volume` that keeps its index in step.
+The last one stops varying a single factor on purpose:
+a real low-latency book *fuses* storage and index,
+the volumes living in the tick-indexed array itself,
+and the step from `BitmapBook` to `TickArrayBook` measures exactly that fusion.
+
+| variant | best-price lookup | storage |
 | --- | --- | --- |
-| `AggregateBook` | $O(L)$ scan of the dict keys | $O(1)$ |
-| `CachedBestBook` | $O(1)$ amortised; $O(L)$ on the rescan after the best level empties | $O(1)$ |
-| `HeapBook` | $O(1)$ peek, $O(\log L)$ amortised with lazy deletion | $O(\log L)$ push |
-| `BandBook` | $O(1)$ at the cursor; short local walk, then a vectorised $O(W)$ fallback | $O(1)$ |
-| `BitmapBook` | one big-integer operation, $O(W/64)$ words | $O(W/64)$ |
+| `AggregateBook` | $O(L)$ scan of the dict keys | dict |
+| `CachedBestBook` | $O(1)$; $O(L)$ on the rescan when the best level empties | dict |
+| `HeapBook` | $O(1)$ peek, $O(\log L)$ amortised with lazy deletion | dict |
+| `BitmapBook` | one big-integer operation over the occupied span | dict |
+| `TickArrayBook` | the same, indexing the array the volumes live in | flat list |
 
 The bitmap deserves its formulae, because they are the whole trick.
 With occupancy held as a single arbitrary-precision integer $B$ and origin $p_0$,
@@ -200,48 +452,77 @@ $$\max\{p : \text{occupied}\} = p_0 + \operatorname{bitlength}(B) - 1,
 since $B \wedge -B$ isolates the lowest set bit by two's complement.
 In C++ this is a hierarchy of 64-bit words and a count-trailing-zeros instruction;
 Python states it in one line each.
+**The two sides are not equally cheap**, which is easy to miss:
+`bit_length` reads the integer's stored size and is $O(1)$,
+while $B \wedge -B$ must borrow through every zero below the lowest set bit
+and so costs $O(\text{span})$.
+Measured over spans from $10^3$ to $10^5$ ticks,
+the bid lookup is flat and the ask lookup grows by a factor of forty.
 
-### Measured, on 120k simulated messages
+### Measured
 
-Same stream for every variant, verified to produce identical books.
-**Two of the plan's predictions were wrong, and they are recorded here as found.**
+Same stream for every variant, verified to produce identical books at every message.
+Two regimes, from the same simulator with different `depth_decay`:
+about 36 000 messages each, one settling at $L = 33$ occupied levels and one at $L = 900$.
 
-| variant | shallow book (~12 levels) | deep book (~966 levels) |
-| --- | --- | --- |
-| `AggregateBook` | 1.00× (baseline) | 1.00× (baseline) |
-| `CachedBestBook` | 1.04× | 2.62× |
-| `HeapBook` | 0.93× | 3.27× |
-| `BandBook` | 0.93× | 3.08× |
-| `BitmapBook` | 0.97× | 3.11× |
+| variant | shallow, $L = 33$ | deep, $L = 900$ | resident, deep |
+| --- | --- | --- | --- |
+| `AggregateBook` | 1.00× (81 ms) | 1.00× (167 ms) | 110 kB |
+| `CachedBestBook` | 0.95× | 1.71× | 111 kB |
+| `HeapBook` | 0.94× | 1.75× | **653 kB** |
+| `BitmapBook` | 0.95× | 1.77× | 111 kB |
+| `TickArrayBook` | 0.97× | **1.85×** | **52 kB** |
 
-**In the shallow regime nothing helps, and some things hurt.**
-The prediction was that the $O(L)$ scan would dominate the profile.
-It does not: profiling attributes **12.8%** of run time to the best-price lookup
-when $L \approx 12$, because `min`/`max` over a dozen keys is simply cheap.
-Removing all of it could not have bought more than about 15%,
-and the measured 1.04× is consistent with that.
-The prediction that the cached best price would be the largest win per line of code
-was wrong for the same reason.
+**In the shallow regime nothing helps, and everything hurts a little.**
+Profiling attributes **8.1%** of run time to the best-price lookup at $L = 33$,
+because `min` and `max` over three dozen keys are simply cheap;
+removing all of it could not buy more than that,
+and every variant instead pays a little index maintenance on each write.
+The measured 0.94–0.97× is exactly what that predicts.
 
-**In the deep regime the ladder pays**, and roughly equally for three different designs.
-There the same profiling attributes **92.2%** of run time to the best-price lookup,
-which is what makes a 2.6–3.3× speedup available at all.
-The lesson is not a ranking but a conditional:
+**In the deep regime the ladder pays**, and roughly equally for four different designs.
+There the lookup is **30.3%** of run time, which is what makes the speedup available.
+Note that the speedup is a clean function of $L$ and of nothing else,
+so a figure quoted without its $L$ says nothing:
+the same code measures 1.0× and 1.85× on the same machine.
+The lesson is not a ranking but a conditional —
 an optimisation targets a bottleneck,
 and whether that bottleneck exists is a property of the market, not of the code.
 A large-tick instrument, where flow concentrates within a few ticks of the touch,
 sits in the first column.
 
-The array-backed variant is also a lesson in benchmarking.
-Written first without the cursor the plan specified — rescanning the band each time —
-it measured 0.18× in the deep regime.
-That number was real, and it was a fact about a strawman, not about the design.
+**Fusion is worth a little, and only where the search already was.**
+`TickArrayBook` beats `BitmapBook` by about 5% in the deep regime and neither in the shallow.
+In C the fused design wins on cache locality;
+inside an interpreter, most of what it saves is spent again on interpretation,
+and that gap between the right structure for the machine
+and the right structure for the language is the point of showing both.
+
+**Memory tells a different story from time, and it is the one that separates the designs.**
+`HeapBook` is the striking case: after 36 000 shallow messages
+its heaps hold hundreds of kilobytes of stale entries against a 7 kB book, roughly a hundred to one.
+That is the bill for lazy deletion, and `compact` is what pays it.
+`TickArrayBook` is the opposite: $8W$ bytes whether or not the levels are occupied,
+which here is *less* than the dicts because the band is narrow,
+and would be far more on an instrument whose price range is wide and sparse.
+The array is a lookup table, and a lookup table costs the whole table.
+`BitmapBook`'s $O(W)$ bits are real asymptotically and never bite in either regime measured:
+2 kB of bitmap against 426 kB of dicts.
+
+Two methodological notes, both of which changed a number here.
+Profiling must use **cumulative** and not own time:
+`best_price` does its scanning by calling `max`,
+and a profiler bills a builtin to itself,
+so the method's own time reports 3% where the truth is thirty.
+And an array-backed variant written without a cursor,
+rescanning the band on every lookup, once measured 0.18×.
+That number was real, and it was a fact about a strawman rather than about the design.
 
 | leg | where |
 | --- | --- |
 | formulae | this entry |
-| code | `unito26.lob.orderbook` — `CachedBestBook`, `HeapBook`, `BandBook`, `BitmapBook`, and `AXIS_B_VARIANTS` |
-| tests | `tests/lob/test_axis_b_variants.py` — parity with the baseline at *every* step, not just at the end, plus `CachedBestBook.verify_cache` |
+| code | `unito26.lob.orderbook` &mdash; `CachedBestBook`, `HeapBook`, `BitmapBook`, `TickArrayBook`, `AXIS_B_VARIANTS`; `unito26.lob.benchmark` for the harness |
+| tests | `tests/lob/test_axis_b_variants.py` &mdash; the catalogue and its mirror on every variant, parity with the baseline at *every* step and on the derived views, plus `CachedBestBook.check_cache_is_consistent` |
 
 ---
 
@@ -276,7 +557,7 @@ with per-pair $\beta_{ij}$ it is a $d \times d$ matrix,
 so **choosing the kernel is choosing the size of the state**.
 And recomputing $\lambda$ by summing over all past events is $O(n^2)$ over a run,
 where the recursion is $O(1)$ per event —
-the same "carry the right summary statistic" idea as `prop.aggregationSufficiency`,
+the same "carry the right summary statistic" idea as the closure of $\mathcal{B}$ in entry 2,
 reached from a completely different direction.
 
 ### Stability

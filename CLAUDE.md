@@ -79,3 +79,24 @@ LaTeX lecture notes and slides live in `documentation/tex/` — one notes book, 
 deck, files named after their topic. Before writing or editing any `.tex` file, invoke the
 **`writing-in-tex`** skill: it carries the house style (derived from Claudio's thesis), the
 shared notation, and the templates for adding a chapter.
+
+
+
+## How I want you to write
+
+The default output of a coding assistant is verbose, inelegant and transient. Those are
+the three things to avoid here, and the third is the one that costs most.
+
+**Verbose.** I value conciseness: say it once and stop. Do not over-explain and do not
+over-do. If I want something expanded, I will ask for a follow-up — so between two
+correct explanations, give me the shorter one.
+
+**Inelegant.** This one is subjective, but: be a mathematician with a sweet tooth for
+aesthetics. One idea per definition, no special case that a better formulation would
+remove, and names taken from the notation rather than invented alongside it.
+
+**Transient.** Code, comments in code and paragraphs in the lecture notes tend to
+*answer a prompt*. What you write makes sense in the context of our conversation and
+ages very badly as soon as that conversation is lost. So: no "as requested", no note on
+what changed, no defence of the alternative that was rejected. Write for someone meeting
+the file for the first time, a year from now. Only write things that will endure.

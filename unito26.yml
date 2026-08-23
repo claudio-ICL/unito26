@@ -7,8 +7,10 @@ dependencies:
   - ipython
   - ipykernel
   - matplotlib
+  - notebook
   - numpy
   - pandas
+  - plotly
   - pyarrow
   - scipy
   - scikit-learn

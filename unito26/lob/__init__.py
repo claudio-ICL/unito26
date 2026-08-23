@@ -16,8 +16,15 @@ The strand is built as a ladder of increasing complexity, and the modules follow
     marks -- turning an event type into an actual order, given the book.
 ``lobster``
     a read-only loader and descriptive statistics for the LOBSTER sample files.
+``worked_examples``
+    the catalogue of book transitions, one per branch of the update rule, shared by
+    the tests, the notebook and the documentation.
+``benchmark``
+    timing and memory for the variants; the numbers belong in a notebook, not a test.
+``visualization``
+    a book drawn as text for the documentation and as plotly for the notebook.
 
 The organising idea is in ``documentation/order-flow-to-order-book.md``: the aggregate
-book is a sufficient statistic for the *public* book, and it stops being sufficient the
-moment a question concerns a *named* order.
+state is closed under the arrival of an order, so it reproduces the whole public book,
+and it stops being sufficient the moment a question concerns a *named* order.
 """

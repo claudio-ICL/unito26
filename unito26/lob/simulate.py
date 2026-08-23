@@ -211,7 +211,7 @@ class OrderFlowSimulator:
         Returns None when the side is empty: the event is dropped.  This is the
         state-dependent thinning noted in the module docstring.
         """
-        levels = book.side(direction)
+        levels = book.levels_map(direction)
         if not levels:
             return None
         prices = list(levels)

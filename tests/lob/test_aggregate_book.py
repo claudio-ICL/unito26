@@ -10,6 +10,8 @@ import pytest
 
 from unito26.lob.messages import (
     BUY,
+    MARKET_BUY_PRICE,
+    MARKET_SELL_PRICE,
     SELL,
     TickGrid,
     limit_order,
@@ -17,6 +19,7 @@ from unito26.lob.messages import (
     withdrawal,
 )
 from unito26.lob.orderbook import AggregateBook
+from unito26.lob.worked_examples import CATALOGUE, check, reflect
 
 TICK = TickGrid(0.01)
 
@@ -149,15 +152,38 @@ class TestExhaustedSide:
 
 
 class TestMarketOrders:
-    def test_market_order_never_rests_its_remainder(self, worked_example):
+    """Market-to-limit: the remainder rests at the price it last executed against."""
+
+    def test_remainder_rests_at_the_last_traded_price(self, worked_example):
         book = worked_example
-        # A market sell far larger than the book.  Without the guard, the unfilled
-        # 550 would rest at price 0 and match every buy that followed.
+        # A market sell far larger than the bid side: 450 trade, down to 9.98, and the
+        # 550 left over becomes an ask at 9.98 -- the price the order last got.
         result = book.submit(market_order(1.0, 1000, SELL))
         assert result.market_order_size == 450
+        assert result.unfilled == 0
         assert book.bids == {}
-        assert 0 not in book.asks
-        assert book.asks == {1002: 120, 1003: 180}
+        assert book.ask_volume_at(998) == 550
+        assert book.best_ask_price == 998
+        book.check_invariants()
+
+    def test_nothing_ever_rests_at_a_sentinel_price(self, worked_example):
+        book = worked_example
+        book.submit(market_order(1.0, 1000, SELL))
+        book.submit(market_order(2.0, 1000, BUY))
+        for levels in (book.bids, book.asks):
+            assert MARKET_SELL_PRICE not in levels
+            assert MARKET_BUY_PRICE not in levels
+
+    def test_with_nothing_to_trade_against_the_remainder_is_unfilled(self):
+        # The one case where a remainder cannot rest: no fill, so no price to inherit.
+        # It can only arise against an empty side, where there was no liquidity to take
+        # at any price, so nothing is lost by refusing it.
+        book = AggregateBook.from_levels({1000: 100}, {})
+        result = book.submit(market_order(1.0, 60, BUY))
+        assert result.fills == []
+        assert result.unfilled == 60
+        assert book.asks == {}
+        assert book.bids == {1000: 100}
         book.check_invariants()
 
     def test_market_buy_ignores_the_price_constraint_entirely(self, worked_example):
@@ -211,3 +237,28 @@ class TestSnapshotAliasing:
         # the live state rather than the state at the moment it was taken.
         assert snapshot.asks == {1002: 120, 1003: 180}
         assert book.asks != snapshot.asks
+
+
+MIRROR_CENTRE = 1001
+
+
+@pytest.mark.parametrize("example", CATALOGUE, ids=lambda e: e.name)
+class TestTheCatalogue:
+    """Every branch of ``prop.lobUpdate``, on the baseline book.
+
+    The expected states are derived from the notation rather than captured from a run,
+    so these are the tests that can fail when the implementation is wrong -- as opposed
+    to merely when it changes.
+    """
+
+    def test_the_transition_is_what_the_notation_says(self, example):
+        check(AggregateBook, example)
+
+    def test_the_mirrored_transition_agrees(self, example):
+        # A symmetry of the matching rule, so this passes only if `d` really does
+        # collapse both sides of the book into one comparison.
+        check(AggregateBook, reflect(example, MIRROR_CENTRE))
+
+    def test_reflecting_twice_is_the_identity(self, example):
+        once = reflect(example, MIRROR_CENTRE)
+        assert reflect(once, MIRROR_CENTRE).transition == example.transition
