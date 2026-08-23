@@ -570,14 +570,10 @@ class BitmapBook(AggregateBook):
     expression each:
 
     * highest set bit -- ``bits.bit_length() - 1``;
-    * lowest set bit  -- ``(bits & -bits).bit_length() - 1``, since ``bits & -bits``
-      isolates the lowest set bit by two's complement.
+    * lowest set bit  -- ``(bits & -bits).bit_length() - 1``.
 
-    This is a rare case where Python states a genuine low-latency trick *more* clearly
-    than C++ does, which is why it earns a place in the course.  The two lookups are not
-    equally cheap, though: ``bit_length`` reads the integer's size and is O(1), while
-    ``bits & -bits`` must borrow through every zero below the lowest set bit and so
-    costs O(span).  Measured, the bid side is flat in the span and the ask side is not.
+    Both identities, and the reason the second costs O(span) where the first is O(1),
+    are derived in ``documentation/integers-in-binary.md``.
 
     ``origin`` only keeps the integer narrow.  Unlike an array there is no upper edge to
     fall off: the bitmap grows as prices arrive, so its span tracks the market rather

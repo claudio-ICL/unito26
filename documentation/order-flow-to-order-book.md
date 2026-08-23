@@ -449,15 +449,14 @@ $$\max\{p : \text{occupied}\} = p_0 + \operatorname{bitlength}(B) - 1,
 \qquad
 \min\{p : \text{occupied}\} = p_0 + \operatorname{bitlength}(B \wedge -B) - 1,$$
 
-since $B \wedge -B$ isolates the lowest set bit by two's complement.
-In C++ this is a hierarchy of 64-bit words and a count-trailing-zeros instruction;
-Python states it in one line each.
-**The two sides are not equally cheap**, which is easy to miss:
-`bit_length` reads the integer's stored size and is $O(1)$,
-while $B \wedge -B$ must borrow through every zero below the lowest set bit
-and so costs $O(\text{span})$.
-Measured over spans from $10^3$ to $10^5$ ticks,
-the bid lookup is flat and the ask lookup grows by a factor of forty.
+since $B \wedge -B$ isolates the lowest set bit.
+That identity, and the rest of the bit vocabulary the two classes are written in,
+are derived in [`integers-in-binary.md`](integers-in-binary.md);
+in C++ the same two lookups are a hierarchy of 64-bit words
+and a count-trailing-zeros instruction.
+**The two sides are not equally cheap**, which is easy to miss and matters below:
+the highest set bit is $O(1)$ in the span and the lowest is $O(\text{span})$,
+measured flat against a factor of thirty-five over spans from $10^3$ to $10^5$ ticks.
 
 ### Measured
 

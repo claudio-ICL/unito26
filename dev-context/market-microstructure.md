@@ -84,7 +84,8 @@ Recorded because two of them contradicted the plan's own predictions:
 Harvested from the implementation, for the multiple-choice format: float tick prices; a
 market-order remainder resting at price 0; inverted imbalance sign; a stale heap top used
 without popping; a snapshot tap that stores the book instead of a copy; index-keyed rather
-than price-keyed deltas; code answering "am I filled?" from aggregate volume.
+than price-keyed deltas; code answering "am I filled?" from aggregate volume;
+`(b & -b).bit_length() - 1` on an empty side, wrong by one and never by an exception.
 
 ## References
 
@@ -94,5 +95,8 @@ than price-keyed deltas; code answering "am I filled?" from aggregate volume.
 - [`documentation/order-flow-to-order-book.md`](../documentation/order-flow-to-order-book.md)
   — the mathematics of the implementation, each result tied to the code region carrying it
   and the test certifying it. The starting point for the lecture notes on this part.
+- [`documentation/integers-in-binary.md`](../documentation/integers-in-binary.md)
+  — the bit vocabulary `BitmapBook` and `TickArrayBook` are written in: an integer as a set
+  of positions, two's complement, and `b & -b`. Prerequisite for entry 4 of the above.
 - [`.claude/plans/order-book-from-order-stream.md`](../.claude/plans/order-book-from-order-stream.md)
   — the agreed plan, kept so the code can be reviewed against it.
