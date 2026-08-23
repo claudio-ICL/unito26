@@ -50,10 +50,11 @@ unito26/
 conda env create -f unito26.yml   # first-time setup
 conda activate unito26
 python -m pytest tests/           # run tests
+jupyter notebook                  # from inside the env: plotly renders server-side
 ```
 
 - Python >= 3.12.
-- Core stack: numpy, scipy, pandas, matplotlib, pyarrow, scikit-learn.
+- Core stack: numpy, scipy, pandas, matplotlib, plotly, pyarrow, scikit-learn.
 
 ## Conventions
 
