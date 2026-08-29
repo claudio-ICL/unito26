@@ -3,7 +3,17 @@
 Prerequisite for entry 4 of [`order-flow-to-order-book.md`](order-flow-to-order-book.md),
 where `BitmapBook` and `TickArrayBook` find the best price on a side with three operations on
 a single integer. Those operations are standard and they are not obvious; this note derives
-them, measures them, and stops.
+them, proves them, measures them, and stops.
+
+**Notation.** Formulas below use the logic symbols on the left; code snippets use Python's own
+operators on the right. The two never mix.
+
+| logic | meaning | Python |
+| --- | --- | --- |
+| $\sim$ | complement / NOT | `~` |
+| $\wedge$ | AND | `&` |
+| $\vee$ | OR | `\|` |
+| $\oplus$ | XOR | `^` |
 
 ---
 
@@ -31,13 +41,53 @@ words with the index arithmetic done by hand. Python's integers are unbounded, s
 wide as the market and needs no declared band — which is why `BitmapBook`, unlike
 `TickArrayBook`, has no upper edge to fall off.
 
-## 2. Negative numbers, and why two's complement is forced
+## 2. Bit sequences, two ways
+
+Let $S = \{0,1\}^{\mathbb{N}}$, the infinite $0/1$ sequences indexed from $0$. For $f \in S$
+write $\pi_d(f)$ for its truncation to positions $0,\dots,d$, and let $\sim, \wedge, \vee,
+\oplus$ act pointwise on $S$ — the operators of §1, now acting on the whole sequence rather
+than on a fixed-width pattern.
+
+For $d \in \mathbb{N}$ let $R_d := \mathbb{Z}/2^{d+1}\mathbb{Z}$, with $\mathrm{mod}_d : \mathbb{Z}
+\to R_d$ the reduction map, and let $\mathbb{F}_2 := R_0$. Let $P_d$ be the tuples
+$(f_0,\dots,f_d) \in \mathbb{F}_2^{d+1}$, read as polynomials over $\mathbb{F}_2$ of degree at
+most $d$; for $f \in P_d$ nonzero, $\deg(f)$ is the largest $k$ with $f_k \ne 0$, and
+$\deg(0) := -1$ (this convention pays for itself twice below). Coordinatewise XOR makes $P_d$
+an abelian group, $(\mathbb{F}_2^{d+1}, \oplus) \cong (\mathbb{Z}/2)^{d+1}$.
+
+**Proposition 1.** The map $\iota_d : R_d \to P_d$ sending $x \in \{0,\dots,2^{d+1}-1\}$ to its
+binary digits is a bijection.
+
+This is standard base-2 digit uniqueness, and it is a bijection of *sets only*. Transporting
+$R_d$'s addition through $\iota_d$ gives $P_d$ a second abelian-group structure, the one with
+carries, isomorphic to the *cyclic* group $\mathbb{Z}/2^{d+1}\mathbb{Z}$ — genuinely different
+from the XOR structure once $d \ge 1$: $\mathbb{Z}/4\mathbb{Z}$ has an element of additive order
+$4$, while every element of $(\mathbb{Z}/2)^2$ has order at most $2$, so the two groups on $P_1$
+are not isomorphic. Both live on the same four bit patterns, and the rest of this note is largely
+about not confusing them: XOR is carry-free, integer addition is not. Neither structure is
+extended to a ring here — ordinary $\mathbb{F}_2$-polynomial multiplication does not even close
+on $P_d$ (two degree-$d$ factors can have a degree-$2d$ product) — and nothing below multiplies
+two bit patterns, only adds them, two different ways.
+
+Let $P := \bigcup_d P_d \subset S$: exactly the *eventually-zero* sequences, $f \in P$ iff there
+is $L$ with $f_k = 0$ for all $k > L$, and $L = \deg(f)$ always works (including $\deg(0)=-1$,
+covering $f=0$). Let $\bar{B} : P \to \mathbb{N}$, $\bar B(f) = \sum_k f_k 2^k$.
+
+**Proposition 2.** $\bar B$ is a bijection; write $B$ for its inverse, the binary
+representation of $\mathbb{N}$.
+
+Injectivity is uniqueness of binary digits. Surjectivity is existence, by strong induction on
+$n$: $n=0$ is $\bar B(0)$; for $n>0$ write $n = 2q+r$ with $r = n \bmod 2$, and prepend $r$ to
+the (inductively given) expansion of $q$.
+
+## 3. Two's complement, forced
 
 ### A counting argument
 
-Fix a width $n$. There are $2^n$ patterns, so a signed reading is a map
-$\{0,1\}^n \to \mathbb{Z}$, and the first question to ask of one is whether it is injective.
-Enumerating all 256 patterns at $n = 8$ under the three classical readings:
+Fix a width $n$ bits — equivalently, set $d = n-1$ and work in $R_d = \mathbb{Z}/2^n\mathbb{Z}$.
+There are $2^n$ patterns, so a signed reading is a map $\{0,1\}^n \to \mathbb{Z}$, and the first
+question to ask of one is whether it is injective. Enumerating all 256 patterns at $n = 8$
+under the three classical readings:
 
 | reading | distinct values | range | one-to-one |
 | --- | --- | --- | --- |
@@ -50,14 +100,14 @@ defect: a symmetric range of integers has odd cardinality, $2^n$ is even, so one
 left over and both schemes spend it on a second zero.
 
 Two's complement is not merely the survivor, and the reason is worth stating on its own. Binary
-addition with the carry off the top discarded **is** addition in $\mathbb{Z}/2^n\mathbb{Z}$ —
-that is what the adder computes, before anyone has decided what a pattern means. A signed
-reading is therefore a choice of *representatives* for the residue classes, and any complete
-set of representatives is a bijection automatically. Two's complement takes
-$\{-2^{n-1}, \dots, 2^{n-1}-1\}$, one per class; the other two readings take sets that are not
-complete residue systems, which is the paragraph above counted a second way. The practical
-form of the same fact: one adder serves the signed and the unsigned reading at once, and only
-this scheme has that property.
+addition with the carry off the top discarded **is** addition in $R_d$ — that is what the adder
+computes, before anyone has decided what a pattern means. A signed reading is therefore a choice
+of *representatives* for $R_d$'s residue classes, and any complete set of representatives is a
+bijection automatically — the same freedom Proposition 1 exercises to build $\iota_d$, aimed at
+a different window of representatives. Two's complement takes $\{-2^{n-1}, \dots, 2^{n-1}-1\}$,
+one per class; the other two readings take sets that are not complete residue systems, which is
+the paragraph above counted a second time. The practical form of the same fact: one adder serves
+the signed and the unsigned reading at once, and only this scheme has that property.
 
 Two consequences, both used below.
 
@@ -68,42 +118,76 @@ Two consequences, both used below.
 - Being exact leaves a fingerprint: $-2^{n-1}$ has no positive counterpart, which is why
   `abs()` overflows at `INT_MIN` in C. One-to-one and symmetric cannot both hold.
 
-### Removing the width
+The first consequence is worth proving outright rather than leaving as an identity checked by
+construction. Let $c_d : R_d \to R_d$, $c_d(x) = -x-1$.
 
-Now the property Python needs, and the one the losing schemes lack. Truncating an $n$-bit
-two's-complement number to its low $m$ bits gives the $m$-bit two's complement of the same
-value, both being the reduction mod $2^m$ of one residue class. For $-360$:
+**Proposition 3.** For every $x \in R_d$, $\iota_d(c_d(x)) = \pi_d\big(\sim \iota_d(x)\big)$:
+complementing the bit pattern within its own $d+1$-bit window computes $c_d$.
 
+*Proof.* Write $f = \iota_d(x)$, so $x = \sum_{k=0}^d f_k 2^k$. Flipping every one of the $d+1$
+coordinates of $f$ and reading off the value gives $\sum_k (1-f_k)2^k = (2^{d+1}-1) - x$, which
+is exactly $c_d(x) = -x-1 \bmod 2^{d+1}$. $\blacksquare$
+
+So $c_d(x) + 1 = -x$: complementing a fixed-width pattern and adding one negates it — the first
+bullet above, proved.
+
+## 4. The embedding of $\mathbb{Z}$ into $S$
+
+$P \subset S$ is the eventually-zero sequences; write $\sim\!P$ for the eventually-*one*
+sequences (the complements of elements of $P$), and $\bar P := P \cup \sim\!P$, the
+eventually-constant sequences.
+
+**Definition.** $\Phi : \mathbb{Z} \to S$, $\Phi(x) = B(x)$ if $x \ge 0$, and
+$\Phi(x) = \sim\! B(-1-x)$ if $x < 0$.
+
+(The $-1$ matters: $\sim\! B(-x)$ is *not* $\Phi(x)$, it is $\Phi(x-1)$ — one step further
+negative — the easiest place in this whole construction to be off by one.)
+
+**Theorem.** $\Phi$ is injective, with image exactly $\bar P$ — $\Phi(x) \in P$ iff $x \ge 0$
+and $\Phi(x) \in \sim\!P$ iff $x < 0$ — and for every $d$,
+$$\pi_d(\Phi(x)) = \iota_d(\mathrm{mod}_d(x)).$$
+
+*Proof.* For $x \ge 0$, $\Phi(x) = B(x) \in P$; for $x<0$, $-1-x \ge 0$ so $B(-1-x) \in P$ is
+eventually zero, hence $\Phi(x) = \sim\! B(-1-x)$ is eventually one. A sequence cannot be both
+eventually zero and eventually one, so the two cases have disjoint images; each case is
+injective ($x \mapsto -1-x$, $B$, and $\sim$ are each injective), so $\Phi$ is injective with
+image $P \sqcup \sim\!P = \bar P$.
+
+For the truncation identity, $x \ge 0$ is immediate: truncating the base-2 expansion of $x$ to
+$d+1$ digits computes $x \bmod 2^{d+1}$. For $x<0$, let $n = -1-x \ge 0$; truncating
+$\Phi(x) = \sim\! B(n)$ to $d+1$ bits complements the truncation of $B(n)$, so its value is
+$(2^{d+1}-1) - (n \bmod 2^{d+1})$, which is $\equiv -1-n = x \pmod{2^{d+1}}$; being a $(d+1)$-bit
+value, it equals $x \bmod 2^{d+1}$ exactly. $\blacksquare$
+
+$\Phi$ is not onto $S$: $S$ has cardinality $2^{\aleph_0}$ — it is, as a set, the 2-adic integers
+$\mathbb{Z}_2 = \varprojlim \mathbb{Z}/2^n\mathbb{Z}$ — while $\mathbb{Z}$ is countable, so no
+bijection $\mathbb{Z} \to S$ can exist. What the theorem gives instead, $\mathbb{Z}
+\hookrightarrow S$ as the eventually-constant sequences, *is* the embedding of $\mathbb{Z}$ into
+$\mathbb{Z}_2$, made concrete rather than named.
+
+**Closure.** $\bar P$ is closed under $\sim, \wedge, \vee, \oplus$: if $f$ is eventually $a$ from $N_f$
+and $g$ is eventually $b$ from $N_g$, then past $\max(N_f,N_g)$ every one of these operators
+returns the single fixed bit $a$-op-$b$, so the result is again eventually constant. Hence
+$\Phi(\mathbb{Z}) = \bar P$ is closed under all four — a bitwise operator applied to (patterns
+of) integers never leaves $\mathbb{Z}$ — and CPython computes the result in one pass over
+the finitely many stored digits on each side; nothing infinite is materialised. The case the
+book runs is `bits &= ~bit`, a non-negative number AND a negative one, leading zeros against
+leading ones: the tail is zeros and the result is non-negative.
+
+```python
+import random
+
+for _ in range(1000):
+    x = random.randint(-(2**64), 2**64)
+    assert ~x == -x - 1
+    assert all((x >> k & 1) == (x // 2**k) % 2 for k in range(70))
 ```
-low  5 bits                            11000
-low  9 bits                        010011000
-low 13 bits                    1111010011000
-low 20 bits             11111111111010011000
-```
-
-each the suffix of the next. Sign-magnitude cannot do this, its sign bit sitting at the top:
-$-3$ in eight bits is `10000011`, whose low four bits read `0011`, which is $+3$.
-
-Because the widths agree with one another they have a limit, and $n$ leaves the statement
-altogether:
-
-$$\mathbb{Z} \;\longleftrightarrow\; \{\text{eventually-constant bit sequences}\},$$
-
-eventually-zero for $x \ge 0$ and eventually-one for $x < 0$. Injectivity is one line: if
-$x \equiv y \pmod{2^n}$ for every $n$, then $2^n$ divides $x - y$ for every $n$, so $x = y$.
-Surjectivity onto the eventually-constant sequences is two cases: an eventually-zero sequence
-is the finite sum $\sum_k b_k 2^k$, and one whose ones begin at $N$ is
-$\sum_{k<N} b_k 2^k - 2^N$. In particular $-1 = \dots1111$ is a computation rather than a
-convention, $2^n - 1$ being $n$ ones for every $n$. For the reader who wants the general
-theory, this is the embedding of $\mathbb{Z}$ into the 2-adic integers
-$\varprojlim \mathbb{Z}/2^n\mathbb{Z}$.
-
-### The image, computed
 
 Bit $k$ of an integer is `x >> k & 1` — one formula for every integer, negative ones included,
-because Python's `>>` floors. CPython stores sign and magnitude, so this is the single place
-where the image and the storage part company: `-b` prints as `-0b101101000`, the digits of `b`
-unchanged, and yet the operators see something else. For $b = 360$:
+because Python's `>>` floors: this is $\Phi$, computed. CPython stores sign and magnitude, so
+this is the single place where the image and the storage part company: `-b` prints as
+`-0b101101000`, the digits of `b` unchanged, and yet the operators see something else. For
+$b = 360$:
 
 ```
  k    b>>k  bit     -b>>k  bit
@@ -127,32 +211,60 @@ bit of $-1$ is $1$. The infinite tail is generated, not declared:
 
 $$b = \dots0000\,101101000, \qquad -b = \dots1111\,010011000.$$
 
-On this $b$ the identity of the previous subsection reads $\sim 360 = -361 = -b - 1$, and §3
-writes those bits out. Read off the table too that $k = 3$ is the only position where both
-columns show a $1$: that is what §3 proves in general, and it is what makes `b & -b` equal
-$2^3$.
+On this $b$ the identity of §3 reads $\sim 360 = -361 = -b - 1$, and §6 writes those bits out.
+Read off the table too that $k = 3$ is the only position where both columns show a $1$: §5
+proves that in general, and it is what makes `b & -b` equal $2^3$.
 
-### Closure
+## 5. Degree and `bit_length`
 
-Bitwise operators act positionally, and a positional operation on two eventually-constant
-sequences is eventually constant, so the result lands back in $\mathbb{Z}$ every time and
-CPython computes it in one pass over the stored digits — nothing infinite is materialised. The
-case the book runs is `bits &= ~bit`, a non-negative number AND a negative one, leading zeros
-against leading ones: the tail is zeros and the result is non-negative. Clearing a level on an
-unbounded integer needs no mask and no declared width.
+**Lemma.** For $b \in \mathbb{N}$, `bit_length`$(b) = \deg(B(b)) + 1$.
+
+*Proof.* For $b>0$, `bit_length` returns one more than the index of the highest set bit, which
+is $\deg(B(b))$ by definition. For $b=0$, `bit_length`$(0)=0=\deg(0)+1$ by the convention fixed
+in §2. $\blacksquare$
+
+So `bits.bit_length() - 1` — the highest-set-bit half of every `best_price` — literally computes
+$\deg(B(\text{bits}))$: the builtin returns a degree, off by the usual one because "degree"
+counts from $0$ and "length" from $1$.
+
+**Proposition 4.** For $b \in \mathbb{N}$, $b > 0$, $\deg(b \wedge (-b)) = \nu(b)$, the number of
+trailing zero bits of $b$ — equivalently, $b \wedge (-b) = 2^{\nu(b)}$.
+
+*Proof.* Let $n = \nu(b)$, so $B(b)_k = 0$ for $k<n$ and $B(b)_n = 1$. Then $B(b-1)$ agrees with
+$B(b)$ above position $n$, is $1$ at every position below $n$, and is $0$ at $n$ — subtracting
+$1$ flips exactly the trailing zeros and the lowest one. By the Definition of §4,
+$\Phi(-b) = \sim\! B(b-1)$, so bit $k$ of $-b$ is $0$ for $k<n$, $1$ at $n$, and the complement
+of bit $k$ of $b$ for $k>n$. ANDing position by position: below $n$, $0 \wedge 0 = 0$; at $n$,
+$1 \wedge 1 = 1$; above $n$, $f_k \wedge (1-f_k) = 0$. So $b \wedge (-b)$ has exactly one set
+bit, at position $n$, i.e. equals $2^n$. $\blacksquare$
+
+Combined with the Lemma, $\nu(b) = (b \wedge -b).\texttt{bit\_length()} - 1$ — the lowest-set-bit
+half of `best_price`. The two branches of the code are now the same statement applied twice:
+`bits.bit_length() - 1` is $\deg$ of the pattern directly, `(bits & -bits).bit_length() - 1` is
+$\deg$ after isolating the lowest term.
 
 ```python
 import random
 
+def deg(b):
+    return b.bit_length() - 1  # deg(0) := -1
+
+def trailing_zeros(b):
+    n = 0
+    while b & 1 == 0:
+        n += 1
+        b >>= 1
+    return n
+
 for _ in range(1000):
-    x = random.randint(-(2**64), 2**64)
-    assert ~x == -x - 1
-    assert all((x >> k & 1) == (x // 2**k) % 2 for k in range(70))
+    b = random.randint(1, 2**200)
+    assert deg(b & -b) == trailing_zeros(b)
 ```
 
-## 3. `b & -b`
+## 6. `b & -b`
 
-The same $b = 360$, with the low thirteen bits of each value written out:
+By Proposition 4, $b \wedge (-b) = 2^{\nu(b)}$; concretely, for $b = 360$, with the low thirteen
+bits of each value written out:
 
 ```
 b       0000101101000
@@ -161,29 +273,20 @@ b       0000101101000
 b & -b  0000000001000
 ```
 
-The middle step is the whole argument. Complementing $b$ turns its trailing zeros into trailing
-ones; adding $1$ then carries through exactly those ones, resetting them to zero, and the carry
-stops at the lowest set bit of $b$, which is left set. Above that position nothing else
-absorbed the carry, so every bit of $-b$ is the complement of the corresponding bit of $b$.
+That is the lowest occupied position, and the highest needs no trick at all: by §5's Lemma,
 
-Hence $b$ and $-b$ agree in **exactly one** position, and
-
-$$b \wedge (-b) = 2^{\nu(b)},$$
-
-where $\nu(b)$ is the number of trailing zeros of $b$. That is the lowest occupied position,
-and the highest needs no trick at all:
-
-$$\nu(b) = \operatorname{bitlength}\big(b \wedge (-b)\big) - 1,
+$$\nu(b) = \operatorname{bitlength}\big(b \wedge -b\big) - 1,
 \qquad
 \lfloor \log_2 b \rfloor = \operatorname{bitlength}(b) - 1$$
 
 — the best ask and the best bid, one expression each. A third,
 
-$$b \veebar \big(b \wedge (-b)\big),$$
+$$b \oplus \big(b \wedge (-b)\big),$$
 
-clears the lowest set bit, so alternating the two walks the occupied positions from the bottom
-up in one step per *occupied* level rather than one per grid position. That is
-`TickArrayBook.levels_map`.
+clears the lowest set bit: $x \oplus x = 0$ in the $(\mathbb{Z}/2)^{d+1}$ group of §2, so XORing
+against the single bit that $b \wedge -b$ isolates removes exactly that bit and nothing else.
+Alternating the two walks the occupied positions from the bottom up in one step per *occupied*
+level rather than one per grid position. That is `TickArrayBook.levels_map`.
 
 These are the three questions the hardware answers in one instruction each — `ctz`, `clz` and
 `popcnt`, count trailing zeros, count leading zeros, population count — asked of an integer
@@ -196,7 +299,7 @@ where the interpreted language states a low-latency trick *more* clearly than C 
 a plausible price, returned without an exception. An empty side has to be tested for, never
 computed — which is the `if not bits: return None` that opens both `best_price` methods.
 
-## 4. What it costs
+## 7. What it costs
 
 The two lookups look alike and are not the same price.
 
@@ -225,7 +328,7 @@ lookup is not. The asymmetry belongs to Python's unbounded integers and not to t
 in C, on one word, both are a single instruction. It is worth knowing which half of a symmetric
 pair of formulae is the expensive one, and the source of that asymmetry is the language.
 
-## 5. Where the book uses it
+## 8. Where the book uses it
 
 | operation | where |
 | --- | --- |
@@ -239,22 +342,25 @@ All in `unito26.lob.orderbook`. Entry 4 of
 context, against the four other ways of finding a best price and with the timings of the
 ladder as a whole; `notebooks/aggregate-book.ipynb` runs them.
 
-## 6. Sources
+## 9. Sources
 
 Where the standard treatment lives, for a reader who wants more than one page of it.
 
 - Emina Torlak and Sami Davies, **CSE 311, Lecture 12: Modular Arithmetic and Integer
   Representations**, University of Washington,
   <https://courses.cs.washington.edu/courses/cse311/20sp/doc/lecture12.pdf>. Slides 13–17 are
-  §2 above in the fixed-width case: unsigned, then sign-magnitude rejected because "adding the
+  §3 above in the fixed-width case: unsigned, then sign-magnitude rejected because "adding the
   representation of -18 and 99 doesn't give the representation of 81", then two's complement
   defined as the unsigned representation of $2^n - |x|$, with the key property that it "is
   equivalent to $y \bmod 2^n$, so arithmetic works $\bmod\ 2^n$" and a proof of invert-and-add-one
   from $x + \overline x = 2^n - 1$.
 - Henry S. Warren, **Hacker's Delight**, §2-1, *Manipulating Rightmost Bits*. The identities of
-  §3 and a page of their relatives, stated for a machine word.
+  §6 and a page of their relatives, stated for a machine word.
 - Donald E. Knuth, **The Art of Computer Programming**, Vol. 4A, §7.1.3, *Bitwise Tricks and
   Techniques*. The full treatment.
+- For $S = \{0,1\}^{\mathbb{N}}$ as the 2-adic integers proper — the topology, the metric, the
+  arithmetic beyond what §4 needs — Neal Koblitz, **p-adic Numbers, p-adic Analysis, and
+  Zeta-Functions**, Ch. I, is the standard short entry point.
 
 One warning attached to the second, since it is the reference a reader is most likely to act
 on. Warren gives `x & (x - 1)` for clearing the lowest set bit, and it is the better expression
@@ -262,4 +368,4 @@ on a machine word; on a Python integer it is the worse one. In `TickArrayBook.le
 walking a 900-level book, `bits &= bits - 1` measures 0.41 ms against 0.28 ms for the
 `bits ^= bits & -bits` the code uses — the exclusive-or is against a one-bit number, while
 subtract-and-AND runs the full width twice. A word-level identity does not automatically
-transfer to a bignum, which is §4's lesson arriving from the other direction.
+transfer to a bignum, which is §7's lesson arriving from the other direction.
