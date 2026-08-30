@@ -6,6 +6,8 @@ everything that usually breaks: walking the book, a residual resting inside the 
 spread, the index shift, and empty levels between the best price and the deeper ones.
 """
 
+import math
+
 import pytest
 
 from unito26.lob.messages import (
@@ -64,8 +66,9 @@ class TestConfiguration:
         assert book.best_ask_price is None
         assert book.spread is None
         assert book.mid_price is None
-        with pytest.raises(ValueError, match="undefined"):
-            book.queue_imbalance(1)
+        assert book.micro_price is None
+        # 0/0: NaN rather than a raise, so a session can carry the row.
+        assert math.isnan(book.queue_imbalance(1))
 
 
 class TestCaseA:

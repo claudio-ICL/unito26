@@ -54,7 +54,7 @@ jupyter notebook                  # from inside the env: plotly renders server-s
 ```
 
 - Python >= 3.12.
-- Core stack: numpy, scipy, pandas, matplotlib, plotly, pyarrow, scikit-learn.
+- Core stack: numpy, scipy, pandas, pandera, matplotlib, plotly, pyarrow, scikit-learn.
 
 ## Conventions
 
@@ -66,6 +66,25 @@ jupyter notebook                  # from inside the env: plotly renders server-s
   invoke the **`market-microstructure`** skill: it carries the notation, the mechanics
   and the invariants fixed in
   [`documentation/order-driven-markets-notation.md`](documentation/order-driven-markets-notation.md).
+
+### Python style
+
+- **Few comments.** A comment earns its place only when it is essential to understanding
+  the code *and* will still be true and useful to someone meeting the file cold in a year.
+  Not restating what a line does, not narrating a decision, not defending a rejected
+  alternative, not marking what changed. The code says what it does; a comment is for what
+  it cannot say — an invariant, a sign convention, a "why this and not the obvious thing".
+- **Never use `*` in a function signature.** Where two arguments of the same type could be
+  swapped, give them distinct types (`NewType`) rather than forcing keywords.
+- **Default arguments only for genuinely superfluous parameters** — a random generator the
+  caller may not want to seed. A parameter that changes what the function *means* is
+  required.
+- **A serialized type carries a pandera schema** plus a `to_frame`/`from_frame` pair, and
+  the round trip is tested. Schemas live in `unito26/lob/frames.py`, not on the model
+  classes.
+- **Model parametrizations ship as frozen serialized examples**, never as code that
+  computes a "default". A default invites a reader to skip the choice, and the choice is
+  usually the subject.
 
 ## Workflow
 

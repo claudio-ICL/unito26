@@ -17,10 +17,14 @@ from __future__ import annotations
 import sys
 from dataclasses import dataclass
 from enum import IntEnum
+from typing import NewType
 
 __all__ = [
     "BUY",
     "SELL",
+    "GridDepth",
+    "ReportedDepth",
+    "TICK_TOLERANCE",
     "MARKET_BUY_PRICE",
     "MARKET_SELL_PRICE",
     "MessageType",
@@ -36,6 +40,21 @@ __all__ = [
 
 BUY = 1
 SELL = -1
+
+#: A count of *grid* positions from a touch, in the sense of section 3: level ``i`` is at
+#: ``P^b - (i-1) tau`` whether or not anything rests there.  This is the ``n`` of ``I^n``.
+GridDepth = NewType("GridDepth", int)
+
+#: A count of *occupied* levels, in the sense LOBSTER means: level ``i`` is the ``i``-th
+#: price carrying volume, however far from the touch it sits.
+#:
+#: The two coincide only on a book with no holes.  They are separate types because the
+#: alternative is three adjacent ``int`` arguments and a silent swap.
+ReportedDepth = NewType("ReportedDepth", int)
+
+#: How far off the grid a currency price may sit before :meth:`TickGrid.to_ticks` rejects
+#: it.  A property of binary floating point, not a per-call choice.
+TICK_TOLERANCE = 1e-9
 
 #: Sentinel prices for genuine market orders, following section 6 of the notation:
 #: a sell at ``p = 0`` and a buy at ``p = infinity`` are the price specifications that
@@ -144,7 +163,7 @@ class TickGrid:
         if self.tick_size <= 0:
             raise ValueError(f"tick_size must be positive, got {self.tick_size}")
 
-    def to_ticks(self, price: float, *, tolerance: float = 1e-9) -> int:
+    def to_ticks(self, price: float) -> int:
         """Currency price to tick count, refusing prices off the grid.
 
         ``round`` rather than ``int`` because ``10.02 / 0.01`` is ``1001.9999...`` in
@@ -154,7 +173,7 @@ class TickGrid:
         """
         exact = price / self.tick_size
         ticks = round(exact)
-        if abs(exact - ticks) > tolerance:
+        if abs(exact - ticks) > TICK_TOLERANCE:
             raise ValueError(
                 f"price {price!r} is not a multiple of tick size {self.tick_size!r}"
             )

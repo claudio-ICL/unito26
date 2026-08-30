@@ -273,6 +273,15 @@ def check(book_cls: type[AggregateBook], example: WorkedExample, depth: int = 6)
 BEGIN_MARKER = "<!-- begin generated: worked examples -->"
 END_MARKER = "<!-- end generated: worked examples -->"
 
+INDEXING_BEGIN_MARKER = "<!-- begin generated: indexing example -->"
+INDEXING_END_MARKER = "<!-- end generated: indexing example -->"
+
+#: The book that separates the two indexings: an ask side occupied at every tick and a
+#: bid side with a nine-tick hole in it.  Prices in ticks, tau = 1.
+INDEXING_BIDS = {99: 40, 90: 60}
+INDEXING_ASKS = {101: 10, 102: 20, 103: 30, 104: 40, 105: 50}
+INDEXING_REPORTED_DEPTH = 2
+
 
 def render_markdown() -> str:
     """The catalogue as markdown, ladders included, for the companion document.
@@ -322,15 +331,82 @@ def render_markdown() -> str:
     return "\n".join(blocks).rstrip() + "\n"
 
 
-def write_into(path: str) -> bool:
-    """Replace the generated block in a markdown file.  True when the file changed."""
+def render_indexing_markdown() -> str:
+    """The grid-versus-reported evaluation of ``I^n``, worked both ways.
+
+    Generated for the same reason the catalogue is: the numbers appear in the document
+    and in ``tests/lob/test_market_session.py``, and two statements of one fact diverge
+    on the first edit that touches only one of them.
+    """
+    from unito26.lob.messages import BUY, SELL, GridDepth, ReportedDepth
+    from unito26.lob.orderbook import AggregateBook
+    from unito26.lob.replay import MarketSession
+
+    depth = ReportedDepth(INDEXING_REPORTED_DEPTH)
+    levels = (GridDepth(2), GridDepth(3))
+    book = AggregateBook.from_levels(INDEXING_BIDS, INDEXING_ASKS)
+    session = MarketSession.from_occupied_levels(
+        AggregateBook.from_levels(INDEXING_BIDS, INDEXING_ASKS),
+        [limit_order(1.0, 1, min(INDEXING_BIDS) - 10, BUY)], depth, levels, 1,
+    )
+    frame = session.stats_from_frame()
+
+    ask_window = [p for p in sorted(INDEXING_ASKS) if p <= min(INDEXING_ASKS) + 1]
+    bid_window = [p for p in sorted(INDEXING_BIDS, reverse=True) if p >= max(INDEXING_BIDS) - 1]
+    by_price = sum(INDEXING_BIDS[p] for p in bid_window) - sum(INDEXING_ASKS[p] for p in ask_window)
+    by_price /= sum(INDEXING_BIDS[p] for p in bid_window) + sum(INDEXING_ASKS[p] for p in ask_window)
+    reported_bids = sorted(INDEXING_BIDS, reverse=True)[:depth]
+    reported_asks = sorted(INDEXING_ASKS)[:depth]
+    by_column = sum(INDEXING_BIDS[p] for p in reported_bids) - sum(INDEXING_ASKS[p] for p in reported_asks)
+    by_column /= sum(INDEXING_BIDS[p] for p in reported_bids) + sum(INDEXING_ASKS[p] for p in reported_asks)
+
+    lines = [
+        f"Tick $\\tau = 1$.  Asks occupied at "
+        f"{', '.join(str(p) for p in sorted(INDEXING_ASKS))}; bids at "
+        f"{' and '.join(str(p) for p in sorted(INDEXING_BIDS, reverse=True))} and nowhere between.",
+        "",
+        f"A file of reported depth {depth} holds:",
+        "",
+        "| " + " | ".join(session.lobster_book.columns) + " |",
+        "| " + " | ".join("---" for _ in session.lobster_book.columns) + " |",
+        "| " + " | ".join(str(v) for v in session.lobster_book.iloc[0]) + " |",
+        "",
+        "| side | reported levels | grid span |",
+        "| --- | --- | --- |",
+        f"| ask | {', '.join(str(p) for p in reported_asks)} | {book.grid_span(SELL, depth)} |",
+        f"| bid | {', '.join(str(p) for p in reported_bids)} | {book.grid_span(BUY, depth)} |",
+        "",
+        f"The bid side spans {book.grid_span(BUY, depth)} grid positions on "
+        f"{len(reported_bids)} reported levels; the ask side spans "
+        f"{book.grid_span(SELL, depth)}.  So:",
+        "",
+        "| quantity | value |",
+        "| --- | --- |",
+        f"| $I^2$, selecting by price | {by_price:+.6f} |",
+        f"| $I^2$, slicing by column | {by_column:+.6f} |",
+        f"| $I^2$ recoverable from the file | "
+        f"{bool(frame['QueueImbalance2Covered'].iloc[0])} |",
+        f"| $I^3$ recoverable from the file | "
+        f"{bool(frame['QueueImbalance3Covered'].iloc[0])} |",
+        "",
+        f"The column-sliced answer pairs the touch at {max(INDEXING_BIDS)} with a level "
+        f"{max(INDEXING_BIDS) - min(INDEXING_BIDS)} ticks away and reports it as a "
+        "top-of-book signal.  And $I^3$ fails on the **ask** side, which ran out at "
+        f"{reported_asks[-1]}, while the bid had "
+        f"{book.grid_span(BUY, depth)} positions of room to spare.",
+    ]
+    return "\n".join(lines) + "\n"
+
+
+def write_into(path: str, render=render_markdown, begin=BEGIN_MARKER, end=END_MARKER) -> bool:
+    """Replace a generated block in a markdown file.  True when the file changed."""
     import pathlib
 
     file = pathlib.Path(path)
     text = file.read_text()
-    start = text.index(BEGIN_MARKER) + len(BEGIN_MARKER)
-    end = text.index(END_MARKER)
-    updated = text[:start] + "\n\n" + render_markdown() + "\n" + text[end:]
+    start = text.index(begin) + len(begin)
+    stop = text.index(end)
+    updated = text[:start] + "\n\n" + render() + "\n" + text[stop:]
     if updated == text:
         return False
     file.write_text(updated)
@@ -341,4 +417,10 @@ if __name__ == "__main__":  # pragma: no cover
     import sys
 
     target = sys.argv[1] if len(sys.argv) > 1 else "documentation/order-flow-to-order-book.md"
-    print(f"{'rewrote' if write_into(target) else 'unchanged'}: {target}")
+    if "grid-levels" in target:
+        changed = write_into(
+            target, render_indexing_markdown, INDEXING_BEGIN_MARKER, INDEXING_END_MARKER
+        )
+    else:
+        changed = write_into(target)
+    print(f"{'rewrote' if changed else 'unchanged'}: {target}")

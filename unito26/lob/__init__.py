@@ -8,8 +8,14 @@ The strand is built as a ladder of increasing complexity, and the modules follow
     both representations of the book -- the aggregate ``{price: volume}`` one and the
     order-level, identity-carrying one -- deliberately in a single file.
 ``replay``
-    the fold that drives a book with a stream of messages, plus the snapshot taps that
-    turn a live book into a time series.
+    the fold that drives a book with a stream of messages, and the ``MarketSession`` it
+    produces -- a LOBSTER-shaped frame plus the statistics read off it.
+``frames``
+    the schemas, and the round trip between the model objects and validated DataFrames.
+``config``
+    example parametrizations, frozen as serialized frames.
+``binary_gaps``
+    an integer as a set of bit positions: the vocabulary the bitmap books are written in.
 ``hawkes``
     multivariate Hawkes order flow: the timing and type of events.
 ``simulate``

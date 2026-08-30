@@ -32,6 +32,9 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from unito26.lob import frames
+from unito26.lob.messages import ReportedDepth
+
 __all__ = ["LobsterEvent", "MESSAGE_COLUMNS", "load_messages", "load_orderbook",
            "orderbook_columns", "describe_messages", "describe_orderbook"]
 
@@ -56,22 +59,13 @@ class LobsterEvent(IntEnum):
 MESSAGE_COLUMNS = ["time", "type", "order_id", "size", "price", "direction"]
 
 
-def orderbook_columns(depth: int) -> list[str]:
+def orderbook_columns(reported_depth: ReportedDepth) -> list[str]:
     """Column names for an orderbook file of the given depth.
 
-    The layout is ask price, ask size, bid price, bid size, repeated per level -- the
-    same order :func:`unito26.lob.replay.lobster_levels` produces, so a future
-    comparison is equality rather than translation.
+    Delegates to :func:`unito26.lob.frames.lobster_book_columns`, so a shipped file and a
+    frame we wrote carry one vocabulary and a comparison is equality, not translation.
     """
-    names: list[str] = []
-    for level in range(1, depth + 1):
-        names += [
-            f"ask_price_{level}",
-            f"ask_size_{level}",
-            f"bid_price_{level}",
-            f"bid_size_{level}",
-        ]
-    return names
+    return frames.lobster_book_columns(reported_depth)
 
 
 def load_messages(path: str | Path) -> pd.DataFrame:
@@ -87,9 +81,13 @@ def load_messages(path: str | Path) -> pd.DataFrame:
     return frame
 
 
-def load_orderbook(path: str | Path, depth: int = 10) -> pd.DataFrame:
-    """Load a LOBSTER orderbook file: one dense snapshot row per message."""
-    return pd.read_csv(path, header=None, names=orderbook_columns(depth))
+def load_orderbook(path: str | Path, reported_depth: ReportedDepth) -> pd.DataFrame:
+    """Load a LOBSTER orderbook file: one snapshot row per message, no timestamp column.
+
+    Padded levels keep their sentinels, exactly as the file has them.  Normalising here
+    would hide the one feature of the format most likely to corrupt a statistic.
+    """
+    return pd.read_csv(path, header=None, names=orderbook_columns(reported_depth))
 
 
 def describe_messages(messages: pd.DataFrame) -> dict:
@@ -124,23 +122,32 @@ def describe_messages(messages: pd.DataFrame) -> dict:
     }
 
 
-def describe_orderbook(book: pd.DataFrame, tick: int = 100) -> dict:
+def describe_orderbook(book: pd.DataFrame, price_unit: int) -> dict:
     """Descriptive statistics over the shipped orderbook file.
 
-    ``tick`` is the tick size in the file's own price units: LOBSTER quotes in
+    ``price_unit`` is the number of the file's price units in one tick: LOBSTER quotes in
     1/10000 of a dollar, so a one-cent tick is 100.
+
+    Rows whose touch is padded are dropped first.  The sentinels are ``-9999999999`` on
+    the bid and ``+9999999999`` on the ask -- *opposite signs*, so a filter written for
+    one lets the other straight through, and a single padded row moves a mean spread by
+    10^8 ticks.
     """
-    spread = (book["ask_price_1"] - book["bid_price_1"]) / tick
-    mid = (book["ask_price_1"] + book["bid_price_1"]) / 2
-    top = book["bid_size_1"] + book["ask_size_1"]
-    imbalance = (book["bid_size_1"] - book["ask_size_1"]) / top.where(top > 0)
+    ask, bid = book["AskPrice1"], book["BidPrice1"]
+    quoted = (ask != frames.ASK_PADDING) & (bid != frames.BID_PADDING)
+    ask, bid = ask.where(quoted), bid.where(quoted)
+    spread = (ask - bid) / price_unit
+    mid = (ask + bid) / 2
+    top = book["BidSize1"] + book["AskSize1"]
+    imbalance = (book["BidSize1"] - book["AskSize1"]) / top.where(top > 0)
     return {
         "snapshots": len(book),
+        "unquoted_rows": int((~quoted).sum()),
         "spread_ticks_mean": float(spread.mean()),
         "spread_ticks_median": float(spread.median()),
         "one_tick_spread_fraction": float((spread <= 1).mean()),
-        "mid_first": float(mid.iloc[0]),
-        "mid_last": float(mid.iloc[-1]),
+        "mid_first": float(mid.dropna().iloc[0]),
+        "mid_last": float(mid.dropna().iloc[-1]),
         "queue_imbalance_mean": float(imbalance.mean()),
         "crossed_or_locked_rows": int((spread <= 0).sum()),
     }

@@ -619,7 +619,7 @@ Its upper bound is free: with $\alpha \ge 0$ the intensity is non-increasing bet
 | leg | where |
 | --- | --- |
 | formulae | this entry |
-| code | `unito26.lob.hawkes` — `HawkesParams` (stability, branching, stationary mean), `ExponentialHawkes.step` (the two draws), `OgataThinningHawkes.step`; `unito26.lob.simulate.default_flow_params` for the excitation shape |
+| code | `unito26.lob.hawkes` — `HawkesParams` (stability, branching, stationary mean), `ExponentialHawkes.step` (the two draws), `OgataThinningHawkes.step`; `unito26.lob.config` for the frozen example excitation |
 | tests | `tests/lob/test_hawkes.py::TestParameterValidation`, `::TestExactSimulation`, `::TestAgreementAndClustering` |
 
 ---

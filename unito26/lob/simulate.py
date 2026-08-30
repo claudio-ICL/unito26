@@ -26,7 +26,7 @@ from unito26.lob.hawkes import ExponentialHawkes, HawkesParams
 from unito26.lob.messages import BUY, SELL, Message, limit_order, market_order, withdrawal
 from unito26.lob.orderbook import AggregateBook
 
-__all__ = ["EventType", "MarkParams", "default_flow_params", "OrderFlowSimulator"]
+__all__ = ["EventType", "MarkParams", "OrderFlowSimulator"]
 
 
 class EventType(IntEnum):
@@ -44,15 +44,6 @@ class EventType(IntEnum):
         return BUY if self % 2 == 0 else SELL
 
 
-#: The submission-only restriction, for rungs L1 and L2 of the ladder.
-SUBMISSION_TYPES = (
-    EventType.MARKET_BUY,
-    EventType.MARKET_SELL,
-    EventType.LIMIT_BUY,
-    EventType.LIMIT_SELL,
-)
-
-
 @dataclass(frozen=True, slots=True)
 class MarkParams:
     """How an event type becomes an order.
@@ -67,87 +58,12 @@ class MarkParams:
     lot
         Sizes are rounded to a multiple of this.  Real order sizes clump at round lots,
         and a simulator without that produces unrealistically smooth queues.
-    round_lot_probability
-        Probability that a size is instead drawn from ``round_lots``.
-    round_lots
-        The sizes traders actually type.
     """
 
-    depth_decay: float = 0.45
-    mean_log_size: float = 4.0
-    sigma_log_size: float = 0.8
-    lot: int = 10
-    round_lot_probability: float = 0.35
-    round_lots: tuple[int, ...] = (100, 200, 500, 1000)
-
-
-def default_flow_params(
-    decay: float = 60.0, target_branching_ratio: float = 0.8
-) -> HawkesParams:
-    """A six-type flow with the empirically documented asymmetry.
-
-    ``excitation[i, j]`` is "type *j* excites type *i*".  The structure encodes three
-    things that calibrations on real data agree about:
-
-    * **market orders excite the limit-order flow heavily** (rows for LIMIT_*, columns
-      for MARKET_*), as liquidity providers replenish what was just consumed;
-    * **limit orders barely excite the market-order flow** (rows for MARKET_*, columns
-      for LIMIT_*) -- the relation is strikingly one-way;
-    * **market buys excite sell-side withdrawals**, which is liquidity being pulled
-      ahead of an informed buyer.  That is the mechanism behind the adverse-selection
-      term of section 7, and simulating it is what lets students *see* it.
-
-    Self-excitation on every diagonal carries the order-splitting story: a large parent
-    order arrives as a burst of children.
-
-    The matrix is written by hand for its *shape* and then rescaled to hit
-    ``target_branching_ratio``.  That works because the spectral radius is homogeneous
-    of degree one in the excitation: doubling every entry doubles it.  So the shape and
-    the overall endogeneity are independent choices, and the default of 0.8 sits inside
-    the 0.7-0.9 range that calibrations on exchange data report.
-    """
-    order = [
-        EventType.MARKET_BUY,
-        EventType.MARKET_SELL,
-        EventType.LIMIT_BUY,
-        EventType.LIMIT_SELL,
-        EventType.WITHDRAW_BUY,
-        EventType.WITHDRAW_SELL,
-    ]
-    baseline = np.array([0.3, 0.3, 2.0, 2.0, 1.2, 1.2])
-
-    excitation = np.zeros((6, 6))
-    for i, row in enumerate(order):
-        for j, column in enumerate(order):
-            same_side = row.direction == column.direction
-            if row == column:
-                excitation[i, j] = 18.0  # self-excitation: order splitting
-            elif {row, column} <= {EventType.MARKET_BUY, EventType.MARKET_SELL}:
-                excitation[i, j] = 4.0  # market orders beget market orders
-            elif row in (EventType.LIMIT_BUY, EventType.LIMIT_SELL) and column in (
-                EventType.MARKET_BUY,
-                EventType.MARKET_SELL,
-            ):
-                excitation[i, j] = 20.0 if same_side else 14.0  # replenishment: strong
-            elif row in (EventType.MARKET_BUY, EventType.MARKET_SELL) and column in (
-                EventType.LIMIT_BUY,
-                EventType.LIMIT_SELL,
-            ):
-                excitation[i, j] = 1.0  # the reverse direction: weak, on purpose
-            elif row in (EventType.WITHDRAW_BUY, EventType.WITHDRAW_SELL) and column in (
-                EventType.MARKET_BUY,
-                EventType.MARKET_SELL,
-            ):
-                # A buy sweep makes sellers pull their quotes: adverse selection.
-                excitation[i, j] = 16.0 if not same_side else 6.0
-            else:
-                excitation[i, j] = 2.0
-
-    unscaled = excitation / decay
-    radius = float(np.max(np.abs(np.linalg.eigvals(unscaled))))
-    excitation *= target_branching_ratio / radius
-    return HawkesParams(baseline=baseline, excitation=excitation, decay=decay)
-
+    depth_decay: float
+    mean_log_size: float
+    sigma_log_size: float
+    lot: int
 
 class OrderFlowSimulator:
     """Turns Hawkes events into messages against a live book.
@@ -165,25 +81,20 @@ class OrderFlowSimulator:
 
     def __init__(
         self,
-        params: HawkesParams | None = None,
-        marks: MarkParams | None = None,
-        *,
-        reference_price: int = 10_000,
+        params: HawkesParams,
+        marks: MarkParams,
+        reference_price: int,
         rng: np.random.Generator | int | None = None,
-        submissions_only: bool = False,
     ):
-        self.params = params if params is not None else default_flow_params()
-        self.marks = marks if marks is not None else MarkParams()
+        self.params = params
+        self.marks = marks
         self.reference_price = reference_price
         self.rng = rng if isinstance(rng, np.random.Generator) else np.random.default_rng(rng)
-        self.submissions_only = submissions_only
         self._hawkes = ExponentialHawkes(self.params, rng=self.rng)
 
     # ---- marks ---------------------------------------------------------------
 
     def _size(self) -> int:
-        if self.rng.random() < self.marks.round_lot_probability:
-            return int(self.rng.choice(self.marks.round_lots))
         raw = self.rng.lognormal(self.marks.mean_log_size, self.marks.sigma_log_size)
         return max(self.marks.lot, int(round(raw / self.marks.lot)) * self.marks.lot)
 
@@ -226,8 +137,6 @@ class OrderFlowSimulator:
         """Yield messages until ``horizon``, reading ``book`` as it currently stands."""
         for time, index in self._hawkes.events(horizon):
             event = EventType(index)
-            if self.submissions_only and event not in SUBMISSION_TYPES:
-                continue
             direction = event.direction
 
             if event in (EventType.MARKET_BUY, EventType.MARKET_SELL):

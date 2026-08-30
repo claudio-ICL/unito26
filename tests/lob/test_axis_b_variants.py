@@ -19,6 +19,7 @@ from unito26.lob.orderbook import (
     HeapBook,
     TickArrayBook,
 )
+from unito26.lob import config
 from unito26.lob.replay import run
 from unito26.lob.simulate import OrderFlowSimulator
 from unito26.lob.worked_examples import CATALOGUE, check, reflect
@@ -30,7 +31,9 @@ DEPTH = 6
 @pytest.fixture(scope="module")
 def stream():
     """A realistic message stream, materialised once so every variant sees it identically."""
-    simulator = OrderFlowSimulator(rng=0)
+    simulator = OrderFlowSimulator(
+        config.example_order_flow_params(), config.example_mark_params(), 10000, rng=0
+    )
     book = AggregateBook()
     simulator.warm_up(book, horizon=30.0)
     messages = []

@@ -18,6 +18,7 @@ import timeit
 import tracemalloc
 from dataclasses import dataclass
 
+from unito26.lob import config
 from unito26.lob.messages import Message, is_market_price
 from unito26.lob.orderbook import AggregateBook
 from unito26.lob.replay import run
@@ -26,18 +27,15 @@ from unito26.lob.simulate import MarkParams, OrderFlowSimulator
 __all__ = [
     "Session",
     "session",
-    "SHALLOW",
-    "DEEP",
+    "REFERENCE_PRICE",
     "time_variants",
     "best_price_share",
     "deep_sizeof",
     "measure_memory",
 ]
 
-#: Orders cluster tightly at the touch, so few levels are ever occupied.
-SHALLOW = MarkParams(depth_decay=0.45)
-#: Orders spread far from the touch, so the occupied levels pile up.
-DEEP = MarkParams(depth_decay=0.02)
+#: Ticks.  Only somewhere for the first orders to hang while the book is still empty.
+REFERENCE_PRICE = 10000
 
 
 @dataclass(frozen=True)
@@ -59,9 +57,11 @@ class Session:
         return len(book.bids) + len(book.asks)
 
 
-def session(name: str, marks: MarkParams, horizon: float = 400.0, seed: int = 0) -> Session:
+def session(name: str, marks: MarkParams, horizon: float, seed: int) -> Session:
     """Simulate one stream and materialise it."""
-    simulator = OrderFlowSimulator(rng=seed, marks=marks)
+    simulator = OrderFlowSimulator(
+        config.example_order_flow_params(), marks, REFERENCE_PRICE, rng=seed
+    )
     book = AggregateBook()
     simulator.warm_up(book, horizon=30.0)
     messages = []
@@ -71,7 +71,7 @@ def session(name: str, marks: MarkParams, horizon: float = 400.0, seed: int = 0)
     return Session(name=name, messages=messages)
 
 
-def time_variants(variants, session: Session, repeat: int = 3) -> dict[str, float]:
+def time_variants(variants, session: Session, repeat: int) -> dict[str, float]:
     """Seconds to fold the whole session, best of ``repeat``, per variant.
 
     Best-of rather than mean: the distribution's left tail is the machine doing only

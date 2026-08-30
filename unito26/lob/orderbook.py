@@ -21,14 +21,16 @@ import heapq
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 
-
+from unito26.lob.binary_gaps import count_binary_gaps, measure_largest_binary_gap
 from unito26.lob.messages import (
     BUY,
     SELL,
     Fill,
+    GridDepth,
     LevelDelta,
     Message,
     MessageType,
+    ReportedDepth,
     is_market_price,
 )
 
@@ -41,6 +43,38 @@ __all__ = [
     "TickArrayBook",
     "AXIS_B_VARIANTS",
 ]
+
+
+def _span_bits(bits: int, origin: int, levels: list[tuple[int, int]]) -> int:
+    """Occupancy between the best and deepest of ``levels``, shifted to start at bit 0.
+
+    Bit 0 is always set, so the result is odd and needs no normalising before
+    :func:`measure_largest_binary_gap`.  Gap length and gap count are invariant under
+    reversal of the bit string, which is what lets the bid side -- read downward from the
+    top bit -- share this with the ask side.
+    """
+    if len(levels) < 2:
+        return 0
+    low = min(levels[0][0], levels[-1][0]) - origin
+    high = max(levels[0][0], levels[-1][0]) - origin
+    return (bits & (((1 << (high - low + 1)) - 1) << low)) >> low
+
+
+def _count_runs(positions: list[int]) -> int:
+    """Maximal runs of consecutive integers in a sorted list."""
+    return sum(
+        1 for index, value in enumerate(positions)
+        if index == 0 or value != positions[index - 1] + 1
+    )
+
+
+def _longest_run(positions: list[int]) -> int:
+    """Length of the longest run of consecutive integers in a sorted list."""
+    longest = run = 0
+    for index, value in enumerate(positions):
+        run = run + 1 if index and value == positions[index - 1] + 1 else 1
+        longest = max(longest, run)
+    return longest
 
 
 @dataclass(frozen=True, slots=True)
@@ -226,27 +260,107 @@ class AggregateBook:
         bid, ask = self.best_bid_price, self.best_ask_price
         return None if bid is None or ask is None else (ask + bid) / 2
 
-    def queue_imbalance(self, depth: int = 1) -> float:
-        """``I^n``: bid minus ask over the total, over the first ``depth`` levels.
+    def queue_imbalance(self, n: GridDepth) -> float:
+        """``I^n``: bid minus ask over the total, over the first ``n`` **grid** levels.
 
-        Lies in ``[-1, +1]`` and is **positive when the book is bid-heavy**.  Inverting
-        this sign silently inverts every signal built on it, which is why it is stated
-        here rather than left to the reader.
+        ``n`` counts positions on the price grid, not occupied levels, so ``I^n`` is the
+        volume resting within ``n - 1`` ticks of each touch.  On a book with holes that is
+        not the same as the volume in the first ``n`` queues; see
+        ``documentation/grid-levels-and-lobster-levels.md``.
 
-        Raises when both sides are empty over the requested depth: that is ``0/0``, and
-        asserting the precondition is more honest than returning a number.
+        Lies in ``[-1, +1]`` and is **positive when the book is bid-heavy**.  Inverting this
+        sign silently inverts every signal built on it, which is why it is stated here
+        rather than left to the reader.  For ``n >= 1`` with both sides non-empty the value
+        is *strictly* interior, because ``set_volume`` removes a level whose queue empties
+        and so ``V^{b,1}`` and ``V^{a,1}`` are both positive; it is ``+-1`` exactly when one
+        side is empty, and NaN when both are.
         """
-        bid_total = sum(self.bid_volume(i) for i in range(1, depth + 1))
-        ask_total = sum(self.ask_volume(i) for i in range(1, depth + 1))
+        if n <= 0:
+            raise ValueError(f"n counts grid levels from the touch and must be >= 1, got {n}")
+        bid_total = sum(self.bid_volume(i) for i in range(1, n + 1))
+        ask_total = sum(self.ask_volume(i) for i in range(1, n + 1))
         total = bid_total + ask_total
         if total == 0:
-            raise ValueError(
-                f"queue imbalance is undefined: no volume within {depth} level(s) of "
-                "either best price"
-            )
+            return float("nan")
         return (bid_total - ask_total) / total
 
-    # ---- sections 2 and 6: the update ---------------------------------------------
+    @property
+    def micro_price(self) -> float | None:
+        """``P^mu``, the imbalance-weighted mid.  None when either side is empty.
+
+        Written as ``P^m + (phi/2) I^1``, which is exactly the crossed-weighted average
+        ``(P^a V^b + P^b V^a) / (V^a + V^b)`` -- the ask price carries the *bid* volume.
+        So it sits toward the **thin** side: a bid-heavy book pushes it up toward the ask.
+        """
+        spread, mid = self.spread, self.mid_price
+        if spread is None or mid is None:
+            return None
+        return mid + spread * self.queue_imbalance(GridDepth(1)) / 2
+
+    # ---- occupied levels: the other indexing ---------------------------------------
+    #
+    # `levels` above walks the price grid.  These walk the prices that actually carry
+    # volume, which is what a LOBSTER file reports and what the gap statistics measure.
+    # Written against `best_price` and `volume_at` so every variant's index applies;
+    # reaching for `levels_map` would bypass the cache and the heap, and would make
+    # TickArrayBook build a whole dict per call.
+
+    def occupied_levels(
+        self, direction: int, reported_depth: ReportedDepth
+    ) -> list[tuple[int, int]]:
+        """The first ``reported_depth`` prices carrying volume, best first."""
+        if reported_depth <= 0:
+            raise ValueError(f"reported_depth must be >= 1, got {reported_depth}")
+        best = self.best_price(direction)
+        if best is None:
+            return []
+        if reported_depth == 1:
+            return [(best, self.volume_at(direction, best))]
+        levels = self.levels_map(direction)
+        pick = heapq.nlargest if direction == BUY else heapq.nsmallest
+        return [(price, levels[price]) for price in pick(reported_depth, levels)]
+
+    def occupied_level_count(self, direction: int, reported_depth: ReportedDepth) -> int:
+        """How many of the first ``reported_depth`` levels exist at all."""
+        return len(self.occupied_levels(direction, reported_depth))
+
+    def grid_span(self, direction: int, reported_depth: ReportedDepth) -> int:
+        """Grid positions spanned by those levels, inclusive of both ends.
+
+        The bridge between the two indexings, and the reason a frame of a given reported
+        depth can answer some ``I^n`` and not others: everything in the grid window is
+        known when ``n <= grid_span``.
+        """
+        levels = self.occupied_levels(direction, reported_depth)
+        if not levels:
+            return 0
+        return abs(levels[-1][0] - levels[0][0]) + 1
+
+    def empty_grid_positions(
+        self, direction: int, reported_depth: ReportedDepth
+    ) -> list[int]:
+        """Grid indices, 1-based from the touch, that hold nothing but lie between levels
+        that do."""
+        levels = self.occupied_levels(direction, reported_depth)
+        if len(levels) < 2:
+            return []
+        best = levels[0][0]
+        filled = {abs(price - best) + 1 for price, _ in levels}
+        return [i for i in range(1, self.grid_span(direction, reported_depth) + 1)
+                if i not in filled]
+
+    def gap_count(self, direction: int, reported_depth: ReportedDepth) -> int:
+        """Number of maximal runs of empty positions.  Not the length of
+        :meth:`empty_grid_positions`, which counts positions rather than runs."""
+        return _count_runs(self.empty_grid_positions(direction, reported_depth))
+
+    def largest_gap_size_between_non_empty_levels(
+        self, direction: int, reported_depth: ReportedDepth
+    ) -> int:
+        """Length of the longest such run.  Zero when the levels are contiguous."""
+        return _longest_run(self.empty_grid_positions(direction, reported_depth))
+
+        # ---- sections 2 and 6: the update ---------------------------------------------
 
     def apply(self, message: Message) -> SubmitResult:
         """Apply any message.  The stream driver's single entry point."""
@@ -350,9 +464,9 @@ class AggregateBook:
     def copy(self) -> "AggregateBook":
         """An independent copy of the current state.
 
-        A snapshot tap that stores the book itself stores *the same mutable object*
-        every time, so every recorded snapshot ends up equal to the final state.  This
-        method exists so that the tap has something correct to call.
+        Anything recording a series of states needs this: storing the book itself stores
+        *the same mutable object* every time, so every recorded state ends up equal to the
+        final one.  That bug is silent and survives casual inspection.
         """
         clone = self._empty_like()
         for direction in (BUY, SELL):
@@ -362,7 +476,7 @@ class AggregateBook:
 
     @classmethod
     def from_levels(
-        cls, bids: dict[int, int], asks: dict[int, int]
+        cls, bids: dict[int, int], asks: dict[int, int], strict: bool = False
     ) -> "AggregateBook":
         """Build a book from ``{price: volume}`` maps on each side.
 
@@ -371,7 +485,7 @@ class AggregateBook:
         that index empty and the book quietly wrong -- precisely the class of bug a
         cache invites.
         """
-        book = cls()
+        book = cls.for_prices(list(bids) + list(asks), strict)
         for direction, levels in ((BUY, bids), (SELL, asks)):
             for price, volume in levels.items():
                 if volume <= 0:
@@ -382,7 +496,7 @@ class AggregateBook:
 
     @classmethod
     def for_prices(
-        cls, prices: "Iterable[int]", strict: bool = False
+        cls, prices: Iterable[int], strict: bool = False
     ) -> "AggregateBook":
         """A book sized for a known range of prices.
 
@@ -425,7 +539,6 @@ class AggregateBook:
             f"ask={ask}x{self.best_ask_volume}, "
             f"levels={len(self.levels_map(BUY))}/{len(self.levels_map(SELL))})"
         )
-
 
 # ---------------------------------------------------------------------------------
 # Axis B: the performance ladder.
@@ -580,7 +693,7 @@ class BitmapBook(AggregateBook):
     than a declared band.
     """
 
-    def __init__(self, origin: int = 0, strict: bool = False):
+    def __init__(self, origin: int, strict: bool = False):
         super().__init__(strict)
         self.origin = origin
         self._bits: dict[int, int] = {BUY: 0, SELL: 0}
@@ -588,7 +701,9 @@ class BitmapBook(AggregateBook):
     @classmethod
     def for_prices(cls, prices: "Iterable[int]", strict: bool = False) -> "BitmapBook":
         # Only to keep the integer narrow: the bitmap has no upper edge to fall off.
-        return cls(origin=min(prices) - cls.BAND_MARGIN, strict=strict)
+        prices = list(prices)
+        origin = min(prices) - cls.BAND_MARGIN if prices else 0
+        return cls(origin=origin, strict=strict)
 
     def _empty_like(self) -> "BitmapBook":
         return type(self)(origin=self.origin, strict=self.strict)
@@ -608,6 +723,20 @@ class BitmapBook(AggregateBook):
         if direction == BUY:
             return self.origin + bits.bit_length() - 1
         return self.origin + (bits & -bits).bit_length() - 1
+
+    def span_bits(self, direction: int, reported_depth: ReportedDepth) -> int:
+        return _span_bits(
+            self._bits[direction], self.origin,
+            self.occupied_levels(direction, reported_depth),
+        )
+
+    def gap_count(self, direction: int, reported_depth: ReportedDepth) -> int:
+        return count_binary_gaps(self.span_bits(direction, reported_depth))
+
+    def largest_gap_size_between_non_empty_levels(
+        self, direction: int, reported_depth: ReportedDepth
+    ) -> int:
+        return measure_largest_binary_gap(self.span_bits(direction, reported_depth))
 
 
 class TickArrayBook(AggregateBook):
@@ -633,7 +762,7 @@ class TickArrayBook(AggregateBook):
     offers here is space rather than speed.
     """
 
-    def __init__(self, origin: int = 0, width: int = 4096, strict: bool = False):
+    def __init__(self, origin: int, width: int, strict: bool = False):
         super().__init__(strict)
         self.origin = origin
         self.width = width
@@ -649,7 +778,8 @@ class TickArrayBook(AggregateBook):
 
     @classmethod
     def for_prices(cls, prices: Iterable[int], strict: bool = False) -> "TickArrayBook":
-        low, high = min(prices), max(prices)
+        prices = list(prices)
+        low, high = (min(prices), max(prices)) if prices else (0, 0)
         return cls(
             origin=low - cls.BAND_MARGIN,
             width=high - low + 2 * cls.BAND_MARGIN,
@@ -711,6 +841,62 @@ class TickArrayBook(AggregateBook):
             levels[self.origin + index] = volumes[index]
             bits ^= lowest
         return levels
+
+    def occupied_levels(
+        self, direction: int, reported_depth: ReportedDepth
+    ) -> list[tuple[int, int]]:
+        """Walk the occupancy bits from the touch.
+
+        The inherited version reaches for :meth:`levels_map`, which here builds a whole
+        dict; this reads only the levels asked for.
+        """
+        if reported_depth <= 0:
+            raise ValueError(f"reported_depth must be >= 1, got {reported_depth}")
+        bits = self._bits[direction]
+        volumes = self._volumes[direction]
+        found: list[tuple[int, int]] = []
+        while bits and len(found) < reported_depth:
+            index = (bits.bit_length() - 1) if direction == BUY else ((bits & -bits).bit_length() - 1)
+            found.append((self.origin + index, volumes[index]))
+            bits ^= 1 << index
+        return found
+
+    def span_bits(self, direction: int, reported_depth: ReportedDepth) -> int:
+        return _span_bits(
+            self._bits[direction], self.origin,
+            self.occupied_levels(direction, reported_depth),
+        )
+
+    def gap_count(self, direction: int, reported_depth: ReportedDepth) -> int:
+        return count_binary_gaps(self.span_bits(direction, reported_depth))
+
+    def largest_gap_size_between_non_empty_levels(
+        self, direction: int, reported_depth: ReportedDepth
+    ) -> int:
+        return measure_largest_binary_gap(self.span_bits(direction, reported_depth))
+
+    def queue_imbalance(self, n: GridDepth) -> float:
+        """Read the grid window straight out of the volume array.
+
+        The inherited version walks ``bid_volume(i)``, each of which re-derives the best
+        price; here the band *is* the grid, so the window is a slice of it.
+        """
+        if n <= 0:
+            raise ValueError(f"n counts grid levels from the touch and must be >= 1, got {n}")
+        totals = []
+        for direction in (BUY, SELL):
+            best = self.best_price(direction)
+            if best is None:
+                totals.append(0)
+                continue
+            volumes = self._volumes[direction]
+            start = best - self.origin
+            indices = range(start, start - n, -1) if direction == BUY else range(start, start + n)
+            totals.append(sum(volumes[i] for i in indices if 0 <= i < self.width))
+        total = totals[0] + totals[1]
+        if total == 0:
+            return float("nan")
+        return (totals[0] - totals[1]) / total
 
     def copy(self) -> "TickArrayBook":
         clone = self._empty_like()

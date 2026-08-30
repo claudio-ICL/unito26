@@ -108,6 +108,12 @@ Two conventions that matter for code:
   be empty ($V^{a,i}_t = 0$ for some $i$ with $V^{a,j}_t > 0$, $j > i$); by convention
   $V^{a,j}_t = V^{b,j}_t = 0$ for $j \le 0$ — not stated in the notes, but required to make
   the shifted index in §5 well defined.
+- **This is the *grid* indexing, and it is not the one a market-data file uses.** LOBSTER
+  and its kind index by *occupied* level, skipping the empty positions this section admits.
+  The two coincide only on a book with no holes, and every quantity indexed by level —
+  $I^n$ above all — means something different under each.
+  [`grid-levels-and-lobster-levels.md`](grid-levels-and-lobster-levels.md) is the reference
+  for the difference and for the code that keeps the two apart.
 
 ## 4. Derived quantities
 
@@ -296,7 +302,7 @@ Python identifier — use it, and nothing else, in `unito26/` and in the noteboo
 | $V$ | `\volume` | generic volume / signed order size in §7 | `volume` |
 | $\tau$ | `\tickSizeOfLOB` | tick size of the book | `tick_size` |
 | $P^m$ | `\midPrice` (alias `\midprice`) | mid-price | `mid_price` |
-| $P^{\mu}$ | `\microPrice` | micro-price (not characterised in the notes; intended as the imbalance-weighted mid) | `micro_price` |
+| $P^{\mu}$ | `\microPrice` | micro-price: the imbalance-weighted mid, $P^m + \tfrac{\phi}{2} I^1$ | `micro_price` |
 | $P^b$ | `\bestBidPrice` | best bid price | `best_bid_price` |
 | $P^a$ | `\bestAskPrice` | best ask price | `best_ask_price` |
 | $P^{b,i}$ | `\nthBestBidPrice[i]` | price of the $i$-th bid level | `bid_price(i)` |
@@ -326,6 +332,13 @@ Python identifier — use it, and nothing else, in `unito26/` and in the noteboo
 | $K$ | `\cashAccount` | cash account | `cash` |
 | $H$ | `\inventory` | inventory (signed position) | `inventory` |
 | $X$ | `\wealth` | wealth / portfolio value | `wealth` |
+
+Names carried by the implementation rather than by the notes, recorded here so they are
+not reinvented: `occupied_levels(direction, reported_depth)` for the LOBSTER indexing,
+`grid_span` for the number of grid positions a given set of reported levels covers,
+`empty_grid_positions` and `gap_count` for the holes between them, and the types
+`GridDepth` / `ReportedDepth` that keep the two counts from being swapped. See
+[`grid-levels-and-lobster-levels.md`](grid-levels-and-lobster-levels.md).
 
 The order tuple itself has no macros: $t$ is time, $q$ size, $p$ price, $d$ direction, and
 $(s, \rho, \pi, -d)$ is the resting counterpart of $(t, q, p, d)$. In code, keep the tuple

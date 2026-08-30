@@ -35,16 +35,24 @@ remaining leap is legible from wherever we stop.
 
 ## Status
 
-**Batch 1 (L0–L3, plus the whole performance ladder) is built and tested**: 63 tests.
+**Batch 1 (L0–L3, plus the whole performance ladder) is built and tested.**
 
 Built:
 
-- `unito26/lob/messages.py` — the `(t, q, p, d)` tuple, tick grid, fills, level deltas
-- `unito26/lob/orderbook.py` — `AggregateBook` plus the four performance variants
-- `unito26/lob/replay.py` — the fold and the snapshot taps
+- `unito26/lob/messages.py` — the `(t, q, p, d)` tuple, tick grid, fills, level deltas,
+  and the `GridDepth` / `ReportedDepth` types that keep the two level counts apart
+- `unito26/lob/orderbook.py` — `AggregateBook` plus the four performance variants; the
+  derived quantities of §4, and the occupied-level and gap statistics
+- `unito26/lob/binary_gaps.py` — an integer as a set of bit positions
+- `unito26/lob/frames.py` — pandera schemas and the round trips to validated DataFrames
+- `unito26/lob/config.py` — example parametrizations, frozen as serialized frames
+- `unito26/lob/replay.py` — the fold, and the `MarketSession` it produces
 - `unito26/lob/hawkes.py` — multivariate Hawkes with exact simulation
 - `unito26/lob/simulate.py` — marks: event type to order, against a live book
 - `unito26/lob/lobster.py` — read-only loader and descriptive statistics
+
+The simulator no longer offers a submission-only mode: the ladder's early rungs are a
+conceptual progression, not a runtime switch.
 
 Still to do:
 
@@ -79,13 +87,58 @@ Recorded because two of them contradicted the plan's own predictions:
 - the array-backed variant first measured 0.18× because it was written without the cursor —
   a real number about a strawman, and a lesson in benchmarking its own design fairly.
 
+From the `MarketSession` work (`notebooks/simulated-market-session.ipynb`, 16.7k messages).
+Three of these contradict the predictions written into the plan, which is the useful half:
+
+- **the gap statistics are where the bitmap books earn their keep.** Against the dict
+  baseline: shallow book (18 occupied levels) 1.9×/1.35× for `BitmapBook`/`TickArrayBook`,
+  deep book (241 levels) **2.2×/5.8×**. Same conditional as the best-price ladder — the
+  optimisation targets a bottleneck, and whether it exists is a property of the market;
+- **`TickArrayBook` is the *slowest* rung at `occupied_levels(depth=10)`** — 1.04s against
+  the baseline's 0.59s. Walking the occupancy bits one at a time with `bits ^= 1 << index`
+  builds a fresh arbitrary-precision integer per level, and on a wide band that costs more
+  than a dict lookup. The fusion that wins on the gap statistics loses here;
+- **`from_top_of_book` and `from_occupied_levels(1)` tie** (0.216 vs 0.217 on the baseline),
+  where the plan predicted the four-lookup route would lose. The reason is a flaw in the
+  experiment rather than a fact about the books: both routes compute the same *statistics*
+  per message, and that dominates the two-versus-four best-price lookups. A recording-only
+  timing would separate them;
+- **`from_level_deltas` beats dense recording on `TickArrayBook`** (0.445 vs 1.044), against
+  the prediction that a re-fold must always lose. Its shadow book is sized from the delta
+  prices alone, a narrower band than the full message range, and narrower bands are cheaper
+  to walk. Elsewhere it loses as expected;
+- `CachedBestBook` is fastest on every recording strategy;
+- **the column-sliced imbalance differs from the grid-indexed one on 23% of rows, and by
+  as much as 1.58** — on a scale that only spans 2. Not a perturbation: a different
+  statistic;
+- **coverage is sharp.** At reported depth 1 only `I^1` is recoverable; at depth 2, `I^2` is
+  recoverable everywhere and `I^3` on 0.3% of rows; at depth 10 everything asked for. How
+  deep a file you need is a question about the market, not the code.
+
 ## Exercises & exam snippets
 
 Harvested from the implementation, for the multiple-choice format: float tick prices; a
 market-order remainder resting at price 0; inverted imbalance sign; a stale heap top used
-without popping; a snapshot tap that stores the book instead of a copy; index-keyed rather
+without popping; a recorder that stores the book instead of a copy; index-keyed rather
 than price-keyed deltas; code answering "am I filled?" from aggregate volume;
 `(b & -b).bit_length() - 1` on an empty side, wrong by one and never by an exception.
+
+From the LOBSTER-frame work, all of them live bugs or near-misses in this codebase:
+
+- **index-sliced imbalance** — `.iloc[:, :n]` against the price mask. Both run, both
+  return a plausible number in `[-1,1]`, and the wrong one is what most published code
+  does. The best snippet in the set;
+- **the padding sentinel** — a mean spread near 10⁹, and the plausible fix
+  `book[book.BidPrice1 > 0]`, which filters the bid correctly and the ask not at all
+  because the two sentinels have opposite signs;
+- **units** — `book.spread` against `AskPrice1 - BidPrice1`: which one is in ticks?
+- **`skipna`** — two imbalance computations differing only by `min_count=1`; one returns
+  NaN on an uncovered window, the other a plausible number;
+- **the bid `diff` sign** — a gap counter right on the ask and negative on the bid;
+- **`from_lobster_row` on a padded row**, which builds a level at the sentinel price with
+  volume 0, and `set_volume`'s zero rule silently removes it. "Why does this bug *not*
+  bite?" tests the removal invariant, and is a better question than "find the bug";
+- **a type-7 halt message** replayed as an order at price −1.
 
 ## References
 
@@ -95,8 +148,14 @@ than price-keyed deltas; code answering "am I filled?" from aggregate volume;
 - [`documentation/order-flow-to-order-book.md`](../documentation/order-flow-to-order-book.md)
   — the mathematics of the implementation, each result tied to the code region carrying it
   and the test certifying it. The starting point for the lecture notes on this part.
+- [`documentation/grid-levels-and-lobster-levels.md`](../documentation/grid-levels-and-lobster-levels.md)
+  — the two ways to count a level: the grid indexing the notes use and the occupied-level
+  indexing a LOBSTER file uses, why gaps make them differ, and the coverage condition that
+  says when `I^n` is recoverable from a file at all.
 - [`documentation/integers-in-binary.md`](../documentation/integers-in-binary.md)
   — the bit vocabulary `BitmapBook` and `TickArrayBook` are written in: an integer as a set
   of positions, two's complement, and `b & -b`. Prerequisite for entry 4 of the above.
 - [`.claude/plans/order-book-from-order-stream.md`](../.claude/plans/order-book-from-order-stream.md)
-  — the agreed plan, kept so the code can be reviewed against it.
+  — the agreed plan for batch 1, kept so the code can be reviewed against it.
+- [`.claude/plans/lobster-frames-and-market-session.md`](../.claude/plans/lobster-frames-and-market-session.md)
+  — the plan for the serialization, the gap statistics and `MarketSession`.
