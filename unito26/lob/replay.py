@@ -15,6 +15,7 @@ from __future__ import annotations
 
 from collections import Counter
 from dataclasses import dataclass
+from operator import length_hint
 from typing import Iterable
 
 import numpy as np
@@ -59,16 +60,28 @@ def run(book: AggregateBook, messages: Iterable[Message]) -> Counter:
 
 
 class _RowBuffer:
-    """A two-dimensional buffer that doubles when full.
+    """A two-dimensional buffer, sized ahead where the length is known.
 
-    The number of messages is not known in advance: the simulator reads the book as it
-    folds, so the stream cannot be materialised first.  Doubling keeps the total copying
-    linear in the number of rows, and the rows stay contiguous, so the frame at the end
-    wraps one array rather than inferring a dtype from a list of lists.
+    A list of messages knows its own length; the live simulator stream does not, since it
+    reads the book as it folds and so cannot be materialised first.
+    :func:`operator.length_hint` is exactly that distinction -- the exact length for a
+    list, zero for a generator -- and where it answers zero the buffer doubles instead,
+    which keeps the total copying linear.  A hint is documented as an estimate, so both
+    directions stay open: too large is trimmed by :meth:`finished`, too small still
+    grows.
+
+    ``background`` is the row every unwritten row already holds, and carries the dtype.
+    A recorder that writes only the levels a book has depends on it being there, so it is
+    laid down at allocation *and* over every grown tail: growth allocates with
+    ``np.empty``, and a row past a growth boundary would otherwise carry freed memory
+    into the frame -- as plausible small integers that pass the schema.
     """
 
-    def __init__(self, width: int, dtype):
-        self.array = np.zeros((INITIAL_CAPACITY, width), dtype=dtype)
+    def __init__(self, background: np.ndarray, expected: int):
+        self.background = background
+        capacity = expected if expected > 0 else INITIAL_CAPACITY
+        self.array = np.empty((capacity, len(background)), background.dtype)
+        self.array[:] = background
         self.used = 0
 
     def claim(self) -> int:
@@ -79,13 +92,27 @@ class _RowBuffer:
         """
         if self.used == len(self.array):
             grown = np.empty((2 * len(self.array), self.array.shape[1]), self.array.dtype)
-            grown[: self.used] = self.array
+            grown[: self.used] = self.array[: self.used]
+            grown[self.used:] = self.background
             self.array = grown
         self.used += 1
         return self.used - 1
 
     def finished(self) -> np.ndarray:
         return self.array[: self.used]
+
+
+def _book_buffer(reported_depth: ReportedDepth, expected: int) -> _RowBuffer:
+    """Rows of a LOBSTER book, padded before anything is written into them."""
+    return _RowBuffer(frames.lobster_padding_row(reported_depth), expected)
+
+
+def _statistics_buffer(imbalance_levels: tuple[GridDepth, ...], expected: int) -> _RowBuffer:
+    """Rows of statistics.  Every column is written every time, so the background is
+    only somewhere for the dtype to live."""
+    return _RowBuffer(
+        np.zeros(len(_statistic_columns(imbalance_levels)), dtype=np.float64), expected
+    )
 
 
 # ---- the statistics, read from a book -----------------------------------------------
@@ -99,6 +126,9 @@ def _statistic_columns(imbalance_levels: tuple[GridDepth, ...]) -> list[str]:
         "BidOccupiedLevels", "AskOccupiedLevels",
         "BidGapCount", "AskGapCount",
         "BidLargestGap", "AskLargestGap",
+        "BidFirstGapDistance", "AskFirstGapDistance",
+        "BidFirstGapSize", "AskFirstGapSize",
+        "BidLargestGapDistance", "AskLargestGapDistance",
     ]
 
 
@@ -130,6 +160,8 @@ def _write_statistics(
     reported_depth: ReportedDepth,
     imbalance_levels: tuple[GridDepth, ...],
     from_file: bool,
+    bid: SideStatistics,
+    ask: SideStatistics,
 ) -> None:
     """One row of statistics, read off the book as it currently stands.
 
@@ -138,22 +170,20 @@ def _write_statistics(
     here: the book says None for an undefined price and a frame cannot.
 
     Each side is read once, through :meth:`AggregateBook.side_statistics`; the individual
-    statistics have their own methods, and calling those here would walk the book eight
-    times per message.
+    statistics have their own methods, and calling those here would walk the book once per
+    statistic.  The caller passes the two readings in, because it needs them itself -- the
+    LOBSTER row is written from the same levels.
     """
     def as_float(value) -> float:
         return float("nan") if value is None else float(value)
-
-    bid = book.side_statistics(BUY, reported_depth)
-    ask = book.side_statistics(SELL, reported_depth)
 
     target = out[row]
     target[0] = as_float(book.spread)
     target[1] = as_float(book.mid_price)
     target[2] = as_float(book.micro_price)
     column = 3
-    for n in imbalance_levels:
-        target[column] = book.queue_imbalance(n)
+    for n, imbalance in zip(imbalance_levels, book.queue_imbalance_profile(imbalance_levels)):
+        target[column] = imbalance
         target[column + 1] = float(
             _side_covers(bid, n, reported_depth, from_file)
             and _side_covers(ask, n, reported_depth, from_file)
@@ -163,7 +193,36 @@ def _write_statistics(
         bid.occupied, ask.occupied,
         bid.gap_count, ask.gap_count,
         bid.largest_gap, ask.largest_gap,
+        as_float(bid.first_gap_distance), as_float(ask.first_gap_distance),
+        bid.first_gap_size, ask.first_gap_size,
+        as_float(bid.largest_gap_distance), as_float(ask.largest_gap_distance),
     )
+
+
+def _write_occupied_levels(
+    target: np.ndarray,
+    bid: SideStatistics,
+    ask: SideStatistics,
+    price_unit: int,
+    reported_depth: ReportedDepth,
+) -> None:
+    """A LOBSTER row from the levels the statistics already walked for.
+
+    :meth:`AggregateBook.side_statistics` carries ``levels``, which *is*
+    ``occupied_levels(direction, reported_depth)`` -- the same call -- so a fold computing
+    the statistics has already paid for the walk that :meth:`to_lobster_row` would make
+    again.
+
+    Only the occupied levels are written.  ``target`` must already hold
+    :func:`~unito26.lob.frames.lobster_padding_row`, which is what a row of a buffer from
+    :func:`_book_buffer` holds; a row taken from anywhere else would keep whatever was
+    there beyond the last level.
+    """
+    for offset, side in enumerate((ask, bid)):
+        column = 2 * offset
+        for level, (price, volume) in enumerate(side.levels):
+            target[4 * level + column] = price * price_unit
+            target[4 * level + column + 1] = volume
 
 
 # ---- a replay recorded sparsely ------------------------------------------------------
@@ -301,20 +360,31 @@ class MarketSession:
         price_unit: int,
         online_statistics: bool,
     ) -> "MarketSession":
-        """Ask the book for its top ``reported_depth`` levels after every message."""
+        """Ask the book for its top ``reported_depth`` levels after every message.
+
+        With the statistics on, the row and the statistics come from one walk of each
+        side; with them off there is nothing to share and the book is asked for the row
+        directly.  The two paths are held together by a test.
+        """
         times: list[float] = []
-        rows = _RowBuffer(4 * reported_depth, np.int64)
-        statistics = _RowBuffer(len(_statistic_columns(imbalance_levels)), np.float64)
+        expected = length_hint(messages, 0)
+        rows = _book_buffer(reported_depth, expected)
+        statistics = _statistics_buffer(imbalance_levels, expected)
         for message in messages:
             book.apply(message)
             times.append(message.time)
             index = rows.claim()
-            book.write_lobster_row(rows.array, index, price_unit, reported_depth)
-            if online_statistics:
-                at = statistics.claim()
-                _write_statistics(
-                    book, statistics.array, at, reported_depth, imbalance_levels, False
-                )
+            if not online_statistics:
+                book.write_lobster_row(rows.array, index, price_unit, reported_depth)
+                continue
+            bid = book.side_statistics(BUY, reported_depth)
+            ask = book.side_statistics(SELL, reported_depth)
+            _write_occupied_levels(rows.array[index], bid, ask, price_unit, reported_depth)
+            at = statistics.claim()
+            _write_statistics(
+                book, statistics.array, at, reported_depth, imbalance_levels, False,
+                bid, ask,
+            )
         return cls._assemble(
             reported_depth, imbalance_levels, price_unit,
             times, rows, statistics if online_statistics else None, None,
@@ -338,8 +408,9 @@ class MarketSession:
         """
         depth = ReportedDepth(1)
         times: list[float] = []
-        rows = _RowBuffer(4, np.int64)
-        statistics = _RowBuffer(len(_statistic_columns(imbalance_levels)), np.float64)
+        expected = length_hint(messages, 0)
+        rows = _book_buffer(depth, expected)
+        statistics = _statistics_buffer(imbalance_levels, expected)
         for message in messages:
             book.apply(message)
             times.append(message.time)
@@ -354,7 +425,8 @@ class MarketSession:
             if online_statistics:
                 at = statistics.claim()
                 _write_statistics(
-                    book, statistics.array, at, depth, imbalance_levels, False
+                    book, statistics.array, at, depth, imbalance_levels, False,
+                    book.side_statistics(BUY, depth), book.side_statistics(SELL, depth),
                 )
         return cls._assemble(
             depth, imbalance_levels, price_unit,
@@ -380,8 +452,9 @@ class MarketSession:
         """
         book = log.opening_book(book_cls, False)
         times = log.times
-        rows = _RowBuffer(4 * reported_depth, np.int64)
-        statistics = _RowBuffer(len(_statistic_columns(imbalance_levels)), np.float64)
+        # The log knows its own length exactly; no hint is involved.
+        rows = _book_buffer(reported_depth, len(times))
+        statistics = _statistics_buffer(imbalance_levels, len(times))
         pending = iter(log.entries)
         upcoming = next(pending, None)
         for sequence in range(len(times)):
@@ -390,12 +463,17 @@ class MarketSession:
                 book.set_volume(delta.side, delta.price, delta.volume)
                 upcoming = next(pending, None)
             index = rows.claim()
-            book.write_lobster_row(rows.array, index, price_unit, reported_depth)
             if online_statistics:
+                bid = book.side_statistics(BUY, reported_depth)
+                ask = book.side_statistics(SELL, reported_depth)
+                _write_occupied_levels(rows.array[index], bid, ask, price_unit, reported_depth)
                 at = statistics.claim()
                 _write_statistics(
-                    book, statistics.array, at, reported_depth, imbalance_levels, False
+                    book, statistics.array, at, reported_depth, imbalance_levels, False,
+                    bid, ask,
                 )
+            else:
+                book.write_lobster_row(rows.array, index, price_unit, reported_depth)
         return cls._assemble(
             reported_depth, imbalance_levels, price_unit,
             times, rows, statistics if online_statistics else None, log.entries,
@@ -494,13 +572,50 @@ class MarketSession:
         columns["AskOccupiedLevels"] = ask_count.astype(float)
         bid_gaps = -np.diff(bid_prices, axis=1) - 1  # bid prices descend with level
         ask_gaps = np.diff(ask_prices, axis=1) - 1
-        for name, gaps in (("Bid", bid_gaps), ("Ask", ask_gaps)):
+        # Where each gap opens, in ticks from the touch: the level above it sits that
+        # many ticks down, and the gap starts one further.  Signed per side, since bid
+        # prices descend with the level and ask prices climb.
+        bid_starts = best_bid[:, None] - bid_prices[:, :-1] + 1
+        ask_starts = ask_prices[:, :-1] - best_ask[:, None] + 1
+        for name, gaps, starts in (
+            ("Bid", bid_gaps, bid_starts), ("Ask", ask_gaps, ask_starts)
+        ):
             positive = np.where(np.isnan(gaps), 0.0, np.maximum(gaps, 0.0))
             columns[f"{name}GapCount"] = (positive > 0).sum(1).astype(float)
             columns[f"{name}LargestGap"] = positive.max(1) if positive.size else 0.0
+            columns.update(self._gap_positions(name, positive, starts))
         return pd.DataFrame(columns, index=self.lobster_book.index, dtype=float)[
             _statistic_columns(self.imbalance_levels)
         ]
+
+    def _gap_positions(self, side: str, positive, starts) -> dict:
+        """Where the nearest and the largest gap open, in ticks from the touch.
+
+        ``argmax`` returns the *first* of equal elements and the columns run outward from
+        the touch, so the largest gap's tie-break -- the nearest of those that tie --
+        needs no expression of its own.  A side with no gap has no position to name and
+        answers NaN; its gap has no length and answers zero, as ``LargestGap`` does.
+        """
+        rows = len(self.lobster_book)
+        if positive.shape[1] == 0:
+            return {
+                f"{side}FirstGapDistance": np.full(rows, np.nan),
+                f"{side}FirstGapSize": np.zeros(rows),
+                f"{side}LargestGapDistance": np.full(rows, np.nan),
+            }
+        somewhere = (positive > 0).any(1)
+        index = np.arange(rows)
+        first = np.argmax(positive > 0, axis=1)
+        biggest = np.argmax(positive, axis=1)
+        return {
+            f"{side}FirstGapDistance": np.where(
+                somewhere, starts[index, first], np.nan
+            ),
+            f"{side}FirstGapSize": np.where(somewhere, positive[index, first], 0.0),
+            f"{side}LargestGapDistance": np.where(
+                somewhere, starts[index, biggest], np.nan
+            ),
+        }
 
     def column_sliced_imbalance(self, n: GridDepth) -> pd.Series:
         """The imbalance computed from the first ``n`` size *columns* of the frame.

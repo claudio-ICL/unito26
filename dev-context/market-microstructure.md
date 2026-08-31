@@ -142,6 +142,87 @@ fold). Two of these contradict the plan again:
   which every rung must do; the bit tricks act only on what happens after that. The
   optimisation that made the ladder look good was partly the absence of an easier one.
 
+From the third pass, which set out to find why `TickArrayBook` was the *slowest* rung in
+the session fold and ended up retiring two findings above
+(`notebooks/why-the-tick-array-book-is-not-faster.ipynb`).
+
+**The measurement was wrong three ways, and only the third was about the code.**
+
+- **the band was sixty times too wide, because a sentinel leaked into it.** The notebook
+  sized it with `p < 10**9`, which removes `MARKET_BUY_PRICE = sys.maxsize` and keeps
+  `MARKET_SELL_PRICE = 0`. The two sentinels fail asymmetrically — the buy one is the
+  maximum and raises `MemoryError`, the sell one is the minimum and silently widens — so a
+  filter written for one lets the other through, which is the same trap as the padding
+  sentinels. `for_prices` now drops both itself, so no caller can repeat it;
+- **the regime measured was the one where no index can win.** `example_mark_params` gives
+  about 13 occupied levels a side; `max()` over 13 dict keys is one C loop. With
+  `deep_mark_params` (136 a side) the dict rungs double and the tick array barely moves;
+- **bare `apply` is 0.005s of a 0.276s fold.** The matching the ladder was built to time is
+  about 2% of the work. The fold's cost is recording, and recording goes through
+  `occupied_levels` — which is where the index earns its keep, and where the ladder should
+  have been read all along.
+
+**Two findings above are retired.**
+
+- *"`TickArrayBook` is the slowest rung at `occupied_levels(depth=10)`"* — retired. The
+  cause was the ask side: `bit_length()` finds the highest set bit in O(1) and the lowest
+  only by scanning, so the sell side paid for the span at every lookup. `TickArrayBook` has
+  a band, therefore a *ceiling*, so its sell side is now indexed downward from it and the
+  best price is the highest set bit on both. On a 40 000-tick band: `best_ask` 1.626 →
+  0.121 µs, `occupied_levels(SELL, 10)` 18.58 → 3.16 µs. `BitmapBook` cannot do this — it
+  has no upper edge, and that is now the substance of the step between the two rungs;
+- *"the gap statistics are where the bitmap books earn their keep"* — retired, and it was
+  already half-retired once. Two consecutive occupied prices bound exactly one maximal run
+  of empty positions, so the gaps fall out of the walk that produced the levels; that beats
+  masking the occupancy integer by about 1.4×, and it flattens `BitmapBook` onto the
+  dictionaries. `TickArrayBook` keeps a 3× lead on a deep book, but for a different reason
+  than the entry claimed: not how the gaps are counted, but how the levels are *found*.
+
+**Measured and rejected.** Three, and the last is the one worth teaching.
+
+- **the strided padding fill loses.** Filling a row's padding with `target[k::4] = padding`
+  instead of a `while` loop costs about a microsecond of numpy overhead, which is four or
+  five scalar writes; the crossover is around eight padded cells a side. What works instead
+  is not writing the padding at all — the buffer is pre-filled once and a row writes only
+  its occupied levels (1.02×/1.56×/3.15× at ten/six/two occupied of ten). **That has a
+  trap**: growth allocates with `np.empty`, and a tail that is not repainted hands freed
+  memory to the frame as small integers that pass the schema. The pre-fill therefore lives
+  inside `_RowBuffer`, at allocation and on every growth;
+- **preallocating from `length_hint` is worth 1–2%.** Kept for what is not speed: `claim()`
+  leaves the hot path, and for a list the growth path never runs. Note `length_hint` is
+  exact for `iter(list)` and zero only for a real generator — a growth test that reaches for
+  `iter()` silently tests nothing;
+- **occupancy as a hierarchy of words is a crossover in Python, not a win.** The structure
+  `BitmapBook`'s docstring credits to C++ — words plus a summary — measured against one
+  arbitrary-precision integer with everything else held identical: 0.93× at 893–4 127
+  ticks, 1.21× at 16 127, 1.41× at 64 127. In C++ a bitset *is* a `uint64_t[]`, so the
+  hierarchy is the implementation and not an optimisation. In Python `int.bit_length()` is
+  already O(1), so it buys nothing on the read; what it could buy is on the write, since
+  immutable integers make `bits |= 1 << i` copy ⌈width/30⌉ digits. Against that it adds a
+  shift, a mask, a list index and an inner loop to every level of every walk. Below a few
+  thousand ticks the interpreter overhead exceeds the digit copies. **No sixth rung**: the
+  crossover sits above every band this material uses.
+
+**Where it ends up.** Full fold with online statistics, same machine, same streams, the
+notebook's own band:
+
+| | before | after |
+| --- | --- | --- |
+| shallow, `AggregateBook` | 0.318 | 0.193 |
+| shallow, `TickArrayBook` | **0.365** | **0.165** |
+| deep, `AggregateBook` | 0.905 | 0.401 |
+| deep, `TickArrayBook` | 0.415 | 0.185 |
+
+The bold row is the finding this pass started from: the top of the ladder was slower than
+the bottom. `TickArrayBook` is now the fastest rung in both regimes. None of the changes was
+a better way to find a best price.
+
+**Three more gap statistics**, since the existing two say how many holes a side has and how
+long the longest is, but not where: `FirstGapDistance`, `FirstGapSize`,
+`LargestGapDistance`. Both routes — from a book and vectorized from the frame — verified to
+agree row for row on both regimes. On the deep book the nearest gap is a median of 1 tick
+from the touch and the largest spans up to 27 levels.
+
 ## Exercises & exam snippets
 
 Harvested from the implementation, for the multiple-choice format: float tick prices; a
@@ -167,6 +248,22 @@ From the LOBSTER-frame work, all of them live bugs or near-misses in this codeba
   bite?" tests the removal invariant, and is a better question than "find the bug";
 - **a type-7 halt message** replayed as an order at price −1.
 
+From the performance pass, all three live mistakes rather than invented ones:
+
+- **`[m.price for m in messages if m.price < 10 ** 9]`** — sizing a tick band from a
+  message stream. It removes one sentinel and keeps the other, and the band comes out sixty
+  times too wide with no error and no wrong answer, only a book that is quietly slower. "What
+  does this filter miss, and how would you notice?" The answer is that you would not;
+- **`length_hint(iter(some_list))`** — a test that wants to exercise a buffer's growth path
+  and reaches for `iter()`. It returns the exact remaining length, so the buffer is sized
+  ahead and the path under test never runs. The test passes, and would pass just as well if
+  the code were deleted;
+- **a pre-filled buffer that doubles.** `grown = np.empty(...)`, copy the used rows, and
+  forget the tail: rows past the boundary carry freed memory in whatever columns nothing
+  writes. Ask for the values it produces — small non-negative integers that pass a
+  `Check.ge(0)` schema and read as a crossed book. Better than "find the bug", because the
+  bug is a missing line rather than a wrong one.
+
 ## References
 
 - [`documentation/order-driven-markets-notation.md`](../documentation/order-driven-markets-notation.md)
@@ -186,3 +283,6 @@ From the LOBSTER-frame work, all of them live bugs or near-misses in this codeba
   — the agreed plan for batch 1, kept so the code can be reviewed against it.
 - [`.claude/plans/lobster-frames-and-market-session.md`](../.claude/plans/lobster-frames-and-market-session.md)
   — the plan for the serialization, the gap statistics and `MarketSession`.
+- [`.claude/plans/tick-array-book-performance.md`](../.claude/plans/tick-array-book-performance.md)
+  — the plan for the third pass: the diagnosis, the five changes, the three rejections, and
+  the conditions the correctness review attached to each.

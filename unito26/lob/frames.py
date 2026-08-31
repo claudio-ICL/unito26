@@ -15,6 +15,7 @@ from __future__ import annotations
 import json
 from abc import ABC, abstractmethod
 
+import numpy as np
 import pandas as pd
 import pandera.pandas as pa
 
@@ -26,6 +27,7 @@ __all__ = [
     "FrameSerializable",
     "lobster_book_columns",
     "lobster_book_schema",
+    "lobster_padding_row",
 ]
 
 #: What LOBSTER writes where a side holds fewer levels than the file's depth.  The two
@@ -106,6 +108,22 @@ def lobster_book_columns(reported_depth: ReportedDepth) -> list[str]:
     for level in range(1, reported_depth + 1):
         names += [f"AskPrice{level}", f"AskSize{level}", f"BidPrice{level}", f"BidSize{level}"]
     return names
+
+
+def lobster_padding_row(reported_depth: ReportedDepth) -> np.ndarray:
+    """One row of a LOBSTER book holding nothing: every level padded, on both sides.
+
+    This is what a row *means* before anything is written into it, so a recorder that
+    writes only the levels a book actually has can lay this down first and leave the rest
+    alone.  The strides are the file's own layout -- ask price, ask size, bid price, bid
+    size, repeated -- so they are stated once, here, beside the columns they name.
+    """
+    row = np.empty(4 * reported_depth, dtype=np.int64)
+    row[0::4] = ASK_PADDING
+    row[1::4] = 0
+    row[2::4] = BID_PADDING
+    row[3::4] = 0
+    return row
 
 
 def lobster_book_schema(reported_depth: ReportedDepth) -> pa.DataFrameSchema:

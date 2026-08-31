@@ -257,9 +257,25 @@ in C, on one word, both are a single instruction.
 | operation | where |
 | --- | --- |
 | `1 << k`, `\|= bit`, `&= ~bit` | `BitmapBook.set_volume`, `TickArrayBook.set_volume` |
-| `bit_length() - 1` | the $d = +1$ branch of `best_price` in both |
-| `(bits & -bits).bit_length() - 1` | the $d = -1$ branch of `best_price` in both |
-| `bits ^= bits & -bits` | `TickArrayBook.levels_map` |
+| `bit_length() - 1` | `best_price` on both sides in `TickArrayBook`, the $d = +1$ branch in `BitmapBook` |
+| `(bits & -bits).bit_length() - 1` | the $d = -1$ branch of `BitmapBook.best_price` |
+| `bits ^= 1 << k` | walking the occupied levels in both |
+
+The asymmetry of section 6 is the reason `TickArrayBook` no longer appears in the third row.
+Since it declares a band it has a *ceiling*, so it indexes its sell side downward from it --
+bit $\mathrm{ceiling} - p$ rather than $p - \mathrm{origin}$ -- and the best price is the
+highest set bit on either side. `BitmapBook` cannot: it has no upper edge, which is the whole
+distinction between the two rungs, and the cost of that freedom is the scan.
+
+**What the book stopped using.** `count_binary_gaps` and `measure_largest_binary_gap` no
+longer answer `side_statistics`. Two consecutive occupied prices bound exactly one maximal
+run of empty positions, of length $|p_{i+1} - p_i| - 1$, so the gaps fall out of the walk
+that produced the levels, and doing that costs less than masking a window out of the
+occupancy integer -- measured at about 1.4 times on the deep book. The derivations above
+stand, `unito26.lob.binary_gaps` keeps its tests, and the individual `gap_count` and
+`largest_gap_size_between_non_empty_levels` still go through them. What changed is which one
+is on the hot path.
+`notebooks/why-the-tick-array-book-is-not-faster.ipynb` has the measurement.
 
 All in `unito26.lob.orderbook`. Entry 4 of
 [`order-flow-to-order-book.md`](order-flow-to-order-book.md) puts these lookups back in

@@ -9,10 +9,10 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from unito26.lob import config
+from unito26.lob import config, frames
 from unito26.lob.messages import BUY, SELL, GridDepth, ReportedDepth, limit_order, market_order
 from unito26.lob.orderbook import AXIS_B_VARIANTS, AggregateBook
-from unito26.lob.replay import DeltaLog, MarketSession
+from unito26.lob.replay import DeltaLog, MarketSession, _book_buffer, _write_occupied_levels
 from unito26.lob.simulate import OrderFlowSimulator
 
 LEVELS = (GridDepth(1), GridDepth(2), GridDepth(5))
@@ -55,7 +55,7 @@ class TestTheTwoRoutesAgree:
         simulator.warm_up(book, horizon=20.0)
         messages = list(simulator.stream(book, horizon=200.0))
         session = MarketSession.from_occupied_levels(
-            book_cls.for_prices([m.price for m in messages if m.price < 10**9]),
+            book_cls.for_prices([m.price for m in messages]),
             messages, DEPTH, LEVELS, PRICE_UNIT, True,
         )
         reconcile(session)
@@ -214,3 +214,93 @@ class TestTheColumnSlicedImbalance:
         assert session.column_sliced_imbalance(GridDepth(2)).iloc[0] == pytest.approx(
             session.stats["QueueImbalance2"].iloc[0]
         )
+
+
+@pytest.mark.parametrize("book_cls", AXIS_B_VARIANTS, ids=lambda c: c.__name__)
+@pytest.mark.parametrize("count", [1, 1023, 1024, 1025, 2049])
+class TestGrowingAndPreallocatingAgree:
+    """A list is sized exactly and never grows; a generator doubles.  Two code paths for
+    the same session, so they are compared row for row rather than by length.
+
+    The rows have a padded side -- every message here is a buy, so the ask side keeps two
+    levels against a depth of three -- because padding is what a grown buffer can get
+    wrong.  Growth allocates with `np.empty`, and a tail that was not repainted carries
+    freed memory into the columns nothing writes.
+    """
+
+    @staticmethod
+    def buys(count):
+        return [limit_order(float(i), 10, 990 - (i % 5), BUY) for i in range(count)]
+
+    @staticmethod
+    def streamed(messages):
+        """A genuine generator.  `iter(list)` will not do: `length_hint` reports the
+        remaining length of a list iterator, so the buffer would be sized exactly and the
+        growth path -- the whole subject here -- would never run."""
+        return (message for message in messages)
+
+    def test_the_frames_are_identical(self, book_cls, count):
+        messages = self.buys(count)
+        from_list = MarketSession.from_occupied_levels(
+            opening(book_cls), messages, DEPTH, LEVELS, PRICE_UNIT, True
+        )
+        from_stream = MarketSession.from_occupied_levels(
+            opening(book_cls), self.streamed(messages), DEPTH, LEVELS, PRICE_UNIT, True
+        )
+        assert len(from_stream.lobster_book) == count
+        pd.testing.assert_frame_equal(from_list.lobster_book, from_stream.lobster_book)
+        pd.testing.assert_frame_equal(from_list.stats, from_stream.stats)
+
+    def test_the_padded_side_really_is_padded_throughout(self, book_cls, count):
+        """The assertion the length check could not make: every row past every growth
+        boundary still says 'no third ask level' rather than saying something plausible."""
+        session = MarketSession.from_occupied_levels(
+            opening(book_cls), self.streamed(self.buys(count)), DEPTH, LEVELS, PRICE_UNIT, True
+        )
+        assert (session.lobster_book[f"AskPrice{DEPTH}"] == frames.ASK_PADDING).all()
+        assert (session.lobster_book[f"AskSize{DEPTH}"] == 0).all()
+
+    def test_the_deferred_route_agrees_across_the_boundary(self, book_cls, count):
+        """`online_statistics=False` writes the whole row through `write_lobster_row`;
+        with them on it writes only the occupied levels into a pre-padded row.  The two
+        must not drift."""
+        messages = self.buys(count)
+        deferred = MarketSession.from_occupied_levels(
+            opening(book_cls), self.streamed(messages), DEPTH, LEVELS, PRICE_UNIT, False
+        )
+        online = MarketSession.from_occupied_levels(
+            opening(book_cls), self.streamed(messages), DEPTH, LEVELS, PRICE_UNIT, True
+        )
+        pd.testing.assert_frame_equal(deferred.lobster_book, online.lobster_book)
+
+
+class TestTheRowBufferKeepsItsPadding:
+    """`_write_occupied_levels` writes only the levels a book has, so what it does *not*
+    write has to be padding already.  That is the buffer's contract, and it is the one
+    thing a growth could quietly break."""
+
+    def test_a_grown_tail_is_repainted(self):
+        depth = ReportedDepth(3)
+        buffer = _book_buffer(depth, 0)
+        padding = frames.lobster_padding_row(depth)
+        for _ in range(len(buffer.array) + 1):
+            buffer.claim()
+        assert (buffer.array[buffer.used - 1] == padding).all()
+        assert (buffer.finished() == padding).all()
+
+    def test_a_row_written_twice_keeps_no_trace_of_the_first(self):
+        """Writing only the occupied levels is not idempotent against a stale row: a
+        deep book followed by a shallow one would leave the deep book's levels standing
+        as the shallow one's padding."""
+        depth = ReportedDepth(3)
+        deep = AggregateBook.from_levels({1000: 10, 999: 20, 998: 30}, {1001: 40})
+        shallow = AggregateBook.from_levels({1000: 10}, {1001: 40})
+        rows = _book_buffer(depth, 2)
+        for book in (deep, shallow):
+            index = rows.claim()
+            _write_occupied_levels(
+                rows.array[index],
+                book.side_statistics(BUY, depth), book.side_statistics(SELL, depth),
+                PRICE_UNIT, depth,
+            )
+        assert rows.array[1].tolist() == shallow.to_lobster_row(PRICE_UNIT, depth)

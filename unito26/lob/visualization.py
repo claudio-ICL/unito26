@@ -30,6 +30,7 @@ __all__ = [
     "gap_figure",
     "imbalance_figure",
     "coverage_figure",
+    "band_width_figure",
 ]
 
 #: The first four slots of the categorical palette, in order.  A side keeps its colour
@@ -313,33 +314,70 @@ def touch_figure(session, window: slice):
     return figure
 
 
-def gap_figure(session, window: slice):
-    """The spread, and how sparse the reported levels are on each side.
+#: Which gap a trace is about.  A side keeps its colour in every panel, so the dash is
+#: what is left to carry "nearest the touch" against "largest".
+NEAREST_DASH = "solid"
+LARGEST_DASH = "dot"
 
-    The spread is a gap at the touch; the panel below counts the gaps behind it.  A book
-    can hold a one-tick spread and still be full of holes two levels back, which is what
-    separates the two indexings.
+
+def gap_figure(session, window: slice):
+    """The spread, how large the holes behind it are, and how far away they sit.
+
+    The spread is a gap at the touch; the panels below describe the gaps behind it.  A
+    book can hold a one-tick spread and still be full of holes two levels back, which is
+    what separates the two indexings.
+
+    One panel per kind of quantity -- levels, then ticks -- because the two are not on
+    the same scale and a shared axis would flatten one of them.  Within a panel the side
+    is the colour and the gap is the dash.
+
+    The distance lines **break wherever a side is contiguous**.  There is no gap then, so
+    there is no distance to plot, and a step line drawn through it would assert one.
     """
     from plotly.subplots import make_subplots
 
     stats = session.stats.iloc[window]
     times = stats.index
     figure = make_subplots(
-        rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.08,
-        subplot_titles=("Spread", "Largest gap between reported levels"),
+        rows=3, cols=1, shared_xaxes=True, vertical_spacing=0.06,
+        subplot_titles=(
+            "Spread",
+            "Gap size, in levels",
+            "Distance from the touch to the gap, in ticks",
+        ),
     )
     figure.add_trace(_steps(times, stats["Spread"], "spread", MID_COLOUR), row=1, col=1)
     for side, colour in (("Bid", BID_COLOUR), ("Ask", ASK_COLOUR)):
-        figure.add_trace(
-            _steps(times, stats[f"{side}LargestGap"], side.lower(), colour), row=2, col=1
-        )
+        for column, label, dash in (
+            (f"{side}LargestGap", "largest", LARGEST_DASH),
+            (f"{side}FirstGapSize", "nearest", NEAREST_DASH),
+        ):
+            figure.add_trace(
+                _steps(
+                    times, stats[column], f"{side.lower()}, {label}", colour,
+                    line=dict(color=colour, width=2, dash=dash),
+                ),
+                row=2, col=1,
+            )
+        for column, label, dash in (
+            (f"{side}FirstGapDistance", "nearest", NEAREST_DASH),
+            (f"{side}LargestGapDistance", "largest", LARGEST_DASH),
+        ):
+            figure.add_trace(
+                _steps(
+                    times, stats[column], f"{side.lower()}, {label}", colour,
+                    line=dict(color=colour, width=2, dash=dash), showlegend=False,
+                ),
+                row=3, col=1,
+            )
     figure.update_layout(
         title="Spread and sparsity", template="simple_white", hovermode="x unified",
-        height=560, legend=dict(orientation="h", y=1.06, x=0),
+        height=760, legend=dict(orientation="h", y=1.05, x=0),
     )
     figure.update_yaxes(title_text="ticks", row=1, col=1)
-    figure.update_yaxes(title_text="ticks", row=2, col=1)
-    figure.update_xaxes(title_text="session time (s)", row=2, col=1)
+    figure.update_yaxes(title_text="levels", row=2, col=1)
+    figure.update_yaxes(title_text="ticks", row=3, col=1)
+    figure.update_xaxes(title_text="session time (s)", row=3, col=1)
     return figure
 
 
@@ -397,4 +435,33 @@ def coverage_figure(sessions_by_depth: dict):
         xaxis_title="grid depth n", yaxis_title="fraction uncovered",
         legend=dict(orientation="h", y=1.08, x=0),
     )
+    return figure
+
+
+def band_width_figure(timings, title: str):
+    """Seconds against the width of the band, one line per occupancy structure.
+
+    A chart rather than a table because the x axis is continuous and the point is a
+    *crossing*: two lines whose order reverses, which a table of numbers makes the reader
+    find for themselves.  The band is drawn on a log axis, since it is varied by
+    multiplying.
+
+    ``timings`` is a frame indexed by band width in ticks, one column per structure.
+    """
+    import plotly.graph_objects as go
+
+    colours = (BID_COLOUR, ASK_COLOUR, MID_COLOUR, MICRO_COLOUR)
+    figure = go.Figure([
+        go.Scatter(
+            x=timings.index, y=timings[column], name=column, mode="lines+markers",
+            line=dict(color=colours[slot % 4], width=2), marker=dict(size=8),
+        )
+        for slot, column in enumerate(timings.columns)
+    ])
+    figure.update_layout(
+        title=title, template="simple_white", hovermode="x unified", height=420,
+        legend=dict(orientation="h", y=1.06, x=0),
+    )
+    figure.update_xaxes(title_text="band width (ticks)", type="log")
+    figure.update_yaxes(title_text="seconds", rangemode="tozero")
     return figure

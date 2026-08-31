@@ -301,3 +301,42 @@ class TestRecordingIsOptional:
         book = book_cls.from_levels({999: 10}, {1001: 10})
         assert book.withdraw(withdrawal(1.0, 5, 990, BUY)) is None
         assert book.withdraw(withdrawal(1.0, 5, 990, BUY), record=True).deltas == []
+
+
+@pytest.mark.parametrize("book_cls", AXIS_B_VARIANTS, ids=lambda c: c.__name__)
+class TestSizingFromAStream:
+    """`for_prices` is handed a message stream, so it must drop the two sentinels.
+
+    They fail differently, which is how a filter written for one comes to let the other
+    through: the buy sentinel is `sys.maxsize` and asks for a band no machine has, the
+    sell sentinel is 0 and quietly widens the band by the whole reference price.
+    """
+
+    REAL = [9995, 10000, 10004, 9998]
+
+    def test_the_sentinels_contribute_no_range(self, book_cls):
+        stream = self.REAL + [MARKET_BUY_PRICE, MARKET_SELL_PRICE, MARKET_BUY_PRICE]
+        from_stream = book_cls.for_prices(stream)
+        from_real = book_cls.for_prices(self.REAL)
+        assert from_stream.levels_map(BUY) == from_real.levels_map(BUY)
+        for attribute in ("origin", "width"):
+            assert getattr(from_stream, attribute, None) == getattr(from_real, attribute, None)
+
+    def test_the_buy_sentinel_no_longer_asks_for_an_impossible_band(self, book_cls):
+        # Before the filter this raised MemoryError on the tick-indexed rung.
+        book = book_cls.for_prices([9995, MARKET_BUY_PRICE])
+        book.set_volume(BUY, 9995, 10)
+        assert book.best_bid_price == 9995
+
+
+def test_a_level_at_the_sell_sentinel_is_not_sizeable():
+    """The cost of the sentinel being an ordinary integer, stated where it bites.
+
+    `grid_prices` cannot tell a genuine level at 0 from a market sell, so a band that
+    would have to span both refuses.  The alternative -- sizing from the sentinel -- is
+    the bug this filter exists to remove.
+    """
+    from unito26.lob.orderbook import TickArrayBook
+
+    with pytest.raises(ValueError, match="outside the band"):
+        TickArrayBook.from_levels({MARKET_SELL_PRICE: 5}, {500: 5})

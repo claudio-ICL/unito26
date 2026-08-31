@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import heapq
 from collections.abc import Iterable
+from itertools import accumulate
 from dataclasses import dataclass, field
 
 import numpy as np
@@ -38,6 +39,7 @@ from unito26.lob.messages import (
 )
 
 __all__ = [
+    "grid_prices",
     "SubmitResult",
     "SideStatistics",
     "AggregateBook",
@@ -64,40 +66,33 @@ def _span_bits(bits: int, origin: int, levels: list[tuple[int, int]]) -> int:
     return (bits & (((1 << (high - low + 1)) - 1) << low)) >> low
 
 
-def _side_statistics_from_bits(book, direction: int, reported_depth) -> "SideStatistics":
-    """The side's statistics read off the occupancy integer, for the bitmap-backed rungs.
+def grid_prices(prices: Iterable[int]) -> list[int]:
+    """Those of ``prices`` that name a position on the grid.
 
-    Shared by :class:`BitmapBook` and :class:`TickArrayBook`, which sit on different
-    branches of the hierarchy and hold the same two attributes.
+    A market order carries a price specification guaranteeing execution rather than a
+    position: ``MARKET_SELL_PRICE`` is 0 and ``MARKET_BUY_PRICE`` is ``sys.maxsize``, so
+    a band sized from a raw message stream would run from one to the other.  The two fail
+    differently -- the buy sentinel is the maximum and raises, the sell sentinel is the
+    minimum and silently widens the band -- so a filter written for one lets the other
+    through, and both are dropped here rather than at each call site.
     """
-    levels = book.occupied_levels(direction, reported_depth)
-    if not levels:
-        return SideStatistics([], 0, 0, 0, 0)
-    bits = _span_bits(book._bits[direction], book.origin, levels)
-    return SideStatistics(
-        levels=levels,
-        occupied=len(levels),
-        grid_span=abs(levels[-1][0] - levels[0][0]) + 1,
-        gap_count=count_binary_gaps(bits),
-        largest_gap=measure_largest_binary_gap(bits),
-    )
+    return [price for price in prices if not is_market_price(price)]
 
 
-def _count_runs(positions: list[int]) -> int:
-    """Maximal runs of consecutive integers in a sorted list."""
-    return sum(
-        1 for index, value in enumerate(positions)
-        if index == 0 or value != positions[index - 1] + 1
-    )
+def _runs(positions: list[int]) -> list[tuple[int, int]]:
+    """Maximal runs of consecutive integers, as ``(first value, length)``, in order.
 
-
-def _longest_run(positions: list[int]) -> int:
-    """Length of the longest run of consecutive integers in a sorted list."""
-    longest = run = 0
+    Every gap statistic is a reading of this list, so there is one place where "maximal
+    run" is defined and the five of them cannot drift apart.
+    """
+    runs: list[tuple[int, int]] = []
     for index, value in enumerate(positions):
-        run = run + 1 if index and value == positions[index - 1] + 1 else 1
-        longest = max(longest, run)
-    return longest
+        if index and value == positions[index - 1] + 1:
+            start, length = runs[-1]
+            runs[-1] = (start, length + 1)
+        else:
+            runs.append((value, 1))
+    return runs
 
 
 @dataclass(frozen=True, slots=True)
@@ -135,9 +130,15 @@ class SideStatistics:
     """What a session records about one side, read in a single pass over it.
 
     The individual methods below each walk the side again; a fold that records every
-    statistic after every message pays that walk eight times over.  This type is the
-    batched form, and :meth:`AggregateBook.side_statistics` is where the ladder's index
-    is spent once instead.
+    statistic after every message pays that walk once per statistic.  This type is the
+    batched form, and :meth:`AggregateBook.side_statistics` is where the walk is spent
+    once instead.
+
+    The two distances are None when the side has no gap: there is no position to name,
+    and zero would name the touch, which is always occupied.  None rather than NaN, for
+    the reason :meth:`AggregateBook.best_price` returns None -- undefined is not a float
+    -- and because NaN would make two equal readings compare unequal.  The frame turns
+    it into NaN at the boundary, where a column has to hold something.
     """
 
     levels: list[tuple[int, int]]
@@ -147,6 +148,9 @@ class SideStatistics:
     grid_span: int
     gap_count: int
     largest_gap: int
+    first_gap_distance: int | None
+    first_gap_size: int
+    largest_gap_distance: int | None
 
 
 class AggregateBook:
@@ -325,6 +329,45 @@ class AggregateBook:
             return float("nan")
         return (bid_total - ask_total) / total
 
+    def queue_imbalance_profile(
+        self, imbalance_levels: tuple[GridDepth, ...]
+    ) -> list[float]:
+        """``I^n`` for every ``n`` in ``imbalance_levels``, from one walk of each side.
+
+        The windows nest -- the first ``n`` grid positions contain the first ``n - 1`` --
+        so the deepest walk carries every shallower answer in its running total.  A fold
+        recording a profile after every message therefore walks each side once instead of
+        once per level, and finds each best price once instead of twice per level.
+
+        :meth:`queue_imbalance` is where the quantity is *defined*, sign convention and
+        all; this is the same numbers read in bulk, and a test holds the two together.
+        """
+        deepest = max(imbalance_levels)
+        if deepest <= 0:
+            raise ValueError(
+                f"n counts grid levels from the touch and must be >= 1, got {deepest}"
+            )
+        running: dict[int, list[int]] = {}
+        for direction in (BUY, SELL):
+            best = self.best_price(direction)
+            total = 0
+            totals: list[int] = []
+            for step in range(deepest):
+                # best - step * d walks down the bids and up the asks, which is the same
+                # expression the rest of the module uses to be generic in the side.
+                if best is not None:
+                    total += self.volume_at(direction, best - step * direction)
+                totals.append(total)
+            running[direction] = totals
+        profile = []
+        for n in imbalance_levels:
+            bid_total, ask_total = running[BUY][n - 1], running[SELL][n - 1]
+            total = bid_total + ask_total
+            profile.append(
+                float("nan") if total == 0 else (bid_total - ask_total) / total
+            )
+        return profile
+
     @property
     def micro_price(self) -> float | None:
         """``P^mu``, the imbalance-weighted mid.  None when either side is empty.
@@ -393,36 +436,82 @@ class AggregateBook:
     def gap_count(self, direction: int, reported_depth: ReportedDepth) -> int:
         """Number of maximal runs of empty positions.  Not the length of
         :meth:`empty_grid_positions`, which counts positions rather than runs."""
-        return _count_runs(self.empty_grid_positions(direction, reported_depth))
+        return len(_runs(self.empty_grid_positions(direction, reported_depth)))
 
     def largest_gap_size_between_non_empty_levels(
         self, direction: int, reported_depth: ReportedDepth
     ) -> int:
         """Length of the longest such run.  Zero when the levels are contiguous."""
-        return _longest_run(self.empty_grid_positions(direction, reported_depth))
+        runs = _runs(self.empty_grid_positions(direction, reported_depth))
+        return max((length for _, length in runs), default=0)
+
+    def first_gap_distance(
+        self, direction: int, reported_depth: ReportedDepth
+    ) -> int | None:
+        """Ticks from the touch to the shallowest empty position of the nearest gap.
+
+        Grid position ``i`` lies ``i - 1`` ticks from the touch, so a gap opening at
+        position 2 is one tick away.  None when the side has no gap.
+        """
+        runs = _runs(self.empty_grid_positions(direction, reported_depth))
+        return runs[0][0] - 1 if runs else None
+
+    def first_gap_size(self, direction: int, reported_depth: ReportedDepth) -> int:
+        """Levels in the gap nearest the touch.  Zero when there is no gap."""
+        runs = _runs(self.empty_grid_positions(direction, reported_depth))
+        return runs[0][1] if runs else 0
+
+    def largest_gap_distance(
+        self, direction: int, reported_depth: ReportedDepth
+    ) -> int | None:
+        """Ticks from the touch to the largest gap, the nearest of them if two tie.
+
+        ``max`` returns the first of equal elements and the runs come off the touch in
+        order, so the tie-break costs nothing to state and nothing to compute.
+        """
+        runs = _runs(self.empty_grid_positions(direction, reported_depth))
+        if not runs:
+            return None
+        return max(runs, key=lambda run: run[1])[0] - 1
 
     def side_statistics(
         self, direction: int, reported_depth: ReportedDepth
     ) -> SideStatistics:
-        """The four statistics above, from one walk of the side.
+        """Every statistic above, from one walk of the side.
 
-        Each of them agrees with its own method; a test asserts that on every rung.  The
-        variants that hold an occupancy bitmap override this and read all four off one
-        integer.
+        Each of them agrees with its own method; a test asserts that on every rung.
+
+        The gaps are read off the *differences between consecutive occupied prices*
+        rather than off the occupancy bitmap.  Two prices `reported_depth` apart bound
+        exactly one maximal run of empty positions, so the whole gap structure is a
+        by-product of the walk that produced ``levels`` -- and no rung has to enumerate
+        the positions, mask an integer or count bits to get at it.
         """
         levels = self.occupied_levels(direction, reported_depth)
         if not levels:
-            return SideStatistics([], 0, 0, 0, 0)
-        span = abs(levels[-1][0] - levels[0][0]) + 1
+            return SideStatistics([], 0, 0, 0, 0, None, 0, None)
         best = levels[0][0]
-        filled = {abs(price - best) + 1 for price, _ in levels}
-        holes = [i for i in range(1, span + 1) if i not in filled]
+        count = largest = largest_at = first_at = first_size = 0
+        previous = best
+        for price, _ in levels[1:]:
+            hole = abs(price - previous) - 1
+            if hole:
+                start = abs(previous - best) + 1
+                count += 1
+                if count == 1:
+                    first_at, first_size = start, hole
+                if hole > largest:
+                    largest, largest_at = hole, start
+            previous = price
         return SideStatistics(
             levels=levels,
             occupied=len(levels),
-            grid_span=span,
-            gap_count=_count_runs(holes),
-            largest_gap=_longest_run(holes),
+            grid_span=abs(levels[-1][0] - best) + 1,
+            gap_count=count,
+            largest_gap=largest,
+            first_gap_distance=first_at if count else None,
+            first_gap_size=first_size,
+            largest_gap_distance=largest_at if count else None,
         )
 
     # ---- the LOBSTER row: the book as one line of a file ---------------------------
@@ -641,6 +730,11 @@ class AggregateBook:
         exactly why they need no band.  A book indexed by tick cannot, and overriding
         this is where that requirement becomes visible instead of being smuggled into
         whoever constructs one.
+
+        ``prices`` may be taken straight off a message stream: every variant sizes itself
+        through :func:`grid_prices`, so the market-order sentinels contribute no range.
+        A genuine level at ``MARKET_SELL_PRICE`` is therefore not sizeable, which is the
+        price of the sentinel being an ordinary integer.
         """
         return cls(strict)
 
@@ -836,7 +930,7 @@ class BitmapBook(AggregateBook):
     @classmethod
     def for_prices(cls, prices: "Iterable[int]", strict: bool = False) -> "BitmapBook":
         # Only to keep the integer narrow: the bitmap has no upper edge to fall off.
-        prices = list(prices)
+        prices = grid_prices(prices)
         origin = min(prices) - cls.BAND_MARGIN if prices else 0
         return cls(origin=origin, strict=strict)
 
@@ -873,11 +967,6 @@ class BitmapBook(AggregateBook):
     ) -> int:
         return measure_largest_binary_gap(self.span_bits(direction, reported_depth))
 
-    def side_statistics(
-        self, direction: int, reported_depth: ReportedDepth
-    ) -> SideStatistics:
-        return _side_statistics_from_bits(self, direction, reported_depth)
-
 
 class TickArrayBook(AggregateBook):
     """Step 5: storage and index fused -- the shape of a real low-latency book.
@@ -897,6 +986,19 @@ class TickArrayBook(AggregateBook):
     as the price drifts or falls back to a sorted map for a range too wide and too
     sparse to index.  Neither is worth building before the simple version is measured.
 
+    Having a band buys something the rung below cannot have.  ``bit_length`` finds the
+    *highest* set bit in constant time and the lowest only by scanning, so the ask side
+    of a single bitmap pays for the whole span at every lookup.  Here the sell side is
+    indexed **downward from the ceiling** -- bit ``ceiling - price`` rather than
+    ``price - origin`` -- and the best price on either side is the highest set bit.
+    :class:`BitmapBook` cannot do this: it has no upper edge to count down from.
+
+    The volumes stay indexed by ``price - origin`` on both sides; only the occupancy
+    bitmap is reversed.  The consequence is that the band's *upper* edge is now
+    load-bearing on the ask side, where before only the lower one was, so the
+    band-shifting this docstring anticipates would have to move the ask bitmap rather
+    than merely extend the array.
+
     Deliberately a plain ``list`` and not a numpy array: this access pattern is one
     element at a time, which is where numpy is *slower* than a list, and the trade it
     offers here is space rather than speed.
@@ -906,6 +1008,10 @@ class TickArrayBook(AggregateBook):
         super().__init__(strict)
         self.origin = origin
         self.width = width
+        #: Highest price the band holds.  The ask bitmap counts down from it, so this is
+        #: part of the encoding and not a derived convenience: a copy that changed the
+        #: width would decode every ask bit to the wrong price.
+        self.ceiling = origin + width - 1
         self._volumes: dict[int, list[int]] = {
             BUY: [0] * width,
             SELL: [0] * width,
@@ -918,7 +1024,7 @@ class TickArrayBook(AggregateBook):
 
     @classmethod
     def for_prices(cls, prices: Iterable[int], strict: bool = False) -> "TickArrayBook":
-        prices = list(prices)
+        prices = grid_prices(prices)
         low, high = (min(prices), max(prices)) if prices else (0, 0)
         return cls(
             origin=low - cls.BAND_MARGIN,
@@ -951,7 +1057,7 @@ class TickArrayBook(AggregateBook):
                 "the band or fall back to a sorted map"
             )
         self._volumes[direction][index] = volume
-        bit = 1 << index
+        bit = 1 << (index if direction == BUY else self.ceiling - price)
         if volume > 0:
             self._bits[direction] |= bit
         else:
@@ -961,9 +1067,8 @@ class TickArrayBook(AggregateBook):
         bits = self._bits[direction]
         if not bits:
             return None
-        if direction == BUY:
-            return self.origin + bits.bit_length() - 1
-        return self.origin + (bits & -bits).bit_length() - 1
+        index = bits.bit_length() - 1
+        return self.origin + index if direction == BUY else self.ceiling - index
 
     def levels_map(self, direction: int) -> dict[int, int]:
         """Built on demand, by walking the occupancy bits from the bottom up.
@@ -974,12 +1079,14 @@ class TickArrayBook(AggregateBook):
         """
         volumes = self._volumes[direction]
         bits = self._bits[direction]
+        origin, ceiling = self.origin, self.ceiling
+        buying = direction == BUY
         levels: dict[int, int] = {}
         while bits:
-            lowest = bits & -bits
-            index = lowest.bit_length() - 1
-            levels[self.origin + index] = volumes[index]
-            bits ^= lowest
+            index = bits.bit_length() - 1
+            price = origin + index if buying else ceiling - index
+            levels[price] = volumes[price - origin]
+            bits ^= 1 << index
         return levels
 
     def occupied_levels(
@@ -994,18 +1101,30 @@ class TickArrayBook(AggregateBook):
             raise ValueError(f"reported_depth must be >= 1, got {reported_depth}")
         bits = self._bits[direction]
         volumes = self._volumes[direction]
+        origin, ceiling = self.origin, self.ceiling
+        buying = direction == BUY
         found: list[tuple[int, int]] = []
         while bits and len(found) < reported_depth:
-            index = (bits.bit_length() - 1) if direction == BUY else ((bits & -bits).bit_length() - 1)
-            found.append((self.origin + index, volumes[index]))
+            index = bits.bit_length() - 1
+            price = origin + index if buying else ceiling - index
+            found.append((price, volumes[price - origin]))
             bits ^= 1 << index
         return found
 
     def span_bits(self, direction: int, reported_depth: ReportedDepth) -> int:
-        return _span_bits(
-            self._bits[direction], self.origin,
-            self.occupied_levels(direction, reported_depth),
-        )
+        """The occupancy window, cut in this book's own bit order.
+
+        The ask bits count down from the ceiling, so the window is measured from there;
+        taking ``price - origin`` on both sides would mask the wrong end of the integer
+        and read the gaps of a book reflected in the band.
+        """
+        levels = self.occupied_levels(direction, reported_depth)
+        if len(levels) < 2:
+            return 0
+        base = self.origin if direction == BUY else self.ceiling
+        first, last = abs(levels[0][0] - base), abs(levels[-1][0] - base)
+        low, high = (first, last) if first < last else (last, first)
+        return (self._bits[direction] & (((1 << (high - low + 1)) - 1) << low)) >> low
 
     def gap_count(self, direction: int, reported_depth: ReportedDepth) -> int:
         return count_binary_gaps(self.span_bits(direction, reported_depth))
@@ -1014,43 +1133,6 @@ class TickArrayBook(AggregateBook):
         self, direction: int, reported_depth: ReportedDepth
     ) -> int:
         return measure_largest_binary_gap(self.span_bits(direction, reported_depth))
-
-    def side_statistics(
-        self, direction: int, reported_depth: ReportedDepth
-    ) -> SideStatistics:
-        return _side_statistics_from_bits(self, direction, reported_depth)
-
-    def write_lobster_row(
-        self, out: np.ndarray, row: int, price_unit: int, reported_depth: ReportedDepth
-    ) -> None:
-        """Walk the occupancy bits straight into the output row.
-
-        The band is already an array indexed by tick, so the row can be filled from it
-        without the intermediate list of ``(price, volume)`` pairs the inherited version
-        builds.  This is the one rung where the book's storage and the file's row have
-        the same shape.
-        """
-        target = out[row]
-        for offset, (direction, padding) in enumerate(
-            ((SELL, ASK_PADDING), (BUY, BID_PADDING))
-        ):
-            bits = self._bits[direction]
-            volumes = self._volumes[direction]
-            column = 2 * offset
-            level = 0
-            while bits and level < reported_depth:
-                index = (
-                    bits.bit_length() - 1 if direction == BUY
-                    else (bits & -bits).bit_length() - 1
-                )
-                target[4 * level + column] = (self.origin + index) * price_unit
-                target[4 * level + column + 1] = volumes[index]
-                bits ^= 1 << index
-                level += 1
-            while level < reported_depth:
-                target[4 * level + column] = padding
-                target[4 * level + column + 1] = 0
-                level += 1
 
     def queue_imbalance(self, n: GridDepth) -> float:
         """Read the grid window straight out of the volume array.
@@ -1074,6 +1156,45 @@ class TickArrayBook(AggregateBook):
         if total == 0:
             return float("nan")
         return (totals[0] - totals[1]) / total
+
+    def queue_imbalance_profile(
+        self, imbalance_levels: tuple[GridDepth, ...]
+    ) -> list[float]:
+        """The nested windows as one slice of the volume array per side.
+
+        The band *is* the grid, so the running totals are ``itertools.accumulate`` over a
+        slice and never enter Python.  Where the window runs off the band the slice comes
+        back short, and the total stops growing: a position outside the band holds
+        nothing, which :meth:`volume_at` already gives as a true answer.
+        """
+        deepest = max(imbalance_levels)
+        if deepest <= 0:
+            raise ValueError(
+                f"n counts grid levels from the touch and must be >= 1, got {deepest}"
+            )
+        running: dict[int, list[int]] = {}
+        for direction in (BUY, SELL):
+            best = self.best_price(direction)
+            if best is None:
+                running[direction] = [0] * deepest
+                continue
+            volumes = self._volumes[direction]
+            start = best - self.origin
+            window = (
+                volumes[max(0, start - deepest + 1):start + 1][::-1] if direction == BUY
+                else volumes[start:start + deepest]
+            )
+            totals = list(accumulate(window))
+            totals += [totals[-1]] * (deepest - len(totals))
+            running[direction] = totals
+        profile = []
+        for n in imbalance_levels:
+            bid_total, ask_total = running[BUY][n - 1], running[SELL][n - 1]
+            total = bid_total + ask_total
+            profile.append(
+                float("nan") if total == 0 else (bid_total - ask_total) / total
+            )
+        return profile
 
     def copy(self) -> "TickArrayBook":
         clone = self._empty_like()

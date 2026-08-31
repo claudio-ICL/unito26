@@ -10,9 +10,18 @@ every occupied level while returning zero from `levels` and the volume accessors
 nothing else here would notice.
 """
 
+import math
+
 import pytest
 
-from unito26.lob.messages import BUY, SELL, is_market_price, limit_order, withdrawal
+from unito26.lob.messages import (
+    BUY,
+    SELL,
+    GridDepth,
+    is_market_price,
+    limit_order,
+    withdrawal,
+)
 from unito26.lob.orderbook import (
     AXIS_B_VARIANTS,
     AggregateBook,
@@ -133,3 +142,105 @@ class TestTheBandIsTheFusedBookTradeOff:
         book = TickArrayBook.from_levels({1005: 50}, {1008: 40})
         assert book.volume_at(BUY, 999_999) == 0
         assert len(book.levels(SELL, DEPTH)) == DEPTH
+
+
+class TestTheCeilingIsPartOfTheEncoding:
+    """The ask bitmap counts down from `ceiling`, and the two ways it can be wrong differ.
+
+    `price -> C - price` is self-inverse for *any* C, so an encode and a decode sharing a
+    wrong C still agree with each other.  A ceiling set too *low* is loud -- a price above
+    it shifts by a negative count and raises -- while one set too *high* is silent, and
+    merely leaves the occupancy integer wider than the band.  So the edges are checked for
+    the decode and `ceiling` itself for the tightness, since no behaviour reports the
+    second.  Every other test keeps its prices `BAND_MARGIN` clear of the edges, which is
+    why the band is built by hand here.
+    """
+
+    ORIGIN, WIDTH = 1000, 10
+
+    def book(self):
+        return TickArrayBook(origin=self.ORIGIN, width=self.WIDTH)
+
+    @pytest.mark.parametrize("offset", [0, 1, 4, 8, 9])
+    def test_an_ask_anywhere_in_the_band_decodes_to_itself(self, offset):
+        book = self.book()
+        price = self.ORIGIN + offset
+        book.set_volume(SELL, price, 70)
+        assert book.best_ask_price == price
+        assert book.levels_map(SELL) == {price: 70}
+        assert book.occupied_levels(SELL, 3) == [(price, 70)]
+
+    def test_the_two_edges_are_both_reachable_and_ordered(self):
+        book = self.book()
+        floor, ceiling = self.ORIGIN, self.ORIGIN + self.WIDTH - 1
+        assert book.ceiling == ceiling
+        book.set_volume(SELL, ceiling, 11)
+        book.set_volume(SELL, floor, 22)
+        assert book.best_ask_price == floor
+        assert book.occupied_levels(SELL, 2) == [(floor, 22), (ceiling, 11)]
+        assert book.levels_map(SELL) == {floor: 22, ceiling: 11}
+
+    def test_it_matches_the_baseline_at_the_edges(self):
+        floor, ceiling = self.ORIGIN, self.ORIGIN + self.WIDTH - 1
+        asks = {floor: 22, floor + 3: 33, ceiling: 11}
+        book = self.book()
+        for price, volume in asks.items():
+            book.set_volume(SELL, price, volume)
+        reference = AggregateBook.from_levels({}, asks)
+        assert book.levels_map(SELL) == reference.levels_map(SELL)
+        for depth in (1, 2, 3):
+            assert book.occupied_levels(SELL, depth) == reference.occupied_levels(SELL, depth)
+            assert book.side_statistics(SELL, depth) == reference.side_statistics(SELL, depth)
+
+    def test_a_copy_decodes_its_ask_side_the_same_way(self):
+        """`copy` goes through `_empty_like`, which must preserve the width: the ask bits
+        are meaningless against a different one."""
+        book = self.book()
+        book.set_volume(SELL, self.ORIGIN + self.WIDTH - 1, 11)
+        book.set_volume(SELL, self.ORIGIN, 22)
+        clone = book.copy()
+        assert clone.ceiling == book.ceiling
+        assert clone.levels_map(SELL) == book.levels_map(SELL)
+        assert clone.best_ask_price == book.best_ask_price
+
+
+class TestTheImbalanceProfile:
+    """`queue_imbalance_profile` is the batched reading; `queue_imbalance` is the
+    definition.  Nothing keeps them together except this."""
+
+    LEVELS = tuple(GridDepth(n) for n in (1, 2, 3, 5, 10, 40))
+
+    @pytest.mark.parametrize("book_cls", AXIS_B_VARIANTS, ids=lambda c: c.__name__)
+    @pytest.mark.parametrize(
+        "bids,asks",
+        [
+            ({1000: 100, 999: 200, 995: 50}, {1002: 120, 1003: 180, 1010: 40}),
+            ({1000: 100}, {1001: 100}),
+            ({1000: 900}, {1002: 100}),      # bid-heavy: the sign convention
+            ({}, {1001: 50}),                # one side empty: -1 everywhere
+            ({1000: 50}, {}),                # the other: +1 everywhere
+            ({}, {}),                        # both empty: NaN everywhere
+        ],
+    )
+    def test_it_agrees_with_the_definition_term_by_term(self, book_cls, bids, asks):
+        book = book_cls.from_levels(bids, asks)
+        profile = book.queue_imbalance_profile(self.LEVELS)
+        for n, batched in zip(self.LEVELS, profile):
+            alone = book.queue_imbalance(n)
+            assert (math.isnan(batched) and math.isnan(alone)) or batched == alone
+
+    def test_the_window_may_run_off_the_band(self):
+        """A grid position outside the band holds nothing, so the running total stops
+        growing rather than going short or raising."""
+        book = TickArrayBook(origin=1000, width=10)
+        book.set_volume(BUY, 1001, 30)
+        book.set_volume(SELL, 1008, 70)
+        reference = AggregateBook.from_levels({1001: 30}, {1008: 70})
+        wide = tuple(GridDepth(n) for n in (1, 2, 3, 9, 40, 400))
+        assert book.queue_imbalance_profile(wide) == reference.queue_imbalance_profile(wide)
+
+    @pytest.mark.parametrize("book_cls", AXIS_B_VARIANTS, ids=lambda c: c.__name__)
+    def test_a_level_below_one_is_refused(self, book_cls):
+        book = book_cls.from_levels({1000: 10}, {1001: 10})
+        with pytest.raises(ValueError, match="must be >= 1"):
+            book.queue_imbalance_profile((GridDepth(0),))

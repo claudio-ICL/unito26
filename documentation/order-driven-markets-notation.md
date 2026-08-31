@@ -337,10 +337,20 @@ Names carried by the implementation rather than by the notes, recorded here so t
 not reinvented: `occupied_levels(direction, reported_depth)` for the LOBSTER indexing,
 `grid_span` for the number of grid positions a given set of reported levels covers,
 `empty_grid_positions` and `gap_count` for the holes between them, `side_statistics` for
-all of those read in one pass, `column_sliced_imbalance` for the expression that is *not*
-$I^n$, and the types `GridDepth` / `ReportedDepth` that keep the two counts from being
-swapped. See
+all of those read in one pass, `queue_imbalance_profile(imbalance_levels)` for $I^n$ at
+several $n$ from one walk of each side, `column_sliced_imbalance` for the expression that
+is *not* $I^n$, and the types `GridDepth` / `ReportedDepth` that keep the two counts from
+being swapped. See
 [`grid-levels-and-lobster-levels.md`](grid-levels-and-lobster-levels.md).
+
+Three further gap statistics say *where* the holes are, not only how many:
+`first_gap_distance` and `largest_gap_distance` for the distance in ticks from the touch to
+the nearest and to the longest run of empty positions, and `first_gap_size` for the length
+of the nearest one. **A distance is measured to the empty position**, so a gap opening at
+grid position $i$ lies $i - 1$ ticks from the touch; the largest-gap tie-break is toward the
+touch. Where a side has no gap there is no position to name, and zero would name the touch,
+which always carries volume: a book answers `None`, a frame NaN. `first_gap_size` answers
+zero, as `largest_gap` does, because a length of zero is a true answer.
 
 The order tuple itself has no macros: $t$ is time, $q$ size, $p$ price, $d$ direction, and
 $(s, \rho, \pi, -d)$ is the resting counterpart of $(t, q, p, d)$. In code, keep the tuple
