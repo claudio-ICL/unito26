@@ -3,8 +3,8 @@
 Notation follows ``documentation/order-driven-markets-notation.md``: an order is the
 4-tuple ``(t, q, p, d)`` -- time, size, price, direction -- *in that order*, with
 ``d = +1`` for a buy and ``d = -1`` for a sell.  ``d`` is an ``int``, never a string
-and never a bool, because the single expression ``p * d`` collapses both sides of the
-book into one comparison and that is the trick the whole matching engine rests on.
+and never a bool, because the expression ``p * d`` collapses both sides of the book into
+one comparison, on which the matching engine rests.
 
 Prices are **integer counts of ticks** everywhere inside the package.  Conversion to
 and from currency happens once, at the boundary, in :class:`TickGrid`.  Floats on a
@@ -73,10 +73,10 @@ def is_market_price(price: int) -> bool:
 class MessageType(IntEnum):
     """What a message asks the book to do.
 
-    There are deliberately only two.  A marketable limit order is *not* a third kind:
-    by the decomposition of section 6, every incoming order is processed as
-    market-part-then-resting-part along one code path, so "aggressive" and "passive"
-    are outcomes rather than categories.
+    There are two.  A marketable limit order is not a third kind: by the decomposition
+    of section 6, every incoming order is processed as market-part-then-resting-part
+    along one code path, so "aggressive" and "passive" are outcomes rather than
+    categories.
     """
 
     SUBMIT = 1
@@ -95,9 +95,8 @@ class MessageType(IntEnum):
 class Message:
     """One element of the order stream: the tuple ``(t, q, p, d)`` plus what to do.
 
-    Immutable and slotted.  Immutability matters because the stream is replayed, often
-    more than once, and a mutable message that the engine edited in passing would make
-    the second replay differ from the first.
+    Immutable and slotted.  The stream is replayed, often more than once, and a mutable
+    message edited in passing would make the second replay differ from the first.
     """
 
     time: float
@@ -119,9 +118,9 @@ class Message:
 class Fill:
     """One trade: ``size`` shares at the **resting** order's price.
 
-    A fill never prints at the incoming order's limit price.  Getting this wrong
-    flatters every execution backtest ever written, which is why it has its own type
-    rather than being a bare tuple.
+    A fill never prints at the incoming order's limit price.  Using the incoming price
+    overstates the quality of every execution measured against it, which is why this has
+    its own type rather than being a bare tuple.
     """
 
     price: int
@@ -167,9 +166,9 @@ class TickGrid:
         """Currency price to tick count, refusing prices off the grid.
 
         ``round`` rather than ``int`` because ``10.02 / 0.01`` is ``1001.9999...`` in
-        binary floating point; truncating would silently lose a tick.  The tolerance
-        check is what turns a rounding convenience into a boundary that rejects bad
-        input instead of quietly relocating it.
+        binary floating point, and truncating would lose a tick.  The tolerance check
+        rejects a price genuinely off the grid rather than relocating it to the nearest
+        one.
         """
         exact = price / self.tick_size
         ticks = round(exact)

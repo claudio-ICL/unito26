@@ -1,8 +1,10 @@
 """Round trips through the schema-checked frames, and the frozen examples.
 
 The book round trip runs on every rung, because a variant that keeps an index beside its
-dict is exactly the one a careless reconstruction leaves quietly wrong.
+dict is the one a careless reconstruction leaves quietly wrong.
 """
+
+import json
 
 import numpy as np
 import pandas as pd
@@ -21,23 +23,28 @@ PRICE_UNIT = 100
 class TestMarkParams:
     def test_round_trip(self):
         marks = MarkParams(depth_decay=0.45, mean_log_size=4.0, sigma_log_size=0.8, lot=10)
-        assert frames.mark_params_from_frame(frames.mark_params_to_frame(marks)) == marks
+        assert MarkParams.from_frame(marks.to_frame()) == marks
+
+    def test_the_record_and_json_forms_round_trip(self):
+        marks = MarkParams(0.45, 4.0, 0.8, 10)
+        assert MarkParams.from_records(marks.to_records()) == marks
+        assert MarkParams.from_json(marks.to_json(2)) == marks
 
     def test_a_decay_outside_the_unit_interval_is_rejected(self):
-        frame = frames.mark_params_to_frame(MarkParams(0.45, 4.0, 0.8, 10))
+        frame = MarkParams(0.45, 4.0, 0.8, 10).to_frame()
         frame.loc[0, "DepthDecay"] = 1.5
         with pytest.raises(pandera.errors.SchemaError):
-            frames.mark_params_from_frame(frame)
+            MarkParams.from_frame(frame)
 
     def test_certainty_at_the_touch_is_allowed(self):
         # p = 1 puts every order at the touch, which is a parametrisation, not an error.
         marks = MarkParams(1.0, 4.0, 0.8, 10)
-        assert frames.mark_params_from_frame(frames.mark_params_to_frame(marks)) == marks
+        assert MarkParams.from_frame(marks.to_frame()) == marks
 
     def test_a_missing_column_is_rejected(self):
-        frame = frames.mark_params_to_frame(MarkParams(0.45, 4.0, 0.8, 10)).drop(columns=["Lot"])
+        frame = MarkParams(0.45, 4.0, 0.8, 10).to_frame().drop(columns=["Lot"])
         with pytest.raises(pandera.errors.SchemaError):
-            frames.mark_params_from_frame(frame)
+            MarkParams.from_frame(frame)
 
 
 class TestHawkesParams:
@@ -46,52 +53,69 @@ class TestHawkesParams:
     PARAMS = HawkesParams(baseline=[0.3, 0.7], excitation=[[1.0, 2.0], [3.0, 4.0]], decay=60.0)
 
     def test_round_trip(self):
-        back = frames.hawkes_params_from_frame(frames.hawkes_params_to_frame(self.PARAMS))
+        back = HawkesParams.from_frame(self.PARAMS.to_frame())
         assert np.allclose(back.baseline, self.PARAMS.baseline)
         assert np.allclose(back.excitation, self.PARAMS.excitation)
         assert back.decay == self.PARAMS.decay
 
+    def test_the_record_form_round_trips(self):
+        back = HawkesParams.from_records(self.PARAMS.to_records())
+        assert np.allclose(back.excitation, self.PARAMS.excitation)
+        assert np.allclose(back.baseline, self.PARAMS.baseline)
+
+    def test_the_off_diagonal_baseline_is_a_json_null(self):
+        records = json.loads(self.PARAMS.to_json(0))
+        off_diagonal = [r for r in records if r["Component"] != r["Cause"]]
+        assert all(r["BaseIntensity"] is None for r in off_diagonal)
+        assert HawkesParams.from_json(self.PARAMS.to_json(0)).decay == 60.0
+
+    def test_the_json_file_round_trips(self, tmp_path):
+        path = tmp_path / "flow.json"
+        self.PARAMS.write_json(path, 2)
+        assert np.allclose(HawkesParams.read_json(path).excitation, self.PARAMS.excitation)
+
     def test_row_order_does_not_matter(self):
         """`from_frame` pivots rather than reshaping.  Reshaping a shuffled frame in row
         order transposes it silently, and no schema can constrain row order."""
-        shuffled = frames.hawkes_params_to_frame(self.PARAMS).sample(frac=1.0, random_state=0)
-        back = frames.hawkes_params_from_frame(shuffled)
+        shuffled = self.PARAMS.to_frame().sample(frac=1.0, random_state=0)
+        back = HawkesParams.from_frame(shuffled)
         assert np.allclose(back.excitation, self.PARAMS.excitation)
 
     def test_the_off_diagonal_encoding_is_pinned(self):
         """The only assertion that catches a transpose: a round trip cannot see one, and
         neither can the branching ratio, which is transpose-invariant."""
-        frame = frames.hawkes_params_to_frame(self.PARAMS)
+        frame = self.PARAMS.to_frame()
         row = frame[(frame["Component"] == 0) & (frame["Cause"] == 1)].iloc[0]
         assert row["Kernel"] == 2.0  # excitation[0][1]; a transpose would give 3.0
 
     def test_the_baseline_sits_on_the_diagonal_and_is_null_off_it(self):
-        frame = frames.hawkes_params_to_frame(self.PARAMS)
+        frame = self.PARAMS.to_frame()
         diagonal = frame["Component"] == frame["Cause"]
         assert frame.loc[diagonal, "BaseIntensity"].tolist() == [0.3, 0.7]
         assert frame.loc[~diagonal, "BaseIntensity"].isna().all()
 
     def test_two_decays_are_rejected(self):
-        frame = frames.hawkes_params_to_frame(self.PARAMS)
+        frame = self.PARAMS.to_frame()
         frame.loc[0, "Decay"] = 30.0
         with pytest.raises(ValueError, match="shared by every pair"):
-            frames.hawkes_params_from_frame(frame)
+            HawkesParams.from_frame(frame)
 
     def test_an_incomplete_grid_is_rejected(self):
-        frame = frames.hawkes_params_to_frame(self.PARAMS).iloc[:3]
+        frame = self.PARAMS.to_frame().iloc[:3]
         with pytest.raises(ValueError):
-            frames.hawkes_params_from_frame(frame)
+            HawkesParams.from_frame(frame)
 
 
 @pytest.mark.parametrize("book_cls", AXIS_B_VARIANTS, ids=lambda c: c.__name__)
 class TestBookFrame:
     def round_trip(self, book_cls, bids, asks, depth):
+        depth = ReportedDepth(depth)
         book = book_cls.from_levels(bids, asks)
-        row = frames.book_to_lobster_row(book, PRICE_UNIT, ReportedDepth(depth))
-        frame = frames.lobster_book_schema(ReportedDepth(depth)).validate(
-            pd.DataFrame([row], columns=frames.lobster_book_columns(ReportedDepth(depth)))
+        row = book.to_lobster_row(PRICE_UNIT, depth)
+        frame = frames.lobster_book_schema(depth).validate(
+            pd.DataFrame([row], columns=frames.lobster_book_columns(depth))
         )
-        back = frames.book_from_lobster_row(book_cls, frame.iloc[0], PRICE_UNIT, ReportedDepth(depth))
+        back = book_cls.from_lobster_row(frame.iloc[0], PRICE_UNIT, depth)
         return book, back, frame
 
     def test_case_b_round_trips(self, book_cls):
@@ -124,17 +148,34 @@ class TestBookFrame:
         _, _, frame = self.round_trip(book_cls, {100: 5}, {110: 8}, 1)
         frame.loc[frame.index[0], "AskPrice1"] = 11001
         with pytest.raises(ValueError, match="not a multiple"):
-            frames.book_from_lobster_row(book_cls, frame.iloc[0], PRICE_UNIT, ReportedDepth(1))
+            book_cls.from_lobster_row(frame.iloc[0], PRICE_UNIT, ReportedDepth(1))
+
+    @pytest.mark.parametrize(
+        "bids,asks,depth",
+        [
+            ({998: 150}, {999: 100, 1002: 120, 1003: 180}, 3),
+            ({100: 5, 97: 6, 93: 7}, {110: 8}, 4),
+            ({100: 5}, {110: 8, 111: 9}, 3),
+            ({}, {110: 8}, 2),
+            ({100: 5}, {}, 2),
+        ],
+    )
+    def test_writing_in_place_matches_building_a_row(self, book_cls, bids, asks, depth):
+        """`write_lobster_row` is overridden on the array-backed rung; the two must not
+        drift apart, padding on either side included."""
+        depth = ReportedDepth(depth)
+        book = book_cls.from_levels(bids, asks)
+        out = np.zeros((1, 4 * depth), dtype=np.int64)
+        book.write_lobster_row(out, 0, PRICE_UNIT, depth)
+        assert out[0].tolist() == book.to_lobster_row(PRICE_UNIT, depth)
 
 
 class TestFrozenExamples:
-    def test_the_flow_reserialises_to_the_frozen_constant(self):
-        params = config.example_order_flow_params()
-        assert frames.to_json(frames.hawkes_params_to_frame(params)) == config.EXAMPLE_ORDER_FLOW_PARAMS
+    def test_the_flow_reserialises_to_the_frozen_records(self):
+        assert config.example_order_flow_params().to_records() == config.EXAMPLE_ORDER_FLOW_PARAMS
 
-    def test_the_marks_reserialise_to_the_frozen_constant(self):
-        marks = config.example_mark_params()
-        assert frames.to_json(frames.mark_params_to_frame(marks)) == config.EXAMPLE_MARK_PARAMS
+    def test_the_marks_reserialise_to_the_frozen_records(self):
+        assert config.example_mark_params().to_records() == config.EXAMPLE_MARK_PARAMS
 
     def test_the_documented_properties_survive_the_freezing(self):
         """The construction that produced these numbers is gone, so what it was built to

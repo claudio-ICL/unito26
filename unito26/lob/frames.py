@@ -1,42 +1,31 @@
-"""Schemas, and the round trip between the model objects and validated DataFrames.
+"""The frame side of the package: the serialization protocol, and LOBSTER's vocabulary.
 
-The schemas live here rather than on the classes they describe: ``orderbook.py`` is the
-file a reader goes to for the book itself, and hanging a validation library off it costs
-that reading and buys the book nothing.
+A serializable model object owns its own schema and its own conversions; what lives here
+is what belongs to no single class.  :class:`FrameSerializable` fixes the protocol they
+implement and writes the record and JSON forms once.  The sentinels and the column names
+are LOBSTER's, shared by the book, the session and the file loader.
 
-Column names are CamelCase throughout -- they are schema keys, not Python identifiers.
-The book frame follows LOBSTER's own layout exactly, including its padding sentinels, so
-a shipped orderbook file and one we wrote are the same object.
+Column names are CamelCase throughout: they are schema keys, not Python identifiers.  The
+book frame follows LOBSTER's layout exactly, padding sentinels included, so a shipped
+orderbook file and one we wrote are the same object.
 """
 
 from __future__ import annotations
 
-import io
+import json
+from abc import ABC, abstractmethod
 
-import numpy as np
 import pandas as pd
 import pandera.pandas as pa
 
-from unito26.lob.hawkes import HawkesParams
-from unito26.lob.messages import BUY, SELL, ReportedDepth
-from unito26.lob.orderbook import AggregateBook
-from unito26.lob.simulate import MarkParams
+from unito26.lob.messages import ReportedDepth
 
 __all__ = [
     "BID_PADDING",
     "ASK_PADDING",
-    "mark_params_schema",
-    "mark_params_to_frame",
-    "mark_params_from_frame",
-    "hawkes_params_schema",
-    "hawkes_params_to_frame",
-    "hawkes_params_from_frame",
-    "lobster_book_schema",
+    "FrameSerializable",
     "lobster_book_columns",
-    "book_to_lobster_row",
-    "book_from_lobster_row",
-    "to_json",
-    "from_json",
+    "lobster_book_schema",
 ]
 
 #: What LOBSTER writes where a side holds fewer levels than the file's depth.  The two
@@ -46,121 +35,69 @@ BID_PADDING = -9999999999
 ASK_PADDING = 9999999999
 
 
-# ---- parameters -------------------------------------------------------------------
+def _plain(value):
+    """A pandas cell as a plain Python scalar, with every flavour of null as ``None``."""
+    if value is None or (not isinstance(value, (list, tuple)) and pd.isna(value)):
+        return None
+    return value.item() if hasattr(value, "item") else value
 
 
-def mark_params_schema() -> pa.DataFrameSchema:
-    return pa.DataFrameSchema(
-        {
-            "DepthDecay": pa.Column(
-                float, pa.Check.in_range(0.0, 1.0, include_min=False), coerce=True
-            ),
-            "MeanLogSize": pa.Column(float, coerce=True),
-            "SigmaLogSize": pa.Column(float, pa.Check.gt(0.0), coerce=True),
-            "Lot": pa.Column("Int64", pa.Check.ge(1), coerce=True),
-        },
-        strict=True,
-    )
+class FrameSerializable(ABC):
+    """A model object with one canonical DataFrame form.
 
+    A subclass supplies three things -- the schema, and the two conversions.  The record
+    and JSON forms follow from those and are written once, here, so that every
+    parametrization in the package is stored and read the same way.
 
-def mark_params_to_frame(marks: MarkParams) -> pd.DataFrame:
-    frame = pd.DataFrame(
-        {
-            "DepthDecay": [float(marks.depth_decay)],
-            "MeanLogSize": [float(marks.mean_log_size)],
-            "SigmaLogSize": [float(marks.sigma_log_size)],
-            "Lot": [marks.lot],
-        }
-    )
-    return mark_params_schema().validate(frame)
-
-
-def mark_params_from_frame(frame: pd.DataFrame) -> MarkParams:
-    frame = mark_params_schema().validate(frame)
-    if len(frame) != 1:
-        raise ValueError(f"mark parameters are one row, got {len(frame)}")
-    row = frame.iloc[0]
-    return MarkParams(
-        depth_decay=float(row["DepthDecay"]),
-        mean_log_size=float(row["MeanLogSize"]),
-        sigma_log_size=float(row["SigmaLogSize"]),
-        lot=int(row["Lot"]),
-    )
-
-
-def hawkes_params_schema() -> pa.DataFrameSchema:
-    return pa.DataFrameSchema(
-        {
-            "Component": pa.Column("Int64", pa.Check.ge(0), coerce=True),
-            "Cause": pa.Column("Int64", pa.Check.ge(0), coerce=True),
-            "BaseIntensity": pa.Column(float, pa.Check.ge(0.0), nullable=True, coerce=True),
-            "Kernel": pa.Column(float, pa.Check.ge(0.0), coerce=True),
-            "Decay": pa.Column(float, pa.Check.gt(0.0), coerce=True),
-        },
-        strict=True,
-    )
-
-
-def hawkes_params_to_frame(params: HawkesParams) -> pd.DataFrame:
-    """Long form: one row per ``(Component, Cause)`` pair.
-
-    ``Component`` is the type being excited and ``Cause`` the type exciting it, matching
-    ``excitation[i, j]``.  The baseline is a vector, so it sits on the diagonal and is
-    null off it; the decay is a scalar and repeats.
+    Records are the storage form: a list of one dict per frame row, keyed by schema
+    column, holding plain Python scalars with ``None`` for a null.  A frozen example is
+    written in a source file as a record list, which stays readable and stays diffable.
     """
-    dimension = params.dimension
-    index = pd.MultiIndex.from_product(
-        [range(dimension), range(dimension)], names=("Component", "Cause")
-    )
-    baseline = np.full((dimension, dimension), np.nan)
-    np.fill_diagonal(baseline, params.baseline)
-    frame = pd.DataFrame(
-        {
-            "BaseIntensity": baseline.flatten(),
-            "Kernel": params.excitation.flatten(),
-            "Decay": float(params.decay),
-        },
-        index=index,
-    ).reset_index()
-    return hawkes_params_schema().validate(frame)
+
+    __slots__ = ()
+
+    @classmethod
+    @abstractmethod
+    def schema(cls) -> pa.DataFrameSchema:
+        """The pandera schema every frame form of this class validates against."""
+
+    @abstractmethod
+    def to_frame(self) -> pd.DataFrame:
+        """This object as a validated frame."""
+
+    @classmethod
+    @abstractmethod
+    def from_frame(cls, frame: pd.DataFrame) -> "FrameSerializable":
+        """Rebuild from a frame, validating it first."""
+
+    def to_records(self) -> list[dict]:
+        return [
+            {column: _plain(value) for column, value in row.items()}
+            for row in self.to_frame().to_dict("records")
+        ]
+
+    @classmethod
+    def from_records(cls, records: list[dict]) -> "FrameSerializable":
+        return cls.from_frame(pd.DataFrame(records))
+
+    def to_json(self, indent: int) -> str:
+        return json.dumps(self.to_records(), indent=indent)
+
+    @classmethod
+    def from_json(cls, text: str) -> "FrameSerializable":
+        return cls.from_records(json.loads(text))
+
+    @classmethod
+    def read_json(cls, path) -> "FrameSerializable":
+        with open(path, encoding="utf-8") as handle:
+            return cls.from_records(json.load(handle))
+
+    def write_json(self, path, indent: int) -> None:
+        with open(path, "w", encoding="utf-8") as handle:
+            handle.write(self.to_json(indent))
 
 
-def hawkes_params_from_frame(frame: pd.DataFrame) -> HawkesParams:
-    """Rebuild by pivoting on ``(Component, Cause)``.
-
-    Reshaping in row order would silently transpose a frame whose rows arrived in a
-    different order, and no schema can constrain row order.
-    """
-    frame = hawkes_params_schema().validate(frame)
-    decays = frame["Decay"].unique()
-    if len(decays) != 1:
-        raise ValueError(f"the decay is shared by every pair; frame carries {list(decays)}")
-
-    kernel = frame.pivot(index="Component", columns="Cause", values="Kernel")
-    dimension = len(kernel)
-    if kernel.shape != (dimension, dimension) or kernel.isna().to_numpy().any():
-        raise ValueError(f"the (Component, Cause) grid must be complete and square, got {kernel.shape}")
-
-    diagonal = frame[frame["Component"] == frame["Cause"]].sort_values("Component")
-    if len(diagonal) != dimension:
-        raise ValueError(f"expected {dimension} diagonal rows carrying the baseline, got {len(diagonal)}")
-    return HawkesParams(
-        baseline=diagonal["BaseIntensity"].to_numpy(dtype=float),
-        excitation=kernel.to_numpy(dtype=float),
-        decay=float(decays[0]),
-    )
-
-
-def to_json(frame: pd.DataFrame) -> str:
-    return frame.to_json()
-
-
-def from_json(text: str) -> pd.DataFrame:
-    """``pd.read_json`` treats a bare string as a path, so the text is wrapped."""
-    return pd.read_json(io.StringIO(text))
-
-
-# ---- the book ---------------------------------------------------------------------
+# ---- the book frame ----------------------------------------------------------------
 
 
 def lobster_book_columns(reported_depth: ReportedDepth) -> list[str]:
@@ -176,7 +113,7 @@ def lobster_book_schema(reported_depth: ReportedDepth) -> pa.DataFrameSchema:
 
     No timestamp: a LOBSTER orderbook file carries none, its rows being aligned with the
     message file.  Time belongs on the index.  No nulls either -- a short side is padded
-    with the sentinels, exactly as the file does it.
+    with the sentinels, as the file does it.
     """
     columns = {}
     for level in range(1, reported_depth + 1):
@@ -185,46 +122,3 @@ def lobster_book_schema(reported_depth: ReportedDepth) -> pa.DataFrameSchema:
         columns[f"BidPrice{level}"] = pa.Column("Int64", coerce=True)
         columns[f"BidSize{level}"] = pa.Column("Int64", pa.Check.ge(0), coerce=True)
     return pa.DataFrameSchema(columns, strict=True, ordered=True)
-
-
-def book_to_lobster_row(
-    book: AggregateBook, price_unit: int, reported_depth: ReportedDepth
-) -> list[int]:
-    """One row of the top ``reported_depth`` **occupied** levels, in file units.
-
-    ``price_unit`` is the number of LOBSTER price units in one tick -- 100 for a penny,
-    since LOBSTER quotes dollars times 10000.  It is an integer, unlike
-    :class:`~unito26.lob.messages.TickGrid`'s currency ``tick_size``.
-    """
-    asks = book.occupied_levels(SELL, reported_depth)
-    bids = book.occupied_levels(BUY, reported_depth)
-    row: list[int] = []
-    for level in range(reported_depth):
-        ask = asks[level] if level < len(asks) else (None, 0)
-        bid = bids[level] if level < len(bids) else (None, 0)
-        row += [
-            ASK_PADDING if ask[0] is None else ask[0] * price_unit, ask[1],
-            BID_PADDING if bid[0] is None else bid[0] * price_unit, bid[1],
-        ]
-    return row
-
-
-def book_from_lobster_row(
-    book_cls: type[AggregateBook], row, price_unit: int, reported_depth: ReportedDepth
-) -> AggregateBook:
-    """Inverse of :func:`book_to_lobster_row`, for any rung of the ladder.
-
-    A classmethod-style constructor rather than a method: the band-indexed books must be
-    sized from the prices before anything is written into them.
-    """
-    levels: dict[int, dict[int, int]] = {BUY: {}, SELL: {}}
-    for level in range(1, reported_depth + 1):
-        for direction, side, padding in ((SELL, "Ask", ASK_PADDING), (BUY, "Bid", BID_PADDING)):
-            price = int(row[f"{side}Price{level}"])
-            size = int(row[f"{side}Size{level}"])
-            if price == padding or size == 0:
-                continue
-            if price % price_unit:
-                raise ValueError(f"price {price} is not a multiple of {price_unit}")
-            levels[direction][price // price_unit] = size
-    return book_cls.from_levels(levels[BUY], levels[SELL])

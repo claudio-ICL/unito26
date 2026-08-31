@@ -141,9 +141,9 @@ def deep_sizeof(obj, seen: set[int] | None = None) -> int:
 def measure_memory(variants, session: Session) -> dict[str, dict[str, int]]:
     """Static and allocated size of each variant after folding the session.
 
-    Both, because neither alone is honest: the static walk misses what was allocated
-    and released along the way, and the tracemalloc peak misses nothing but attributes
-    everything, including the stream itself.
+    Both, because neither alone is enough: the static walk misses what was allocated and
+    released along the way, and the tracemalloc peak misses nothing but attributes
+    everything to the book, including the stream itself.
     """
     measurements = {}
     for cls in variants:

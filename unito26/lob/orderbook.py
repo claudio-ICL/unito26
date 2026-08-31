@@ -21,7 +21,10 @@ import heapq
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 
+import numpy as np
+
 from unito26.lob.binary_gaps import count_binary_gaps, measure_largest_binary_gap
+from unito26.lob.frames import ASK_PADDING, BID_PADDING
 from unito26.lob.messages import (
     BUY,
     SELL,
@@ -36,6 +39,7 @@ from unito26.lob.messages import (
 
 __all__ = [
     "SubmitResult",
+    "SideStatistics",
     "AggregateBook",
     "CachedBestBook",
     "HeapBook",
@@ -58,6 +62,25 @@ def _span_bits(bits: int, origin: int, levels: list[tuple[int, int]]) -> int:
     low = min(levels[0][0], levels[-1][0]) - origin
     high = max(levels[0][0], levels[-1][0]) - origin
     return (bits & (((1 << (high - low + 1)) - 1) << low)) >> low
+
+
+def _side_statistics_from_bits(book, direction: int, reported_depth) -> "SideStatistics":
+    """The side's statistics read off the occupancy integer, for the bitmap-backed rungs.
+
+    Shared by :class:`BitmapBook` and :class:`TickArrayBook`, which sit on different
+    branches of the hierarchy and hold the same two attributes.
+    """
+    levels = book.occupied_levels(direction, reported_depth)
+    if not levels:
+        return SideStatistics([], 0, 0, 0, 0)
+    bits = _span_bits(book._bits[direction], book.origin, levels)
+    return SideStatistics(
+        levels=levels,
+        occupied=len(levels),
+        grid_span=abs(levels[-1][0] - levels[0][0]) + 1,
+        gap_count=count_binary_gaps(bits),
+        largest_gap=measure_largest_binary_gap(bits),
+    )
 
 
 def _count_runs(positions: list[int]) -> int:
@@ -88,8 +111,8 @@ class SubmitResult:
 
     Non-zero only for a market order that found nothing to trade against: having named
     no price of its own, and no price to inherit, its remainder is unfillable interest
-    returned to the sender rather than an order.  Named rather than dropped, because
-    shares that vanish silently are the kind of bug a test never catches.
+    returned to the sender rather than an order.  Named rather than dropped, so that
+    shares leaving the book are accounted for.
     """
 
     @property
@@ -107,14 +130,33 @@ class SubmitResult:
         return len({fill.price for fill in self.fills}) > 1
 
 
+@dataclass(frozen=True, slots=True)
+class SideStatistics:
+    """What a session records about one side, read in a single pass over it.
+
+    The individual methods below each walk the side again; a fold that records every
+    statistic after every message pays that walk eight times over.  This type is the
+    batched form, and :meth:`AggregateBook.side_statistics` is where the ladder's index
+    is spent once instead.
+    """
+
+    levels: list[tuple[int, int]]
+    """``(price, volume)``, best first, at most ``reported_depth`` of them."""
+
+    occupied: int
+    grid_span: int
+    gap_count: int
+    largest_gap: int
+
+
 class AggregateBook:
     """The ``{price: volume}`` book: rungs L0 to L3 of the ladder.
 
     Prices are integer tick counts.  The two sides are plain dicts, and the best
-    prices are found by scanning their keys -- the honest baseline, O(number of
-    occupied levels) per lookup.  Every faster variant in this module keeps this
-    class's matching logic and overrides only the best-price lookup, which is the
-    point: the performance ladder is *entirely* about finding the best price.
+    prices are found by scanning their keys: the baseline, O(number of occupied levels)
+    per lookup.  Every faster variant in this module keeps this class's matching logic
+    and overrides only the best-price lookup, so the ladder measures one thing -- the
+    cost of finding the best price.
 
     Parameters
     ----------
@@ -169,11 +211,10 @@ class AggregateBook:
     def best_price(self, direction: int) -> int | None:
         """Best price on the given side: highest bid, or lowest ask.
 
-        **This is the one method the performance ladder replaces.**  Here it is a full
-        scan of the dict keys -- O(number of occupied levels), correct, and obviously
-        so.  Every faster variant in this module overrides exactly this method and
-        inherits the matching logic unchanged, which is the point: the ladder is
-        entirely about finding the best price, not about matching.
+        This is the one method the performance ladder replaces.  Here it is a full scan
+        of the dict keys: O(number of occupied levels), and correct on inspection.  Every
+        faster variant overrides this method and inherits the matching logic unchanged,
+        so the ladder concerns finding the best price and not matching.
         """
         levels = self.levels_map(direction)
         if not levels:
@@ -360,27 +401,116 @@ class AggregateBook:
         """Length of the longest such run.  Zero when the levels are contiguous."""
         return _longest_run(self.empty_grid_positions(direction, reported_depth))
 
-        # ---- sections 2 and 6: the update ---------------------------------------------
+    def side_statistics(
+        self, direction: int, reported_depth: ReportedDepth
+    ) -> SideStatistics:
+        """The four statistics above, from one walk of the side.
 
-    def apply(self, message: Message) -> SubmitResult:
-        """Apply any message.  The stream driver's single entry point."""
+        Each of them agrees with its own method; a test asserts that on every rung.  The
+        variants that hold an occupancy bitmap override this and read all four off one
+        integer.
+        """
+        levels = self.occupied_levels(direction, reported_depth)
+        if not levels:
+            return SideStatistics([], 0, 0, 0, 0)
+        span = abs(levels[-1][0] - levels[0][0]) + 1
+        best = levels[0][0]
+        filled = {abs(price - best) + 1 for price, _ in levels}
+        holes = [i for i in range(1, span + 1) if i not in filled]
+        return SideStatistics(
+            levels=levels,
+            occupied=len(levels),
+            grid_span=span,
+            gap_count=_count_runs(holes),
+            largest_gap=_longest_run(holes),
+        )
+
+    # ---- the LOBSTER row: the book as one line of a file ---------------------------
+
+    def to_lobster_row(self, price_unit: int, reported_depth: ReportedDepth) -> list[int]:
+        """The top ``reported_depth`` **occupied** levels, in file units.
+
+        ``price_unit`` is the number of LOBSTER price units in one tick -- 100 for a
+        penny, since LOBSTER quotes dollars times 10000.  It is an integer, unlike
+        :class:`~unito26.lob.messages.TickGrid`'s currency ``tick_size``.
+        """
+        asks = self.occupied_levels(SELL, reported_depth)
+        bids = self.occupied_levels(BUY, reported_depth)
+        row: list[int] = []
+        for level in range(reported_depth):
+            ask = asks[level] if level < len(asks) else (None, 0)
+            bid = bids[level] if level < len(bids) else (None, 0)
+            row += [
+                ASK_PADDING if ask[0] is None else ask[0] * price_unit, ask[1],
+                BID_PADDING if bid[0] is None else bid[0] * price_unit, bid[1],
+            ]
+        return row
+
+    def write_lobster_row(
+        self, out: np.ndarray, row: int, price_unit: int, reported_depth: ReportedDepth
+    ) -> None:
+        """The same row, written in place into row ``row`` of a preallocated array.
+
+        The fold records thousands of these, so the row is written where it will live
+        rather than built as a list and copied.
+        """
+        out[row] = self.to_lobster_row(price_unit, reported_depth)
+
+    @classmethod
+    def from_lobster_row(
+        cls, row, price_unit: int, reported_depth: ReportedDepth
+    ) -> "AggregateBook":
+        """Inverse of :meth:`to_lobster_row`, for any rung of the ladder.
+
+        A padded level carries a sentinel price and a size of zero, and is skipped: a
+        level of zero volume does not exist, and :meth:`set_volume` would remove it again.
+        """
+        levels: dict[int, dict[int, int]] = {BUY: {}, SELL: {}}
+        for level in range(1, reported_depth + 1):
+            for direction, side, padding in (
+                (SELL, "Ask", ASK_PADDING), (BUY, "Bid", BID_PADDING)
+            ):
+                price = int(row[f"{side}Price{level}"])
+                size = int(row[f"{side}Size{level}"])
+                if price == padding or size == 0:
+                    continue
+                if price % price_unit:
+                    raise ValueError(f"price {price} is not a multiple of {price_unit}")
+                levels[direction][price // price_unit] = size
+        return cls.from_levels(levels[BUY], levels[SELL])
+
+    # ---- sections 2 and 6: the update ---------------------------------------------
+
+    def apply(self, message: Message, record: bool = False) -> SubmitResult | None:
+        """Apply any message.  The stream driver's single entry point.
+
+        ``record`` governs whether the trades and level changes are collected and
+        returned.  A fold that only wants the book's evolution leaves it False and gets
+        ``None`` back, which costs no allocation and turns a later read of ``.fills``
+        into an ``AttributeError`` rather than an empty list.
+        """
         if message.kind is MessageType.SUBMIT:
-            return self.submit(message)
-        return self.withdraw(message)
+            return self.submit(message, record)
+        return self.withdraw(message, record)
 
-    def submit(self, message: Message) -> SubmitResult:
+    def submit(self, message: Message, record: bool = False) -> SubmitResult | None:
         """Process an incoming order: consume the opposite side, then rest the rest.
 
         One code path, not two.  By the decomposition of section 6 an incoming order is
         equivalent to a market order of size ``q_M`` followed by a resting order of
         size ``q - q_M``, so there is no separate branch for "marketable" orders --
         the loop simply does not execute when nothing matches.
+
+        See :meth:`apply` for ``record``.  The one thing the market-order part needs from
+        the fills is the price of the last of them, which :meth:`resting_price` inherits,
+        so that is tracked whether or not the fills themselves are kept.
         """
         remaining = message.size
         direction = message.direction
         limit_price = message.price
-        fills: list[Fill] = []
-        deltas: list[LevelDelta] = []
+        fills: list[Fill] = [] if record else None
+        deltas: list[LevelDelta] = [] if record else None
+        last_fill_price = None
 
         # 1. The market-order part: consume while the price constraint permits.
         while remaining > 0:
@@ -396,23 +526,26 @@ class AggregateBook:
             remaining -= traded
             self.set_volume(-direction, best, resting - traded)
             # A fill trades at the RESTING order's price, never the incoming one.
-            fills.append(Fill(price=best, size=traded, aggressor=direction))
-            deltas.append(LevelDelta(side=-direction, price=best, volume=resting - traded))
+            last_fill_price = best
+            if record:
+                fills.append(Fill(price=best, size=traded, aggressor=direction))
+                deltas.append(LevelDelta(side=-direction, price=best, volume=resting - traded))
 
         # 2. The resting part.
-        rest_price = self.resting_price(limit_price, fills)
+        rest_price = self.resting_price(limit_price, last_fill_price)
         if remaining > 0 and rest_price is not None:
             resting = self.volume_at(direction, rest_price) + remaining
             self.set_volume(direction, rest_price, resting)
-            deltas.append(
-                LevelDelta(side=direction, price=rest_price, volume=resting)
-            )
+            if record:
+                deltas.append(LevelDelta(side=direction, price=rest_price, volume=resting))
             remaining = 0
 
+        if not record:
+            return None
         return SubmitResult(fills=fills, deltas=deltas, unfilled=remaining)
 
     @staticmethod
-    def resting_price(limit_price: int, fills: list[Fill]) -> int | None:
+    def resting_price(limit_price: int, last_fill_price: int | None) -> int | None:
         """Where an unexecuted remainder rests, or None when it cannot rest at all.
 
         An order that named a price rests at it.  A market order named none -- its
@@ -426,23 +559,25 @@ class AggregateBook:
         the opposite side was empty on arrival, so nothing is lost by refusing: there
         was no liquidity to take at any price.
 
-        Resting at the sentinel itself is what must never happen.  A fill trades at the
+        A residual must never rest at the sentinel itself.  A fill trades at the
         *resting* order\'s price, so a residual sitting at ``MARKET_BUY_PRICE`` would
         print later fills at ``sys.maxsize``, and one at ``MARKET_SELL_PRICE`` -- which
-        is 0, indistinguishable from a real price -- would give every subsequent buyer
-        free shares.
+        is 0, and so indistinguishable from a real price -- would give every subsequent
+        buyer free shares.
         """
         if not is_market_price(limit_price):
             return limit_price
-        return fills[-1].price if fills else None
+        return last_fill_price
 
-    def withdraw(self, message: Message) -> SubmitResult:
+    def withdraw(self, message: Message, record: bool = False) -> SubmitResult | None:
         """Remove resting volume at ``(price, direction)``, addressed by quantity.
 
         A quantity-addressed withdrawal is one more signed
         delta on the aggregate state, so the state does not grow.  What changes is that
         level volumes stop being monotone, the best price can now move in both
         directions, and the book can empty entirely.
+
+        See :meth:`apply` for ``record``.
         """
         resting = self.volume_at(message.direction, message.price)
         if message.size > resting and self.strict:
@@ -452,9 +587,11 @@ class AggregateBook:
             )
         removed = min(message.size, resting)
         if removed == 0:
-            return SubmitResult()
+            return SubmitResult() if record else None
         left = resting - removed
         self.set_volume(message.direction, message.price, left)
+        if not record:
+            return None
         return SubmitResult(
             deltas=[LevelDelta(side=message.direction, price=message.price, volume=left)]
         )
@@ -465,8 +602,8 @@ class AggregateBook:
         """An independent copy of the current state.
 
         Anything recording a series of states needs this: storing the book itself stores
-        *the same mutable object* every time, so every recorded state ends up equal to the
-        final one.  That bug is silent and survives casual inspection.
+        the same mutable object every time, so every recorded state ends up equal to the
+        final one.
         """
         clone = self._empty_like()
         for direction in (BUY, SELL):
@@ -562,17 +699,16 @@ class CachedBestBook(AggregateBook):
     often than it is read, so cache it.  Invalidation is the whole difficulty and it has
     exactly three cases, which :meth:`_best_after` enumerates.
 
-    The cache is **derived state**: ``_cached`` is recoverable from the levels at any
-    moment, which is what :meth:`check_cache_is_consistent` asserts, and that
-    recoverability is the only thing that makes a cache defensible.  Keeping it repaired
-    at write time rather than at read time is what leaves :meth:`best_price` a pure
-    lookup with no side effects -- a lazy variant that marked the cache stale and
-    rescanned on the next read measures the same to within 1%, so the simpler shape wins.
+    The cache is derived state: ``_cached`` is recoverable from the levels at any
+    moment, which :meth:`check_cache_is_consistent` asserts.  Repairing it at write time
+    rather than at read time leaves :meth:`best_price` a lookup with no side effects; a
+    lazy variant that marked the cache stale and rescanned on the next read measures the
+    same to within 1%, so the simpler shape is kept.
 
     ``_cached`` is keyed by direction rather than held as two attributes because the
-    code around it is generic in ``d``.  Timing the alternatives is a notebook exercise;
-    the honest summary is that they are within a few nanoseconds of each other, so this
-    is a choice about uniformity and not about speed.
+    code around it is generic in ``d``.  Timing the alternatives is a notebook exercise:
+    they are within a few nanoseconds of each other, so this is a choice about uniformity
+    rather than speed.
     """
 
     def __init__(self, strict: bool = False):
@@ -628,15 +764,14 @@ class CachedBestBook(AggregateBook):
 class HeapBook(AggregateBook):
     """Step 3: a heap of candidate prices, with lazy deletion.
 
-    ``heapq`` is a min-heap only, so the bid side stores negated prices -- the standard
-    trick, and worth meeting once.  Removing a price from the middle of a heap is not
-    supported, so we do not try: entries are left behind and discarded when they reach
-    the top and turn out to name an empty level.  **The top of the heap may be stale;
-    pop until it is not.**
+    ``heapq`` is a min-heap only, so the bid side stores negated prices.  Removing a
+    price from the middle of a heap is not supported, so entries are left behind and
+    discarded when they reach the top and name an empty level: the top of the heap may
+    be stale, and is popped until it is not.
 
-    The cost of lazy deletion is that the heap grows with every level that is ever
-    created, so a long run wants periodic compaction.  :meth:`compact` does that, and
-    the fact that it is needed at all is the honest half of the technique.
+    The cost of lazy deletion is that the heap grows with every level ever created, so a
+    long run needs periodic compaction.  :meth:`compact` does that, and its necessity is
+    part of the cost of the technique.
     """
 
     def __init__(self, strict: bool = False):
@@ -738,6 +873,11 @@ class BitmapBook(AggregateBook):
     ) -> int:
         return measure_largest_binary_gap(self.span_bits(direction, reported_depth))
 
+    def side_statistics(
+        self, direction: int, reported_depth: ReportedDepth
+    ) -> SideStatistics:
+        return _side_statistics_from_bits(self, direction, reported_depth)
+
 
 class TickArrayBook(AggregateBook):
     """Step 5: storage and index fused -- the shape of a real low-latency book.
@@ -748,9 +888,9 @@ class TickArrayBook(AggregateBook):
     is no dict here at all, and :meth:`levels_map` builds one only when something asks
     to inspect the book.
 
-    What that buys is one indirection instead of two, and contiguous memory -- which in
-    C is the whole point, and in CPython is a claim to measure rather than believe,
-    since the interpreter's own overhead may be larger than the difference.
+    What that buys is one indirection instead of two, and contiguous memory.  In C the
+    second is the larger effect; in CPython it is a claim to measure rather than assume,
+    since the interpreter's own overhead may exceed the difference.
 
     What it costs is stated in the constructor: a band, fixed in advance, occupied or
     not.  A lookup table costs the whole table, and a real venue either shifts the band
@@ -874,6 +1014,43 @@ class TickArrayBook(AggregateBook):
         self, direction: int, reported_depth: ReportedDepth
     ) -> int:
         return measure_largest_binary_gap(self.span_bits(direction, reported_depth))
+
+    def side_statistics(
+        self, direction: int, reported_depth: ReportedDepth
+    ) -> SideStatistics:
+        return _side_statistics_from_bits(self, direction, reported_depth)
+
+    def write_lobster_row(
+        self, out: np.ndarray, row: int, price_unit: int, reported_depth: ReportedDepth
+    ) -> None:
+        """Walk the occupancy bits straight into the output row.
+
+        The band is already an array indexed by tick, so the row can be filled from it
+        without the intermediate list of ``(price, volume)`` pairs the inherited version
+        builds.  This is the one rung where the book's storage and the file's row have
+        the same shape.
+        """
+        target = out[row]
+        for offset, (direction, padding) in enumerate(
+            ((SELL, ASK_PADDING), (BUY, BID_PADDING))
+        ):
+            bits = self._bits[direction]
+            volumes = self._volumes[direction]
+            column = 2 * offset
+            level = 0
+            while bits and level < reported_depth:
+                index = (
+                    bits.bit_length() - 1 if direction == BUY
+                    else (bits & -bits).bit_length() - 1
+                )
+                target[4 * level + column] = (self.origin + index) * price_unit
+                target[4 * level + column + 1] = volumes[index]
+                bits ^= 1 << index
+                level += 1
+            while level < reported_depth:
+                target[4 * level + column] = padding
+                target[4 * level + column + 1] = 0
+                level += 1
 
     def queue_imbalance(self, n: GridDepth) -> float:
         """Read the grid window straight out of the volume array.

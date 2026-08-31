@@ -336,8 +336,10 @@ Python identifier — use it, and nothing else, in `unito26/` and in the noteboo
 Names carried by the implementation rather than by the notes, recorded here so they are
 not reinvented: `occupied_levels(direction, reported_depth)` for the LOBSTER indexing,
 `grid_span` for the number of grid positions a given set of reported levels covers,
-`empty_grid_positions` and `gap_count` for the holes between them, and the types
-`GridDepth` / `ReportedDepth` that keep the two counts from being swapped. See
+`empty_grid_positions` and `gap_count` for the holes between them, `side_statistics` for
+all of those read in one pass, `column_sliced_imbalance` for the expression that is *not*
+$I^n$, and the types `GridDepth` / `ReportedDepth` that keep the two counts from being
+swapped. See
 [`grid-levels-and-lobster-levels.md`](grid-levels-and-lobster-levels.md).
 
 The order tuple itself has no macros: $t$ is time, $q$ size, $p$ price, $d$ direction, and

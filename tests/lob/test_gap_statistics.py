@@ -91,3 +91,32 @@ class TestBoundaries:
         holes = book.empty_grid_positions(BUY, ReportedDepth(depth))
         span = book.grid_span(BUY, ReportedDepth(depth))
         assert all(1 < hole < span for hole in holes)
+
+
+class TestTheBatchedRead:
+    """`side_statistics` is what the session fold uses: the same four numbers from one
+    walk of the side rather than four."""
+
+    @pytest.mark.parametrize(
+        "bids,asks,depth",
+        [
+            (LADDER_BIDS, {110: 10}, 5),
+            (LADDER_BIDS, {110: 10}, 3),
+            ({998: 150}, {999: 100, 1002: 120, 1003: 180}, 3),
+            ({100: 5}, {110: 8}, 4),
+            ({}, {110: 8}, 2),
+            ({100: 5}, {}, 2),
+        ],
+    )
+    def test_it_agrees_with_the_individual_methods(self, book_cls, bids, asks, depth):
+        depth = ReportedDepth(depth)
+        book = book_cls.from_levels(bids, asks)
+        for direction in (BUY, SELL):
+            batched = book.side_statistics(direction, depth)
+            assert batched.levels == book.occupied_levels(direction, depth)
+            assert batched.occupied == book.occupied_level_count(direction, depth)
+            assert batched.grid_span == book.grid_span(direction, depth)
+            assert batched.gap_count == book.gap_count(direction, depth)
+            assert batched.largest_gap == book.largest_gap_size_between_non_empty_levels(
+                direction, depth
+            )

@@ -3,13 +3,11 @@
 import pytest
 
 from unito26.lob import config
-from unito26.lob.messages import BUY, MessageType, ReportedDepth
 from unito26.lob.orderbook import AggregateBook
-from unito26.lob.replay import MarketSession, deltas_to_table, run
+from unito26.lob.replay import DeltaLog, run
 from unito26.lob.simulate import EventType, OrderFlowSimulator
 
 REFERENCE_PRICE = 10000
-LEVELS = (GRID_ONE,) = ((1,),)
 
 
 def simulator(seed, marks=None):
@@ -36,12 +34,10 @@ class TestDeltaStorage:
             book.apply(message)
             messages.append(message)
 
-        session = MarketSession.from_occupied_levels(
-            AggregateBook(), messages, ReportedDepth(10), (1,), 100, record_deltas=True
-        )
-        table = deltas_to_table(session.level_deltas)
+        log = DeltaLog.record(AggregateBook(), messages)
+        table = log.to_table()
 
-        assert table.num_rows == len(session.level_deltas)
+        assert table.num_rows == len(log.entries)
         # Most messages move exactly one level; the average is a shade above one.
         assert 0.5 < table.num_rows / len(messages) < 2.5
         # Against a dense 10-level snapshot per message, which is 40 values a row.
@@ -75,11 +71,13 @@ class TestSimulatedFlow:
     def test_reproducible_from_a_seed(self):
         def session():
             book = AggregateBook()
-            return [
-                (m.time, m.size, m.price, m.direction, m.kind)
-                for m in simulator(99).stream(book, horizon=60.0)
-                if book.apply(m) or True
-            ]
+            recorded = []
+            for message in simulator(99).stream(book, horizon=60.0):
+                book.apply(message)
+                recorded.append(
+                    (message.time, message.size, message.price, message.direction, message.kind)
+                )
+            return recorded
 
         assert session() == session()
 

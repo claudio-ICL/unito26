@@ -24,11 +24,10 @@ Why the exponential kernel.  Writing
 
 the vector ``S`` decays deterministically between events and jumps by one in
 coordinate ``j`` when a type-``j`` event occurs.  So ``(N, S)`` is a
-piecewise-deterministic Markov process and the *entire history collapses into d
-floats*.  Recomputing the intensity by summing over all past events would be
-O(n^2) over a run; the recursion is O(1) per event.  It is the same "carry the right
-summary statistic" idea as the aggregate order book, arriving from a different
-direction.
+piecewise-deterministic Markov process and the whole history is carried in ``d`` floats.
+Recomputing the intensity by summing over all past events would be O(n^2) over a run;
+the recursion is O(1) per event.  This is the aggregate order book's idea -- carry the
+sufficient summary rather than the history -- in a different setting.
 """
 
 from __future__ import annotations
@@ -37,12 +36,16 @@ from dataclasses import dataclass
 from typing import Iterator
 
 import numpy as np
+import pandas as pd
+import pandera.pandas as pa
+
+from unito26.lob.frames import FrameSerializable
 
 __all__ = ["HawkesParams", "ExponentialHawkes", "OgataThinningHawkes", "compensators_at_events"]
 
 
 @dataclass(frozen=True, slots=True)
-class HawkesParams:
+class HawkesParams(FrameSerializable):
     """Parameters of a ``d``-type Hawkes process with a common exponential decay.
 
     Attributes
@@ -111,8 +114,8 @@ class HawkesParams:
     def branching_ratio(self) -> float:
         """Spectral radius of the branching matrix.  Stationarity needs it below 1.
 
-        Empirically this sits around 0.7-0.9 for high-frequency order flow, which is
-        the quantitative form of "most order flow is triggered by other order flow".
+        Calibrations on high-frequency order flow report values around 0.7-0.9: most
+        order flow is triggered by other order flow.
         """
         return float(np.max(np.abs(np.linalg.eigvals(self.branching_matrix))))
 
@@ -121,12 +124,83 @@ class HawkesParams:
         identity = np.eye(self.dimension)
         return np.linalg.solve(identity - self.branching_matrix, self.baseline)
 
+    # ---- serialization ---------------------------------------------------------------
+
+    @classmethod
+    def schema(cls) -> pa.DataFrameSchema:
+        """Long form: one row per ``(Component, Cause)`` pair.
+
+        ``BaseIntensity`` is nullable because the baseline is a vector carried on the
+        diagonal; pandera drops nulls before running a check, so the non-negativity
+        constraint applies to the diagonal alone.
+        """
+        return pa.DataFrameSchema(
+            {
+                "Component": pa.Column("Int64", pa.Check.ge(0), coerce=True),
+                "Cause": pa.Column("Int64", pa.Check.ge(0), coerce=True),
+                "BaseIntensity": pa.Column(float, pa.Check.ge(0.0), nullable=True, coerce=True),
+                "Kernel": pa.Column(float, pa.Check.ge(0.0), coerce=True),
+                "Decay": pa.Column(float, pa.Check.gt(0.0), coerce=True),
+            },
+            strict=True,
+        )
+
+    def to_frame(self) -> pd.DataFrame:
+        """``Component`` is the type being excited and ``Cause`` the type exciting it,
+        matching ``excitation[i, j]``.  The baseline sits on the diagonal and is null off
+        it; the decay is a scalar and repeats."""
+        dimension = self.dimension
+        index = pd.MultiIndex.from_product(
+            [range(dimension), range(dimension)], names=("Component", "Cause")
+        )
+        baseline = np.full((dimension, dimension), np.nan)
+        np.fill_diagonal(baseline, self.baseline)
+        frame = pd.DataFrame(
+            {
+                "BaseIntensity": baseline.flatten(),
+                "Kernel": self.excitation.flatten(),
+                "Decay": float(self.decay),
+            },
+            index=index,
+        ).reset_index()
+        return self.schema().validate(frame)
+
+    @classmethod
+    def from_frame(cls, frame: pd.DataFrame) -> "HawkesParams":
+        """Rebuild by pivoting on ``(Component, Cause)``.
+
+        Reshaping in row order would transpose a frame whose rows arrived in a different
+        order, and no schema can constrain row order.
+        """
+        frame = cls.schema().validate(frame)
+        decays = frame["Decay"].unique()
+        if len(decays) != 1:
+            raise ValueError(f"the decay is shared by every pair; frame carries {list(decays)}")
+
+        kernel = frame.pivot(index="Component", columns="Cause", values="Kernel")
+        dimension = len(kernel)
+        if kernel.shape != (dimension, dimension) or kernel.isna().to_numpy().any():
+            raise ValueError(
+                f"the (Component, Cause) grid must be complete and square, got {kernel.shape}"
+            )
+
+        diagonal = frame[frame["Component"] == frame["Cause"]].sort_values("Component")
+        if len(diagonal) != dimension:
+            raise ValueError(
+                f"expected {dimension} diagonal rows carrying the baseline, got {len(diagonal)}"
+            )
+        return cls(
+            baseline=diagonal["BaseIntensity"].to_numpy(dtype=float),
+            excitation=kernel.to_numpy(dtype=float),
+            decay=float(decays[0]),
+        )
+
 
 class _HawkesState:
     """The Markov state ``(t, S)`` shared by both simulation schemes.
 
-    Subclasses differ only in :meth:`step`, which is the whole point: the state and
-    the bookkeeping are the model, the step is the algorithm.
+    Subclasses differ only in :meth:`step`: the state and the bookkeeping are the
+    model, the step is the algorithm.
     """
 
     def __init__(self, params: HawkesParams, rng: np.random.Generator | int | None = None):
@@ -197,12 +271,12 @@ class ExponentialHawkes(_HawkesState):
                         \\ baseline /     \\--------- excited part ---------/
 
     A point process with compensator ``L1 + L2`` is the superposition of two
-    independent ones, so the next inter-arrival is the *minimum of two closed-form
-    draws*.  The excited part carries only the finite total mass
-    ``(Lambda_n - mu_bar) / beta``, and ``S2 = inf`` is exactly the event that it
-    expires without firing -- not an edge case to patch around.
+    independent ones, so the next inter-arrival is the minimum of two closed-form draws.
+    The excited part carries the finite total mass ``(Lambda_n - mu_bar) / beta``, and
+    ``S2 = inf`` is the event that it expires without firing.
 
-    O(1) per event, exact, no rejection, no discretisation bias, no time grid.
+    O(1) per event, exact, with no rejection step, no discretisation bias and no time
+    grid.
     """
 
     def step(self) -> tuple[float, int]:
@@ -234,8 +308,9 @@ class OgataThinningHawkes(_HawkesState):
     the next one.  Propose at the bound, accept with probability
     ``Lambda(t') / Lambda_bar``, and tighten the bound on every rejection.
 
-    Slower and less elegant than :class:`ExponentialHawkes`, but it does not need the
-    kernel to be common-``beta`` -- which is exactly what makes it the honest control.
+    Slower than :class:`ExponentialHawkes`, and it does not need the kernel to be
+    common-``beta``, which is what makes it a control on the exact scheme rather than a
+    restatement of it.
     """
 
     def step(self) -> tuple[float, int]:
@@ -265,9 +340,9 @@ def compensators_at_events(
     statistics that drive the simulation also close the compensator in one line.
 
     Returns an ``(n, d)`` array whose row ``k`` is ``Lambda(times[k])``, using the
-    state *just before* the event at ``times[k]``.  This is deliberately an
-    independent implementation of the mathematics: it is what the residual test uses
-    to certify the simulator, so it must not share code with it.
+    state just before the event at ``times[k]``.  This is an independent implementation
+    of the mathematics: the residual test uses it to certify the simulator, so it must
+    not share code with it.
     """
     times = np.asarray(times, dtype=float)
     types = np.asarray(types, dtype=int)

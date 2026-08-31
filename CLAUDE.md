@@ -79,12 +79,12 @@ jupyter notebook                  # from inside the env: plotly renders server-s
 - **Default arguments only for genuinely superfluous parameters** — a random generator the
   caller may not want to seed. A parameter that changes what the function *means* is
   required.
-- **A serialized type carries a pandera schema** plus a `to_frame`/`from_frame` pair, and
-  the round trip is tested. Schemas live in `unito26/lob/frames.py`, not on the model
-  classes.
-- **Model parametrizations ship as frozen serialized examples**, never as code that
-  computes a "default". A default invites a reader to skip the choice, and the choice is
-  usually the subject.
+- **A serialized type owns its own serialization**: a `schema()` returning the pandera
+  schema, a `to_frame`/`from_frame` pair, and the record and JSON forms inherited from
+  `unito26.lob.frames.FrameSerializable`. The round trip is tested.
+- **Model parametrizations ship as frozen dictionaries**, never as code that computes a
+  "default". A default invites a reader to skip the choice, and the choice is usually the
+  subject.
 
 ## Workflow
 
@@ -103,8 +103,16 @@ shared notation, and the templates for adding a chapter.
 
 ## How I want you to write
 
-The default output of a coding assistant is verbose, inelegant and transient. Those are
-the three things to avoid here, and the third is the one that costs most.
+The default output of a coding assistant is journalistic, verbose, inelegant and
+transient. Those are the four things to avoid here. The register is the one that shows
+first; transience is the one that costs most.
+
+**Register.** The register is the classroom: precise, dry, to the point, claims made
+softly. Not journalism — no "which is a gift", no "the summit this strand points at", no
+flourish where a statement will do. Not knowingness — no "and that is not luck", no
+"impostor", no rhetorical questions, no exclamation marks, no addressing the reader as
+though correcting them. State the thing; if it needs a qualification, qualify it; if it
+does not survive being read aloud in a lecture, it does not belong in the file.
 
 **Verbose.** I value conciseness: say it once and stop. Do not over-explain and do not
 over-do. If I want something expanded, I will ask for a follow-up — so between two

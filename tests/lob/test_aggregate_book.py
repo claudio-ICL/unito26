@@ -15,12 +15,15 @@ from unito26.lob.messages import (
     MARKET_BUY_PRICE,
     MARKET_SELL_PRICE,
     SELL,
+    is_market_price,
     TickGrid,
     limit_order,
     market_order,
     withdrawal,
 )
-from unito26.lob.orderbook import AggregateBook
+from unito26.lob import config
+from unito26.lob.orderbook import AXIS_B_VARIANTS, AggregateBook
+from unito26.lob.simulate import OrderFlowSimulator
 from unito26.lob.worked_examples import CATALOGUE, check, reflect
 
 TICK = TickGrid(0.01)
@@ -75,7 +78,7 @@ class TestCaseA:
     """Section 8, case A: sell (t, 250, 9.99, -1).  Fully executed, no remainder."""
 
     def test_fills_at_resting_prices(self, worked_example):
-        result = worked_example.submit(limit_order(1.0, 250, 999, SELL))
+        result = worked_example.submit(limit_order(1.0, 250, 999, SELL), record=True)
         assert result.market_order_size == 250
         assert [(f.price, f.size) for f in result.fills] == [(1000, 100), (999, 150)]
         assert all(f.aggressor == SELL for f in result.fills)
@@ -101,7 +104,7 @@ class TestCaseB:
     """
 
     def test_decomposition_into_market_part_and_resting_part(self, worked_example):
-        result = worked_example.submit(limit_order(1.0, 400, 999, SELL))
+        result = worked_example.submit(limit_order(1.0, 400, 999, SELL), record=True)
         # q_M = min(400, 100 + 200) = 300, so 100 is left to rest.
         assert result.market_order_size == 300
         assert [(f.price, f.size) for f in result.fills] == [(1000, 100), (999, 200)]
@@ -128,7 +131,7 @@ class TestCaseB:
     def test_both_routes_agree_on_total_volume(self, worked_example):
         book = worked_example
         before = sum(book.bids.values()) + sum(book.asks.values())
-        result = book.submit(limit_order(1.0, 400, 999, SELL))
+        result = book.submit(limit_order(1.0, 400, 999, SELL), record=True)
         after = sum(book.bids.values()) + sum(book.asks.values())
         # Shares are conserved: what arrived, minus twice what traded (once from the
         # book, once from the incoming order), is what remains.
@@ -139,7 +142,7 @@ class TestExhaustedSide:
     def test_consuming_the_whole_bid_side_leaves_it_undefined(self, worked_example):
         book = worked_example
         # Sell 500 at 9.98: the price-eligible bid volume is 100+200+150 = 450.
-        result = book.submit(limit_order(1.0, 500, 998, SELL))
+        result = book.submit(limit_order(1.0, 500, 998, SELL), record=True)
         assert result.market_order_size == 450
         assert book.bids == {}
         assert book.best_bid_price is None
@@ -161,7 +164,7 @@ class TestMarketOrders:
         book = worked_example
         # A market sell far larger than the bid side: 450 trade, down to 9.98, and the
         # 550 left over becomes an ask at 9.98 -- the price the order last got.
-        result = book.submit(market_order(1.0, 1000, SELL))
+        result = book.submit(market_order(1.0, 1000, SELL), record=True)
         assert result.market_order_size == 450
         assert result.unfilled == 0
         assert book.bids == {}
@@ -182,7 +185,7 @@ class TestMarketOrders:
         # It can only arise against an empty side, where there was no liquidity to take
         # at any price, so nothing is lost by refusing it.
         book = AggregateBook.from_levels({1000: 100}, {})
-        result = book.submit(market_order(1.0, 60, BUY))
+        result = book.submit(market_order(1.0, 60, BUY), record=True)
         assert result.fills == []
         assert result.unfilled == 60
         assert book.asks == {}
@@ -191,7 +194,7 @@ class TestMarketOrders:
 
     def test_market_buy_ignores_the_price_constraint_entirely(self, worked_example):
         book = worked_example
-        result = book.submit(market_order(1.0, 250, BUY))
+        result = book.submit(market_order(1.0, 250, BUY), record=True)
         assert [(f.price, f.size) for f in result.fills] == [(1002, 120), (1003, 130)]
         assert book.asks == {1003: 50}
 
@@ -199,14 +202,14 @@ class TestMarketOrders:
 class TestPassiveOrdersAndWithdrawals:
     def test_a_non_marketable_order_just_joins_its_level(self, worked_example):
         book = worked_example
-        result = book.submit(limit_order(1.0, 75, 999, BUY))
+        result = book.submit(limit_order(1.0, 75, 999, BUY), record=True)
         assert result.fills == []
         assert book.bid_volume_at(999) == 275
         assert book.best_bid_price == 1000  # unchanged
 
     def test_withdrawal_is_one_signed_delta(self, worked_example):
         book = worked_example
-        result = book.withdraw(withdrawal(1.0, 60, 999, BUY))
+        result = book.withdraw(withdrawal(1.0, 60, 999, BUY), record=True)
         assert result.fills == []
         assert [(d.price, d.volume) for d in result.deltas] == [(999, 140)]
         assert book.bid_volume_at(999) == 140
@@ -265,3 +268,36 @@ class TestTheCatalogue:
     def test_reflecting_twice_is_the_identity(self, example):
         once = reflect(example, MIRROR_CENTRE)
         assert reflect(once, MIRROR_CENTRE).transition == example.transition
+
+
+@pytest.mark.parametrize("book_cls", AXIS_B_VARIANTS, ids=lambda c: c.__name__)
+class TestRecordingIsOptional:
+    """The fold does not read the fills or the deltas, so it does not pay for them.
+
+    What must not change is the book: the two settings differ in what is returned and in
+    nothing else.
+    """
+
+    def test_the_book_ends_in_the_same_state(self, book_cls):
+        simulator = OrderFlowSimulator(
+            config.example_order_flow_params(), config.example_mark_params(), 10000, rng=13
+        )
+        driver = AggregateBook()
+        messages = []
+        for message in simulator.stream(driver, horizon=120.0):
+            driver.apply(message)
+            messages.append(message)
+
+        prices = [m.price for m in messages if not is_market_price(m.price)]
+        silent = book_cls.for_prices(prices)
+        recording = book_cls.for_prices(prices)
+        for message in messages:
+            assert silent.apply(message) is None
+            assert recording.apply(message, record=True) is not None
+        for direction in (BUY, SELL):
+            assert silent.levels_map(direction) == recording.levels_map(direction)
+
+    def test_a_withdrawal_that_removes_nothing_still_returns_nothing(self, book_cls):
+        book = book_cls.from_levels({999: 10}, {1001: 10})
+        assert book.withdraw(withdrawal(1.0, 5, 990, BUY)) is None
+        assert book.withdraw(withdrawal(1.0, 5, 990, BUY), record=True).deltas == []

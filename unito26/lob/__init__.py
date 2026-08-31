@@ -6,14 +6,14 @@ The strand is built as a ladder of increasing complexity, and the modules follow
     the order tuple ``(t, q, p, d)``, event types, and tick/currency conversion.
 ``orderbook``
     both representations of the book -- the aggregate ``{price: volume}`` one and the
-    order-level, identity-carrying one -- deliberately in a single file.
+    order-level, identity-carrying one, in a single file.
 ``replay``
     the fold that drives a book with a stream of messages, and the ``MarketSession`` it
     produces -- a LOBSTER-shaped frame plus the statistics read off it.
 ``frames``
-    the schemas, and the round trip between the model objects and validated DataFrames.
+    the serialization protocol the parameter classes implement, and LOBSTER's vocabulary.
 ``config``
-    example parametrizations, frozen as serialized frames.
+    example parametrizations, frozen as records.
 ``binary_gaps``
     an integer as a set of bit positions: the vocabulary the bitmap books are written in.
 ``hawkes``
@@ -28,7 +28,8 @@ The strand is built as a ladder of increasing complexity, and the modules follow
 ``benchmark``
     timing and memory for the variants; the numbers belong in a notebook, not a test.
 ``visualization``
-    a book drawn as text for the documentation and as plotly for the notebook.
+    a book drawn as text for the documentation, and a book or a session drawn as plotly
+    for the notebooks.
 
 The organising idea is in ``documentation/order-flow-to-order-book.md``: the aggregate
 state is closed under the arrival of an order, so it reproduces the whole public book,

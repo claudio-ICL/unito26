@@ -5,13 +5,12 @@ is.  This module decides *what order* that is -- the ``(q, p, d)`` completing th
 ``(t, q, p, d)`` of section 1 -- and it needs the book to do so, because a price is
 quoted relative to the touch and a withdrawal must name volume that actually rests.
 
-The two layers are kept apart on purpose.  The Hawkes layer is pure point process and
-is tested as such; the mark layer is where the book enters.  One honest consequence,
-which belongs in the notes rather than buried here: because a withdrawal on an empty
-side is dropped, the *realised* withdrawal process is no longer exactly Hawkes.  It is
-a state-dependent thinning of one.  The extension that removes the caveat -- an
-intensity proportional to resting volume, after Cont, Stoikov and Talreja -- also
-destroys the clean separation, which is why it is not the starting point.
+The two layers are kept apart.  The Hawkes layer is a point process and is tested as
+such; the mark layer is where the book enters.  One consequence: because a withdrawal on
+an empty side is dropped, the realised withdrawal process is not exactly Hawkes but a
+state-dependent thinning of one.  The extension that removes the caveat -- an intensity
+proportional to resting volume, after Cont, Stoikov and Talreja -- also removes the
+separation, which is why it is not the starting point.
 """
 
 from __future__ import annotations
@@ -21,7 +20,10 @@ from enum import IntEnum
 from typing import Iterator
 
 import numpy as np
+import pandas as pd
+import pandera.pandas as pa
 
+from unito26.lob.frames import FrameSerializable
 from unito26.lob.hawkes import ExponentialHawkes, HawkesParams
 from unito26.lob.messages import BUY, SELL, Message, limit_order, market_order, withdrawal
 from unito26.lob.orderbook import AggregateBook
@@ -45,7 +47,7 @@ class EventType(IntEnum):
 
 
 @dataclass(frozen=True, slots=True)
-class MarkParams:
+class MarkParams(FrameSerializable):
     """How an event type becomes an order.
 
     Attributes
@@ -57,13 +59,54 @@ class MarkParams:
         Lognormal order size before rounding.
     lot
         Sizes are rounded to a multiple of this.  Real order sizes clump at round lots,
-        and a simulator without that produces unrealistically smooth queues.
+        and a simulator without that produces smoother queues than a market shows.
     """
 
     depth_decay: float
     mean_log_size: float
     sigma_log_size: float
     lot: int
+
+    @classmethod
+    def schema(cls) -> pa.DataFrameSchema:
+        """One row.  ``DepthDecay`` is a geometric parameter, so ``1`` is admissible and
+        means every order at the touch; ``0`` is not."""
+        return pa.DataFrameSchema(
+            {
+                "DepthDecay": pa.Column(
+                    float, pa.Check.in_range(0.0, 1.0, include_min=False), coerce=True
+                ),
+                "MeanLogSize": pa.Column(float, coerce=True),
+                "SigmaLogSize": pa.Column(float, pa.Check.gt(0.0), coerce=True),
+                "Lot": pa.Column("Int64", pa.Check.ge(1), coerce=True),
+            },
+            strict=True,
+        )
+
+    def to_frame(self) -> pd.DataFrame:
+        frame = pd.DataFrame(
+            {
+                "DepthDecay": [float(self.depth_decay)],
+                "MeanLogSize": [float(self.mean_log_size)],
+                "SigmaLogSize": [float(self.sigma_log_size)],
+                "Lot": [self.lot],
+            }
+        )
+        return self.schema().validate(frame)
+
+    @classmethod
+    def from_frame(cls, frame: pd.DataFrame) -> "MarkParams":
+        frame = cls.schema().validate(frame)
+        if len(frame) != 1:
+            raise ValueError(f"mark parameters are one row, got {len(frame)}")
+        row = frame.iloc[0]
+        return cls(
+            depth_decay=float(row["DepthDecay"]),
+            mean_log_size=float(row["MeanLogSize"]),
+            sigma_log_size=float(row["SigmaLogSize"]),
+            lot=int(row["Lot"]),
+        )
+
 
 class OrderFlowSimulator:
     """Turns Hawkes events into messages against a live book.
@@ -106,9 +149,9 @@ class OrderFlowSimulator:
         """Quote relative to the opposite touch, so orders may improve the spread.
 
         An offset of zero prices one tick inside the opposite best, which is how a
-        spread narrows.  With the opposite side empty there is no touch to quote
-        against, so the simulator falls back to its own reference price -- a modelling
-        decision, and one worth naming rather than hiding.
+        spread narrows.  With the opposite side empty there is no touch to quote against,
+        so the simulator falls back to its own reference price; that is a modelling
+        decision rather than a consequence of the notation.
         """
         opposite_best = book.best_price(-direction)
         if opposite_best is None:

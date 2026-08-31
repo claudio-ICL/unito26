@@ -233,7 +233,7 @@ def check(book_cls: type[AggregateBook], example: WorkedExample, depth: int = 6)
     """
     bids, asks = to_sides(example.before)
     book = book_cls.from_levels(dict(bids), dict(asks))
-    result = book.apply(example.message)
+    result = book.apply(example.message, record=True)
 
     state = signed_state(book)
     if state != example.after:
@@ -347,7 +347,7 @@ def render_indexing_markdown() -> str:
     book = AggregateBook.from_levels(INDEXING_BIDS, INDEXING_ASKS)
     session = MarketSession.from_occupied_levels(
         AggregateBook.from_levels(INDEXING_BIDS, INDEXING_ASKS),
-        [limit_order(1.0, 1, min(INDEXING_BIDS) - 10, BUY)], depth, levels, 1,
+        [limit_order(1.0, 1, min(INDEXING_BIDS) - 10, BUY)], depth, levels, 1, False,
     )
     frame = session.stats_from_frame()
 

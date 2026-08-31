@@ -99,14 +99,16 @@ Three of these contradict the predictions written into the plan, which is the us
   builds a fresh arbitrary-precision integer per level, and on a wide band that costs more
   than a dict lookup. The fusion that wins on the gap statistics loses here;
 - **`from_top_of_book` and `from_occupied_levels(1)` tie** (0.216 vs 0.217 on the baseline),
-  where the plan predicted the four-lookup route would lose. The reason is a flaw in the
-  experiment rather than a fact about the books: both routes compute the same *statistics*
-  per message, and that dominates the two-versus-four best-price lookups. A recording-only
-  timing would separate them;
-- **`from_level_deltas` beats dense recording on `TickArrayBook`** (0.445 vs 1.044), against
-  the prediction that a re-fold must always lose. Its shadow book is sized from the delta
-  prices alone, a narrower band than the full message range, and narrower bands are cheaper
-  to walk. Elsewhere it loses as expected;
+  where the plan predicted the four-lookup route would lose. This was a flaw in the
+  experiment rather than a fact about the books: both routes computed the same *statistics*
+  per message, and that dominated the two-versus-four best-price lookups. With the
+  statistics switched off the two still tie (0.016 vs 0.015), so the tie is real and the
+  first measurement could not have shown it;
+- **`from_delta_log` beats dense recording where reaching ten occupied levels is
+  expensive** — on `TickArrayBook` 0.053 against 0.097, on `BitmapBook` 0.055 against
+  0.063, and it loses on the dict-backed rungs. Recording the log costs a further 0.011 to
+  0.014, which is what tips the dict-backed cases against it. The prediction that a
+  reconstruction must always lose was wrong: the rebuild does no matching at all;
 - `CachedBestBook` is fastest on every recording strategy;
 - **the column-sliced imbalance differs from the grid-indexed one on 23% of rows, and by
   as much as 1.58** — on a scale that only spans 2. Not a perturbation: a different
@@ -114,6 +116,31 @@ Three of these contradict the predictions written into the plan, which is the us
 - **coverage is sharp.** At reported depth 1 only `I^1` is recoverable; at depth 2, `I^2` is
   recoverable everywhere and `I^3` on 0.3% of rows; at depth 10 everything asked for. How
   deep a file you need is a question about the market, not the code.
+
+From the second pass over the same work (register, serialization on the classes, and the
+fold). Two of these contradict the plan again:
+
+- **the preallocated buffer wins by moving the cost, not by removing it.** Writing each
+  row into a contiguous array costs *more* in the fold than appending a Python list
+  (0.114 against 0.096 on the baseline) and much less at the end (0.019 against 0.085),
+  because `pd.DataFrame` no longer infers a dtype and copies from 16.7k separate lists.
+  Net 0.133 against 0.180, about 1.35×;
+- **`TickArrayBook.write_lobster_row` is not faster than the inherited version.** Writing
+  numpy int64 scalars one at a time costs what building the list costs, so the override
+  earns nothing on its own; the rung stays the slowest at depth 10 for the reason already
+  recorded above;
+- **`apply` returning nothing costs about a third of `apply` recording** (0.009 against
+  0.027 over 16.7k messages). Small beside the recording of rows, and the larger saving in
+  proportion: the result object costs about twice the update it describes;
+- **computing the statistics online costs about 60× computing them vectorized** (0.588
+  against 0.010). The earlier notebook compared a computation against a read-off and
+  measured nothing; folding twice, with and without the statistics, is what makes the
+  difference measurable;
+- **batching the four gap statistics into one read of the side flattened the axis-B
+  table.** `BitmapBook` against the baseline on a deep book is now 0.038 against 0.044,
+  where the per-statistic version gave 2.2×. What is left is finding the occupied levels,
+  which every rung must do; the bit tricks act only on what happens after that. The
+  optimisation that made the ladder look good was partly the absence of an easier one.
 
 ## Exercises & exam snippets
 

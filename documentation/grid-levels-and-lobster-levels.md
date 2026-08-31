@@ -68,8 +68,10 @@ $$\text{bid total}(n) = \sum_k \mathtt{BidSize}_k \cdot
   \mathbf{1}\{\mathtt{BidPrice}_k \ge \mathtt{BidPrice}_1 - (n-1)\tau\},$$
 
 and the ask mirror uses $\mathtt{AskPrice}_k \le \mathtt{AskPrice}_1 + (n-1)\tau$.
-This is what `MarketSession.stats_from_frame` does. A column slice — `.iloc[:, :n]` — is
-the bug this whole file exists to prevent.
+This is what `MarketSession.stats_from_frame` does. A column slice is the confusion this
+file exists to prevent; `MarketSession.column_sliced_imbalance` is that expression, kept
+under a name that says what it computes so that the two can be drawn on one pair of axes
+rather than mistaken for each other.
 
 Two further traps in the same computation. `sum` skips NaN by default, so a missing level
 is silently treated as absent rather than unknown; the sums are masked explicitly instead.
