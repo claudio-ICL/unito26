@@ -12,8 +12,8 @@ The strand is built as a ladder of increasing complexity, and the modules follow
     rebuilt from them.
 ``session``
     the ``MarketSession`` -- a LOBSTER-shaped frame plus the statistics read off it --
-    and the four ways of building one: two folds through a book, a delta log replayed,
-    and a LOBSTER file pair read.
+    and the three ways of building one: two folds through a book, and a delta log
+    replayed.  Every row of one is an aggressive order or another single message.
 ``statistics``
     which statistics a session records: the one declaration its column names, their
     order, its coverage flags and the fold's write positions are all read off.
@@ -30,6 +30,10 @@ The strand is built as a ladder of increasing complexity, and the modules follow
 ``lobster``
     the LOBSTER sample files: the named pair, the tick-size to price-unit conversion,
     the schema-declared loaders and the windowed aligned read.
+``lobster_session``
+    a LOBSTER pair held as the files hold it, positionally indexed, and the coarsening
+    that turns it into a ``MarketSession`` -- the feed writes a row per resting order
+    consumed, and a session has a row per order that consumed them.
 ``worked_examples``
     the catalogue of book transitions, one per branch of the update rule, shared by
     the tests, the notebook and the documentation.

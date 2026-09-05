@@ -3,8 +3,11 @@
 A book holds *one* state.  The series of states is a :class:`MarketSession` -- a
 LOBSTER-shaped frame plus what follows from it -- and this module is that type and the
 ways of building one.  Three fold a stream of messages through a book, differing in what
-they ask the book for after every message; a fourth reads a session that was recorded
-elsewhere, from a delta log or from a LOBSTER file pair, and folds nothing.
+they ask the book for after every message; a fourth replays a delta log and folds nothing.
+
+A LOBSTER pair is *not* among them.  Its rows are executions of resting orders where these
+are messages, so it is read as a ``LobsterMarketSession`` and coarsened -- see
+``unito26.lob.lobster_session``, which is the only route from one to the other.
 
 The statistics are computed twice over: once during a fold, from a live book, and once
 from the finished frame.  The two routes are written beside each other because the claim
@@ -19,6 +22,7 @@ knows only the levels it reports, and
 from __future__ import annotations
 
 from collections import Counter
+from collections.abc import Sequence
 from dataclasses import dataclass
 from operator import length_hint
 from typing import Iterable
@@ -26,7 +30,7 @@ from typing import Iterable
 import numpy as np
 import pandas as pd
 
-from unito26.lob import frames, lobster
+from unito26.lob import frames
 from unito26.lob.delta_log import DeltaLog
 from unito26.lob.messages import (
     BUY,
@@ -36,7 +40,6 @@ from unito26.lob.messages import (
     Message,
     MessageType,
     PriceUnit,
-    TickGrid,
     ReportedDepth,
     SweepSize,
 )
@@ -349,28 +352,6 @@ def _write_trades(
     """
     traded = book.last_traded_size
     out[row] = (traded, direction * traded, book.last_traded_value)
-
-
-def _lobster_trade_rows(messages: pd.DataFrame, price_unit: PriceUnit) -> np.ndarray:
-    """The trade counters a LOBSTER message file determines, in ``trade_row_schema`` order.
-
-    Visible executions only.  A type-5 print is a trade against an order that was never
-    displayed, and it rests at or inside the touch, so including it would give the traded
-    average of a tape the book never showed.  The lit VWAP is the one a book route could
-    also produce, which is what makes it the comparable number.
-
-    LOBSTER reports the *resting* side of a fill, so ``Direction`` names the passive order
-    and the aggressor is its negation: an executed sell limit order is a buyer-initiated
-    trade.  The name carries it, so the arithmetic below needs no comment of its own.
-
-    ``TradedValue`` is in tick-shares, matching :func:`_write_trades`, which is why the
-    price is divided by the unit here and not left in the file's.
-    """
-    executed = (messages["Type"] == lobster.LobsterEvent.EXECUTION_VISIBLE).to_numpy()
-    aggressor = -messages["Direction"].to_numpy()
-    size = np.where(executed, messages["Size"].to_numpy(), 0).astype(float)
-    price = np.where(executed, messages["Price"].to_numpy(), 0) / price_unit
-    return np.column_stack([size, aggressor * size, size * price])
 
 
 # ---- the same two statistics, read off a frame -----------------------------------------
@@ -916,61 +897,13 @@ class MarketSession:
         )
 
     @classmethod
-    def from_lobster_files(
-        cls,
-        files: lobster.LobsterFiles,
-        spec: SessionStatistics,
-        grid: TickGrid,
-        window: lobster.TradingWindow,
-        statistics: bool,
-    ) -> "MarketSession":
-        """Read a session off a LOBSTER file pair.  The first route that folds nothing.
-
-        The orderbook file already *is* the sequence of book states, and the message file
-        supplies the clock and the trades, so there is no book here and no matching.  What
-        this is not is a reconstruction: nothing replays the messages, and the states are
-        taken as the file gives them.
-
-        Three things separate the session from a folded one.  Its coverage flags are
-        weaker, because ``truncated`` is True: a side reporting fewer levels than the depth
-        means "nothing further in the visible price range" rather than "nothing further".
-        Its trades are the lit tape, hidden executions being excluded.  And its rows are
-        not comparable one-for-one with a fold's, because the feed writes a row per resting
-        order consumed where a fold writes one per message -- see
-        ``documentation/from-lobster-files-to-a-session.md``.
-
-        ``grid`` rather than a price unit: the caller states the instrument's tick size and
-        the file's unit follows from it, since a wrong unit does not fail but rescales
-        every price the session reports.
-        """
-        unit = lobster.price_unit(grid)
-        messages, book = lobster.load_aligned(files, window)
-        lobster.prices_on_the_tick_grid(book, unit, files.reported_depth)
-        session = cls._assemble(
-            files.reported_depth,
-            spec,
-            unit,
-            True,
-            messages["Time"].tolist(),
-            book.to_numpy(),
-            None,
-            _lobster_trade_rows(messages, unit),
-            None,
-        )
-        # Filled here rather than left to the caller: `stats` is what four of the five
-        # session figures read, and a file-built session is the one a reader plots first.
-        if statistics:
-            session.stats = session.stats_from_frame()
-        return session
-
-    @classmethod
     def _assemble(
         cls,
         reported_depth: ReportedDepth,
         spec: SessionStatistics,
         price_unit: PriceUnit,
         truncated: bool,
-        times: list[float],
+        times: Sequence[float] | np.ndarray,
         rows: np.ndarray,
         statistics: np.ndarray | None,
         trades: np.ndarray | None,
