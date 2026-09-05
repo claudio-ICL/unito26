@@ -140,10 +140,17 @@ not by decree, but because any overlap would already have been matched away.
 The whole configuration at time $t$ is
 \[
 \Big(\bestAskPrice_t, \; \bestBidPrice_t, \;
-\lbrace (\nthBestAskVolume[i]_t, \nthBestBidVolume[i]_t) : i=1,2,\dots \rbrace \Big),
+\lbrace (\nthBestAskSize[i]_t, \nthBestBidSize[i]_t) : i=1,2,\dots \rbrace \Big),
 \]
 with $\nthBestAskPrice[i]_t = \bestAskPrice_t + (i-1)\tickSizeOfLOB$
 and $\nthBestBidPrice[i]_t = \bestBidPrice_t - (i-1)\tickSizeOfLOB$.
+
+\pause
+
+$\nthBestAskSize[i]_t$ is the \emph{size} of that level, the shares queuing there.
+\emph{Volume} is the shares transacted over an interval:
+a level has a size at every instant, volume accumulates between two.
+Volume is not a change in size --- a level also shrinks by cancellation.
 \end{frame}
 
 \begin{frame}
@@ -157,16 +164,16 @@ Three derived quantities assess an order book:
 
 \pause
 
-and the $n$-levels volume imbalance
+and the $n$-levels queue imbalance
 \[
-\volumeImbalance^{n}_t =
-\frac{\sum_{i\leq n}\nthBestBidVolume[i]_t - \sum_{i\leq n}\nthBestAskVolume[i]_t}{\sum_{i\leq n}\nthBestBidVolume[i]_t + \sum_{i\leq n}\nthBestAskVolume[i]_t}.
+\queueImbalance^{n}_t =
+\frac{\sum_{i\leq n}\nthBestBidSize[i]_t - \sum_{i\leq n}\nthBestAskSize[i]_t}{\sum_{i\leq n}\nthBestBidSize[i]_t + \sum_{i\leq n}\nthBestAskSize[i]_t}.
 \]
 
 \pause
 
-The queue imbalance is widely accepted as a reliable signal for the next mid-price move
-\citep{CDJ18enh}:
+The queue imbalance, called volume imbalance in \citet{CDJ18enh},
+is widely accepted as a reliable signal for the next mid-price move:
 close to $-1$ the mid-price will likely decrease, close to $+1$ it will likely increase.
 \end{frame}
 
@@ -178,7 +185,7 @@ Processing the sell limit order $(t,q,p,-1)$ is \emph{equivalent} to processing 
 \]
 where
 \[
-\marketOrderSize = \min\Big(q, \textstyle\sum_{i\geq 1} \nthBestBidVolume[i]_{t-} \indicator{\nthBestBidPrice[i]_{t-}\geq p}\Big).
+\marketOrderSize = \min\Big(q, \textstyle\sum_{i\geq 1} \nthBestBidSize[i]_{t-} \indicator{\nthBestBidPrice[i]_{t-}\geq p}\Big).
 \]
 
 \pause
@@ -189,14 +196,14 @@ The second is exactly the part that rests in the book.
 
 \pause
 
-A market order \emph{walks the book} when $\marketOrderSize > \nthBestBidVolume[1]_{t-}$:
+A market order \emph{walks the book} when $\marketOrderSize > \nthBestBidSize[1]_{t-}$:
 it eats past the best level, each unit worse than the last.
 Trades are market orders with $\marketOrderSize > 0$.
 \end{frame}
 
 \begin{frame}
   \frametitle{The cost of immediacy}
-Executing a signed size $\volume$ at time $t$ by \emph{market order}:
+Executing a signed volume $\volume$ at time $t$ by \emph{market order}:
 \[
 \Delta \cashAccount_t^{\text{market order}}
 = -\midPrice_{t}\volume

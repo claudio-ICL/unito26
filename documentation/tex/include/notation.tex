@@ -87,8 +87,11 @@
 
 %% LIMIT ORDER BOOKS %%
 % Kept identical to the notation of the thesis, so that the course and the
-% thesis denote the same objects in the same way.
+% thesis denote the same objects in the same way, with one divergence: the
+% thesis writes \volume for the quantity resting at a level, where here that
+% is \size and \volume is the volume transacted.
 \newcommand{\price}{P}
+\newcommand{\size}{S}
 \newcommand{\volume}{V}
 \newcommand{\tickSizeOfLOB}{\tau}
 \newcommand{\midPrice}{\price^{m}}
@@ -98,15 +101,15 @@
 \newcommand{\bestAskPrice}{\price^{a}}
 \newcommand{\nthBestBidPrice}[1][1]{\price^{b,{#1}}}
 \newcommand{\nthBestAskPrice}[1][1]{\price^{a,{#1}}}
-\newcommand{\bestBidVolume}{\volume^{b}}
-\newcommand{\bestAskVolume}{\volume^{a}}
-\newcommand{\nthBestBidVolume}[1][1]{\volume^{b,{#1}}}
-\newcommand{\nthBestAskVolume}[1][1]{\volume^{a,{#1}}}
-\newcommand{\bidVolumePriceP}[1][t]{\volume^{b}_{{#1}}(p)}
-\newcommand{\askVolumePriceP}[1][t]{\volume^{a}_{{#1}}(p)}
+\newcommand{\bestBidSize}{\size^{b}}
+\newcommand{\bestAskSize}{\size^{a}}
+\newcommand{\nthBestBidSize}[1][1]{\size^{b,{#1}}}
+\newcommand{\nthBestAskSize}[1][1]{\size^{a,{#1}}}
+\newcommand{\bidSizePriceP}[1][t]{\size^{b}_{{#1}}(p)}
+\newcommand{\askSizePriceP}[1][t]{\size^{a}_{{#1}}(p)}
 \newcommand{\LOBspread}{\phi}
-\newcommand{\volumeImbalance}{I}
-\newcommand{\queueImb}{\volumeImbalance}
+\newcommand{\queueImbalance}{I}
+\newcommand{\queueImb}{\queueImbalance}
 \newcommand{\OFI}{\text{OFI}}
 \newcommand{\orderFlowImbalance}{\OFI}
 \newcommand{\arrivals}[1][ ]{A_{{#1}}}

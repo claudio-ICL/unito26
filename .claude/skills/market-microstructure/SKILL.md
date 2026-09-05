@@ -1,6 +1,6 @@
 ---
 name: market-microstructure
-description: The notation and mechanics of order-driven markets as this course defines them. Load before writing or reviewing any code that touches limit order books, order books, matching engines, order flow, bid/ask prices, tick sizes, price-time priority, queues and queue/volume imbalance, market orders, walking the book, execution PnL, market impact, or LOB/ITCH-style message data — in the unito26 package, in notebooks, or in exam snippets.
+description: The notation and mechanics of order-driven markets as this course defines them. Load before writing or reviewing any code that touches limit order books, order books, matching engines, order flow, bid/ask prices, tick sizes, price-time priority, queues and their size, queue (volume) imbalance, transacted volume, market orders, walking the book, execution PnL, market impact, or LOB/ITCH-style message data — in the unito26 package, in notebooks, or in exam snippets.
 ---
 
 # Market microstructure and order books in `unito26`
@@ -14,6 +14,11 @@ or functions; the notes are the authority, this skill is the code-facing half.
 Symbols are the notes' symbols. Never invent a parallel name for something the notes already
 name, and never rename a concept on the way into Python.
 
+**Size and volume are different words here.** The quantity resting at a level is its *size*,
+$S$; *volume*, $V$, is the number of shares transacted over an interval, $\sum q_M$. Volume is
+not a change in size, since a level shrinks by cancellation as well as by execution. Part of the
+literature calls the size of a level its volume, and LOBSTER's own columns are `AskSize{k}`.
+
 ## The naming map
 
 An order is the 4-tuple `(t, q, p, d)`, **in that order**: time, size, price, direction.
@@ -25,7 +30,7 @@ counterpart in a match is $(s, \rho, \pi, -d)$.
 | $\tau$ | `tick_size` |
 | $P^a_t$, $P^b_t$ | `best_ask_price`, `best_bid_price` |
 | $P^{a,i}_t$, $P^{b,i}_t$ | `ask_price(i)`, `bid_price(i)` |
-| $V^{a,i}_t$, $V^{b,i}_t$ | `ask_volume(i)`, `bid_volume(i)` |
+| $S^{a,i}_t$, $S^{b,i}_t$ | `ask_size(i)`, `bid_size(i)` |
 | $\phi_t$, $P^m_t$, $P^\mu_t$ | `spread`, `mid_price`, `micro_price` |
 | $I^n_t$ | `queue_imbalance(n)` |
 | $q_M$ | `market_order_size` |
@@ -51,12 +56,12 @@ conventions circulate.
 - **A fill trades at the resting order's price**, $\pi$, never at the incoming order's $p$.
 - **Sizes are non-negative.** In the order-level representation a price whose queue empties
   is removed from the dict; the level *index* of §3 is unaffected and may still read zero
-  (Case B of §8 has two such levels). By convention $V^{\cdot,j} = 0$ for $j \le 0$ — ours,
+  (Case B of §8 has two such levels). By convention $S^{\cdot,j} = 0$ for $j \le 0$ — ours,
   not the notes', but required to make the shifted index in §5 well defined.
 - **An exhausted side is a separate branch.** The update rule of §5 assumes the incoming
-  order does not consume the whole price-eligible side; when it does, $N_v$ (and, for a market
+  order does not consume the whole price-eligible side; when it does, $N_s$ (and, for a market
   order, $N_p$) is $+\infty$ and the best price on that side is undefined. Never compute
-  $N_v$ with a loop that assumes it terminates.
+  $N_s$ with a loop that assumes it terminates.
 - **One code path, not two.** Every incoming limit order is processed as
   market-part-then-rest: consume the opposite side up to $q_M$, then rest $q - q_M$. There is
   no separate "marketable order" branch. This is Prop. `prop.decompositionOfLimitOrder` and

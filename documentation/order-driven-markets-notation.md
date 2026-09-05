@@ -94,19 +94,24 @@ The configuration at time $t$ is fully described by:
 | $P^b_t$ | **best bid price** — highest price with buy offers active at $t$ |
 | $P^{a,i}_t = P^a_t + (i-1)\tau$ | price of the $i$-th ask level, $i = 1, 2, \dots$ |
 | $P^{b,i}_t = P^b_t - (i-1)\tau$ | price of the $i$-th bid level, $i = 1, 2, \dots$ |
-| $V^{a,i}_t = \sum_{\{(s,q,P^{a,i}_t,-1) \in A_t \,:\, s \le t\}} q$ | **volume** at the $i$-th ask level |
-| $V^{b,i}_t = \sum_{\{(s,q,P^{b,i}_t,+1) \in B_t \,:\, s \le t\}} q$ | **volume** at the $i$-th bid level |
+| $S^{a,i}_t = \sum_{\{(s,q,P^{a,i}_t,-1) \in A_t \,:\, s \le t\}} q$ | **size** of the $i$-th ask level |
+| $S^{b,i}_t = \sum_{\{(s,q,P^{b,i}_t,+1) \in B_t \,:\, s \le t\}} q$ | **size** of the $i$-th bid level |
 
-so the state is $\big(P^a_t,\ P^b_t,\ \{(V^{a,i}_t, V^{b,i}_t) : i = 1,2,\dots\}\big)$.
+so the state is $\big(P^a_t,\ P^b_t,\ \{(S^{a,i}_t, S^{b,i}_t) : i = 1,2,\dots\}\big)$.
 
-Two conventions that matter for code:
+Conventions that matter for code:
 
-- **"Volume" means the sum of the sizes queuing at one price level**, measured in shares. The
-  literature also calls it the *size* of the queue. It is not a traded volume.
+- **The "size" of a level is the sum of the quantities queuing at it**, measured in shares.
+  **Volume** is the number of shares transacted over an interval: a level has a size at every
+  instant, volume accumulates between two instants. Volume is not a change in size — a level
+  shrinks by cancellation as well as by execution, so no sequence of sizes determines the volume
+  traded. By §6 the volume over a window is $\sum q_M$ over the market orders in it. The word
+  *size* is used at two granularities, an order's and a level's, the second a sum of the first;
+  part of the literature calls the size of a level its volume.
 - Levels are **1-indexed** and indexed *relative to the best price on their own side*, so
   level $i$ names a different absolute price as the best price moves. Intermediate levels may
-  be empty ($V^{a,i}_t = 0$ for some $i$ with $V^{a,j}_t > 0$, $j > i$); by convention
-  $V^{a,j}_t = V^{b,j}_t = 0$ for $j \le 0$ — not stated in the notes, but required to make
+  be empty ($S^{a,i}_t = 0$ for some $i$ with $S^{a,j}_t > 0$, $j > i$); by convention
+  $S^{a,j}_t = S^{b,j}_t = 0$ for $j \le 0$ — not stated in the notes, but required to make
   the shifted index in §5 well defined.
 - **This is the *grid* indexing, and it is not the one a market-data file uses.** LOBSTER
   and its kind index by *occupied* level, skipping the empty positions this section admits.
@@ -121,7 +126,7 @@ Two conventions that matter for code:
 | --- | --- | --- |
 | spread | $\phi_t$ | $\lvert P^a_t - P^b_t \rvert$ |
 | mid-price | $P^m_t$ | $(P^a_t + P^b_t)/2$ |
-| $n$-level volume (queue) imbalance | $I^n_t$ | $\dfrac{\sum_{i \le n} V^{b,i}_t - \sum_{i \le n} V^{a,i}_t}{\sum_{i \le n} V^{b,i}_t + \sum_{i \le n} V^{a,i}_t}$ |
+| $n$-level queue imbalance | $I^n_t$ | $\dfrac{\sum_{i \le n} S^{b,i}_t - \sum_{i \le n} S^{a,i}_t}{\sum_{i \le n} S^{b,i}_t + \sum_{i \le n} S^{a,i}_t}$ |
 
 $I^n_t \in [-1, +1]$, **bid minus ask over the total** — bid-heavy is positive. It is widely
 accepted as a reliable signal for the next mid-price move (Cartea, Donnelly and Jaimungal,
@@ -131,35 +136,35 @@ Getting this sign backwards silently inverts every signal built on it.
 ## 5. The update rule
 
 **Proposition (`prop.lobUpdate`).** Let a sell limit order $(t,q,p,-1)$ arrive at time $t$
-into the book $\big(P^a_{t-}, P^b_{t-}, \{(V^{a,i}_{t-}, V^{b,i}_{t-})\}\big)$. Put
+into the book $\big(P^a_{t-}, P^b_{t-}, \{(S^{a,i}_{t-}, S^{b,i}_{t-})\}\big)$. Put
 
-$$N_v := \inf\Big\{n \ge 0 : q < \sum_{i=1}^{n} V^{b,i}_{t-}\Big\}, \qquad
+$$N_s := \inf\Big\{n \ge 0 : q < \sum_{i=1}^{n} S^{b,i}_{t-}\Big\}, \qquad
 N_p := \inf\{n \ge 1 : P^{b,n}_{t-} < p\}, \qquad
-N := \max\big(0,\ N_v \wedge N_p - 1\big),$$
+N := \max\big(0,\ N_s \wedge N_p - 1\big),$$
 
-$$q^{i} := \max\Big(0,\ q - \sum_{k=1}^{i \wedge N_v \wedge (N_p-1)} V^{b,k}_{t-}\Big)
-        = \max\Big(0,\ q - \sum_{1 \le k \le i} V^{b,k}_{t-}\mathbf{1}_{\{P^{b,k}_{t-} \ge p\}}\Big),$$
+$$q^{i} := \max\Big(0,\ q - \sum_{k=1}^{i \wedge N_s \wedge (N_p-1)} S^{b,k}_{t-}\Big)
+        = \max\Big(0,\ q - \sum_{1 \le k \le i} S^{b,k}_{t-}\mathbf{1}_{\{P^{b,k}_{t-} \ge p\}}\Big),$$
 
 $q^i$ being the quantity still to be executed once the first $i$ levels have been consumed.
-$N_v$ is where the size runs out, $N_p$ is where the price constraint bites, and $N$ is the
+$N_s$ is where the size runs out, $N_p$ is where the price constraint bites, and $N$ is the
 number of bid levels fully consumed.
 
-Both infima can be over an empty set, with $\inf\emptyset = +\infty$: $N_v = +\infty$ when $q$
-exceeds the price-eligible bid volume, and $N_p = +\infty$ for a market order ($p = 0$), since
+Both infima can be over an empty set, with $\inf\emptyset = +\infty$: $N_s = +\infty$ when $q$
+exceeds the price-eligible bid size, and $N_p = +\infty$ for a market order ($p = 0$), since
 prices are non-negative so $P^{b,n}_{t-} < 0$ never occurs. **The formulae below assume the
 incoming order does not exhaust the price-eligible side.** If it does, that side empties and
 $P^b_t$ is undefined — for a market order $N = +\infty$, and for a price-limited order the
 formula names an empty price: a sell of 500 at $p = 9.98$ on the book of §8 consumes the whole
 bid side (450) and yields $P^b_t = P^{b,4}_{t-} = 9.97$, where nothing rests. Code must branch
-on the exhausted-side case, and must not compute $N_v$ by a loop that assumes termination.
+on the exhausted-side case, and must not compute $N_s$ by a loop that assumes termination.
 Then
 
 $$
 \begin{aligned}
 P^b_t &= P^{b,1+N}_{t-}, \\
-V^{b,k}_t &= V^{b,k+N}_{t-} - \big(q^{k+N-1} - q^{k+N}\big), && k = 1,2,\dots \\
+S^{b,k}_t &= S^{b,k+N}_{t-} - \big(q^{k+N-1} - q^{k+N}\big), && k = 1,2,\dots \\
 P^a_t &= P^a_{t-} - \max\big(0,\ P^a_{t-} - p\big)\,\mathbf{1}_{\{q^{\infty} > 0\}}, \\
-V^{a,k}_t &= V^{a,\,k + \delta P^a_t/\tau}_{t-} + q^{\infty}\,\mathbf{1}_{\{p \,=\, P^a_t + (k-1)\tau\}}, && k = 1,2,\dots
+S^{a,k}_t &= S^{a,\,k + \delta P^a_t/\tau}_{t-} + q^{\infty}\,\mathbf{1}_{\{p \,=\, P^a_t + (k-1)\tau\}}, && k = 1,2,\dots
 \end{aligned}
 $$
 
@@ -178,13 +183,13 @@ $p < P^a_{t-}$ and shifting every ask index by $-\delta P^a_t/\tau$ levels.
 sell limit order $(t,q,p,-1)$ is equivalent to processing the ordered pair
 
 $$\big[(t, q_M, 0, -1),\ (t, q - q_M, p, -1)\big], \qquad
-q_M := \min\Big(q,\ \sum_{i \ge 1} V^{b,i}_{t-}\mathbf{1}_{\{P^{b,i}_{t-} \ge p\}}\Big),$$
+q_M := \min\Big(q,\ \sum_{i \ge 1} S^{b,i}_{t-}\mathbf{1}_{\{P^{b,i}_{t-} \ge p\}}\Big),$$
 
 the first having priority over the second. Symmetrically, the buy limit order $(t,q,p,+1)$
 is equivalent to
 
 $$\big[(t, q_M, \infty, +1),\ (t, q - q_M, p, +1)\big], \qquad
-q_M := \min\Big(q,\ \sum_{i \ge 1} V^{a,i}_{t-}\mathbf{1}_{\{P^{a,i}_{t-} \le p\}}\Big).$$
+q_M := \min\Big(q,\ \sum_{i \ge 1} S^{a,i}_{t-}\mathbf{1}_{\{P^{a,i}_{t-} \le p\}}\Big).$$
 
 The first component is the **market order**: $p = 0$ for a sell and $p = \infty$ for a buy
 are the price specifications that guarantee immediate execution, so none of $q_M$ is queued.
@@ -195,9 +200,9 @@ This decomposition is the single most useful structural fact for implementation:
 engine needs **one** code path — consume, then rest the remainder — not a separate one for
 "marketable" and "passive" orders.
 
-A sell market order $(t,q_M,0,-1)$ **walks the book** if $q_M > V^{b,1}_{t-}$, which implies
-$N \ge 1$ in §5; likewise for a buy market order against $V^{a,1}_{t-}$. The converse fails:
-an order that exactly clears the best level ($q_M = V^{b,1}_{t-}$) gives $N = 1$, because the
+A sell market order $(t,q_M,0,-1)$ **walks the book** if $q_M > S^{b,1}_{t-}$, which implies
+$N \ge 1$ in §5; likewise for a buy market order against $S^{a,1}_{t-}$. The converse fails:
+an order that exactly clears the best level ($q_M = S^{b,1}_{t-}$) gives $N = 1$, because the
 best price moves, yet the trade prints at a single price and nothing is walked.
 
 **Trades are market orders with $q_M > 0$.** Over a window $[0,T]$, the seller-initiated
@@ -208,8 +213,9 @@ order, whatever the venue calls it.
 
 ## 7. Execution PnL
 
-Let $V$ be the **signed** size we wish to execute ($V > 0$ buy, $V < 0$ sell), $K$ the cash
-account, $H$ the inventory, $X = $ wealth.
+Let $V$ be the **signed** volume we transact ($V > 0$ buy, $V < 0$ sell), $K$ the cash
+account, $H$ the inventory, $X = $ wealth. It is a volume and not the size $q$ of an order:
+on the limit-order route the executed quantity is the counterparty's, not ours.
 
 Executing via a **market order** at time $t$ pays the half-spread:
 
@@ -241,7 +247,7 @@ question of whether the spread we earn compensates the adverse move we suffer wh
 
 Tick $\tau = 0.01$. Book at $t-$:
 
-| side | level $i$ | price | volume |
+| side | level $i$ | price | size |
 | --- | --- | --- | --- |
 | ask | 2 | 10.03 | 180 |
 | ask | 1 | **10.02** $= P^a_{t-}$ | 120 |
@@ -256,13 +262,13 @@ so $\phi_{t-} = 0.02$, $P^m_{t-} = 10.01$, $I^1_{t-} = (100-120)/220 = -0.0909$.
 Decomposition: $q_M = \min(250,\ 100 + 200) = 250$, remainder $q - q_M = 0$. It consumes 100
 at 10.00 and 150 at 9.99.
 
-Update rule: $\sum_1 = 100$, $\sum_2 = 300 > 250$ so $N_v = 2$; $P^{b,3}_{t-} = 9.98 < 9.99$
+Update rule: $\sum_1 = 100$, $\sum_2 = 300 > 250$ so $N_s = 2$; $P^{b,3}_{t-} = 9.98 < 9.99$
 so $N_p = 3$; $N = 1$. Then $q^0 = 250$, $q^1 = 150$, $q^i = 0$ for $i \ge 2$, so
 $q^\infty = 0$ and the ask side is untouched.
 
 $$P^b_t = P^{b,2}_{t-} = 9.99, \quad
-V^{b,1}_t = 200 - (150 - 0) = 50, \quad
-V^{b,2}_t = 150 - 0 = 150, \quad
+S^{b,1}_t = 200 - (150 - 0) = 50, \quad
+S^{b,2}_t = 150 - 0 = 150, \quad
 P^a_t = 10.02 .$$
 
 Resulting state: bid $9.99 \times 50$, $9.98 \times 150$; ask $10.02 \times 120$,
@@ -275,15 +281,15 @@ $(t, 400, 9.99, -1)$.
 Decomposition: $q_M = \min(400,\ 300) = 300$, remainder $(t, 100, 9.99, -1)$ rests on the ask
 side at 9.99 — inside the old spread.
 
-Update rule: $N_v = 3$ (since $400 < 450$), $N_p = 3$, $N = 2$; $q^0 = 400$, $q^1 = 300$,
+Update rule: $N_s = 3$ (since $400 < 450$), $N_p = 3$, $N = 2$; $q^0 = 400$, $q^1 = 300$,
 $q^i = 100$ for $i \ge 2$, so $q^\infty = 100 = q - q_M$.
 
-$$P^b_t = P^{b,3}_{t-} = 9.98, \quad V^{b,1}_t = 150, \quad
+$$P^b_t = P^{b,3}_{t-} = 9.98, \quad S^{b,1}_t = 150, \quad
 P^a_t = 10.02 - \max(0,\ 10.02 - 9.99) = 9.99, \quad \delta P^a_t = -0.03 .$$
 
-Ask indices shift by $-\delta P^a_t/\tau = 3$: $V^{a,1}_t = 100$ at 9.99 (the remainder,
-using $V^{a,j}_{t-} = 0$ for $j \le 0$), $V^{a,2}_t = V^{a,3}_t = 0$ at 10.00 and 10.01, and
-$V^{a,4}_t = 120$ at 10.02. Hence $\phi_t = 0.01$, $P^m_t = 9.985$,
+Ask indices shift by $-\delta P^a_t/\tau = 3$: $S^{a,1}_t = 100$ at 9.99 (the remainder,
+using $S^{a,j}_{t-} = 0$ for $j \le 0$), $S^{a,2}_t = S^{a,3}_t = 0$ at 10.00 and 10.01, and
+$S^{a,4}_t = 120$ at 10.02. Hence $\phi_t = 0.01$, $P^m_t = 9.985$,
 $I^1_t = (150-100)/250 = +0.2$.
 
 Case B exercises everything that usually breaks: walking the book, a residual resting inside
@@ -299,7 +305,8 @@ Python identifier — use it, and nothing else, in `unito26/` and in the noteboo
 | symbol | LaTeX macro | meaning | Python |
 | --- | --- | --- | --- |
 | $P$ | `\price` | generic price | `price` |
-| $V$ | `\volume` | generic volume / signed order size in §7 | `volume` |
+| $S$ | `\size` | generic size resting at a level | `size` |
+| $V$ | `\volume` | transacted volume, $\sum q_M$ over a window; the signed executed quantity in §7 | `volume` |
 | $\tau$ | `\tickSizeOfLOB` | tick size of the book | `tick_size` |
 | $P^m$ | `\midPrice` (alias `\midprice`) | mid-price | `mid_price` |
 | $P^{\mu}$ | `\microPrice` | micro-price: the imbalance-weighted mid, $P^m + \tfrac{\phi}{2} I^1$ | `micro_price` |
@@ -307,20 +314,20 @@ Python identifier — use it, and nothing else, in `unito26/` and in the noteboo
 | $P^a$ | `\bestAskPrice` | best ask price | `best_ask_price` |
 | $P^{b,i}$ | `\nthBestBidPrice[i]` | price of the $i$-th bid level | `bid_price(i)` |
 | $P^{a,i}$ | `\nthBestAskPrice[i]` | price of the $i$-th ask level | `ask_price(i)` |
-| $V^b$ | `\bestBidVolume` | volume at the best bid | `best_bid_volume` |
-| $V^a$ | `\bestAskVolume` | volume at the best ask | `best_ask_volume` |
-| $V^{b,i}$ | `\nthBestBidVolume[i]` | volume at the $i$-th bid level | `bid_volume(i)` |
-| $V^{a,i}$ | `\nthBestAskVolume[i]` | volume at the $i$-th ask level | `ask_volume(i)` |
-| $V^b_t(p)$ | `\bidVolumePriceP` | bid volume at absolute price $p$ | `bid_volume_at(p)` |
-| $V^a_t(p)$ | `\askVolumePriceP` | ask volume at absolute price $p$ | `ask_volume_at(p)` |
+| $S^b$ | `\bestBidSize` | size at the best bid | `best_bid_size` |
+| $S^a$ | `\bestAskSize` | size at the best ask | `best_ask_size` |
+| $S^{b,i}$ | `\nthBestBidSize[i]` | size of the $i$-th bid level | `bid_size(i)` |
+| $S^{a,i}$ | `\nthBestAskSize[i]` | size of the $i$-th ask level | `ask_size(i)` |
+| $S^b_t(p)$ | `\bidSizePriceP` | bid size at absolute price $p$ | `bid_size_at(p)` |
+| $S^a_t(p)$ | `\askSizePriceP` | ask size at absolute price $p$ | `ask_size_at(p)` |
 | $\phi$ | `\LOBspread` | spread | `spread` |
-| $I$, $I^n$ | `\volumeImbalance` (alias `\queueImb`) | volume / queue imbalance | `queue_imbalance(n)` |
+| $I$, $I^n$ | `\queueImbalance` (alias `\queueImb`) | queue imbalance, *volume imbalance* in the literature | `queue_imbalance(n)` |
 | $\mathrm{OFI}$ | `\OFI` (alias `\orderFlowImbalance`) | order flow imbalance | `order_flow_imbalance` |
 | $A$ | `\askOrderQueue` | set of active sell orders | `ask_orders` |
 | $B$ | `\bidOrderQueue` | set of active buy orders | `bid_orders` |
-| $Q^b_t$, $Q^a_t$ | `\bidQueue`, `\askQueue` | bid / ask queue size process | `bid_queue`, `ask_queue` |
-| $Q$ | `\queue` | generic queue size process | `queue` |
-| $A$, $D$ | `\arrivals`, `\departures` | generic arrival / departure counting processes | `arrivals`, `departures` |
+| $Q^b_t$, $Q^a_t$ | `\bidQueue`, `\askQueue` | size process at the touch, $Q^b_t = S^{b,1}_t$ | `bid_queue`, `ask_queue` |
+| $Q$ | `\queue` | generic size process of one queue | `queue` |
+| $A$, $D$ | `\arrivals`, `\departures` | generic arrival / departure counting processes; $D$ counts cancellations as well as executions, so departures are not volume | `arrivals`, `departures` |
 | $A^b_t$, $A^a_t$ | `\bidArrivals`, `\askArrivals` | arrivals to the bid / ask queue | `bid_arrivals`, `ask_arrivals` |
 | $D^b_t$, $D^a_t$ | `\bidDepartures`, `\askDepartures` | departures from the bid / ask queue | `bid_departures`, `ask_departures` |
 | $T^{b,A}_j$, $T^{a,A}_j$ | `\bidArrivalTimes`, `\askArrivalTimes` | arrival times | `bid_arrival_times`, `ask_arrival_times` |
@@ -349,7 +356,7 @@ the nearest and to the longest run of empty positions, and `first_gap_size` for 
 of the nearest one. **A distance is measured to the empty position**, so a gap opening at
 grid position $i$ lies $i - 1$ ticks from the touch; the largest-gap tie-break is toward the
 touch. Where a side has no gap there is no position to name, and zero would name the touch,
-which always carries volume: a book answers `None`, a frame NaN. `first_gap_size` answers
+which always carries size: a book answers `None`, a frame NaN. `first_gap_size` answers
 zero, as `largest_gap` does, because a length of zero is a true answer.
 
 The order tuple itself has no macros: $t$ is time, $q$ size, $p$ price, $d$ direction, and
@@ -358,6 +365,12 @@ order `(t, q, p, d)`.
 
 **Collisions to watch.** The `.tex` reuses letters across blocks: $A$ is both the ask order
 queue (`\askOrderQueue`) and the generic arrival process (`\arrivals`); $Q$ is both a queue
-size (`\queue`) and the quantity to liquidate (`\quantityToLiquidate`); $V$ is both a level
-volume and the signed order size in the PnL equations of §7. Context disambiguates them in
-prose, but Python names must not — hence the distinct identifiers above.
+size (`\queue`) and the quantity to liquidate (`\quantityToLiquidate`); $S$ is both a level
+size here and the price path (`\pricePath`, `\semimartingale`, $S^0$ for the riskless asset)
+in the option-pricing block; $V$ is a volume in both its uses, but signed and per-execution in
+§7 and unsigned and aggregated over a window elsewhere — the two meet at $V = d\,q_M$ when the
+execution is by market order. Context disambiguates them in prose, but Python names must not —
+hence the distinct identifiers above.
+
+The notation departs from the thesis on one symbol: the thesis writes $V$ for the size of a
+level. Here that is $S$, and $V$ is the volume transacted.

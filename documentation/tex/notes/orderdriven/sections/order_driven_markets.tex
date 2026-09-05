@@ -125,41 +125,51 @@ when the following variables are specified:
 the lowest price at which one can find sell offers active at time $t$;
 \item\label{item.bestBidPrice} the best bid price $\bestBidPrice_t$, i.e.
 the highest price at which one can find buy offers active at time $t$;
-\item\label{item.askVolume} the volume $\nthBestAskVolume[i]_t$ of ask offers at price
+\item\label{item.askSize} the size $\nthBestAskSize[i]_t$ of ask offers at price
 $\nthBestAskPrice[i]_t= \bestAskPrice_t + (i-1)\tickSizeOfLOB$, for $i=1,2,\dots$, i.e.
 the quantity
 \begin{equation*}
- \nthBestAskVolume[i]_t = \sum_{\lbrace(s,q,\nthBestAskPrice[i]_t,-1) \in \askOrderQueue_t : \quad s\leq t\rbrace} q,
+ \nthBestAskSize[i]_t = \sum_{\lbrace(s,q,\nthBestAskPrice[i]_t,-1) \in \askOrderQueue_t : \quad s\leq t\rbrace} q,
 \end{equation*}
 where the sum is over all the active sell limit orders submitted by time $t$
 for a price of $\bestAskPrice_t + (i-1)\tickSizeOfLOB$;
-\item\label{item.bidVolume} the volume $\nthBestBidVolume[i]_t$ of bid offers at price
+\item\label{item.bidSize} the size $\nthBestBidSize[i]_t$ of bid offers at price
 $\nthBestBidPrice[i]_t=\bestBidPrice_t - (i-1)\tickSizeOfLOB$, for $i=1,2,\dots$, i.e.
 the quantity
 \begin{equation*}
- \nthBestBidVolume[i]_t = \sum_{\lbrace (s,q,\nthBestBidPrice[i]_t,1) \in \bidOrderQueue_t: \quad s\leq t\rbrace} q,
+ \nthBestBidSize[i]_t = \sum_{\lbrace (s,q,\nthBestBidPrice[i]_t,1) \in \bidOrderQueue_t: \quad s\leq t\rbrace} q,
 \end{equation*}
 where the sum is over all the active buy limit orders submitted by time $t$
 for a price of $\bestBidPrice_t - (i-1)\tickSizeOfLOB$.
 \end{enumerate}
-Points \ref{item.bestAskPrice}-\ref{item.bidVolume} above describe how the configuration at time $t$
+Points \ref{item.bestAskPrice}-\ref{item.bidSize} above describe how the configuration at time $t$
 of the limit order book is reconstructed from the ask queue $\askOrderQueue_t$
 and the bid queue $\bidOrderQueue_t$.
 
 \begin{remark}
-\label{remark.volumeIsQueueSize}
-In points \ref{item.askVolume} and \ref{item.bidVolume} the term 'volume' is used
-to denote the sum of the sizes of orders queuing at a specified price level.
-In particular,
-this means that it is measured in number of shares.
-Often in the literature this sum is also referred to as 'size' of the queue.
+\label{remark.sizeVersusVolume}
+In points \ref{item.askSize} and \ref{item.bidSize} the sum of the quantities queuing at a
+price level is called the \emph{size} of that level,
+measured in number of shares.
+We reserve \emph{volume} for the number of shares transacted over an interval:
+a level has a size at every instant, whereas volume accumulates between two instants.
+Volume is not a change in size.
+A level shrinks by cancellation as well as by execution,
+so no sequence of sizes determines the volume traded;
+by Proposition \ref{prop.decompositionOfLimitOrder},
+the volume over a window is the sum of $\marketOrderSize$
+over the market orders submitted within it.
+The term 'size' is used at two granularities,
+that of a single order and that of a level,
+the second being the sum of the first.
+Part of the literature calls the size of a level its volume.
 \end{remark}
 
 The whole configuration of a limit order book at time $t$ is described by the variables
-$(\bestAskPrice_t, \bestBidPrice_t, \lbrace (\nthBestAskVolume[i]_t, \nthBestBidVolume[i]_t) : \, \, i=1,2,\dots\rbrace)$.
+$(\bestAskPrice_t, \bestBidPrice_t, \lbrace (\nthBestAskSize[i]_t, \nthBestBidSize[i]_t) : \, \, i=1,2,\dots\rbrace)$.
 Apart from these variables,
 other derived quantities are useful to assess the properties of an order book.
-These are the spread, the mid-price and the volume imbalance (or queue imbalance).
+These are the spread, the mid-price and the queue imbalance.
 
 The spread at time $t$ is the distance $\abs{\bestAskPrice_t - \bestBidPrice_t}$
 between best ask price and best bid price,
@@ -167,61 +177,61 @@ which we denote by $\LOBspread_t$.
 The mid-price at time $t$ is the mid point in between $\bestBidPrice_t$ and $\bestAskPrice_{t}$,
 which we denote by $\midPrice_t$ and is given by
 $\midPrice_t = (\bestAskPrice_t + \bestBidPrice_{t})/{2}$.
-Finally, the $n$-levels volume imbalance (or queue imbalance) at time $t$,
-denoted $\volumeImbalance^{n}_t$,
+Finally, the $n$-levels queue imbalance at time $t$,
+denoted $\queueImbalance^{n}_t$,
 is the normalised excess of limit orders on the first $n$ levels of the bid side
 compared to the limit orders on the first $n$ levels of the ask side, namely
 \begin{equation}
-\label{eq.volumeImbalance}
-\volumeImbalance^{n}_t =
-\frac{\sum_{i\leq n}\nthBestBidVolume[i]_t - \sum_{i\leq n}\nthBestAskVolume[i]_t}{\sum_{i\leq n}\nthBestBidVolume[i]_t + \sum_{i\leq n}\nthBestAskVolume[i]_t},
+\label{eq.queueImbalance}
+\queueImbalance^{n}_t =
+\frac{\sum_{i\leq n}\nthBestBidSize[i]_t - \sum_{i\leq n}\nthBestAskSize[i]_t}{\sum_{i\leq n}\nthBestBidSize[i]_t + \sum_{i\leq n}\nthBestAskSize[i]_t},
 \end{equation}
-where $\sum_{i\leq n}\nthBestBidVolume[i]_t$
-(respectively, $\sum_{i\leq n}\nthBestAskVolume[i]_t$)
-is the cumulative volumes on the first $n$ bid (ask) levels.
-The queue imbalance $\volumeImbalance^n$ is widely accepted as a reliable signal
-for the next mid-price move (\cite{CDJ18enh}):
+where $\sum_{i\leq n}\nthBestBidSize[i]_t$
+(respectively, $\sum_{i\leq n}\nthBestAskSize[i]_t$)
+is the cumulative size on the first $n$ bid (ask) levels.
+The queue imbalance $\queueImbalance^n$, called volume imbalance in \cite{CDJ18enh},
+is widely accepted as a reliable signal for the next mid-price move:
 when it is close to -1 the mid-price will likely decrease,
 and when it is close to +1 it will likely increase.
 
 When a limit order comes to the market, it modifies the previous configuration of the order book.
 Proposition \ref{prop.lobUpdate} gives the updating rule for the variables
-$(\bestAskPrice_t, \bestBidPrice_t, \lbrace (\nthBestAskVolume[i]_t, \nthBestBidVolume[i]_t) : \, \, i=1,2,\dots\rbrace)$.
+$(\bestAskPrice_t, \bestBidPrice_t, \lbrace (\nthBestAskSize[i]_t, \nthBestBidSize[i]_t) : \, \, i=1,2,\dots\rbrace)$.
 \begin{prop}
 \label{prop.lobUpdate}
  Let $(t,q,p,-1)$ be a sell limit order that arrives to the market at time $t$.
- Let $(\bestAskPrice_{t-}, \bestBidPrice_{t-},\lbrace (\nthBestAskVolume[i]_{t-}, \nthBestBidVolume[i]_{t-}) : \, \, i=1,2,\dots\rbrace )$
+ Let $(\bestAskPrice_{t-}, \bestBidPrice_{t-},\lbrace (\nthBestAskSize[i]_{t-}, \nthBestBidSize[i]_{t-}) : \, \, i=1,2,\dots\rbrace )$
  represent the limit order book immediately before $t$.
- Then, prices and volumes are updated according to the following formulae:
+ Then, prices and sizes are updated according to the following formulae:
  \begin{equation}
  \label{eq.lobUpdateSellOrder}
   \begin{split}
    \bestBidPrice_t =& \nthBestBidPrice[1+N]_{t-};
    \\
-   \nthBestBidVolume[k]_{t}
-   =& \nthBestBidVolume[k+N]_{t-}
+   \nthBestBidSize[k]_{t}
+   =& \nthBestBidSize[k+N]_{t-}
    - \left( q^{k+N-1}-q^{k+N}\right), \qquad k=1,2,\dots ;
    \\
    \bestAskPrice_t = & \bestAskPrice_{t-}
    - \max\left(0,\bestAskPrice_{t-} - p\right) \indicator{q^{\infty} > 0} ;
    \\
-   \nthBestAskVolume[k]_t = &  \nthBestAskVolume[k+\delta\bestAskPrice_t/\tickSizeOfLOB]_{t-}
+   \nthBestAskSize[k]_t = &  \nthBestAskSize[k+\delta\bestAskPrice_t/\tickSizeOfLOB]_{t-}
    +q^{\infty}\indicator{p=\bestAskPrice_t + (k-1)\tickSizeOfLOB}, \qquad k=1,2,\dots ;
   \end{split}
  \end{equation}
  where $\delta\bestAskPrice_t = \bestAskPrice_t - \bestAskPrice_{t-}$
  denotes the (non-positive) jump of the best ask price;
- $N:=\max(0,N_v \wedge N_p -1)$,
- where $N_v := \inf\lbrace n\geq 0 : \, q<\sum_{i=1}^{n} \nthBestBidVolume[i]_{t-}\rbrace$
+ $N:=\max(0,N_s \wedge N_p -1)$,
+ where $N_s := \inf\lbrace n\geq 0 : \, q<\sum_{i=1}^{n} \nthBestBidSize[i]_{t-}\rbrace$
  and $N_p:=\inf\lbrace n\geq 1: \, \nthBestBidPrice[n]_{t-}< p \rbrace$; and
  \begin{equation*}
   \begin{split}
    q^{i}:=& \max\left( 0,
-    q-\sum_{k=1}^{i\wedge N_v \wedge (N_p - 1)} \nthBestBidVolume[k]_{t-}
+    q-\sum_{k=1}^{i\wedge N_s \wedge (N_p - 1)} \nthBestBidSize[k]_{t-}
    \right)
    \\
    =& \max\left( 0,
-   q-\sum_{1 \leq k\leq i} \nthBestBidVolume[k]_{t-}\indicator{\nthBestBidPrice[k]_{t-} \geq p}
+   q-\sum_{1 \leq k\leq i} \nthBestBidSize[k]_{t-}\indicator{\nthBestBidPrice[k]_{t-} \geq p}
    \right)
   \end{split}
  \end{equation*}
@@ -230,14 +240,14 @@ $(\bestAskPrice_t, \bestBidPrice_t, \lbrace (\nthBestAskVolume[i]_t, \nthBestBid
 \end{prop}
 \begin{proof}
  The processing of the sell limit order $(t,q,p,-1)$ is equivalent to the processing of the stream
- $(t,\nthBestBidVolume[1]_{t-},\nthBestBidPrice[1]_{t-},-1), \dots, (t,\nthBestBidVolume[N]_{t-},\nthBestBidPrice[N]_{t-},-1), (t,q^{N}, p, -1)$,
+ $(t,\nthBestBidSize[1]_{t-},\nthBestBidPrice[1]_{t-},-1), \dots, (t,\nthBestBidSize[N]_{t-},\nthBestBidPrice[N]_{t-},-1), (t,q^{N}, p, -1)$,
  where the priority is from left to right.
  Hence, we are reduced to discuss the following three cases.
  \begin{enumerate}[label={\emph{\roman{*}}.}]
   \item No match with any buy order.
   This happens if $p>\bestBidPrice_{t-}$.
   In this case therefore,
-  $\bestBidPrice_t = \bestBidPrice_{t-}$ and $\nthBestBidVolume[k]_{t} = \nthBestBidVolume[k]_{t-}$
+  $\bestBidPrice_t = \bestBidPrice_{t-}$ and $\nthBestBidSize[k]_{t} = \nthBestBidSize[k]_{t-}$
   are the correct update rules on the bid side, because no modification happens.
   With $N_p=1$ (so that $N=0$) and $q^i=q$ for all $i\geq 0$
   these updates are retrieved from the formulae in the statement.
@@ -247,36 +257,36 @@ $(\bestAskPrice_t, \bestBidPrice_t, \lbrace (\nthBestAskVolume[i]_t, \nthBestBid
   Finally, we have that $-\delta\bestAskPrice_t/\tickSizeOfLOB$ is the number of levels
   by which the ask price is improved by the incoming order at time $t$.
   Hence, if indeed there is an improvement (i.e. $p<\bestAskPrice_{t-}$),
-  we have that $\lbrace \nthBestAskVolume[k]_{t}: \, k=1,2,\dots\rbrace$
-  represents the volumes of $\lbrace \nthBestAskVolume[k]_{t-}: \, k=1,2,\dots\rbrace$
+  we have that $\lbrace \nthBestAskSize[k]_{t}: \, k=1,2,\dots\rbrace$
+  represents the sizes of $\lbrace \nthBestAskSize[k]_{t-}: \, k=1,2,\dots\rbrace$
   where the index $k$ is shifted by $-\delta\bestAskPrice_t/\tickSizeOfLOB$,
-  and the best ask volume at time $t$ is the size $q$ of the incoming order.
+  and $\nthBestAskSize[1]_t = q$, the size of the incoming order.
   If instead there is no improvement (i.e. $p\geq \bestAskPrice_{t-}$),
-  the only volume $\nthBestAskVolume[k]_{t-}$ that is modified
+  the only size $\nthBestAskSize[k]_{t-}$ that is modified
   is the one corresponding to the price $p=\bestAskPrice_t + (k-1)\tickSizeOfLOB$,
   and such modification is the addition of $q$.
   \item Complete execution at the first bid level.
-  This happens if $p\leq\bestBidPrice_{t-}$ and $q<\nthBestBidVolume[1]_{t-}$.
+  This happens if $p\leq\bestBidPrice_{t-}$ and $q<\nthBestBidSize[1]_{t-}$.
   In this case the ask side is not altered,
   and the stated updating rules yield that because $q^{\infty}=0$.
   As for the bid side, we must have
   $\bestBidPrice_t=\bestBidPrice_{t-}$,
-  $\nthBestBidVolume[1]_t = \nthBestBidVolume[1]_{t-}- q$,
-  and $\nthBestBidVolume[k]_t = \nthBestBidVolume[k]_{t-}$ for $k\geq 2$.
-  Since in this case $N_v=1$ and $N_p\geq 2 $, $q^0 = q$ and $q^i = 0$ for all $i\geq 1$
+  $\nthBestBidSize[1]_t = \nthBestBidSize[1]_{t-}- q$,
+  and $\nthBestBidSize[k]_t = \nthBestBidSize[k]_{t-}$ for $k\geq 2$.
+  Since in this case $N_s=1$ and $N_p\geq 2 $, $q^0 = q$ and $q^i = 0$ for all $i\geq 1$
   the stated updating rules encompass this case as well.
   \item Partial execution at first bid level.
-  This happens if $p=\bestBidPrice_{t-}$ and $q\geq \nthBestBidVolume[1]_{t-}$.
+  This happens if $p=\bestBidPrice_{t-}$ and $q\geq \nthBestBidSize[1]_{t-}$.
   In this case, we must check that the stated updating rule yield
   $\bestBidPrice_t = \nthBestBidPrice[2]_{t-}$,
-  $\nthBestBidVolume[k]_t = \nthBestBidVolume[k+1]_{t-}$ for all $k\geq 1$, on the bid side.
-  As $N_v\geq 2$, $N_p=2$, $q^0 = q$, and $q^i = q-\nthBestBidVolume[1]_{t-}$ for all $i\geq 1$,
+  $\nthBestBidSize[k]_t = \nthBestBidSize[k+1]_{t-}$ for all $k\geq 1$, on the bid side.
+  As $N_s\geq 2$, $N_p=2$, $q^0 = q$, and $q^i = q-\nthBestBidSize[1]_{t-}$ for all $i\geq 1$,
   this is indeed checked.
-  Finally, on the ask side if $q=\nthBestBidVolume[1]_{t-}$ there are not modifications at all.
-  If instead $q>\nthBestBidVolume[1]_{t-}$ the updating rules must yield
-  $\bestAskPrice_t = p$, $\nthBestAskVolume[1]_t = q-\nthBestBidVolume[1]_{t-}$,
-  and the volume index $k$ shifted by the number of levels in the spread at time $t-$.
-  Since with $q>\nthBestBidVolume[1]_{t-}$ it holds $q^{\infty} = q-\nthBestBidVolume[1]_{t-}$
+  Finally, on the ask side if $q=\nthBestBidSize[1]_{t-}$ there are not modifications at all.
+  If instead $q>\nthBestBidSize[1]_{t-}$ the updating rules must yield
+  $\bestAskPrice_t = p$, $\nthBestAskSize[1]_t = q-\nthBestBidSize[1]_{t-}$,
+  and the size index $k$ shifted by the number of levels in the spread at time $t-$.
+  Since with $q>\nthBestBidSize[1]_{t-}$ it holds $q^{\infty} = q-\nthBestBidSize[1]_{t-}$
   and $\delta\bestAskPrice_t = -\LOBspread_{t-}$ this is confirmed.
  \end{enumerate}
 \end{proof}
@@ -290,32 +300,32 @@ Proposition \ref{prop.decompositionOfLimitOrder} states the terms of this decomp
 \begin{prop}
 \label{prop.decompositionOfLimitOrder}
  Given the configuration
- $(\bestAskPrice_{t-}, \bestBidPrice_{t-},\lbrace (\nthBestAskVolume[i]_{t-}, \nthBestBidVolume[i]_{t-}) : \, \, i=1,2,\dots\rbrace )$
+ $(\bestAskPrice_{t-}, \bestBidPrice_{t-},\lbrace (\nthBestAskSize[i]_{t-}, \nthBestBidSize[i]_{t-}) : \, \, i=1,2,\dots\rbrace )$
  of the limit order book immediately before time $t$,
  processing the sell limit order $(t,q,p,-1)$ is equivalent to processing the pair of orders
  $[(t,\marketOrderSize,0,-1),(t,q-\marketOrderSize,p,-1) ]$,
  with the former having priority over the latter, and where
  \begin{equation*}
-  \marketOrderSize:= \min\left(q, \sum_{i\geq 1} \nthBestBidVolume[i]_{t-} \indicator{\nthBestBidPrice[i]_{t-}\geq p}\right).
+  \marketOrderSize:= \min\left(q, \sum_{i\geq 1} \nthBestBidSize[i]_{t-} \indicator{\nthBestBidPrice[i]_{t-}\geq p}\right).
  \end{equation*}
 Similarly, processing the buy limit order $(t,q,p,+1)$ is equivalent to processing the pair of orders
 $[(t,\marketOrderSize,\infty,+1),(t,q-\marketOrderSize,p,+1) ]$, where
  \begin{equation*}
-  \marketOrderSize:= \min\left (q, \sum_{i\geq 1} \nthBestAskVolume[i]_{t-} \indicator{\nthBestAskPrice[i]_{t-}\leq  p}\right).
+  \marketOrderSize:= \min\left (q, \sum_{i\geq 1} \nthBestAskSize[i]_{t-} \indicator{\nthBestAskPrice[i]_{t-}\leq  p}\right).
  \end{equation*}
 \end{prop}
 \begin{proof}
  Let $(t,q,p,-1)$ be a sell limit order.
- Let $N_v$, $N_p$ and $q^i$ be as in Proposition \ref{prop.lobUpdate}.
- Let $N_v^M$, $N_p^M$ and $\marketOrderSize^{i}$ be the corresponding quantities
+ Let $N_s$, $N_p$ and $q^i$ be as in Proposition \ref{prop.lobUpdate}.
+ Let $N_s^M$, $N_p^M$ and $\marketOrderSize^{i}$ be the corresponding quantities
  for the order $(t,\marketOrderSize,0,-1)$.
- Notice that $N_v^M = N_v^M \wedge N_p^M$.
+ Notice that $N_s^M = N_s^M \wedge N_p^M$.
  Processing $(t,\marketOrderSize,0,-1)$ does not affect the ask side
  because $\marketOrderSize^{\infty} = 0$;
  moreover the effects on the bid side of processing $(t,\marketOrderSize,0,-1)$
  are the same as those of $(t,q,p,-1)$,
- because $\inf \lbrace n\geq 0 : \, \marketOrderSize < \sum_{i=1}^{n} \nthBestBidVolume[i]_{t-} \rbrace = N_v \wedge N_p$
- and $q^{k+N-1} - q^{k+N} = \marketOrderSize^{k+N_v^M - 1} - \marketOrderSize^{k+N_v^M}$.
+ because $\inf \lbrace n\geq 0 : \, \marketOrderSize < \sum_{i=1}^{n} \nthBestBidSize[i]_{t-} \rbrace = N_s \wedge N_p$
+ and $q^{k+N-1} - q^{k+N} = \marketOrderSize^{k+N_s^M - 1} - \marketOrderSize^{k+N_s^M}$.
  Therefore, after $(t,\marketOrderSize,0,-1)$ has been processed,
  the bid side is the same as the bid side after the processing of $(t,q,p,-1)$.
 
@@ -354,15 +364,15 @@ Even in such cases, we keep our convention of referring to the fraction of a lim
 that is executed upon submission as market order.}
 
 A sell market order $(t,\marketOrderSize,0,-1)$ is said to 'walk the book'
-if $\marketOrderSize > \nthBestBidVolume[1]_{t-}$;
+if $\marketOrderSize > \nthBestBidSize[1]_{t-}$;
 this implies $N\geq 1 $ in the notation of Proposition \ref{prop.lobUpdate},
 the converse failing when the order exactly clears the best level.
-Similarly, a buy market order walks the book
-if its size is larger than the volume of offers on the first ask level.
+Similarly, a buy market order $(t,\marketOrderSize,\infty,1)$ walks the book
+if $\marketOrderSize > \nthBestAskSize[1]_{t-}$.
 
 Given a time window $\timeWindow$,
 the evolution in time of the limit order book
-$\lbrace (\bestAskPrice_t, \bestBidPrice_t,\lbrace (\nthBestAskVolume[i]_t, \nthBestBidVolume[i]_t) : \, \, i=1,2,\dots\rbrace): \quad 0\leq t \leq \timeHorizon \rbrace$
+$\lbrace (\bestAskPrice_t, \bestBidPrice_t,\lbrace (\nthBestAskSize[i]_t, \nthBestBidSize[i]_t) : \, \, i=1,2,\dots\rbrace): \quad 0\leq t \leq \timeHorizon \rbrace$
 results from the history of all limit order submissions,
 cancellations and executions that happened in $\timeWindow$.
 If every limit order in $\lbrace (t,q,p,d): \, 0\leq t\leq \timeHorizon\rbrace$
@@ -386,13 +396,17 @@ does not alter the evolution of the limit order book.
 \label{sec.pnlOfTradeExecution}
 
 Assume that
-we want to execute an order of size
+we want to transact the (signed) volume
 $\volume$
-at time $t$.
+at time $t$,
+positive for a purchase and negative for a sale.
+The quantity is a volume and not the size $q$ of an order:
+on the limit order route the executed quantity is the one the counterparty sends,
+not the one we do.
 We can send a market order to the order book,
 which guarantees immediate execution at the cost of paying the bid-ask spread.
 More precisely,
-we can execute the (signed) order $\volume$
+we can transact $\volume$
 at time $t$
 via a market order,
 and this changes our cash account by
@@ -409,7 +423,7 @@ $\midPrice_t$,
 $\bestAskPrice_t$,
 $\bestBidPrice_t$
 are respectively the mid price, the ask price and the bid price at time $t$,
-and $\abs{\volume}$ is the unsigned size of our order.
+and $\abs{\volume}$ is the unsigned volume transacted.
 The quantity $\bestAskPrice_t - \bestBidPrice_t$ is the spread at time $t$,
 which we denote $\LOBspread_t$.
 
@@ -487,7 +501,7 @@ The latter reads
 Hence,
 when deciding whether to execute via market orders or via limit orders,
 we need to assess
-the size of the spread relative to the risk
+the spread we earn relative to the risk
 of an adverse price move
 between the time at which we send our order
 and

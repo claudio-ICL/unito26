@@ -28,7 +28,7 @@ This is the only representation that can answer "where am I in the queue?", so i
 for queue-position and adverse-selection work.
 
 **2. Level-aggregated snapshot.** Just the state of §3:
-`(best_ask_price, best_bid_price, ask_volumes, bid_volumes)`, volumes as fixed-length arrays
+`(best_ask_price, best_bid_price, ask_sizes, bid_sizes)`, sizes as fixed-length arrays
 over the first $n$ levels. This is what the update rule of §5 acts on, what most public data
 feeds give you, and what feeds signals ($\phi$, $P^m$, $I^n$). Cheap, but it forgets who is
 in front of whom.
@@ -85,7 +85,7 @@ Case A (the same book, sell $(t, 250, 9.99, -1)$) is the no-remainder counterpar
 **Property tests** worth having from the start:
 
 - the book never crosses after any sequence of submissions and cancellations;
-- shares are conserved: total filled equals the drop in resting volume on the consumed side,
+- shares are conserved: total volume filled equals the drop in resting size on the consumed side,
   and every fill price is a resting price that satisfied $\pi d \le p d$;
 - `queue_imbalance(n)` lies in $[-1, 1]$ and is $+1$ / $-1$ exactly when one side is empty
   (with both sides empty it is $0/0$ — assert the precondition rather than the bound);
