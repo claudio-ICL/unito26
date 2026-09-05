@@ -46,10 +46,16 @@ Built:
 - `unito26/lob/binary_gaps.py` — an integer as a set of bit positions
 - `unito26/lob/frames.py` — pandera schemas and the round trips to validated DataFrames
 - `unito26/lob/config.py` — example parametrizations, frozen as serialized frames
-- `unito26/lob/replay.py` — the fold, and the `MarketSession` it produces
+- `unito26/lob/session.py` — the `MarketSession` and the four ways of building one
+- `unito26/lob/statistics.py` — the one declaration the columns, their order, their
+  coverage flags and the fold's write positions are all read off
+- `unito26/lob/delta_log.py` — a session recorded as level changes rather than states
 - `unito26/lob/hawkes.py` — multivariate Hawkes with exact simulation
 - `unito26/lob/simulate.py` — marks: event type to order, against a live book
-- `unito26/lob/lobster.py` — read-only loader and descriptive statistics
+- `unito26/lob/lobster.py` — the file pair, the price-unit conversion, the loaders and
+  the windowed aligned read; `MarketSession.from_lobster_files` builds a session from
+  one. Still short of L6, which reconstructs the book from the messages rather than
+  reading the states the file already carries
 
 The simulator no longer offers a submission-only mode: the ladder's early rungs are a
 conceptual progression, not a runtime switch.
@@ -73,6 +79,9 @@ The common decay is what makes the state a `d`-vector rather than a `d x d` matr
 it reduces the multivariate case to the scalar Dassios–Zhao exact scheme: O(1) per event,
 no rejection, no time grid. That reduction is *derived* rather than quoted, so it is
 certified numerically by the random-time-change residual test.
+
+`notebooks/a-session-from-lobster-files.ipynb` is the first session on real data, and the
+only place the measurements below can be reproduced, `data/` not being in the repository.
 
 `notebooks/the-cost-of-the-statistics.ipynb` asks what the statistics on the fold cost, and
 is the notebook to re-run before changing what `_write_statistics` reads. Two decisions in
@@ -270,6 +279,33 @@ which is why the notebook exists rather than the estimate:
   without looking at this produces a column that is NaN more often than not and reads like a
   bug in the code.
 
+From the LOBSTER loader (`notebooks/a-session-from-lobster-files.ipynb`, the 2012-06-21
+sample, eight ticker-days, 3,499,101 book states).
+
+- **Hidden liquidity is a fifth of the prints and all of it is inside the spread.** On AMZN,
+  2,445 of 11,419 executions are type 5, carrying 197,507 of 810,755 shares — and **100% of
+  that volume prints strictly inside the spread that stood before it**, against 0% of the
+  visible volume. So the lit VWAP (22,264.01 ticks) and the whole-tape VWAP (22,263.48) differ
+  by less than a tick while describing quite different things, which is why the session counts
+  type 4 only and says so rather than splitting the difference;
+- **the windowed read is bounded by the rows kept, not by the file.** Five minutes of SPY at
+  depth 50 — 77,829 of 1,154,737 rows — is 124 MB of frame and about 4 s, against a 1.4 GB
+  file that would not fit comfortably. Skipping still streams the text, so a window at the end
+  of a file costs the same memory and more time than one at the start;
+- **padding at depth 50 is an opening artefact, not a market state.** All 108 padded rows of
+  the AAPL depth-50 file fall in the first 0.64 seconds, before the book has filled to fifty
+  levels, and the side holds 40 to 49 levels there. Any window that does not start at 09:30
+  contains none, so an assertion about padding written over a later window is vacuous rather
+  than passing — which is a trap worth setting for students deliberately;
+- **LOBSTER writes a row per resting order consumed, and four fifths of those are queue
+  splits.** Grouping visible executions on the exact integer clock: 22.9% of AMZN's trades are
+  multi-row and hold 43% of its executions; on INTC it is 48.6% and **86%**, with one trade
+  spanning 105 rows. Splitting by whether the rows share a price — a *queue split*, which no
+  sequence of aggregate states determines — gives 80% AMZN, 79% GOOG, 82% AAPL, 99% INTC. This
+  is the aggregation-versus-identity break arriving as a property of a file, and it is why a
+  folded session and a loaded one are not row-wise comparable. See
+  [`lobster-execution-granularity.md`](lobster-execution-granularity.md).
+
 ## Exercises & exam snippets
 
 Harvested from the implementation, for the multiple-choice format: float tick prices; a
@@ -356,6 +392,42 @@ a failing test:
   `frame.query("OFI0.5 > 0")` fails in a way that reads as a pandas bug; `1e6` names
   `OFI1e+06`; and two windows differing below `%g` precision name one column, so the frame
   comes back a column short of what was asked for.
+
+From the LOBSTER loader work. The theme is a data pipeline: every one of these produces a
+complete, plausible answer, and most of them pass a test suite written from the same sample.
+
+- **`Direction * Size` for signed volume.** It runs, it stays in range, and it is what the
+  column is called — and it inverts every signed-flow signal built on it, because LOBSTER
+  reports the *resting* side of a fill. The discriminating observation is worth shipping
+  with the snippet: written correctly, every visible execution prints on the far side of the
+  mid that stood before it; inverted, every one prints on the near side. Ask what the sign
+  means, not where the bug is;
+- **`Price >= 0` on a message schema.** It passes all eight shipped files and rejects a
+  trading halt, which writes `-1` there — and on a halt `Price` is not a price at all but a
+  status code, `-1`, `0` or `1`. "Why does this schema pass every test and fail in
+  production?" The answer is that the tests were written from the same data as the schema.
+  (`OrderID > 0` is the weaker sibling: 2,445 rows of the AMZN sample carry 0, so it fails on
+  day one and teaches only that the specification is worth reading);
+- **`dtype="int8"` on the `Type` column.** Declaring the dtype is the right instinct;
+  narrowing it is not. A corrupt `Type` of 260 becomes 4 — a valid visible execution —
+  inside `read_csv`, and the membership check downstream then passes it. The declaration
+  meant to catch the corruption is what launders it;
+- **a one-row `skiprows` slip on the orderbook file.** It yields a *complete* session: every
+  statistic finite, the spread distribution unchanged, no warning, and every timestamp on
+  the wrong book state. "How would you notice?" Nothing in the output reveals it, and the
+  files carry no key to check against — only a reconciliation with an independent
+  computation finds it. The best snippet of the set, because it is a silent failure of a
+  data pipeline rather than of a formula;
+- **`groupby(messages.Time)` to aggregate executions into trades.** Right answer, unsound
+  method: it is exact-bit equality on a float, and it works only because the clock counts
+  from midnight. The same nanosecond resolution on a Unix epoch has a float64 spacing of
+  238ns and every group merges. "What would have to change for this to stop being correct?"
+  is the question, not "is it correct";
+- **`unique=True` on the timestamp index.** The constraint a reader adds next, and it rejects
+  3% of a LOBSTER session — the tied rows being exactly the queue splits, where one incoming
+  order consumed several resting ones at a single instant;
+- **mean execution size as mean trade size.** LOBSTER records executions against resting
+  orders, not trades; its own demo says so and it is still the easiest number to get wrong.
 
 ## References
 
