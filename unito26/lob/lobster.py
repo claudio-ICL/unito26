@@ -14,12 +14,20 @@ Those edge cases stand between the ladder's top rung and real data:
   no identity: a hybrid of aggregate and identified state;
 * **hidden liquidity** -- type-5 executions are trades that move no visible level;
 * **non-unique timestamps** -- section 1 assumes distinct timestamps, and real feeds
-  carry many messages at the same nanosecond.  Identity is the order id, not the time;
+  carry many messages at the same nanosecond.  Identity is the order id, not the time.
+  The cause is the entry below: one incoming order consuming five resting ones writes
+  five rows at one timestamp;
+* **execution granularity** -- the feed records the execution of each *resting* order, so
+  an order that consumes k of them writes k rows where a fold writes one.  Four fifths of
+  those are several orders at *one* price, which no sequence of aggregate states
+  determines;
 * **halts and crosses** -- not ordinary matching at all;
 * **asymmetric reporting** -- the feed reports the *resting* side of a fill, so the
   aggressor's direction is ``-d``.  Trade signing, exactly, for free.
 
-The data itself is not in the repository (``data/`` is gitignored).
+The data itself is not in the repository (``data/`` is gitignored), and
+``documentation/from-lobster-files-to-a-session.md`` describes the format, the clock and
+these edge cases without needing it.
 """
 
 from __future__ import annotations

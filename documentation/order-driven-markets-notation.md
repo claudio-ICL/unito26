@@ -118,7 +118,9 @@ Conventions that matter for code:
   The two coincide only on a book with no holes, and every quantity indexed by level —
   $I^n$ above all — means something different under each.
   [`grid-levels-and-lobster-levels.md`](grid-levels-and-lobster-levels.md) is the reference
-  for the difference and for the code that keeps the two apart.
+  for the difference and for the code that keeps the two apart, and
+  [`from-lobster-files-to-a-session.md`](from-lobster-files-to-a-session.md) for the file
+  format itself.
 
 ## 4. Derived quantities
 

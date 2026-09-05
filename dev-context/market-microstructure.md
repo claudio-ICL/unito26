@@ -369,6 +369,14 @@ a failing test:
   — the two ways to count a level: the grid indexing the notes use and the occupied-level
   indexing a LOBSTER file uses, why gaps make them differ, and the coverage condition that
   says when `I^n` is recoverable from a file at all.
+- [`documentation/from-lobster-files-to-a-session.md`](../documentation/from-lobster-files-to-a-session.md)
+  — the LOBSTER format itself: the two files and their positional alignment, the padding
+  sentinels, the halt convention, the clock, and the constraints a schema written from the
+  sample gets wrong. Self-contained, since `data/` is not in the repository.
+- [`lobster-execution-granularity.md`](lobster-execution-granularity.md)
+  — the one question that file leaves open: LOBSTER writes a row per resting order consumed
+  where our fold writes one per message, so a folded session and a loaded one are not
+  row-wise comparable. Undecided.
 - [`documentation/integers-in-binary.md`](../documentation/integers-in-binary.md)
   — the bit vocabulary `BitmapBook` and `TickArrayBook` are written in: an integer as a set
   of positions, two's complement, and `b & -b`. Prerequisite for entry 4 of the above.
