@@ -2,7 +2,7 @@
 
 Each example is a book before, one message, and the book after, with the branch it
 pins named alongside.  The set is chosen to *tile* the update rule rather than to tell
-a sequence of stories: $N_v$ finite or infinite, $N_p$ biting or not, $N = 0$ against
+a sequence of stories: $N_s$ finite or infinite, $N_p$ biting or not, $N = 0$ against
 $N \\ge 1$, a remainder or none, and where a remainder lands.  That is what makes it
 possible to argue the catalogue is complete, which a list of plausible scenarios never
 can be.
@@ -110,7 +110,7 @@ CATALOGUE: tuple[WorkedExample, ...] = (
     ),
     WorkedExample(
         name="a sell takes part of the best bid",
-        branch="N_v bites at n = 1, so N = 0: one price prints and the best is unmoved",
+        branch="N_s bites at n = 1, so N = 0: one price prints and the best is unmoved",
         before=SECTION_8_BOOK,
         message=limit_order(1.0, 50, 1000, SELL),
         after={1000: 50, 999: 200, 998: 150, 1002: -120, 1003: -180},
@@ -124,7 +124,7 @@ CATALOGUE: tuple[WorkedExample, ...] = (
     ),
     WorkedExample(
         name="section 8 case A: executed in full, no remainder",
-        branch="N_p bites before N_v; q^inf = 0, so the ask side is untouched",
+        branch="N_p bites before N_s; q^inf = 0, so the ask side is untouched",
         before=SECTION_8_BOOK,
         message=limit_order(1.0, 250, 999, SELL),
         after={999: 50, 998: 150, 1002: -120, 1003: -180},
@@ -138,7 +138,7 @@ CATALOGUE: tuple[WorkedExample, ...] = (
     ),
     WorkedExample(
         name="a sell consumes the whole bid side",
-        branch="N_v = +inf: the side empties and P^b is undefined",
+        branch="N_s = +inf: the side empties and P^b is undefined",
         before=SECTION_8_BOOK,
         message=limit_order(1.0, 500, 998, SELL),
         after={998: -50, 1002: -120, 1003: -180},
