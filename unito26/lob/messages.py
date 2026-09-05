@@ -24,6 +24,7 @@ __all__ = [
     "SELL",
     "GridDepth",
     "ReportedDepth",
+    "SweepSize",
     "TICK_TOLERANCE",
     "MARKET_BUY_PRICE",
     "MARKET_SELL_PRICE",
@@ -51,6 +52,15 @@ GridDepth = NewType("GridDepth", int)
 #: The two coincide only on a book with no holes.  They are separate types because the
 #: alternative is three adjacent ``int`` arguments and a silent swap.
 ReportedDepth = NewType("ReportedDepth", int)
+
+#: A number of shares a hypothetical market order asks for, in the sense of the sweep cost
+#: of section 4.  Counts shares where the two above count levels, so it sits beside them
+#: rather than among them.
+#:
+#: Like them it is a ``NewType``: it separates a share count from a level count for a type
+#: checker and enforces nothing at run time.  A size that is not a positive number of shares
+#: is refused where the walk begins, in ``unito26.lob.orderbook``.
+SweepSize = NewType("SweepSize", int)
 
 #: How far off the grid a currency price may sit before :meth:`TickGrid.to_ticks` rejects
 #: it.  A property of binary floating point, not a per-call choice.

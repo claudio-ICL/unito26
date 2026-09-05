@@ -86,7 +86,7 @@ class TestCaseA:
 
     def test_resulting_configuration(self, worked_example):
         book = worked_example
-        book.submit(limit_order(1.0, 250, 999, SELL))
+        book.submit(limit_order(1.0, 250, 999, SELL), record=False)
         assert book.bids == {999: 50, 998: 150}
         assert book.asks == {1002: 120, 1003: 180}  # untouched: nothing was left over
         assert book.best_bid_price == 999
@@ -111,7 +111,7 @@ class TestCaseB:
 
     def test_residual_rests_inside_the_old_spread(self, worked_example):
         book = worked_example
-        book.submit(limit_order(1.0, 400, 999, SELL))
+        book.submit(limit_order(1.0, 400, 999, SELL), record=False)
         assert book.best_ask_price == 999  # was 1002; the rest improved it
         assert book.ask_size_at(999) == 100
         assert book.best_bid_price == 998
@@ -123,7 +123,7 @@ class TestCaseB:
 
     def test_ask_indices_shift_and_leave_empty_levels(self, worked_example):
         book = worked_example
-        book.submit(limit_order(1.0, 400, 999, SELL))
+        book.submit(limit_order(1.0, 400, 999, SELL), record=False)
         # The best ask moved down by 3 ticks, so every ask index shifts by 3 and two
         # grid positions in between hold nothing at all.
         assert book.levels(SELL, 4) == [(999, 100), (1000, 0), (1001, 0), (1002, 120)]
@@ -153,7 +153,7 @@ class TestExhaustedSide:
 
     def test_imbalance_still_defined_when_only_one_side_is_empty(self, worked_example):
         book = worked_example
-        book.submit(limit_order(1.0, 500, 998, SELL))
+        book.submit(limit_order(1.0, 500, 998, SELL), record=False)
         assert book.queue_imbalance(1) == -1.0
 
 
@@ -174,8 +174,8 @@ class TestMarketOrders:
 
     def test_nothing_ever_rests_at_a_sentinel_price(self, worked_example):
         book = worked_example
-        book.submit(market_order(1.0, 1000, SELL))
-        book.submit(market_order(2.0, 1000, BUY))
+        book.submit(market_order(1.0, 1000, SELL), record=False)
+        book.submit(market_order(2.0, 1000, BUY), record=False)
         for levels in (book.bids, book.asks):
             assert MARKET_SELL_PRICE not in levels
             assert MARKET_BUY_PRICE not in levels
@@ -218,27 +218,27 @@ class TestPassiveOrdersAndWithdrawals:
         self, worked_example
     ):
         book = worked_example
-        book.withdraw(withdrawal(1.0, 100, 1000, BUY))
+        book.withdraw(withdrawal(1.0, 100, 1000, BUY), record=False)
         assert 1000 not in book.bids
         assert book.best_bid_price == 999  # the best price now moves *down*
 
     def test_lenient_mode_removes_what_is_there(self, worked_example):
         book = worked_example
-        book.withdraw(withdrawal(1.0, 999, 998, SELL))  # nothing rests there at all
+        book.withdraw(withdrawal(1.0, 999, 998, SELL), record=False)  # nothing rests there at all
         assert book.bids == {1000: 100, 999: 200, 998: 150}
 
     def test_strict_mode_refuses_to_overwithdraw(self, worked_example):
         book = worked_example
         book.strict = True
         with pytest.raises(ValueError, match="only 150 resting"):
-            book.withdraw(withdrawal(1.0, 400, 998, BUY))
+            book.withdraw(withdrawal(1.0, 400, 998, BUY), record=False)
 
 
 class TestSnapshotAliasing:
     def test_copy_is_independent(self, worked_example):
         book = worked_example
         snapshot = book.copy()
-        book.submit(market_order(1.0, 300, BUY))
+        book.submit(market_order(1.0, 300, BUY), record=False)
         # The classic bug: had the tap stored the book itself, this would now equal
         # the live state rather than the state at the moment it was taken.
         assert snapshot.asks == {1002: 120, 1003: 180}
@@ -285,21 +285,21 @@ class TestRecordingIsOptional:
         driver = AggregateBook()
         messages = []
         for message in simulator.stream(driver, horizon=120.0):
-            driver.apply(message)
+            driver.apply(message, record=False)
             messages.append(message)
 
         prices = [m.price for m in messages if not is_market_price(m.price)]
         silent = book_cls.for_prices(prices)
         recording = book_cls.for_prices(prices)
         for message in messages:
-            assert silent.apply(message) is None
+            assert silent.apply(message, record=False) is None
             assert recording.apply(message, record=True) is not None
         for direction in (BUY, SELL):
             assert silent.levels_map(direction) == recording.levels_map(direction)
 
     def test_a_withdrawal_that_removes_nothing_still_returns_nothing(self, book_cls):
         book = book_cls.from_levels({999: 10}, {1001: 10})
-        assert book.withdraw(withdrawal(1.0, 5, 990, BUY)) is None
+        assert book.withdraw(withdrawal(1.0, 5, 990, BUY), record=False) is None
         assert book.withdraw(withdrawal(1.0, 5, 990, BUY), record=True).deltas == []
 
 

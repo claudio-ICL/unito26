@@ -251,7 +251,7 @@ def check(book_cls: type[AggregateBook], example: WorkedExample, depth: int = 6)
     book.check_invariants()
 
     reference = AggregateBook.from_levels(dict(bids), dict(asks))
-    reference.apply(example.message)
+    reference.apply(example.message, record=False)
     for direction in (BUY, SELL):
         if book.levels(direction, depth) != reference.levels(direction, depth):
             raise AssertionError(
@@ -340,14 +340,14 @@ def render_indexing_markdown() -> str:
     """
     from unito26.lob.messages import BUY, SELL, GridDepth, ReportedDepth
     from unito26.lob.orderbook import AggregateBook
-    from unito26.lob.replay import MarketSession
+    from unito26.lob.replay import MarketSession, SessionStatistics
 
     depth = ReportedDepth(INDEXING_REPORTED_DEPTH)
-    levels = (GridDepth(2), GridDepth(3))
+    spec = SessionStatistics((GridDepth(2), GridDepth(3)), (), ())
     book = AggregateBook.from_levels(INDEXING_BIDS, INDEXING_ASKS)
     session = MarketSession.from_occupied_levels(
         AggregateBook.from_levels(INDEXING_BIDS, INDEXING_ASKS),
-        [limit_order(1.0, 1, min(INDEXING_BIDS) - 10, BUY)], depth, levels, 1, False,
+        [limit_order(1.0, 1, min(INDEXING_BIDS) - 10, BUY)], depth, spec, 1, False,
     )
     frame = session.stats_from_frame()
 

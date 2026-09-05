@@ -31,7 +31,7 @@ class TestDeltaStorage:
         sim.warm_up(book, horizon=20.0)
         messages = []
         for message in sim.stream(book, horizon=200.0):
-            book.apply(message)
+            book.apply(message, record=False)
             messages.append(message)
 
         log = DeltaLog.record(AggregateBook(), messages)
@@ -49,7 +49,7 @@ class TestSimulatedFlow:
     def test_stream_keeps_the_book_valid(self):
         book = AggregateBook()
         for message in simulator(1).stream(book, horizon=300.0):
-            book.apply(message)
+            book.apply(message, record=False)
             book.check_invariants()
         assert book.best_bid_price is not None
         assert book.spread >= 1
@@ -59,7 +59,7 @@ class TestSimulatedFlow:
         seen = set()
         for message in simulator(2).stream(book, horizon=300.0):
             seen.add((message.kind, message.direction))
-            book.apply(message)
+            book.apply(message, record=False)
         assert len(seen) == 4
 
     def test_run_counts_what_went_past(self, worked_example):
@@ -74,7 +74,7 @@ class TestSimulatedFlow:
             book = AggregateBook()
             recorded = []
             for message in simulator(99).stream(book, horizon=60.0):
-                book.apply(message)
+                book.apply(message, record=False)
                 recorded.append(
                     (message.time, message.size, message.price, message.direction, message.kind)
                 )

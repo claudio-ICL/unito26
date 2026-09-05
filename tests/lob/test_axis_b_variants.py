@@ -47,7 +47,7 @@ def stream():
     simulator.warm_up(book, horizon=30.0)
     messages = []
     for message in simulator.stream(book, horizon=400.0):
-        book.apply(message)
+        book.apply(message, record=False)
         messages.append(message)
     return messages
 
@@ -86,8 +86,8 @@ class TestVariantsMatchTheBaseline:
         reference = AggregateBook()
         book = cls.for_prices(prices)
         for message in stream[:5000]:
-            reference.apply(message)
-            book.apply(message)
+            reference.apply(message, record=False)
+            book.apply(message, record=False)
             for direction in (BUY, SELL):
                 assert book.best_price(direction) == reference.best_price(direction)
                 assert book.levels(direction, DEPTH) == reference.levels(direction, DEPTH)
@@ -101,7 +101,7 @@ class TestCacheHonesty:
         # one is to be able to check it.
         book = AXIS_B_VARIANTS[1]()
         for message in stream[:5000]:
-            book.apply(message)
+            book.apply(message, record=False)
             book.check_cache_is_consistent()
 
     def test_refilling_the_emptied_best_price_is_handled(self):
@@ -109,8 +109,8 @@ class TestCacheHonesty:
         # best level, then refill that exact price before anything reads the book.
         for cls in AXIS_B_VARIANTS:
             book = cls.from_levels({1000: 100, 999: 200}, {1002: 120})
-            book.withdraw(withdrawal(1.0, 100, 1000, BUY))  # best bid level emptied
-            book.submit(limit_order(2.0, 40, 1000, BUY))  # and immediately refilled
+            book.withdraw(withdrawal(1.0, 100, 1000, BUY), record=False)  # best bid level emptied
+            book.submit(limit_order(2.0, 40, 1000, BUY), record=False)  # and immediately refilled
             assert book.best_bid_price == 1000, f"{cls.__name__} lost the refilled best"
 
 
@@ -133,7 +133,7 @@ class TestTheBandIsTheFusedBookTradeOff:
     def test_writing_outside_the_band_is_refused_loudly(self):
         book = TickArrayBook(origin=1000, width=10)
         with pytest.raises(ValueError, match="outside the band"):
-            book.submit(limit_order(1.0, 10, 5000, BUY))
+            book.submit(limit_order(1.0, 10, 5000, BUY), record=False)
 
     def test_reading_outside_the_band_is_simply_empty(self):
         # Reads run off the edge in ordinary use: `levels` walks a fixed depth up from

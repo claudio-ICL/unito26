@@ -19,9 +19,9 @@ import tracemalloc
 from dataclasses import dataclass
 
 from unito26.lob import config
-from unito26.lob.messages import Message, is_market_price
+from unito26.lob.messages import Message, ReportedDepth, is_market_price
 from unito26.lob.orderbook import AggregateBook
-from unito26.lob.replay import run
+from unito26.lob.replay import MarketSession, SessionStatistics, run
 from unito26.lob.simulate import MarkParams, OrderFlowSimulator
 
 __all__ = [
@@ -29,6 +29,8 @@ __all__ = [
     "session",
     "REFERENCE_PRICE",
     "time_variants",
+    "time_fold",
+    "time_apply",
     "best_price_share",
     "deep_sizeof",
     "measure_memory",
@@ -66,7 +68,7 @@ def session(name: str, marks: MarkParams, horizon: float, seed: int) -> Session:
     simulator.warm_up(book, horizon=30.0)
     messages = []
     for message in simulator.stream(book, horizon=horizon):
-        book.apply(message)
+        book.apply(message, record=False)
         messages.append(message)
     return Session(name=name, messages=messages)
 
@@ -86,6 +88,48 @@ def time_variants(variants, session: Session, repeat: int) -> dict[str, float]:
         )
         timings[cls.__name__] = min(times)
     return timings
+
+
+def time_fold(
+    cls,
+    session: Session,
+    reported_depth: ReportedDepth,
+    spec: SessionStatistics,
+    online_statistics: bool,
+    repeat: int,
+) -> float:
+    """Seconds to fold the session into a :class:`~unito26.lob.replay.MarketSession`.
+
+    What :func:`time_variants` measures is :func:`~unito26.lob.replay.run`, which records
+    no states at all.  The statistics are paid per message on top of that, and this is
+    where the difference between the two is read.  A fresh book each time, since a fold
+    leaves one full.
+    """
+    timings = timeit.repeat(
+        lambda: MarketSession.from_occupied_levels(
+            cls.for_prices(session.prices), session.messages,
+            reported_depth, spec, 100, online_statistics,
+        ),
+        number=1,
+        repeat=repeat,
+    )
+    return min(timings)
+
+
+def time_apply(cls, session: Session, record: bool, repeat: int) -> float:
+    """Seconds to drive the book with the stream and nothing else.
+
+    Isolates what recording costs, which at this level is a doubling or worse and at the
+    level of a whole fold is a few per cent -- ``apply`` being a small share of the work a
+    recorder does.  Both numbers are needed to say anything: the ratio alone overstates it
+    and the fold-level difference alone does not explain itself.
+    """
+    def fold():
+        book = cls.for_prices(session.prices)
+        for message in session.messages:
+            book.apply(message, record=record)
+
+    return min(timeit.repeat(fold, number=1, repeat=repeat))
 
 
 def best_price_share(cls, session: Session) -> float:

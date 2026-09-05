@@ -10,12 +10,19 @@ import pandas as pd
 import pytest
 
 from unito26.lob import config, frames
-from unito26.lob.messages import BUY, SELL, GridDepth, ReportedDepth, limit_order, market_order
+from unito26.lob.messages import (
+    BUY, SELL, GridDepth, ReportedDepth, SweepSize, limit_order, market_order,
+)
 from unito26.lob.orderbook import AXIS_B_VARIANTS, AggregateBook
-from unito26.lob.replay import DeltaLog, MarketSession, _book_buffer, _write_occupied_levels
+from unito26.lob.replay import (
+    DeltaLog, MarketSession, SessionStatistics, _book_buffer, _write_occupied_levels,
+)
 from unito26.lob.simulate import OrderFlowSimulator
 
 LEVELS = (GridDepth(1), GridDepth(2), GridDepth(5))
+SWEEPS = (SweepSize(100), SweepSize(400))
+WINDOWS = (1, 10)
+SPEC = SessionStatistics(LEVELS, SWEEPS, WINDOWS)
 PRICE_UNIT = 100
 DEPTH = ReportedDepth(3)
 
@@ -34,7 +41,7 @@ def opening(book_cls):
 def reconcile(session):
     """A book always answers I^n; a frame answers only where its levels span the window."""
     expected = session.stats.copy()
-    for n in session.imbalance_levels:
+    for n in session.statistics.imbalance_levels:
         uncovered = ~expected[f"QueueImbalance{n}Covered"].astype(bool)
         expected.loc[uncovered, f"QueueImbalance{n}"] = np.nan
     pd.testing.assert_frame_equal(expected, session.stats_from_frame(), check_dtype=False)
@@ -44,7 +51,7 @@ def reconcile(session):
 class TestTheTwoRoutesAgree:
     def test_on_the_worked_example(self, book_cls):
         reconcile(MarketSession.from_occupied_levels(
-            opening(book_cls), MESSAGES, DEPTH, LEVELS, PRICE_UNIT, True
+            opening(book_cls), MESSAGES, DEPTH, SPEC, PRICE_UNIT, True
         ))
 
     def test_on_a_simulated_session(self, book_cls):
@@ -56,7 +63,7 @@ class TestTheTwoRoutesAgree:
         messages = list(simulator.stream(book, horizon=200.0))
         session = MarketSession.from_occupied_levels(
             book_cls.for_prices([m.price for m in messages]),
-            messages, DEPTH, LEVELS, PRICE_UNIT, True,
+            messages, DEPTH, SPEC, PRICE_UNIT, True,
         )
         reconcile(session)
         # The test is only exercising the uncovered branch if some rows are uncovered.
@@ -67,21 +74,40 @@ class TestTheTwoRoutesAgree:
 class TestTheThreeRecordingStrategiesAgree:
     def test_top_of_book_equals_occupied_levels_at_depth_one(self, book_cls):
         top = MarketSession.from_top_of_book(
-            opening(book_cls), MESSAGES, LEVELS, PRICE_UNIT, True
+            opening(book_cls), MESSAGES, SPEC, PRICE_UNIT, True
         )
         occupied = MarketSession.from_occupied_levels(
-            opening(book_cls), MESSAGES, ReportedDepth(1), LEVELS, PRICE_UNIT, True
+            opening(book_cls), MESSAGES, ReportedDepth(1), SPEC, PRICE_UNIT, True
         )
         pd.testing.assert_frame_equal(top.lobster_book, occupied.lobster_book)
         pd.testing.assert_frame_equal(top.stats, occupied.stats)
+        pd.testing.assert_frame_equal(top.trades, occupied.trades)
+
+    def test_they_agree_with_the_statistics_off_too(self, book_cls):
+        """And neither records anything it will not return.
+
+        The notebook times these two against each other on this path, so work done here
+        and discarded is charged to one side of a comparison that reports them as the same
+        session recorded two ways.  The buffers are None rather than unused, which turns
+        recording into an ``AttributeError`` instead of a quiet cost.
+        """
+        top = MarketSession.from_top_of_book(
+            opening(book_cls), MESSAGES, SPEC, PRICE_UNIT, False
+        )
+        occupied = MarketSession.from_occupied_levels(
+            opening(book_cls), MESSAGES, ReportedDepth(1), SPEC, PRICE_UNIT, False
+        )
+        pd.testing.assert_frame_equal(top.lobster_book, occupied.lobster_book)
+        for session in (top, occupied):
+            assert session.stats is None and session.trades is None
 
     def test_a_delta_log_rebuilds_the_dense_session(self, book_cls):
         log = DeltaLog.record(opening(book_cls), MESSAGES)
         deltas = MarketSession.from_delta_log(
-            log, book_cls, DEPTH, LEVELS, PRICE_UNIT, True
+            log, book_cls, DEPTH, SPEC, PRICE_UNIT, True
         )
         occupied = MarketSession.from_occupied_levels(
-            opening(book_cls), MESSAGES, DEPTH, LEVELS, PRICE_UNIT, True
+            opening(book_cls), MESSAGES, DEPTH, SPEC, PRICE_UNIT, True
         )
         pd.testing.assert_frame_equal(deltas.lobster_book, occupied.lobster_book)
         pd.testing.assert_frame_equal(deltas.stats, occupied.stats)
@@ -90,13 +116,13 @@ class TestTheThreeRecordingStrategiesAgree:
         """A delta names only what a message changed, so the reconstruction has to be
         seeded with the state the replay started from."""
         book = opening(book_cls)
-        book.submit(limit_order(0.5, 77, 994, BUY))
+        book.submit(limit_order(0.5, 77, 994, BUY), record=False)
         log = DeltaLog.record(book, MESSAGES)
-        deltas = MarketSession.from_delta_log(log, book_cls, DEPTH, LEVELS, PRICE_UNIT, True)
+        deltas = MarketSession.from_delta_log(log, book_cls, DEPTH, SPEC, PRICE_UNIT, True)
         fresh = opening(book_cls)
-        fresh.submit(limit_order(0.5, 77, 994, BUY))
+        fresh.submit(limit_order(0.5, 77, 994, BUY), record=False)
         occupied = MarketSession.from_occupied_levels(
-            fresh, MESSAGES, DEPTH, LEVELS, PRICE_UNIT, True
+            fresh, MESSAGES, DEPTH, SPEC, PRICE_UNIT, True
         )
         pd.testing.assert_frame_equal(deltas.lobster_book, occupied.lobster_book)
 
@@ -116,7 +142,7 @@ class TestTheGridVersusColumnTrap:
         return MarketSession.from_occupied_levels(
             AggregateBook.from_levels(self.BIDS, self.ASKS),
             [limit_order(1.0, 1, 80, BUY)],
-            ReportedDepth(2), (GridDepth(2), GridDepth(3)), 1, True,
+            ReportedDepth(2), SessionStatistics((GridDepth(2), GridDepth(3)), SWEEPS, WINDOWS), 1, True,
         )
 
     def test_the_two_sides_span_differently(self):
@@ -144,10 +170,10 @@ class TestTheGridVersusColumnTrap:
 class TestFoldingWithoutOnlineStatistics:
     def test_the_frame_is_the_same_and_the_statistics_are_deferred(self, book_cls):
         deferred = MarketSession.from_occupied_levels(
-            opening(book_cls), MESSAGES, DEPTH, LEVELS, PRICE_UNIT, False
+            opening(book_cls), MESSAGES, DEPTH, SPEC, PRICE_UNIT, False
         )
         online = MarketSession.from_occupied_levels(
-            opening(book_cls), MESSAGES, DEPTH, LEVELS, PRICE_UNIT, True
+            opening(book_cls), MESSAGES, DEPTH, SPEC, PRICE_UNIT, True
         )
         assert deferred.stats is None
         pd.testing.assert_frame_equal(deferred.lobster_book, online.lobster_book)
@@ -158,19 +184,19 @@ class TestFoldingWithoutOnlineStatistics:
 
 def _record_occupied(book_cls, messages):
     return MarketSession.from_occupied_levels(
-        opening(book_cls), messages, DEPTH, LEVELS, PRICE_UNIT, True
+        opening(book_cls), messages, DEPTH, SPEC, PRICE_UNIT, True
     )
 
 
 def _record_top_of_book(book_cls, messages):
     return MarketSession.from_top_of_book(
-        opening(book_cls), messages, LEVELS, PRICE_UNIT, True
+        opening(book_cls), messages, SPEC, PRICE_UNIT, True
     )
 
 
 def _record_delta_log(book_cls, messages):
     log = DeltaLog.record(opening(book_cls), messages)
-    return MarketSession.from_delta_log(log, book_cls, DEPTH, LEVELS, PRICE_UNIT, True)
+    return MarketSession.from_delta_log(log, book_cls, DEPTH, SPEC, PRICE_UNIT, True)
 
 
 @pytest.mark.parametrize("book_cls", AXIS_B_VARIANTS, ids=lambda c: c.__name__)
@@ -198,7 +224,7 @@ class TestTheColumnSlicedImbalance:
                 TestTheGridVersusColumnTrap.BIDS, TestTheGridVersusColumnTrap.ASKS
             ),
             [limit_order(1.0, 1, 80, BUY)],
-            ReportedDepth(2), (GridDepth(2),), 1, True,
+            ReportedDepth(2), SessionStatistics((GridDepth(2),), SWEEPS, WINDOWS), 1, True,
         )
         by_column = (40 + 60 - 10 - 20) / (40 + 60 + 10 + 20)
         assert session.column_sliced_imbalance(GridDepth(2)).iloc[0] == pytest.approx(by_column)
@@ -209,7 +235,7 @@ class TestTheColumnSlicedImbalance:
         session = MarketSession.from_occupied_levels(
             book_cls.from_levels({1000: 100, 999: 200}, {1001: 120, 1002: 180}),
             [limit_order(1.0, 10, 998, BUY)],
-            ReportedDepth(2), (GridDepth(2),), 1, True,
+            ReportedDepth(2), SessionStatistics((GridDepth(2),), SWEEPS, WINDOWS), 1, True,
         )
         assert session.column_sliced_imbalance(GridDepth(2)).iloc[0] == pytest.approx(
             session.stats["QueueImbalance2"].iloc[0]
@@ -242,10 +268,10 @@ class TestGrowingAndPreallocatingAgree:
     def test_the_frames_are_identical(self, book_cls, count):
         messages = self.buys(count)
         from_list = MarketSession.from_occupied_levels(
-            opening(book_cls), messages, DEPTH, LEVELS, PRICE_UNIT, True
+            opening(book_cls), messages, DEPTH, SPEC, PRICE_UNIT, True
         )
         from_stream = MarketSession.from_occupied_levels(
-            opening(book_cls), self.streamed(messages), DEPTH, LEVELS, PRICE_UNIT, True
+            opening(book_cls), self.streamed(messages), DEPTH, SPEC, PRICE_UNIT, True
         )
         assert len(from_stream.lobster_book) == count
         pd.testing.assert_frame_equal(from_list.lobster_book, from_stream.lobster_book)
@@ -255,7 +281,7 @@ class TestGrowingAndPreallocatingAgree:
         """The assertion the length check could not make: every row past every growth
         boundary still says 'no third ask level' rather than saying something plausible."""
         session = MarketSession.from_occupied_levels(
-            opening(book_cls), self.streamed(self.buys(count)), DEPTH, LEVELS, PRICE_UNIT, True
+            opening(book_cls), self.streamed(self.buys(count)), DEPTH, SPEC, PRICE_UNIT, True
         )
         assert (session.lobster_book[f"AskPrice{DEPTH}"] == frames.ASK_PADDING).all()
         assert (session.lobster_book[f"AskSize{DEPTH}"] == 0).all()
@@ -266,10 +292,10 @@ class TestGrowingAndPreallocatingAgree:
         must not drift."""
         messages = self.buys(count)
         deferred = MarketSession.from_occupied_levels(
-            opening(book_cls), self.streamed(messages), DEPTH, LEVELS, PRICE_UNIT, False
+            opening(book_cls), self.streamed(messages), DEPTH, SPEC, PRICE_UNIT, False
         )
         online = MarketSession.from_occupied_levels(
-            opening(book_cls), self.streamed(messages), DEPTH, LEVELS, PRICE_UNIT, True
+            opening(book_cls), self.streamed(messages), DEPTH, SPEC, PRICE_UNIT, True
         )
         pd.testing.assert_frame_equal(deferred.lobster_book, online.lobster_book)
 

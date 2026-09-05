@@ -115,7 +115,7 @@ class OrderFlowSimulator:
 
         book = AggregateBook()
         for message in simulator.stream(book, horizon=60.0):
-            book.apply(message)
+            book.apply(message, record=False)
 
     The generator computes each message *after* the driver applied the previous one, so
     it always reads the current book.  That is what makes prices relative to the touch
@@ -199,5 +199,5 @@ class OrderFlowSimulator:
         has been running.
         """
         for message in self.stream(book, horizon):
-            book.apply(message)
+            book.apply(message, record=False)
         return book

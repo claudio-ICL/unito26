@@ -35,6 +35,7 @@ from unito26.lob.messages import (
     Message,
     MessageType,
     ReportedDepth,
+    SweepSize,
     is_market_price,
 )
 
@@ -93,6 +94,60 @@ def _runs(positions: list[int]) -> list[tuple[int, int]]:
         else:
             runs.append((value, 1))
     return runs
+
+
+def _sweep_cost(
+    levels: list[tuple[int, int]],
+    mid: float | None,
+    sizes: tuple[SweepSize, ...],
+    direction: int,
+) -> list[float | None]:
+    """Per-share cost, in ticks, of market orders of each size in ``sizes``.
+
+    ``levels`` is the side being *consumed*, best first, and ``direction`` is the direction
+    of the market order -- so a buy is handed the asks.  Passing the wrong side is the
+    mistake this signature exists to make visible: without ``direction`` the cost would be
+    written ``abs(value / size - mid)``, which on the worked example returns 1 tick for a buy
+    of 100 costed against the bids and 1 tick for the correct buy of 120.  The two are
+    indistinguishable, and on a crossed book the absolute value also reports a gain as a cost.
+
+    ``sizes`` must be ascending.  The walk accumulates once and answers every size on the way
+    past, the cumulative fills nesting as the imbalance windows do in
+    :meth:`AggregateBook.queue_imbalance_profile`, so a further size costs an accumulation
+    rather than another walk.  Which of the two dominates depends on how many sizes are
+    asked for; ``notebooks/the-cost-of-the-statistics.ipynb`` measures it.
+
+    None where the levels do not hold the size, and None where ``mid`` is undefined -- the
+    sweep itself is perfectly well defined on a one-sided book, it is the *benchmark* that is
+    missing.  The two cases are different: the first says the order cannot be filled at any
+    price, the second that there is nothing to price it against.
+    """
+    costs: list[float | None] = []
+    filled = value = 0
+    level = consumed = 0
+    for size in sizes:
+        if size < 1:
+            raise ValueError(f"a sweep is for a positive number of shares, got {size}")
+        while filled < size and level < len(levels):
+            price, resting = levels[level]
+            taken = min(size - filled, resting - consumed)
+            filled += taken
+            value += taken * price
+            consumed += taken
+            if consumed == resting:
+                level += 1
+                consumed = 0
+        if filled < size or mid is None:
+            costs.append(None)
+            continue
+        cost = direction * (value / size - mid)
+        # Licensed by the book not crossing, which is a consequence of the matching rule.
+        # A crossed book would make a sweep profitable, and the assertion says so rather
+        # than letting a negative cost travel into a column named for a cost.  It can only
+        # mean that now, the size having been screened above.
+        assert cost >= 0, f"negative sweep cost {cost}: the book is crossed"
+        costs.append(cost)
+    return costs
 
 
 @dataclass(frozen=True, slots=True)
@@ -175,6 +230,9 @@ class AggregateBook:
         self.bids: dict[int, int] = {}
         self.asks: dict[int, int] = {}
         self.strict = strict
+        self.last_fill_count = 0
+        self.last_traded_size = 0
+        self.last_traded_value = 0
 
     # ---- storage: the four operations every book must provide ---------------------
     #
@@ -381,6 +439,33 @@ class AggregateBook:
             return None
         return mid + spread * self.queue_imbalance(GridDepth(1)) / 2
 
+    def sweep_cost(
+        self, direction: int, size: SweepSize, reported_depth: ReportedDepth
+    ) -> float | None:
+        """``sc(Q, d)``: per-share cost, in ticks, of a market order for ``size`` shares.
+
+        ``direction`` is the direction of the *market order*, so ``BUY`` walks the asks.
+        Measured against the mid, which is what makes it ``phi/2`` exactly while the order
+        does not walk and what ties it to the half-spread term of section 7 -- that term
+        assumes no walking, and this is the same quantity without the assumption.  Beyond
+        the touch each share additionally pays its own distance from it, a distance on the
+        price *grid*: one tick per level only where the consumed side is occupied at every
+        tick.
+
+        Restricted to ``reported_depth`` occupied levels, as the gap statistics are, so that
+        a book and the frame it produces answer the same question.  None where those levels
+        do not hold ``size``, and None where the mid is undefined.
+
+        This reads **visible** depth, so it overstates what an order would really pay:
+        hidden liquidity rests at or inside the touch and fills better than the ladder says.
+        """
+        return _sweep_cost(
+            self.occupied_levels(-direction, reported_depth),
+            self.mid_price,
+            (size,),
+            direction,
+        )[0]
+
     # ---- occupied levels: the other indexing ---------------------------------------
     #
     # `levels` above walks the price grid.  These walk the prices that actually carry
@@ -570,19 +655,25 @@ class AggregateBook:
 
     # ---- sections 2 and 6: the update ---------------------------------------------
 
-    def apply(self, message: Message, record: bool = False) -> SubmitResult | None:
+    def apply(self, message: Message, record: bool) -> SubmitResult | None:
         """Apply any message.  The stream driver's single entry point.
 
         ``record`` governs whether the trades and level changes are collected and
-        returned.  A fold that only wants the book's evolution leaves it False and gets
+        returned.  A fold that only wants the book's evolution passes False and gets
         ``None`` back, which costs no allocation and turns a later read of ``.fills``
-        into an ``AttributeError`` rather than an empty list.
+        into an ``AttributeError`` rather than an empty list.  It has no default,
+        because it decides what this method returns.
+
+        The three ``last_*`` counters are written by whichever of the two runs, so a read of
+        them after any message -- through here or by calling :meth:`submit` and
+        :meth:`withdraw` directly, as the tests do -- describes that message and no earlier
+        one.
         """
         if message.kind is MessageType.SUBMIT:
             return self.submit(message, record)
         return self.withdraw(message, record)
 
-    def submit(self, message: Message, record: bool = False) -> SubmitResult | None:
+    def submit(self, message: Message, record: bool) -> SubmitResult | None:
         """Process an incoming order: consume the opposite side, then rest the rest.
 
         One code path, not two.  By the decomposition of section 6 an incoming order is
@@ -592,7 +683,11 @@ class AggregateBook:
 
         See :meth:`apply` for ``record``.  The one thing the market-order part needs from
         the fills is the price of the last of them, which :meth:`resting_price` inherits,
-        so that is tracked whether or not the fills themselves are kept.
+        so that is tracked whether or not the fills themselves are kept.  The three
+        ``last_*`` counters are tracked on the same terms, for the same reason: a fold
+        computing VWAP needs the volume and the value of what traded, and recovering them
+        from the fills would mean recording, which allocates several objects per message
+        on a path that otherwise allocates none.  Two integer additions do not.
         """
         remaining = message.size
         direction = message.direction
@@ -600,6 +695,7 @@ class AggregateBook:
         fills: list[Fill] = [] if record else None
         deltas: list[LevelDelta] = [] if record else None
         last_fill_price = None
+        fill_count = traded_size = traded_value = 0
 
         # 1. The market-order part: consume while the price constraint permits.
         while remaining > 0:
@@ -616,9 +712,16 @@ class AggregateBook:
             self.set_size(-direction, best, resting - traded)
             # A fill trades at the RESTING order's price, never the incoming one.
             last_fill_price = best
+            fill_count += 1
+            traded_size += traded
+            traded_value += traded * best
             if record:
                 fills.append(Fill(price=best, size=traded, aggressor=direction))
                 deltas.append(LevelDelta(side=-direction, price=best, resting=resting - traded))
+
+        self.last_fill_count = fill_count
+        self.last_traded_size = traded_size
+        self.last_traded_value = traded_value
 
         # 2. The resting part.
         rest_price = self.resting_price(limit_price, last_fill_price)
@@ -658,7 +761,7 @@ class AggregateBook:
             return limit_price
         return last_fill_price
 
-    def withdraw(self, message: Message, record: bool = False) -> SubmitResult | None:
+    def withdraw(self, message: Message, record: bool) -> SubmitResult | None:
         """Remove resting size at ``(price, direction)``, addressed by quantity.
 
         A quantity-addressed withdrawal is one more signed
@@ -666,8 +769,12 @@ class AggregateBook:
         level sizes stop being monotone, the best price can now move in both
         directions, and the book can empty entirely.
 
-        See :meth:`apply` for ``record``.
+        See :meth:`apply` for ``record``.  A withdrawal trades nothing, so it zeroes the
+        counters rather than leaving the previous submission's totals behind them.
         """
+        self.last_fill_count = 0
+        self.last_traded_size = 0
+        self.last_traded_value = 0
         resting = self.size_at(message.direction, message.price)
         if message.size > resting and self.strict:
             raise ValueError(

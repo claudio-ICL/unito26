@@ -417,7 +417,7 @@ def coverage_figure(sessions_by_depth: dict):
 
     figure = go.Figure()
     for slot, (depth, session) in enumerate(sorted(sessions_by_depth.items())):
-        levels = list(session.imbalance_levels)
+        levels = list(session.statistics.imbalance_levels)
         uncovered = [
             float(1.0 - session.stats[f"QueueImbalance{n}Covered"].mean()) for n in levels
         ]
