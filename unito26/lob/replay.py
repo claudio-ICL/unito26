@@ -65,6 +65,22 @@ def _whole(name: str, value) -> int:
     return int(value)
 
 
+def _quotient(numerator: np.ndarray, denominator: np.ndarray) -> np.ndarray:
+    """``numerator / denominator`` where the denominator is positive, NaN elsewhere.
+
+    Every ratio here divides a sum by a count of the same terms, so an empty window -- or a
+    pair of empty level windows -- divides zero by zero.  ``where`` skips those entries
+    instead of dividing by a stand-in and masking the result afterwards, so the invalid-value
+    flag is never raised and there is no warning to suppress.
+    """
+    return np.divide(
+        numerator,
+        denominator,
+        out=np.full(len(denominator), np.nan),
+        where=denominator > 0,
+    )
+
+
 @dataclass(frozen=True, slots=True)
 class SessionStatistics:
     """Which statistics a session records, and what their columns are called.
@@ -476,10 +492,8 @@ def _with_rolling(
         )
         columns[f"OrderFlowImbalance{window}Covered"] = (missing == 0).astype(float)
         events = _rolling_sum(start, measured)
-        columns[f"AverageDepth{window}"] = np.where(
-            events > 0,
-            _rolling_sum(start, np.nan_to_num(depth)) / (2 * np.where(events > 0, events, 1)),
-            np.nan,
+        columns[f"AverageDepth{window}"] = _quotient(
+            _rolling_sum(start, np.nan_to_num(depth)), 2 * events
         )
     return columns
 
@@ -496,12 +510,9 @@ def _with_vwap(
             ("", volume > 0), ("Buy", signed > 0), ("Sell", signed < 0)
         ):
             traded = _rolling_sum(start, np.where(taken, volume, 0.0))
-            columns[f"VWAP{label}{window}"] = np.where(
-                traded > 0,
-                _rolling_sum(start, np.where(taken, value, 0.0))
-                / np.where(traded > 0, traded, 1),
-                # A window that traded nothing has no price.  Not zero, which is a price.
-                np.nan,
+            # A window that traded nothing has no price.  Not zero, which is a price.
+            columns[f"VWAP{label}{window}"] = _quotient(
+                _rolling_sum(start, np.where(taken, value, 0.0)), traded
             )
     return columns
 
@@ -925,10 +936,10 @@ class MarketSession:
         columns = {
             "Spread": best_ask - best_bid,
             "MidPrice": (best_ask + best_bid) / 2,
+            # A zero touch means both tops are padded, so both best prices are NaN and the
+            # numerator is NaN already: this division is the one that needs no guard.
             "MicroPrice": np.where(
-                touch > 0,
-                (best_ask * bid_top + best_bid * ask_top) / np.where(touch > 0, touch, 1),
-                np.nan,
+                touch > 0, (best_ask * bid_top + best_bid * ask_top) / touch, np.nan
             ),
         }
 
@@ -947,9 +958,7 @@ class MarketSession:
             bid_total = np.where(in_bid, bid_sizes, 0.0).sum(1)
             total = ask_total + bid_total
             covered = self._covers(n, ask_span, ask_count) & self._covers(n, bid_span, bid_count)
-            imbalance = np.where(
-                total > 0, (bid_total - ask_total) / np.where(total > 0, total, 1), np.nan
-            )
+            imbalance = _quotient(bid_total - ask_total, total)
             columns[f"QueueImbalance{n}"] = np.where(covered, imbalance, np.nan)
             columns[f"QueueImbalance{n}Covered"] = covered.astype(float)
 
@@ -1056,7 +1065,7 @@ class MarketSession:
         traded = _rolling_sum(start, self.trades["Volume"].to_numpy(dtype=float))
         value = _rolling_sum(start, self.trades["TradedValue"].to_numpy(dtype=float))
         return pd.Series(
-            np.where(traded > 0, value / np.where(traded > 0, traded, 1), np.nan),
+            _quotient(value, traded),
             index=self.lobster_book.index,
             name=f"VWAP{window}",
         )
