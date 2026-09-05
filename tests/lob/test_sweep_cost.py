@@ -13,7 +13,8 @@ from unito26.lob.messages import (
     BUY, SELL, GridDepth, ReportedDepth, SweepSize, withdrawal,
 )
 from unito26.lob.orderbook import AXIS_B_VARIANTS, AggregateBook, _sweep_cost
-from unito26.lob.session import MarketSession, SessionStatistics
+from unito26.lob.session import MarketSession
+from unito26.lob.statistics import SessionStatistics
 from unito26.lob.worked_examples import SECTION_8_BOOK, to_sides
 
 DEPTH = ReportedDepth(5)

@@ -21,7 +21,8 @@ from dataclasses import dataclass
 from unito26.lob import config
 from unito26.lob.messages import Message, ReportedDepth, is_market_price
 from unito26.lob.orderbook import AggregateBook
-from unito26.lob.session import MarketSession, SessionStatistics, run
+from unito26.lob.session import MarketSession, run
+from unito26.lob.statistics import SessionStatistics
 from unito26.lob.simulate import MarkParams, OrderFlowSimulator
 
 __all__ = [

@@ -15,9 +15,8 @@ from unito26.lob.messages import (
 )
 from unito26.lob.orderbook import AXIS_B_VARIANTS, AggregateBook
 from unito26.lob.delta_log import DeltaLog
-from unito26.lob.session import (
-    MarketSession, SessionStatistics, _rolling_sum, _window_start,
-)
+from unito26.lob.session import MarketSession, _rolling_sum, _window_start
+from unito26.lob.statistics import SessionStatistics
 
 LEVELS = (GridDepth(1), GridDepth(2))
 SWEEPS = (SweepSize(100),)

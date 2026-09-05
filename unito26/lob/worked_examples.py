@@ -340,7 +340,8 @@ def render_indexing_markdown() -> str:
     """
     from unito26.lob.messages import BUY, SELL, GridDepth, ReportedDepth
     from unito26.lob.orderbook import AggregateBook
-    from unito26.lob.session import MarketSession, SessionStatistics
+    from unito26.lob.session import MarketSession
+    from unito26.lob.statistics import SessionStatistics
 
     depth = ReportedDepth(INDEXING_REPORTED_DEPTH)
     spec = SessionStatistics((GridDepth(2), GridDepth(3)), (), ())

@@ -18,7 +18,6 @@ knows only the levels it reports, and
 
 from __future__ import annotations
 
-import numbers
 from collections import Counter
 from dataclasses import dataclass
 from operator import length_hint
@@ -26,7 +25,6 @@ from typing import Iterable
 
 import numpy as np
 import pandas as pd
-import pandera.pandas as pa
 
 from unito26.lob import frames
 from unito26.lob.delta_log import DeltaLog
@@ -41,35 +39,9 @@ from unito26.lob.messages import (
     SweepSize,
 )
 from unito26.lob.orderbook import AggregateBook, SideStatistics, _sweep_cost
+from unito26.lob.statistics import SessionStatistics, _whole
 
-__all__ = ["run", "SessionStatistics", "MarketSession"]
-
-#: The gap statistics, which are the same for every session.  Last in a statistics row,
-#: because ``_write_statistics`` fills them with one slice assignment from the tail.
-GAP_COLUMNS = [
-    "BidOccupiedLevels", "AskOccupiedLevels",
-    "BidGapCount", "AskGapCount",
-    "BidLargestGap", "AskLargestGap",
-    "BidFirstGapDistance", "AskFirstGapDistance",
-    "BidFirstGapSize", "AskFirstGapSize",
-    "BidLargestGapDistance", "AskLargestGapDistance",
-]
-
-
-def _whole(name: str, value) -> int:
-    """``value`` as a count of whole things -- grid levels, shares or seconds.
-
-    ``numbers.Integral`` rather than ``isinstance(value, int)``: a count read off a frame is
-    a numpy integer and belongs here, and a float that happens to be whole does not.  The
-    float is the one that matters, because it reaches the column names -- a window of 0.5
-    names ``OFI0.5``, where the dot defeats ``DataFrame.query`` and attribute access, and two
-    windows differing below ``%g`` precision name one column and return a frame short of what
-    was asked for.
-    """
-    if not isinstance(value, numbers.Integral) or value < 1:
-        raise ValueError(f"{name} must be a whole number of at least 1, got {value!r}")
-    return int(value)
-
+__all__ = ["run", "MarketSession"]
 
 def _quotient(numerator: np.ndarray, denominator: np.ndarray) -> np.ndarray:
     """``numerator / denominator`` where the denominator is positive, NaN elsewhere.
@@ -85,79 +57,6 @@ def _quotient(numerator: np.ndarray, denominator: np.ndarray) -> np.ndarray:
         out=np.full(len(denominator), np.nan),
         where=denominator > 0,
     )
-
-
-@dataclass(frozen=True, slots=True)
-class SessionStatistics:
-    """Which statistics a session records, and what their columns are called.
-
-    Three parametrizations of one fold, which is why they travel together.  They count
-    different things -- grid levels, shares, seconds -- and the types say so.
-
-    Each tuple is sorted and de-duplicated on construction.  Sorting ``sweep_sizes`` is
-    what lets one walk of a side answer every size; de-duplicating is what makes two
-    columns of the same name impossible rather than merely unlikely.
-
-    ``windows`` are **integer** seconds.  A float window would name a column ``OFI0.5``,
-    where the dot defeats ``DataFrame.query`` and attribute access, and ``1e6`` would name
-    ``OFI1e+06``; two windows differing below ``%g`` precision would name one column and
-    the frame would come back a column short.  Cont, Kukanov and Stoikov bucket in whole
-    seconds, so nothing is lost by refusing the rest.
-    """
-
-    imbalance_levels: tuple[GridDepth, ...]
-    """``n`` for each ``I^n``: positions on the price grid, in the sense of section 3."""
-
-    sweep_sizes: tuple[SweepSize, ...]
-    """``Q`` for each sweep cost: shares a hypothetical market order asks for."""
-
-    windows: tuple[int, ...]
-    """``w`` for each rolling statistic, in whole seconds."""
-
-    def __post_init__(self) -> None:
-        for name in ("imbalance_levels", "sweep_sizes", "windows"):
-            values = {_whole(name, value) for value in getattr(self, name)}
-            object.__setattr__(self, name, tuple(sorted(values)))
-
-    def row_columns(self) -> list[str]:
-        """The statistics written per message, in buffer order.
-
-        Separate from :meth:`columns` because the rolling statistics are a reduction over
-        a recorded series and are made once, at assembly.  A single list would leave them
-        carrying the buffer's zero background, and would put unwritten columns in the
-        middle of the row that ``_write_statistics`` fills by slice.
-        """
-        names = ["Spread", "MidPrice", "MicroPrice"]
-        for n in self.imbalance_levels:
-            names += [f"QueueImbalance{n}", f"QueueImbalance{n}Covered"]
-        for size in self.sweep_sizes:
-            for side in ("Buy", "Sell"):
-                names += [f"SweepCost{side}{size}", f"SweepCost{side}{size}Covered"]
-        return names + ["OrderFlowContribution", "TouchDepth"] + GAP_COLUMNS
-
-    def columns(self) -> list[str]:
-        """Every column of the statistics frame: the rows above plus the rolling ones."""
-        names = list(self.row_columns())
-        for w in self.windows:
-            names += [
-                f"OrderFlowImbalance{w}", f"OrderFlowImbalance{w}Covered", f"AverageDepth{w}"
-            ]
-        return names
-
-    def trade_row_columns(self) -> list[str]:
-        """What the fold records about the trades, per message."""
-        return ["Volume", "SignedVolume", "TradedValue"]
-
-    def trade_columns(self) -> list[str]:
-        """Every column of the trades frame."""
-        names = self.trade_row_columns()
-        for w in self.windows:
-            names += [f"VWAP{w}", f"VWAPBuy{w}", f"VWAPSell{w}"]
-        return names
-
-    def covered_columns(self) -> list[str]:
-        """The 0/1 flags, which the schema constrains and a reconciliation masks by."""
-        return [name for name in self.columns() if name.endswith("Covered")]
 
 
 #: Rows a recorder allocates before it has to grow.  Small enough that a short session
@@ -233,14 +132,16 @@ def _book_buffer(reported_depth: ReportedDepth, expected: int) -> _RowBuffer:
 
 def _statistics_buffer(spec: SessionStatistics, expected: int) -> _RowBuffer:
     """Rows of statistics.  Every column is written every time, so the background is
-    only somewhere for the dtype to live -- which is why the buffer is sized to
-    ``row_columns`` and not to ``columns``."""
-    return _RowBuffer(np.zeros(len(spec.row_columns()), dtype=np.float64), expected)
+    only somewhere for the dtype to live -- which is why the buffer is sized to the row
+    schema and not to the whole statistics frame."""
+    return _RowBuffer(np.zeros(len(spec.row_schema().columns), dtype=np.float64), expected)
 
 
 def _trades_buffer(spec: SessionStatistics, expected: int) -> _RowBuffer:
     """Rows of what traded: volume, signed volume and value, per message."""
-    return _RowBuffer(np.zeros(len(spec.trade_row_columns()), dtype=np.float64), expected)
+    return _RowBuffer(
+        np.zeros(len(spec.trade_row_schema().columns), dtype=np.float64), expected
+    )
 
 
 # ---- the statistics, read from a book -----------------------------------------------
@@ -354,6 +255,10 @@ def _write_statistics(
     would otherwise cost, since walking the side dominates accumulating along it;
     ``notebooks/the-cost-of-the-statistics.ipynb`` is where the two are separated.
 
+    Every position comes from ``spec.layout``, which found it by name in the declaration
+    the schema is built from, so the row cannot be filled in an order the frame does not
+    expect.
+
     Returns the touch it read, which the caller carries into the next call: ``e_n`` is the
     one statistic here that is a function of two states rather than one.
     """
@@ -361,36 +266,36 @@ def _write_statistics(
         return float("nan") if value is None else float(value)
 
     target = out[row]
+    at = spec.layout
     mid = book.mid_price
-    target[0] = as_float(book.spread)
-    target[1] = as_float(mid)
-    target[2] = as_float(book.micro_price)
-    column = 3
-    for n, imbalance in zip(
-        spec.imbalance_levels, book.queue_imbalance_profile(spec.imbalance_levels)
+    target[at.spread] = as_float(book.spread)
+    target[at.mid_price] = as_float(mid)
+    target[at.micro_price] = as_float(book.micro_price)
+    for column, n, imbalance in zip(
+        at.imbalance, spec.imbalance_levels,
+        book.queue_imbalance_profile(spec.imbalance_levels),
     ):
         target[column] = imbalance
         target[column + 1] = float(
             _side_covers(bid, n, reported_depth, from_file)
             and _side_covers(ask, n, reported_depth, from_file)
         )
-        column += 2
     buys = _sweep_cost(ask.levels, mid, spec.sweep_sizes, BUY)
     sells = _sweep_cost(bid.levels, mid, spec.sweep_sizes, SELL)
-    for index in range(len(spec.sweep_sizes)):
-        for side, cost in ((ask, buys[index]), (bid, sells[index])):
+    for index, (buy_at, sell_at) in enumerate(at.sweep):
+        for column, side, cost in (
+            (buy_at, ask, buys[index]), (sell_at, bid, sells[index])
+        ):
             target[column] = as_float(cost)
             target[column + 1] = float(
                 _sweep_covers(side, cost, mid, reported_depth, from_file)
             )
-            column += 2
     touch = _touch(bid, ask)
-    target[column] = _order_flow_contribution(previous_touch, touch)
-    target[column + 1] = (
+    target[at.order_flow] = _order_flow_contribution(previous_touch, touch)
+    target[at.touch_depth] = (
         float("nan") if None in touch else float(touch[0][1] + touch[1][1])
     )
-    column += 2
-    target[column:] = (
+    target[at.gaps] = (
         bid.occupied, ask.occupied,
         bid.gap_count, ask.gap_count,
         bid.largest_gap, ask.largest_gap,
@@ -542,7 +447,7 @@ def _with_rolling(
     spec: SessionStatistics, clock: np.ndarray, rows: np.ndarray
 ) -> dict[str, np.ndarray]:
     """The statistics frame: the recorded rows, plus what windows make of two of them."""
-    columns = {name: rows[:, i] for i, name in enumerate(spec.row_columns())}
+    columns = {name: rows[:, i] for i, name in enumerate(spec.row_schema().columns)}
     flow, depth = columns["OrderFlowContribution"], columns["TouchDepth"]
     undefined = np.isnan(flow).astype(float)
     measured = np.isfinite(depth).astype(float)
@@ -566,7 +471,7 @@ def _with_vwap(
     spec: SessionStatistics, clock: np.ndarray, rows: np.ndarray
 ) -> dict[str, np.ndarray]:
     """The trades frame: what traded per message, and the VWAPs over the windows."""
-    columns = {name: rows[:, i] for i, name in enumerate(spec.trade_row_columns())}
+    columns = {name: rows[:, i] for i, name in enumerate(spec.trade_row_schema().columns)}
     volume, signed, value = (columns[n] for n in ("Volume", "SignedVolume", "TradedValue"))
     for window in spec.windows:
         start = _window_start(clock, window)
@@ -592,8 +497,11 @@ class MarketSession:
     sizes inside ``statistics`` count other things, which is why they live in a type of
     their own rather than beside it.
 
-    ``stats`` is None for a session folded without online statistics; call
-    :meth:`stats_from_frame` to compute them from ``lobster_book``.
+    **The two Nones mean different things.**  ``stats`` is None when the statistics were
+    not computed: a deferral, and :meth:`stats_from_frame` computes them from
+    ``lobster_book`` whenever they are wanted.  ``trades`` is None when they *cannot* be
+    computed, because the record the session was built from determines no volume.  One is
+    about what was asked for, the other about what the data can answer.
     """
 
     reported_depth: ReportedDepth
@@ -613,35 +521,6 @@ class MarketSession:
     a delta log, which records configurations and nothing else, and for one read from a
     LOBSTER orderbook file.
     """
-
-    # ---- the frame schemas ------------------------------------------------------------
-    #
-    # Both are parametrized, so unlike the model parameters of `frames.FrameSerializable`
-    # a session's frame shape is not fixed by its type.
-
-    @staticmethod
-    def lobster_schema(reported_depth: ReportedDepth) -> pa.DataFrameSchema:
-        return frames.lobster_book_schema(reported_depth)
-
-    @staticmethod
-    def statistics_schema(spec: SessionStatistics) -> pa.DataFrameSchema:
-        columns = {
-            name: pa.Column(float, nullable=True, coerce=True) for name in spec.columns()
-        }
-        for name in spec.covered_columns():
-            columns[name] = pa.Column(float, pa.Check.isin((0.0, 1.0)), coerce=True)
-        return pa.DataFrameSchema(columns, strict=True, ordered=True)
-
-    @staticmethod
-    def trades_schema(spec: SessionStatistics) -> pa.DataFrameSchema:
-        return pa.DataFrameSchema(
-            {
-                name: pa.Column(float, nullable=True, coerce=True)
-                for name in spec.trade_columns()
-            },
-            strict=True,
-            ordered=True,
-        )
 
     # ---- axis C: three ways to record the same session --------------------------------
 
@@ -759,11 +638,11 @@ class MarketSession:
         dense recorders has to include is the cost of :meth:`DeltaLog.record`, which had
         to run first.
 
-        The session comes back with ``trades`` None.  A delta names the size now resting
-        at a price and says nothing about why it changed, so a log determines every
-        statistic that is a function of the configurations -- the sweep costs and the
-        order flow among them -- and cannot determine a volume.  That is the
-        size-versus-volume distinction of section 3, in the shape of the data.
+        A delta names the size now resting at a price and says nothing about why it
+        changed, so a log determines every statistic that is a function of the
+        configurations -- the sweep costs and the order flow among them -- and no volume
+        at all.  That is the size-versus-volume distinction of section 3, in the shape of
+        the data, and it is why the session comes back with ``trades`` None.
         """
         book = log.opening_book(book_cls, False)
         times = log.times
@@ -824,10 +703,10 @@ class MarketSession:
             statistics=spec,
             price_unit=price_unit,
             from_file=False,
-            lobster_book=cls.lobster_schema(reported_depth).validate(book_frame),
-            stats=None if stats is None else cls.statistics_schema(spec).validate(stats),
+            lobster_book=frames.lobster_book_schema(reported_depth).validate(book_frame),
+            stats=None if stats is None else spec.statistics_schema().validate(stats),
             level_deltas=deltas,
-            trades=None if traded is None else cls.trades_schema(spec).validate(traded),
+            trades=None if traded is None else spec.trades_schema().validate(traded),
         )
 
     # ---- the statistics, computed from the finished frame -----------------------------
@@ -927,13 +806,22 @@ class MarketSession:
             columns[f"{name}GapCount"] = (positive > 0).sum(1).astype(float)
             columns[f"{name}LargestGap"] = positive.max(1) if positive.size else 0.0
             columns.update(self._gap_positions(name, positive, starts))
-        rows = pd.DataFrame(columns, index=self.lobster_book.index, dtype=float)[
-            self.statistics.row_columns()
-        ]
+        # Validated, not merely reordered: a projection by name list drops a column the
+        # dict holds and the list does not, silently, and the two are built in different
+        # orders.  Strict and ordered, so an extra, a missing and a misplaced column all
+        # raise here rather than surfacing as a shape mismatch further down.
+        row_schema = self.statistics.row_schema()
+        rows = row_schema.validate(
+            pd.DataFrame(columns, index=self.lobster_book.index, dtype=float)[
+                list(row_schema.columns)
+            ]
+        )
         clock = self.lobster_book.index.to_numpy(dtype=float)
-        return pd.DataFrame(
-            _with_rolling(self.statistics, clock, rows.to_numpy(dtype=float)),
-            index=self.lobster_book.index,
+        return self.statistics.statistics_schema().validate(
+            pd.DataFrame(
+                _with_rolling(self.statistics, clock, rows.to_numpy(dtype=float)),
+                index=self.lobster_book.index,
+            )
         )
 
     def _gap_positions(self, side: str, positive, starts) -> dict:

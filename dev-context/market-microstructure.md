@@ -258,7 +258,7 @@ which is why the notebook exists rather than the estimate:
   against 0.046s vectorised over the finished frame — about 20×, at every size measured. The
   online route exists because it is the *fold*, not because it is ever faster. The real
   asymmetry is elsewhere: VWAP has no from-frame route at all;
-- **pandera costs 1.3% of the fold here, not 15%.** `lobster_schema.validate` is 0.015s
+- **pandera costs 1.3% of the fold here, not 15%.** `lobster_book_schema.validate` is 0.015s
   against a 1.11s fold. The `Int64` coercion the review identified is real and does widen the
   frame — 11.4MB to 12.8MB, one contiguous int64 block becoming one masked column per field
   — but the time it takes is not where this path spends anything;

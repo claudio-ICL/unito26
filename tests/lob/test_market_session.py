@@ -15,9 +15,8 @@ from unito26.lob.messages import (
 )
 from unito26.lob.orderbook import AXIS_B_VARIANTS, AggregateBook
 from unito26.lob.delta_log import DeltaLog
-from unito26.lob.session import (
-    MarketSession, SessionStatistics, _book_buffer, _write_occupied_levels,
-)
+from unito26.lob.session import MarketSession, _book_buffer, _write_occupied_levels
+from unito26.lob.statistics import SessionStatistics
 from unito26.lob.simulate import OrderFlowSimulator
 
 LEVELS = (GridDepth(1), GridDepth(2), GridDepth(5))
@@ -361,3 +360,44 @@ class TestABookEmptyOnBothSides:
             assert np.isnan(frame_route[name].iloc[0])
         assert np.isnan(session.trades["VWAP1"].iloc[0])
         assert np.isnan(vwap.iloc[0])
+
+
+class TestGapsThatDifferOnEverySide:
+    """A fixture whose twelve gap statistics are pairwise distinct across the two sides.
+
+    The reconciliation compares columns by name, so it catches a transposed pair only where
+    the two disagree numerically.  On the fixtures above ``LargestGap`` equals
+    ``FirstGapSize`` and ``FirstGapDistance`` equals ``LargestGapDistance`` on both sides,
+    which leaves four of the twelve interchangeable without any test noticing.  Here no two
+    of the six agree across sides.
+    """
+
+    DEPTH = ReportedDepth(5)
+    SPEC = SessionStatistics((GridDepth(1),), (SweepSize(100),), (1,))
+
+    @pytest.fixture
+    def session(self):
+        book = AggregateBook.from_levels(
+            {1000: 100, 999: 200, 995: 50, 990: 30, 989: 40},
+            {1002: 120, 1004: 60, 1010: 80, 1013: 40},
+        )
+        return MarketSession.from_occupied_levels(
+            book, [limit_order(1.0, 10, 999, BUY)], self.DEPTH, self.SPEC, PRICE_UNIT, True
+        )
+
+    def test_the_two_sides_disagree_on_every_gap_statistic(self, session):
+        row = session.stats.iloc[0]
+        bid = [row[f"Bid{name}"] for name in (
+            "OccupiedLevels", "GapCount", "LargestGap",
+            "FirstGapDistance", "FirstGapSize", "LargestGapDistance",
+        )]
+        ask = [row[f"Ask{name}"] for name in (
+            "OccupiedLevels", "GapCount", "LargestGap",
+            "FirstGapDistance", "FirstGapSize", "LargestGapDistance",
+        )]
+        assert bid == [5, 2, 4, 2, 3, 6]
+        assert ask == [4, 3, 5, 1, 1, 3]
+        assert all(b != a for b, a in zip(bid, ask))
+
+    def test_the_two_routes_agree_on_it(self, session):
+        reconcile(session)
