@@ -25,6 +25,7 @@ __all__ = [
     "GridDepth",
     "ReportedDepth",
     "SweepSize",
+    "PriceUnit",
     "TICK_TOLERANCE",
     "MARKET_BUY_PRICE",
     "MARKET_SELL_PRICE",
@@ -61,6 +62,14 @@ ReportedDepth = NewType("ReportedDepth", int)
 #: checker and enforces nothing at run time.  A size that is not a positive number of shares
 #: is refused where the walk begins, in ``unito26.lob.orderbook``.
 SweepSize = NewType("SweepSize", int)
+
+#: How many of a market-data file's price units make one tick.  LOBSTER quotes dollars
+#: times 10000, so a one-cent tick is 100 of them.
+#:
+#: A fourth ``NewType`` beside the three above, and for the same reason: it is an ``int``
+#: that sits next to other ``int``s in a signature and means something else entirely.
+#: Getting it wrong does not fail -- it rescales every price the session reports.
+PriceUnit = NewType("PriceUnit", int)
 
 #: How far off the grid a currency price may sit before :meth:`TickGrid.to_ticks` rejects
 #: it.  A property of binary floating point, not a per-call choice.

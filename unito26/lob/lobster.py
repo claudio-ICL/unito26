@@ -32,6 +32,9 @@ these edge cases without needing it.
 
 from __future__ import annotations
 
+import re
+from dataclasses import dataclass
+from datetime import date
 from enum import IntEnum
 from pathlib import Path
 
@@ -39,10 +42,24 @@ import numpy as np
 import pandas as pd
 
 from unito26.lob import frames
-from unito26.lob.messages import ReportedDepth
+from unito26.lob.frames import ASK_PADDING, BID_PADDING
+from unito26.lob.messages import TICK_TOLERANCE, PriceUnit, ReportedDepth, TickGrid
 
-__all__ = ["LobsterEvent", "load_messages", "load_orderbook",
-           "orderbook_columns", "describe_messages", "describe_orderbook"]
+__all__ = [
+    "LOBSTER_UNITS_PER_DOLLAR",
+    "NASDAQ_REGULAR_HOURS",
+    "LobsterEvent",
+    "LobsterFiles",
+    "TradingWindow",
+    "describe_messages",
+    "describe_orderbook",
+    "load_aligned",
+    "load_messages",
+    "load_orderbook",
+    "orderbook_columns",
+    "price_unit",
+    "prices_on_the_tick_grid",
+]
 
 
 class LobsterEvent(IntEnum):
@@ -59,6 +76,123 @@ class LobsterEvent(IntEnum):
     EXECUTION_HIDDEN = 5
     CROSS_TRADE = 6
     TRADING_HALT = 7
+
+
+#: LOBSTER's price unit: a dollar price times 10000, so \$91.14 is written ``911400``.
+LOBSTER_UNITS_PER_DOLLAR = 10000
+
+#: NASDAQ's regular session, 09:30 to 16:00, in seconds after midnight.  A named constant
+#: rather than a default: which window a session covers changes what every statistic means,
+#: so the caller states it.
+NASDAQ_OPEN_SECOND = 34200.0
+NASDAQ_CLOSE_SECOND = 57600.0
+
+#: The filename LOBSTER writes, which fixes the reported depth before the file is opened.
+_NAME = re.compile(
+    r"^(?P<ticker>[A-Z.]+)_(?P<date>\d{4}-\d{2}-\d{2})"
+    r"_(?P<start>\d+)_(?P<end>\d+)_(?:message|orderbook)_(?P<depth>\d+)\.csv$"
+)
+
+
+def price_unit(grid: TickGrid) -> PriceUnit:
+    """How many of the file's price units make one tick of ``grid``.
+
+    The caller states the tick size, which is a fact about the instrument, and the unit
+    follows.  Stating the unit directly invites the magic ``100``, and a wrong one does not
+    fail: it rescales every price, spread, mid and sweep cost the session reports, by a
+    factor that cancels in any round trip through the same constant.
+    """
+    units = grid.tick_size * LOBSTER_UNITS_PER_DOLLAR
+    if abs(units - round(units)) > TICK_TOLERANCE * LOBSTER_UNITS_PER_DOLLAR:
+        raise ValueError(
+            f"a tick of {grid.tick_size!r} is {units!r} of LOBSTER's price units, "
+            f"which is not a whole number of them"
+        )
+    return PriceUnit(round(units))
+
+
+@dataclass(frozen=True, slots=True)
+class TradingWindow:
+    """The span of a session, in seconds after midnight, closed at both ends.
+
+    A pair of floats in positional order is exactly the swap ``CLAUDE.md`` asks for a type
+    to prevent: reversed, it names no rows and yields an empty session rather than an error.
+    """
+
+    opens: float
+    closes: float
+
+    def __post_init__(self) -> None:
+        if not self.opens < self.closes:
+            raise ValueError(f"a window opens before it closes, got {self.opens}-{self.closes}")
+
+    def covers(self, other: "TradingWindow") -> bool:
+        return self.opens <= other.opens and other.closes <= self.closes
+
+
+#: NASDAQ's regular session.  Passed explicitly; never a default.
+NASDAQ_REGULAR_HOURS = TradingWindow(NASDAQ_OPEN_SECOND, NASDAQ_CLOSE_SECOND)
+
+
+@dataclass(frozen=True, slots=True)
+class LobsterFiles:
+    """The pair of files for one ticker and day, named by the convention they are written in.
+
+    Parsed from either member, because the two paths are the same type and are otherwise
+    silently swappable, and because ``LEVEL`` in the name *is* the schema: a depth-10 file
+    read as depth 50 is a column-count error, and read as depth 5 it is no error at all,
+    only a different statistic under the same name.
+
+    The filename counts **milliseconds** after midnight while the ``Time`` column counts
+    seconds, which is why the fields are named for what they hold and the seconds are
+    derived rather than parsed.
+    """
+
+    ticker: str
+    day: date
+    start_millisecond: int
+    end_millisecond: int
+    reported_depth: ReportedDepth
+    directory: Path
+
+    @classmethod
+    def parse(cls, path: str | Path) -> "LobsterFiles":
+        path = Path(path)
+        matched = _NAME.match(path.name)
+        if matched is None:
+            raise ValueError(
+                f"{path.name!r} is not a LOBSTER file name; expected "
+                f"TICKER_YYYY-MM-DD_START_END_message_LEVEL.csv or its orderbook twin"
+            )
+        return cls(
+            ticker=matched["ticker"],
+            day=date.fromisoformat(matched["date"]),
+            start_millisecond=int(matched["start"]),
+            end_millisecond=int(matched["end"]),
+            reported_depth=ReportedDepth(int(matched["depth"])),
+            directory=path.parent,
+        )
+
+    @property
+    def span(self) -> TradingWindow:
+        """What the file claims to cover, in the seconds its ``Time`` column counts."""
+        return TradingWindow(
+            self.start_millisecond / 1000, self.end_millisecond / 1000
+        )
+
+    def _path(self, kind: str) -> Path:
+        return self.directory / (
+            f"{self.ticker}_{self.day.isoformat()}_{self.start_millisecond}"
+            f"_{self.end_millisecond}_{kind}_{self.reported_depth}.csv"
+        )
+
+    @property
+    def messages_path(self) -> Path:
+        return self._path("message")
+
+    @property
+    def orderbook_path(self) -> Path:
+        return self._path("orderbook")
 
 
 def orderbook_columns(reported_depth: ReportedDepth) -> list[str]:
@@ -121,13 +255,116 @@ def load_orderbook(path: str | Path, reported_depth: ReportedDepth) -> pd.DataFr
     exception instead of a silently widened column -- a fractional size, an empty field or
     a non-numeric type each currently changes the dtype of a whole column without comment.
     """
+    return _read_orderbook(path, reported_depth, 0, None)
+
+
+def _read_orderbook(
+    path: str | Path, reported_depth: ReportedDepth, skip: int, take: int | None
+) -> pd.DataFrame:
+    """``take`` rows of the orderbook file starting at data row ``skip``.
+
+    ``names`` is what makes a read at or past the end of the file return an empty frame
+    rather than raising for having no columns to parse.
+    """
     return frames.lobster_orderbook_file_schema(reported_depth).validate(
         pd.read_csv(
             path,
             header=None,
             names=orderbook_columns(reported_depth),
             dtype="int64",
+            skiprows=skip,
+            nrows=take,
         )
+    )
+
+
+def _count_rows(path: str | Path) -> int:
+    """Rows in a text file, counted without parsing it.
+
+    Half a second and a constant few megabytes on a gigabyte-and-a-half orderbook file,
+    which is what makes it worth doing before reading a window out of one.
+    """
+    rows, last = 0, b"\n"
+    with open(path, "rb") as handle:
+        for block in iter(lambda: handle.read(1 << 24), b""):
+            rows += block.count(b"\n")
+            last = block[-1:]
+    return rows if last == b"\n" else rows + 1
+
+
+def prices_on_the_tick_grid(
+    book: pd.DataFrame, unit: PriceUnit, reported_depth: ReportedDepth
+) -> pd.DataFrame:
+    """The book unchanged, or a refusal naming the first price that is not a whole tick.
+
+    Checked once, here, rather than at every conversion.  ``AggregateBook.from_lobster_row``
+    already refuses such a price row by row; the frame route divides the whole column and
+    would answer a fractional tick count in every spread, mid and sweep cost without
+    comment.
+
+    Padded levels are skipped: the sentinels are not prices, and neither of them is a
+    multiple of any ordinary unit.
+    """
+    names = [
+        f"{side}Price{level}"
+        for level in range(1, reported_depth + 1)
+        for side in ("Ask", "Bid")
+    ]
+    values = book[names].to_numpy()
+    quoted = (values != ASK_PADDING) & (values != BID_PADDING)
+    off_grid = quoted & (values % unit != 0)
+    if off_grid.any():
+        row, column = (int(i) for i in np.argwhere(off_grid)[0])
+        raise ValueError(
+            f"{names[column]} is {values[row, column]} on row {row}, which is not a "
+            f"multiple of the price unit {unit}"
+        )
+    return book
+
+
+def load_aligned(
+    files: LobsterFiles, window: TradingWindow
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """The messages and the book states inside ``window``, as one aligned pair.
+
+    The message file is the smaller of the two -- a thirtieth of its orderbook on the
+    deepest samples -- and it carries the only clock, so it is read whole and used as the
+    index into the other.  Times are non-decreasing, so a window is a contiguous run of
+    rows, and only those rows of the orderbook file are parsed.  A five-minute window then
+    costs a scan of the text and the memory of the rows it keeps, rather than of the file.
+
+    **Alignment is assumed, not verified.** The orderbook file carries no timestamp, no
+    sequence number and no key: row *i* corresponds to message *i* because of how the file
+    was written, and nothing in the contents establishes it.  Equal lengths are checked
+    here, which catches a file truncated or extended at either end; a row missing from the
+    *middle* shifts every state after it and is undetectable by any count.
+    """
+    if not files.span.covers(window):
+        raise ValueError(
+            f"{window} is not inside {files.span}, which is what "
+            f"{files.messages_path.name} covers"
+        )
+    messages = load_messages(files.messages_path)
+    states = _count_rows(files.orderbook_path)
+    if states != len(messages):
+        raise ValueError(
+            f"the pair is not aligned: {files.messages_path.name} has {len(messages)} "
+            f"messages and {files.orderbook_path.name} has {states} book states"
+        )
+
+    clock = messages["Time"].to_numpy()
+    # Closed at both ends, as LOBSTER's own demo cuts a session.  The sides are stated
+    # because timestamps repeat: `right` at the close keeps every message sharing it.
+    first = int(np.searchsorted(clock, window.opens, side="left"))
+    last = int(np.searchsorted(clock, window.closes, side="right"))
+    if first == last:
+        raise ValueError(
+            f"{window} contains no messages of {files.messages_path.name}, "
+            f"whose clock runs {clock[0]} to {clock[-1]}"
+        )
+    return (
+        messages.iloc[first:last].reset_index(drop=True),
+        _read_orderbook(files.orderbook_path, files.reported_depth, first, last - first),
     )
 
 
@@ -163,11 +400,13 @@ def describe_messages(messages: pd.DataFrame) -> dict:
     }
 
 
-def describe_orderbook(book: pd.DataFrame, price_unit: int) -> dict:
+def describe_orderbook(book: pd.DataFrame, unit: PriceUnit) -> dict:
     """Descriptive statistics over the shipped orderbook file.
 
-    ``price_unit`` is the number of the file's price units in one tick: LOBSTER quotes in
-    1/10000 of a dollar, so a one-cent tick is 100.
+    Every price here is in **ticks**, ``unit`` being how many of the file's price units make
+    one -- see :func:`price_unit`, which derives it from a tick size.  Reporting a spread in
+    ticks beside a mid in the file's units would put two scales in one dictionary, which is
+    the mistake this whole conversion exists to avoid.
 
     Rows whose touch is padded are dropped first.  The sentinels are ``-9999999999`` on
     the bid and ``+9999999999`` on the ask -- opposite signs, so a filter written for one
@@ -176,8 +415,8 @@ def describe_orderbook(book: pd.DataFrame, price_unit: int) -> dict:
     ask, bid = book["AskPrice1"], book["BidPrice1"]
     quoted = (ask != frames.ASK_PADDING) & (bid != frames.BID_PADDING)
     ask, bid = ask.where(quoted), bid.where(quoted)
-    spread = (ask - bid) / price_unit
-    mid = (ask + bid) / 2
+    spread = (ask - bid) / unit
+    mid = (ask + bid) / 2 / unit
     top = book["BidSize1"] + book["AskSize1"]
     imbalance = (book["BidSize1"] - book["AskSize1"]) / top.where(top > 0)
     return {
