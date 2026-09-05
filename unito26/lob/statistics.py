@@ -18,6 +18,7 @@ from dataclasses import dataclass, field
 
 import pandera.pandas as pa
 
+from unito26.lob import frames
 from unito26.lob.messages import GridDepth, SweepSize
 
 __all__ = ["StatisticColumn", "RowLayout", "SessionStatistics"]
@@ -76,9 +77,20 @@ def _flag(name: str) -> StatisticColumn:
     return StatisticColumn(name, True)
 
 
-def _schema(declaration: tuple[StatisticColumn, ...]) -> pa.DataFrameSchema:
+def _row_schema(declaration: tuple[StatisticColumn, ...]) -> pa.DataFrameSchema:
+    """What the fold writes per message.  No index: this sizes a buffer, not a frame."""
     return pa.DataFrameSchema(
         {column.name: column.column() for column in declaration}, strict=True, ordered=True
+    )
+
+
+def _frame_schema(declaration: tuple[StatisticColumn, ...]) -> pa.DataFrameSchema:
+    """An assembled frame, on the session clock."""
+    return pa.DataFrameSchema(
+        {column.name: column.column() for column in declaration},
+        index=frames.session_index(),
+        strict=True,
+        ordered=True,
     )
 
 
@@ -192,16 +204,16 @@ class SessionStatistics:
     # ---- the schemas -----------------------------------------------------------------
 
     def row_schema(self) -> pa.DataFrameSchema:
-        return _schema(self.row_declaration())
+        return _row_schema(self.row_declaration())
 
     def statistics_schema(self) -> pa.DataFrameSchema:
-        return _schema(self.declaration())
+        return _frame_schema(self.declaration())
 
     def trade_row_schema(self) -> pa.DataFrameSchema:
-        return _schema(self.trade_row_declaration())
+        return _row_schema(self.trade_row_declaration())
 
     def trades_schema(self) -> pa.DataFrameSchema:
-        return _schema(self.trade_declaration())
+        return _frame_schema(self.trade_declaration())
 
     def _layout(self) -> RowLayout:
         names = [column.name for column in self.row_declaration()]

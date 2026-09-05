@@ -41,7 +41,7 @@ import pandas as pd
 from unito26.lob import frames
 from unito26.lob.messages import ReportedDepth
 
-__all__ = ["LobsterEvent", "MESSAGE_COLUMNS", "load_messages", "load_orderbook",
+__all__ = ["LobsterEvent", "load_messages", "load_orderbook",
            "orderbook_columns", "describe_messages", "describe_orderbook"]
 
 
@@ -61,9 +61,6 @@ class LobsterEvent(IntEnum):
     TRADING_HALT = 7
 
 
-MESSAGE_COLUMNS = ["time", "type", "order_id", "size", "price", "direction"]
-
-
 def orderbook_columns(reported_depth: ReportedDepth) -> list[str]:
     """Column names for an orderbook file of the given depth.
 
@@ -74,15 +71,43 @@ def orderbook_columns(reported_depth: ReportedDepth) -> list[str]:
 
 
 def load_messages(path: str | Path) -> pd.DataFrame:
-    """Load a LOBSTER message file.
+    """Load a LOBSTER message file, against the schema rather than by inference.
 
     Prices arrive as integers in units of 1/10000 of a dollar, so the feed already
     counts a fixed grid and no float touches a price.  They are left as they are.
+
+    The clock is read as **text** and turned into two columns.  ``Time`` is the seconds
+    the file states, parsed to float64, which the rolling windows subtract whole seconds
+    from.  ``TimeNanoseconds`` is the same instant as an exact integer, built by splitting
+    the text at the point rather than by scaling the float, and it is the only column
+    anything may group on: two rows share an instant far more often than a reader expects,
+    and float equality survives that here only because the clock counts from midnight.
     """
-    frame = pd.read_csv(path, header=None, names=MESSAGE_COLUMNS)
-    frame["type"] = frame["type"].astype("int8")
-    frame["direction"] = frame["direction"].astype("int8")
-    return frame
+    text = pd.read_csv(
+        path,
+        header=None,
+        names=frames.lobster_message_file_columns(),
+        dtype={"Time": str, "Type": "int64", "OrderID": "int64",
+               "Size": "int64", "Price": "int64", "Direction": "int64"},
+    )
+    stamps = text["Time"].str.split(".", n=1, expand=True)
+    fraction = (
+        stamps[1].fillna("") if stamps.shape[1] > 1
+        else pd.Series("", index=stamps.index, dtype=str)
+    )
+    frame = pd.DataFrame(
+        {
+            "Time": text["Time"].astype(float),
+            "TimeNanoseconds": stamps[0].astype("int64") * 1_000_000_000
+            + fraction.str.slice(0, 9).str.ljust(9, "0").astype("int64"),
+            "Type": text["Type"],
+            "OrderID": text["OrderID"],
+            "Size": text["Size"],
+            "Price": text["Price"],
+            "Direction": text["Direction"],
+        }
+    )
+    return frames.lobster_message_schema().validate(frame)
 
 
 def load_orderbook(path: str | Path, reported_depth: ReportedDepth) -> pd.DataFrame:
@@ -90,8 +115,20 @@ def load_orderbook(path: str | Path, reported_depth: ReportedDepth) -> pd.DataFr
 
     Padded levels keep their sentinels, exactly as the file has them.  Normalising here
     would hide the one feature of the format most likely to corrupt a statistic.
+
+    The dtypes are declared, not inferred.  Inference agrees with the declaration on every
+    shipped file, so this fixes nothing today; what it does is turn a malformed row into an
+    exception instead of a silently widened column -- a fractional size, an empty field or
+    a non-numeric type each currently changes the dtype of a whole column without comment.
     """
-    return pd.read_csv(path, header=None, names=orderbook_columns(reported_depth))
+    return frames.lobster_orderbook_file_schema(reported_depth).validate(
+        pd.read_csv(
+            path,
+            header=None,
+            names=orderbook_columns(reported_depth),
+            dtype="int64",
+        )
+    )
 
 
 def describe_messages(messages: pd.DataFrame) -> dict:
@@ -103,7 +140,7 @@ def describe_messages(messages: pd.DataFrame) -> dict:
     market moves.  It is also why removal by name, rather than matching, is the hot path
     in a real book.
     """
-    counts = messages["type"].value_counts().sort_index()
+    counts = messages["Type"].value_counts().sort_index()
     labelled = {LobsterEvent(int(k)).name: int(v) for k, v in counts.items()}
 
     submissions = labelled.get("SUBMISSION", 0)
@@ -111,7 +148,7 @@ def describe_messages(messages: pd.DataFrame) -> dict:
     executions = labelled.get("EXECUTION_VISIBLE", 0)
     hidden = labelled.get("EXECUTION_HIDDEN", 0)
 
-    gaps = np.diff(messages["time"].to_numpy())
+    gaps = np.diff(messages["Time"].to_numpy())
     return {
         "messages": len(messages),
         "by_type": labelled,
@@ -120,7 +157,7 @@ def describe_messages(messages: pd.DataFrame) -> dict:
         "executions_visible": executions,
         "executions_hidden": hidden,
         "withdrawal_rate": withdrawals / submissions if submissions else float("nan"),
-        "session_seconds": float(messages["time"].iloc[-1] - messages["time"].iloc[0]),
+        "session_seconds": float(messages["Time"].iloc[-1] - messages["Time"].iloc[0]),
         "median_gap_seconds": float(np.median(gaps)),
         "simultaneous_message_fraction": float((gaps == 0).mean()),
     }

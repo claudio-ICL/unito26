@@ -685,9 +685,9 @@ class MarketSession:
         deltas: list[tuple[int, float, LevelDelta]] | None,
     ) -> "MarketSession":
         clock = np.asarray(times, dtype=float)
-        if np.any(np.diff(clock) < 0):
-            raise ValueError("message times must be non-decreasing to window over them")
-        index = pd.Index(times, name="TimeStamp")
+        # From the array, not the list: `pd.Index([])` is dtype object, and an empty
+        # session would then fail the index schema rather than validate as empty.
+        index = pd.Index(clock, name="TimeStamp")
         book_frame = pd.DataFrame(
             rows.finished(), columns=frames.lobster_book_columns(reported_depth), index=index
         )
@@ -703,7 +703,7 @@ class MarketSession:
             statistics=spec,
             price_unit=price_unit,
             from_file=False,
-            lobster_book=frames.lobster_book_schema(reported_depth).validate(book_frame),
+            lobster_book=frames.session_book_schema(reported_depth).validate(book_frame),
             stats=None if stats is None else spec.statistics_schema().validate(stats),
             level_deltas=deltas,
             trades=None if traded is None else spec.trades_schema().validate(traded),
