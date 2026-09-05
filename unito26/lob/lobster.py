@@ -33,6 +33,7 @@ these edge cases without needing it.
 from __future__ import annotations
 
 import re
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import date
 from enum import IntEnum
@@ -40,25 +41,35 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+import pandera.pandas as pa
 
 from unito26.lob import frames
 from unito26.lob.frames import ASK_PADDING, BID_PADDING
 from unito26.lob.messages import TICK_TOLERANCE, PriceUnit, ReportedDepth, TickGrid
 
 __all__ = [
-    "LOBSTER_UNITS_PER_DOLLAR",
-    "NASDAQ_REGULAR_HOURS",
-    "LobsterEvent",
-    "LobsterFiles",
-    "TradingWindow",
+    "clock_census",
+    "clock_origin_census",
+    "constraint_census",
     "describe_messages",
     "describe_orderbook",
+    "event_census",
+    "file_census",
     "load_aligned",
     "load_messages",
     "load_orderbook",
+    "LOBSTER_UNITS_PER_DOLLAR",
+    "LobsterEvent",
+    "LobsterFiles",
+    "NASDAQ_REGULAR_HOURS",
     "orderbook_columns",
+    "padding_census",
     "price_unit",
     "prices_on_the_tick_grid",
+    "touch_census",
+    "touch_prices",
+    "TradingWindow",
+    "write_pair",
 ]
 
 
@@ -292,6 +303,31 @@ def _count_rows(path: str | Path) -> int:
     return rows if last == b"\n" else rows + 1
 
 
+def _clock(path: str | Path) -> np.ndarray:
+    """The message file's ``Time`` column and nothing else.
+
+    The clock is the index into the orderbook file, so a reader that wants a window of one
+    column of the book still has to know where the window starts.  One column of the
+    smaller file is the cheapest way to find out.
+    """
+    return pd.read_csv(
+        path, header=None, usecols=[0], names=["Time"], dtype={"Time": float}
+    )["Time"].to_numpy()
+
+
+def _window_rows(clock: np.ndarray, window: TradingWindow) -> tuple[int, int]:
+    """The half-open row range the window covers, both ends of the window closed.
+
+    The sides are stated because timestamps repeat: ``left`` at the open keeps every
+    message sharing it, ``right`` at the close does the same.  One AMZN instant carries 31
+    messages, and the other pair of sides silently keeps none of them.
+    """
+    return (
+        int(np.searchsorted(clock, window.opens, side="left")),
+        int(np.searchsorted(clock, window.closes, side="right")),
+    )
+
+
 def prices_on_the_tick_grid(
     book: pd.DataFrame, unit: PriceUnit, reported_depth: ReportedDepth
 ) -> pd.DataFrame:
@@ -353,10 +389,7 @@ def load_aligned(
         )
 
     clock = messages["Time"].to_numpy()
-    # Closed at both ends, as LOBSTER's own demo cuts a session.  The sides are stated
-    # because timestamps repeat: `right` at the close keeps every message sharing it.
-    first = int(np.searchsorted(clock, window.opens, side="left"))
-    last = int(np.searchsorted(clock, window.closes, side="right"))
+    first, last = _window_rows(clock, window)
     if first == last:
         raise ValueError(
             f"{window} contains no messages of {files.messages_path.name}, "
@@ -366,6 +399,418 @@ def load_aligned(
         messages.iloc[first:last].reset_index(drop=True),
         _read_orderbook(files.orderbook_path, files.reported_depth, first, last - first),
     )
+
+
+# ---- writing a pair, which is how the sample's gaps are filled -------------------------
+
+
+def write_pair(
+    files: LobsterFiles, messages: pd.DataFrame, book: pd.DataFrame
+) -> LobsterFiles:
+    """Write a message file and an orderbook file: the inverse of :func:`load_aligned`.
+
+    Nothing is validated on the way out, and that is the point.  No shipped sample contains
+    a trading halt, a type outside the format or a row missing from the middle, so the file
+    that exhibits one has to be constructed, and a writer that refused to write it would be
+    useless for exactly the cases worth showing.
+
+    ``Time`` is written with nine decimals, the resolution LOBSTER's own files carry.
+    """
+    columns = frames.lobster_message_file_columns()
+    whole = {name: "int64" for name in columns if name != "Time"}
+    messages[columns].astype(whole).to_csv(
+        files.messages_path, header=False, index=False, float_format="%.9f"
+    )
+    book[orderbook_columns(files.reported_depth)].astype("int64").to_csv(
+        files.orderbook_path, header=False, index=False
+    )
+    return files
+
+
+# ---- the census: what the files say about themselves -----------------------------------
+#
+# Each function here answers one claim of
+# `documentation/from-lobster-files-to-a-session.md`, and each returns a validated frame
+# rather than a dictionary.  A census is a table: it prints beside the other tables, and a
+# shape declared before the measurement is the discipline the reference argues for.
+
+
+def file_census_schema() -> pa.DataFrameSchema:
+    return pa.DataFrameSchema(
+        {
+            "Ticker": pa.Column(str, coerce=True),
+            "Depth": pa.Column("int64", pa.Check.ge(1), coerce=True),
+            "Opens": pa.Column(float, coerce=True),
+            "Closes": pa.Column(float, coerce=True),
+            "MessageMegabytes": pa.Column(float, coerce=True),
+            "OrderbookMegabytes": pa.Column(float, coerce=True),
+            "MessageRows": pa.Column("int64", pa.Check.ge(0), coerce=True),
+            "BookRows": pa.Column("int64", pa.Check.ge(0), coerce=True),
+            "Columns": pa.Column("int64", pa.Check.ge(4), coerce=True),
+        },
+        strict=True,
+        ordered=True,
+    )
+
+
+def file_census(pairs: Sequence[LobsterFiles]) -> pd.DataFrame:
+    """What the pairs are, before a byte of either is parsed.
+
+    Names, sizes and line counts only.  The two row counts are the thing to read first:
+    they agree on every pair, and that agreement is the only evidence for the alignment
+    obtainable without parsing, the orderbook file carrying no clock, no sequence number
+    and no key.
+    """
+    return file_census_schema().validate(
+        pd.DataFrame(
+            [
+                {
+                    "Ticker": files.ticker,
+                    "Depth": int(files.reported_depth),
+                    "Opens": files.span.opens,
+                    "Closes": files.span.closes,
+                    "MessageMegabytes": files.messages_path.stat().st_size / 1e6,
+                    "OrderbookMegabytes": files.orderbook_path.stat().st_size / 1e6,
+                    "MessageRows": _count_rows(files.messages_path),
+                    "BookRows": _count_rows(files.orderbook_path),
+                    "Columns": 4 * int(files.reported_depth),
+                }
+                for files in pairs
+            ]
+        )
+    )
+
+
+def event_census_schema() -> pa.DataFrameSchema:
+    columns = {
+        "Ticker": pa.Column(str, coerce=True),
+        "Depth": pa.Column("int64", pa.Check.ge(1), coerce=True),
+        "Messages": pa.Column("int64", pa.Check.ge(0), coerce=True),
+    }
+    for event in LobsterEvent:
+        columns[event.name] = pa.Column("int64", pa.Check.ge(0), coerce=True)
+    return pa.DataFrameSchema(columns, strict=True, ordered=True)
+
+
+def event_census(pairs: Sequence[LobsterFiles]) -> pd.DataFrame:
+    """How many of each event type each message file carries.
+
+    One column per documented type, including the types no sample contains.  The columns
+    come from the format and not from the data, which is section 3 of the reference in a
+    single table: a schema written from what a file happens to hold inherits that file's
+    blind spots.
+    """
+    rows = []
+    for files in pairs:
+        messages = load_messages(files.messages_path)
+        counts = messages["Type"].value_counts()
+        row = {
+            "Ticker": files.ticker,
+            "Depth": int(files.reported_depth),
+            "Messages": len(messages),
+        }
+        row.update({event.name: int(counts.get(int(event), 0)) for event in LobsterEvent})
+        rows.append(row)
+    return event_census_schema().validate(pd.DataFrame(rows))
+
+
+def touch_schema() -> pa.DataFrameSchema:
+    """The clock and the two best prices, positionally indexed as the file is."""
+    return pa.DataFrameSchema(
+        {
+            "Time": pa.Column(float, pa.Check.ge(0.0), coerce=True),
+            "AskPrice1": pa.Column("int64", coerce=True),
+            "BidPrice1": pa.Column("int64", coerce=True),
+        },
+        strict=True,
+        ordered=True,
+    )
+
+
+def touch_prices(files: LobsterFiles, window: TradingWindow) -> pd.DataFrame:
+    """The touch, and no other column of the orderbook file.
+
+    ``usecols`` is what makes a claim about the whole sample affordable: the touch is two of
+    the file's ``4 x LEVEL`` columns, and reading only those answers every question about
+    the spread at a fraction of the memory a full read costs.  The sentinels are left
+    intact -- a padded touch is a real answer, and the caller decides what to do with it.
+    """
+    clock = _clock(files.messages_path)
+    first, last = _window_rows(clock, window)
+    if first == last:
+        raise ValueError(
+            f"{window} contains no messages of {files.messages_path.name}, "
+            f"whose clock runs {clock[0]} to {clock[-1]}"
+        )
+    book = pd.read_csv(
+        files.orderbook_path,
+        header=None,
+        names=orderbook_columns(files.reported_depth),
+        usecols=["AskPrice1", "BidPrice1"],
+        dtype="int64",
+        skiprows=first,
+        nrows=last - first,
+    )
+    book.insert(0, "Time", clock[first:last])
+    return touch_schema().validate(book.reset_index(drop=True))
+
+
+def touch_census_schema() -> pa.DataFrameSchema:
+    return pa.DataFrameSchema(
+        {
+            "Ticker": pa.Column(str, coerce=True),
+            "Depth": pa.Column("int64", pa.Check.ge(1), coerce=True),
+            "Rows": pa.Column("int64", pa.Check.ge(0), coerce=True),
+            "Unquoted": pa.Column("int64", pa.Check.ge(0), coerce=True),
+            "Crossed": pa.Column("int64", pa.Check.ge(0), coerce=True),
+            "Locked": pa.Column("int64", pa.Check.ge(0), coerce=True),
+            "NarrowestTicks": pa.Column(float, nullable=True, coerce=True),
+            "WidestTicks": pa.Column(float, nullable=True, coerce=True),
+        },
+        strict=True,
+        ordered=True,
+    )
+
+
+def touch_census(
+    pairs: Sequence[LobsterFiles], window: TradingWindow, grid: TickGrid
+) -> pd.DataFrame:
+    """Whether the sample ever crosses or locks, over every row of every pair.
+
+    A crossed book is a bug and a locked one is a market state the format permits; neither
+    occurs here.  That is a property of one day, not of the format, and asserting ``spread
+    > 0`` in a schema on the strength of it is the mistake section 3 of the reference is
+    about.
+
+    Rows whose touch is padded are counted apart rather than filtered silently: the two
+    sentinels have opposite signs, and a mean spread taken over them moves by ``10^8``.
+    """
+    unit = price_unit(grid)
+    rows = []
+    for files in pairs:
+        touch = touch_prices(files, window)
+        ask, bid = touch["AskPrice1"].to_numpy(), touch["BidPrice1"].to_numpy()
+        quoted = (ask != ASK_PADDING) & (bid != BID_PADDING)
+        spread = (ask[quoted] - bid[quoted]) / unit
+        rows.append(
+            {
+                "Ticker": files.ticker,
+                "Depth": int(files.reported_depth),
+                "Rows": len(touch),
+                "Unquoted": int((~quoted).sum()),
+                "Crossed": int((spread < 0).sum()),
+                "Locked": int((spread == 0).sum()),
+                "NarrowestTicks": float(spread.min()) if spread.size else float("nan"),
+                "WidestTicks": float(spread.max()) if spread.size else float("nan"),
+            }
+        )
+    return touch_census_schema().validate(pd.DataFrame(rows))
+
+
+def constraint_census_schema() -> pa.DataFrameSchema:
+    return pa.DataFrameSchema(
+        {
+            "Constraint": pa.Column(str, coerce=True),
+            "Rejects": pa.Column("int64", pa.Check.ge(0), coerce=True),
+            "RejectedTypes": pa.Column(str, coerce=True),
+        },
+        strict=True,
+        ordered=True,
+    )
+
+
+def constraint_census(messages: pd.DataFrame, unit: PriceUnit) -> pd.DataFrame:
+    """What each constraint a reader writes first would throw away.
+
+    Four of the five candidates of section 3; the fifth is about the spread, which is a
+    property of the book rather than of a message, and :func:`touch_census` measures it.
+
+    The rejected types are the useful column.  A constraint that rejects nothing here may
+    still be wrong -- it encodes an assumption this day happens to satisfy -- and one that
+    rejects only hidden executions is saying something about hidden liquidity rather than
+    about the format.
+    """
+    rejected = {
+        "OrderID > 0": messages["OrderID"] <= 0,
+        "Price >= 0": messages["Price"] < 0,
+        f"Price % {unit} == 0": messages["Price"] % unit != 0,
+        "Size > 0": messages["Size"] <= 0,
+    }
+    rows = []
+    for constraint, refused in rejected.items():
+        types = sorted(messages.loc[refused, "Type"].unique())
+        rows.append(
+            {
+                "Constraint": constraint,
+                "Rejects": int(refused.sum()),
+                "RejectedTypes": ", ".join(LobsterEvent(int(t)).name for t in types),
+            }
+        )
+    return constraint_census_schema().validate(pd.DataFrame(rows))
+
+
+def padding_census_schema() -> pa.DataFrameSchema:
+    return pa.DataFrameSchema(
+        {
+            "Side": pa.Column(str, pa.Check.isin(("Ask", "Bid")), coerce=True),
+            "Level": pa.Column("int64", pa.Check.ge(1), coerce=True),
+            "Rows": pa.Column("int64", pa.Check.ge(1), coerce=True),
+            "FirstTime": pa.Column(float, coerce=True),
+            "LastTime": pa.Column(float, coerce=True),
+        },
+        strict=True,
+        ordered=True,
+    )
+
+
+#: Rows per chunk when sweeping the price columns of an orderbook file.  Large enough that
+#: the per-chunk overhead disappears, small enough that the deepest sample stays in a few
+#: hundred megabytes.
+PADDING_CHUNK = 1 << 17
+
+
+def padding_census(files: LobsterFiles, window: TradingWindow) -> pd.DataFrame:
+    """Which levels a file pads, how often, and between which times.
+
+    Swept in chunks over the price columns alone.  A full read of the deepest sample peaks
+    at several gigabytes, and every question here is answered by ``2 x LEVEL`` of the
+    file's ``4 x LEVEL`` columns.
+
+    Only the levels that pad appear, so a file that pads nowhere -- every depth-10 sample --
+    answers an empty frame.  That is the claim, not an absence of one.
+    """
+    clock = _clock(files.messages_path)
+    first, last = _window_rows(clock, window)
+    prices = [
+        f"{side}Price{level}"
+        for level in range(1, files.reported_depth + 1)
+        for side in ("Ask", "Bid")
+    ]
+    sentinel = {"Ask": ASK_PADDING, "Bid": BID_PADDING}
+    found: dict[str, list[int]] = {}
+    offset = 0
+    for chunk in pd.read_csv(
+        files.orderbook_path,
+        header=None,
+        names=orderbook_columns(files.reported_depth),
+        usecols=prices,
+        dtype="int64",
+        skiprows=first,
+        nrows=last - first,
+        chunksize=PADDING_CHUNK,
+    ):
+        for column in prices:
+            padded = np.flatnonzero(chunk[column].to_numpy() == sentinel[column[:3]])
+            if not padded.size:
+                continue
+            seen = found.setdefault(column, [0, offset + int(padded[0]), 0])
+            seen[0] += padded.size
+            seen[2] = offset + int(padded[-1])
+        offset += len(chunk)
+    rows = [
+        {
+            "Side": column[:3],
+            "Level": int(column[8:]),
+            "Rows": count,
+            "FirstTime": float(clock[first + begins]),
+            "LastTime": float(clock[first + ends]),
+        }
+        for column, (count, begins, ends) in found.items()
+    ]
+    rows.sort(key=lambda row: (row["Side"], row["Level"]))
+    return padding_census_schema().validate(
+        pd.DataFrame(rows, columns=list(padding_census_schema().columns))
+    )
+
+
+def clock_census_schema() -> pa.DataFrameSchema:
+    return pa.DataFrameSchema(
+        {
+            "Decimals": pa.Column("int64", pa.Check.ge(0), coerce=True),
+            "Rows": pa.Column("int64", pa.Check.ge(1), coerce=True),
+            "Example": pa.Column(str, coerce=True),
+        },
+        strict=True,
+        ordered=True,
+    )
+
+
+def clock_census(path: str | Path) -> pd.DataFrame:
+    """How many decimal places the clock carries, counted from the text.
+
+    From the text and never from the parse, because the question is what the file says and
+    a float has already answered it.  LOBSTER's ReadMe promises at least milliseconds and up
+    to nanoseconds; a sample carries twelve decimals on two rows, finer than the
+    documentation admits and finer than the nanosecond key keeps.
+    """
+    text = pd.read_csv(
+        path, header=None, usecols=[0], names=["Time"], dtype={"Time": str}
+    )["Time"]
+    fraction = text.str.split(".", n=1).str[1].fillna("")
+    grouped = pd.DataFrame({"Decimals": fraction.str.len(), "Time": text}).groupby(
+        "Decimals"
+    )["Time"]
+    return clock_census_schema().validate(
+        pd.DataFrame(
+            {
+                "Decimals": grouped.size().index,
+                "Rows": grouped.size().to_numpy(),
+                "Example": grouped.first().to_numpy(),
+            }
+        )
+    )
+
+
+def clock_origin_census_schema() -> pa.DataFrameSchema:
+    return pa.DataFrameSchema(
+        {
+            "Origin": pa.Column(str, coerce=True),
+            "SpacingNanoseconds": pa.Column(float, coerce=True),
+            "ClosestPairNanoseconds": pa.Column("int64", pa.Check.ge(0), coerce=True),
+            "DistinctExact": pa.Column("int64", pa.Check.ge(0), coerce=True),
+            "DistinctFloat": pa.Column("int64", pa.Check.ge(0), coerce=True),
+            "AdjacentCollisions": pa.Column("int64", pa.Check.ge(0), coerce=True),
+        },
+        strict=True,
+        ordered=True,
+    )
+
+
+def clock_origin_census(
+    messages: pd.DataFrame, origins: Mapping[str, int]
+) -> pd.DataFrame:
+    """What the same instants survive, measured from each origin.
+
+    ``origins`` are offsets in **nanoseconds** added to the file's own clock, which counts
+    from midnight.  The exact integer is unchanged by the shift; the float64 parse is not,
+    and that difference is the measurement.
+
+    The two columns to read against each other are the spacing the parse can represent and
+    the closest pair of instants the file actually holds.  From midnight the first is four
+    orders of magnitude below the second and nothing can merge.  From the Unix epoch the
+    two are comparable, and whether anything merges stops being a property of the format and
+    becomes a property of how busy the ticker is: this is why nothing in the package groups
+    on anything but ``TimeNanoseconds``.
+    """
+    exact = messages["TimeNanoseconds"].to_numpy()
+    distinct = np.unique(exact)
+    apart = np.diff(distinct)
+    moved = np.diff(exact) != 0
+    rows = []
+    for origin, offset in origins.items():
+        shifted = (exact + offset).astype(np.float64) / 1e9
+        spacing = float(np.spacing(shifted.max())) * 1e9
+        rows.append(
+            {
+                "Origin": origin,
+                "SpacingNanoseconds": spacing,
+                "ClosestPairNanoseconds": int(apart.min()) if apart.size else 0,
+                "DistinctExact": int(distinct.size),
+                "DistinctFloat": int(np.unique(shifted).size),
+                "AdjacentCollisions": int((moved & (np.diff(shifted) == 0)).sum()),
+            }
+        )
+    return clock_origin_census_schema().validate(pd.DataFrame(rows))
 
 
 def describe_messages(messages: pd.DataFrame) -> dict:

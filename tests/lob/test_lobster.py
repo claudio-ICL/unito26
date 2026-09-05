@@ -411,6 +411,181 @@ class TestTheTradesAreTheLitTape:
         assert self.build(tmp_path, (1,)).stats is None
 
 
+# ---- the census, on files carrying what the sample does not -----------------------------
+#
+# No shipped sample holds a trading halt, a sub-penny price on a lit execution or a padded
+# level at depth 10, so the census is exercised on files written for the purpose.  That is
+# the same argument the reference makes about schemas, applied to the tests: a suite built
+# from one day of data cannot see what that day happens not to contain.
+
+HALT = [
+    (36023.0, LobsterEvent.TRADING_HALT, 0, 0, -1, -1),
+    (36323.0, LobsterEvent.TRADING_HALT, 0, 0, 0, -1),
+    (36723.0, LobsterEvent.TRADING_HALT, 0, 0, 1, -1),
+]
+
+
+def message_frame(rows):
+    return pd.DataFrame(
+        rows, columns=frames.lobster_message_file_columns()
+    ).astype({"Type": "int64"})
+
+
+def padded_book(count, ask=2239600, bid=2238100):
+    """``count`` identical rows, level 1 quoted and level 2 padded on both sides."""
+    return pd.DataFrame(
+        [[ask, 100, bid, 21, frames.ASK_PADDING, 0, frames.BID_PADDING, 0]] * count,
+        columns=frames.lobster_book_columns(DEPTH),
+    )
+
+
+def written_pair(tmp_path, rows, book=None):
+    files = lobster.LobsterFiles.parse(tmp_path / NAME.format(kind="message"))
+    messages = message_frame(rows)
+    return lobster.write_pair(
+        files, messages, padded_book(len(messages)) if book is None else book
+    )
+
+
+class TestWritingAPairIsReadingOneBackwards:
+    def test_the_round_trip_is_the_identity(self, tmp_path):
+        rows = [(34200.5, 1, 7, 21, 2238100, 1), (34201.25, 4, 7, 10, 2239600, -1)]
+        files = written_pair(tmp_path, rows)
+        messages, book = lobster.load_aligned(files, lobster.NASDAQ_REGULAR_HOURS)
+        assert messages["Time"].tolist() == [34200.5, 34201.25]
+        assert messages["TimeNanoseconds"].tolist() == [34200500000000, 34201250000000]
+        assert len(book) == 2
+
+    def test_it_writes_what_the_schema_would_refuse(self, tmp_path):
+        """A file the loader rejects still has to be writable, or the refusal is untestable."""
+        files = written_pair(tmp_path, [(34200.5, 260, 7, 21, 2238100, 1)])
+        with pytest.raises(pe.SchemaError):
+            lobster.load_messages(files.messages_path)
+
+
+class TestTheFileCensusParsesNothing:
+    def test_it_counts_both_files_without_reading_a_field(self, tmp_path):
+        files = written_pair(tmp_path, [(34200.5, 1, 7, 21, 2238100, 1)] * 5)
+        census = lobster.file_census([files])
+        assert census["MessageRows"].iloc[0] == census["BookRows"].iloc[0] == 5
+        assert census["Columns"].iloc[0] == 4 * DEPTH
+
+    def test_an_unequal_pair_shows_as_two_counts(self, tmp_path):
+        """The one thing a count can catch, and it catches it before anything is parsed."""
+        files = written_pair(tmp_path, [(34200.5, 1, 7, 21, 2238100, 1)] * 5, padded_book(4))
+        census = lobster.file_census([files])
+        assert census["MessageRows"].iloc[0] == 5
+        assert census["BookRows"].iloc[0] == 4
+
+
+class TestTheEventCensusCountsTypesTheDataDoesNotHave:
+    def test_every_documented_type_has_a_column(self, tmp_path):
+        files = written_pair(tmp_path, [(34200.5, 1, 7, 21, 2238100, 1)])
+        census = lobster.event_census([files])
+        for event in LobsterEvent:
+            assert census[event.name].iloc[0] == (1 if event is LobsterEvent.SUBMISSION else 0)
+
+    def test_a_halt_is_counted_as_one(self, tmp_path):
+        files = written_pair(tmp_path, HALT)
+        assert lobster.event_census([files])["TRADING_HALT"].iloc[0] == 3
+
+
+class TestTheConstraintCensusNamesWhatItWouldThrowAway:
+    def test_a_halt_is_what_the_price_constraint_rejects(self, tmp_path):
+        """`Price >= 0` passes every shipped file and rejects the first message of a halt."""
+        files = written_pair(tmp_path, HALT)
+        census = lobster.constraint_census(
+            lobster.load_messages(files.messages_path), lobster.price_unit(CENT)
+        ).set_index("Constraint")
+        assert census.loc["Price >= 0", "Rejects"] == 1
+        assert census.loc["Price >= 0", "RejectedTypes"] == "TRADING_HALT"
+
+    def test_a_hidden_execution_is_what_the_order_id_constraint_rejects(self, tmp_path):
+        files = written_pair(tmp_path, [(34200.5, 5, 0, 21, 2238150, 1)])
+        census = lobster.constraint_census(
+            lobster.load_messages(files.messages_path), lobster.price_unit(CENT)
+        ).set_index("Constraint")
+        assert census.loc["OrderID > 0", "RejectedTypes"] == "EXECUTION_HIDDEN"
+        assert census.loc["Price % 100 == 0", "RejectedTypes"] == "EXECUTION_HIDDEN"
+
+    def test_a_constraint_that_rejects_nothing_names_nothing(self, tmp_path):
+        files = written_pair(tmp_path, [(34200.5, 1, 7, 21, 2238100, 1)])
+        census = lobster.constraint_census(
+            lobster.load_messages(files.messages_path), lobster.price_unit(CENT)
+        ).set_index("Constraint")
+        assert census.loc["Size > 0", "Rejects"] == 0
+        assert census.loc["Size > 0", "RejectedTypes"] == ""
+
+
+class TestThePaddingCensus:
+    def test_a_padded_level_is_reported_with_the_times_it_spans(self, tmp_path):
+        files = written_pair(tmp_path, [(34200.5, 1, 7, 21, 2238100, 1),
+                                (34209.5, 1, 8, 21, 2238100, 1)])
+        census = lobster.padding_census(files, lobster.NASDAQ_REGULAR_HOURS)
+        assert census["Side"].tolist() == ["Ask", "Bid"]
+        assert census["Level"].tolist() == [2, 2]
+        assert census["Rows"].tolist() == [2, 2]
+        assert census["FirstTime"].tolist() == [34200.5, 34200.5]
+        assert census["LastTime"].tolist() == [34209.5, 34209.5]
+
+    def test_a_file_that_pads_nowhere_answers_an_empty_frame(self, tmp_path):
+        book = padded_book(2)
+        book[["AskPrice2", "AskSize2", "BidPrice2", "BidSize2"]] = [2239700, 50, 2238000, 60]
+        files = written_pair(tmp_path, [(34200.5, 1, 7, 21, 2238100, 1)] * 2, book)
+        assert lobster.padding_census(files, lobster.NASDAQ_REGULAR_HOURS).empty
+
+    def test_the_sweep_agrees_with_reading_the_whole_file(self, tmp_path):
+        """The chunking is an optimisation, and an optimisation is a claim to be checked."""
+        book = padded_book(3 * lobster.PADDING_CHUNK)
+        rows = [(34200.0 + i / 1000, 1, 7, 21, 2238100, 1) for i in range(len(book))]
+        files = written_pair(tmp_path, rows, book)
+        census = lobster.padding_census(files, lobster.NASDAQ_REGULAR_HOURS)
+        whole = lobster.load_orderbook(files.orderbook_path, DEPTH)
+        assert census.set_index(["Side", "Level"]).loc[("Ask", 2), "Rows"] == (
+            whole["AskPrice2"] == frames.ASK_PADDING
+        ).sum()
+
+
+class TestTheClockCensusReadsTheText:
+    def test_it_counts_decimals_and_names_one_row_of_each(self, tmp_path):
+        files = written_pair(tmp_path, [(34200.5, 1, 7, 21, 2238100, 1)])
+        census = lobster.clock_census(files.messages_path)
+        assert census["Decimals"].tolist() == [9]
+        assert census["Example"].tolist() == ["34200.500000000"]
+
+    def test_a_whole_second_carries_no_point_at_all(self, tmp_path):
+        files = written_pair(tmp_path, [(34200.0, 1, 7, 21, 2238100, 1)])
+        (files.messages_path).write_text("34200,1,7,21,2238100,1\n")
+        census = lobster.clock_census(files.messages_path)
+        assert census["Decimals"].tolist() == [0]
+
+
+class TestTheClockOriginCensus:
+    def test_the_origin_moves_the_parse_and_not_the_key(self, tmp_path):
+        """Two instants 100 ns apart: distinct from midnight, one float from the epoch."""
+        files = written_pair(tmp_path, [(34200.000000000, 1, 7, 21, 2238100, 1),
+                                (34200.000000100, 1, 8, 21, 2238100, 1)])
+        census = lobster.clock_origin_census(
+            lobster.load_messages(files.messages_path),
+            {"midnight": 0, "Unix epoch": int(pd.Timestamp("2012-06-21").value)},
+        ).set_index("Origin")
+        assert census.loc["midnight", "ClosestPairNanoseconds"] == 100
+        assert census.loc["midnight", "DistinctFloat"] == 2
+        assert census.loc["midnight", "AdjacentCollisions"] == 0
+        assert census.loc["Unix epoch", "SpacingNanoseconds"] > 100
+        assert census.loc["Unix epoch", "DistinctFloat"] == 1
+        assert census.loc["Unix epoch", "AdjacentCollisions"] == 1
+
+    def test_the_exact_key_is_the_same_at_every_origin(self, tmp_path):
+        files = written_pair(tmp_path, [(34200.000000000, 1, 7, 21, 2238100, 1),
+                                (34200.000000100, 1, 8, 21, 2238100, 1)])
+        census = lobster.clock_origin_census(
+            lobster.load_messages(files.messages_path),
+            {"midnight": 0, "Unix epoch": int(pd.Timestamp("2012-06-21").value)},
+        )
+        assert census["DistinctExact"].nunique() == 1
+
+
 # ---- the shipped sample, when it is present --------------------------------------------
 
 SAMPLE = Path(__file__).resolve().parents[2] / "data" / "lobster"
