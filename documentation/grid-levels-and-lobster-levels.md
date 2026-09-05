@@ -14,14 +14,14 @@ This file is the reference for that difference, and for the machinery in
 ## 1. $I^n$ is a grid quantity
 
 Section 4 of [`order-driven-markets-notation.md`](order-driven-markets-notation.md)
-defines the $n$-level volume imbalance as
+defines the $n$-level queue imbalance as
 
-$$I^n_t = \frac{\sum_{i \le n} V^{b,i}_t - \sum_{i \le n} V^{a,i}_t}
-               {\sum_{i \le n} V^{b,i}_t + \sum_{i \le n} V^{a,i}_t},$$
+$$I^n_t = \frac{\sum_{i \le n} S^{b,i}_t - \sum_{i \le n} S^{a,i}_t}
+               {\sum_{i \le n} S^{b,i}_t + \sum_{i \le n} S^{a,i}_t},$$
 
-and section 3 defines $V^{b,i}_t$ as the volume resting at the **grid price**
+and section 3 defines $S^{b,i}_t$ as the size resting at the **grid price**
 $P^{b,i}_t = P^b_t - (i-1)\tau$ — a position on the price ladder, occupied or not, with
-$V^{b,i}_t = 0$ where nothing rests.
+$S^{b,i}_t = 0$ where nothing rests.
 
 So $n$ counts **grid positions**, spanning $n-1$ ticks from each touch.
 It is not a count of queues.
@@ -41,7 +41,7 @@ From `data/lobster/LOBSTER_SampleFiles_ReadMe.txt`:
 > The term level refers to occupied price levels. This implies that the difference between
 > two levels in the LOBSTER output is not necessarily the minimum ticks size.
 
-So `BidPrice2` is the second price *carrying volume*, however far below the touch it sits.
+So `BidPrice2` is the second price *carrying size*, however far below the touch it sits.
 Column $k$ and grid level $k$ are the same price only while the book has no holes.
 
 Two conventions in `unito26.lob.orderbook`, deliberately named apart:
@@ -49,7 +49,7 @@ Two conventions in `unito26.lob.orderbook`, deliberately named apart:
 | | means | method | type |
 | --- | --- | --- | --- |
 | grid | position on the ladder, §3 | `levels(direction, depth)` | `GridDepth` |
-| reported | price carrying volume, LOBSTER | `occupied_levels(direction, reported_depth)` | `ReportedDepth` |
+| reported | price carrying size, LOBSTER | `occupied_levels(direction, reported_depth)` | `ReportedDepth` |
 
 ## 3. Gaps are the whole difficulty
 

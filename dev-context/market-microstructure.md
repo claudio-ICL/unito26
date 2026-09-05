@@ -12,7 +12,7 @@ The strand is built as a **ladder of toy problems of increasing complexity**, ea
 a complete, tested artefact. The organising idea, and the thing students should leave
 with, is the break between **aggregation and identity**:
 
-- the aggregate `{price: volume}` book is a *sufficient statistic for the public book* —
+- the aggregate `{price: size}` book is a *sufficient statistic for the public book* —
   the transition depends on `min(q, V[pi])`, which is blind to how `V[pi]` splits into
   orders;
 - it stops being sufficient the moment a question concerns a **named** order: where am I
@@ -228,7 +228,7 @@ from the touch and the largest spans up to 27 levels.
 Harvested from the implementation, for the multiple-choice format: float tick prices; a
 market-order remainder resting at price 0; inverted imbalance sign; a stale heap top used
 without popping; a recorder that stores the book instead of a copy; index-keyed rather
-than price-keyed deltas; code answering "am I filled?" from aggregate volume;
+than price-keyed deltas; code answering "am I filled?" from aggregate size;
 `(b & -b).bit_length() - 1` on an empty side, wrong by one and never by an exception.
 
 From the LOBSTER-frame work, all of them live bugs or near-misses in this codebase:
@@ -244,7 +244,7 @@ From the LOBSTER-frame work, all of them live bugs or near-misses in this codeba
   NaN on an uncovered window, the other a plausible number;
 - **the bid `diff` sign** — a gap counter right on the ask and negative on the bid;
 - **`from_lobster_row` on a padded row**, which builds a level at the sentinel price with
-  volume 0, and `set_volume`'s zero rule silently removes it. "Why does this bug *not*
+  size 0, and `set_size`'s zero rule silently removes it. "Why does this bug *not*
   bite?" tests the removal invariant, and is a better question than "find the bug";
 - **a type-7 halt message** replayed as an order at price −1.
 

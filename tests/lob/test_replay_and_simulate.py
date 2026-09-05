@@ -38,6 +38,7 @@ class TestDeltaStorage:
         table = log.to_table()
 
         assert table.num_rows == len(log.entries)
+        assert table.column_names == ["seq", "time", "side", "price", "resting"]
         # Most messages move exactly one level; the average is a shade above one.
         assert 0.5 < table.num_rows / len(messages) < 2.5
         # Against a dense 10-level snapshot per message, which is 40 values a row.

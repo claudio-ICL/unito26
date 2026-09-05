@@ -5,8 +5,8 @@ tested against the baseline rather than against expectations.  These tests are w
 make it safe to benchmark: a variant that is fast and wrong is not on the ladder.
 
 Agreement is checked on the *derived* views as well as on the level maps.  A book that
-stores its volumes somewhere other than the two dicts can agree on every best price and
-every occupied level while returning zero from `levels` and the volume accessors, and
+stores its sizes somewhere other than the two dicts can agree on every best price and
+every occupied level while returning zero from `levels` and the size accessors, and
 nothing else here would notice.
 """
 
@@ -91,8 +91,8 @@ class TestVariantsMatchTheBaseline:
             for direction in (BUY, SELL):
                 assert book.best_price(direction) == reference.best_price(direction)
                 assert book.levels(direction, DEPTH) == reference.levels(direction, DEPTH)
-            assert book.best_bid_volume == reference.best_bid_volume
-            assert book.best_ask_volume == reference.best_ask_volume
+            assert book.best_bid_size == reference.best_bid_size
+            assert book.best_ask_size == reference.best_ask_size
 
 
 class TestCacheHonesty:
@@ -140,7 +140,7 @@ class TestTheBandIsTheFusedBookTradeOff:
         # the best price whether or not the band reaches that far.  Nothing rests
         # there, which is a true answer and not an error.
         book = TickArrayBook.from_levels({1005: 50}, {1008: 40})
-        assert book.volume_at(BUY, 999_999) == 0
+        assert book.size_at(BUY, 999_999) == 0
         assert len(book.levels(SELL, DEPTH)) == DEPTH
 
 
@@ -165,7 +165,7 @@ class TestTheCeilingIsPartOfTheEncoding:
     def test_an_ask_anywhere_in_the_band_decodes_to_itself(self, offset):
         book = self.book()
         price = self.ORIGIN + offset
-        book.set_volume(SELL, price, 70)
+        book.set_size(SELL, price, 70)
         assert book.best_ask_price == price
         assert book.levels_map(SELL) == {price: 70}
         assert book.occupied_levels(SELL, 3) == [(price, 70)]
@@ -174,8 +174,8 @@ class TestTheCeilingIsPartOfTheEncoding:
         book = self.book()
         floor, ceiling = self.ORIGIN, self.ORIGIN + self.WIDTH - 1
         assert book.ceiling == ceiling
-        book.set_volume(SELL, ceiling, 11)
-        book.set_volume(SELL, floor, 22)
+        book.set_size(SELL, ceiling, 11)
+        book.set_size(SELL, floor, 22)
         assert book.best_ask_price == floor
         assert book.occupied_levels(SELL, 2) == [(floor, 22), (ceiling, 11)]
         assert book.levels_map(SELL) == {floor: 22, ceiling: 11}
@@ -184,8 +184,8 @@ class TestTheCeilingIsPartOfTheEncoding:
         floor, ceiling = self.ORIGIN, self.ORIGIN + self.WIDTH - 1
         asks = {floor: 22, floor + 3: 33, ceiling: 11}
         book = self.book()
-        for price, volume in asks.items():
-            book.set_volume(SELL, price, volume)
+        for price, resting in asks.items():
+            book.set_size(SELL, price, resting)
         reference = AggregateBook.from_levels({}, asks)
         assert book.levels_map(SELL) == reference.levels_map(SELL)
         for depth in (1, 2, 3):
@@ -196,8 +196,8 @@ class TestTheCeilingIsPartOfTheEncoding:
         """`copy` goes through `_empty_like`, which must preserve the width: the ask bits
         are meaningless against a different one."""
         book = self.book()
-        book.set_volume(SELL, self.ORIGIN + self.WIDTH - 1, 11)
-        book.set_volume(SELL, self.ORIGIN, 22)
+        book.set_size(SELL, self.ORIGIN + self.WIDTH - 1, 11)
+        book.set_size(SELL, self.ORIGIN, 22)
         clone = book.copy()
         assert clone.ceiling == book.ceiling
         assert clone.levels_map(SELL) == book.levels_map(SELL)
@@ -233,8 +233,8 @@ class TestTheImbalanceProfile:
         """A grid position outside the band holds nothing, so the running total stops
         growing rather than going short or raising."""
         book = TickArrayBook(origin=1000, width=10)
-        book.set_volume(BUY, 1001, 30)
-        book.set_volume(SELL, 1008, 70)
+        book.set_size(BUY, 1001, 30)
+        book.set_size(SELL, 1008, 70)
         reference = AggregateBook.from_levels({1001: 30}, {1008: 70})
         wide = tuple(GridDepth(n) for n in (1, 2, 3, 9, 40, 400))
         assert book.queue_imbalance_profile(wide) == reference.queue_imbalance_profile(wide)

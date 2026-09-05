@@ -55,13 +55,13 @@ class TestConfiguration:
 
     def test_levels_are_one_indexed_and_relative_to_the_best_price(self, worked_example):
         book = worked_example
-        assert (book.bid_price(1), book.bid_volume(1)) == (1000, 100)
-        assert (book.bid_price(2), book.bid_volume(2)) == (999, 200)
-        assert (book.bid_price(3), book.bid_volume(3)) == (998, 150)
-        # By convention volumes vanish at non-positive indices; this is what makes the
+        assert (book.bid_price(1), book.bid_size(1)) == (1000, 100)
+        assert (book.bid_price(2), book.bid_size(2)) == (999, 200)
+        assert (book.bid_price(3), book.bid_size(3)) == (998, 150)
+        # By convention sizes vanish at non-positive indices; this is what makes the
         # shifted index of section 5 well defined.
-        assert book.bid_volume(0) == 0
-        assert book.bid_volume(-3) == 0
+        assert book.bid_size(0) == 0
+        assert book.bid_size(-3) == 0
 
     def test_empty_book_reports_no_prices_rather_than_zero(self):
         book = AggregateBook()
@@ -113,7 +113,7 @@ class TestCaseB:
         book = worked_example
         book.submit(limit_order(1.0, 400, 999, SELL))
         assert book.best_ask_price == 999  # was 1002; the rest improved it
-        assert book.ask_volume_at(999) == 100
+        assert book.ask_size_at(999) == 100
         assert book.best_bid_price == 998
         assert book.spread == 1
         assert book.mid_price == 998.5
@@ -128,7 +128,7 @@ class TestCaseB:
         # grid positions in between hold nothing at all.
         assert book.levels(SELL, 4) == [(999, 100), (1000, 0), (1001, 0), (1002, 120)]
 
-    def test_both_routes_agree_on_total_volume(self, worked_example):
+    def test_both_routes_agree_on_total_size(self, worked_example):
         book = worked_example
         before = sum(book.bids.values()) + sum(book.asks.values())
         result = book.submit(limit_order(1.0, 400, 999, SELL), record=True)
@@ -141,14 +141,14 @@ class TestCaseB:
 class TestExhaustedSide:
     def test_consuming_the_whole_bid_side_leaves_it_undefined(self, worked_example):
         book = worked_example
-        # Sell 500 at 9.98: the price-eligible bid volume is 100+200+150 = 450.
+        # Sell 500 at 9.98: the price-eligible bid size is 100+200+150 = 450.
         result = book.submit(limit_order(1.0, 500, 998, SELL), record=True)
         assert result.market_order_size == 450
         assert book.bids == {}
         assert book.best_bid_price is None
         assert book.spread is None
         # The 50 left over rests on the ask side at its own limit price.
-        assert book.ask_volume_at(998) == 50
+        assert book.ask_size_at(998) == 50
         book.check_invariants()
 
     def test_imbalance_still_defined_when_only_one_side_is_empty(self, worked_example):
@@ -168,7 +168,7 @@ class TestMarketOrders:
         assert result.market_order_size == 450
         assert result.unfilled == 0
         assert book.bids == {}
-        assert book.ask_volume_at(998) == 550
+        assert book.ask_size_at(998) == 550
         assert book.best_ask_price == 998
         book.check_invariants()
 
@@ -204,15 +204,15 @@ class TestPassiveOrdersAndWithdrawals:
         book = worked_example
         result = book.submit(limit_order(1.0, 75, 999, BUY), record=True)
         assert result.fills == []
-        assert book.bid_volume_at(999) == 275
+        assert book.bid_size_at(999) == 275
         assert book.best_bid_price == 1000  # unchanged
 
     def test_withdrawal_is_one_signed_delta(self, worked_example):
         book = worked_example
         result = book.withdraw(withdrawal(1.0, 60, 999, BUY), record=True)
         assert result.fills == []
-        assert [(d.price, d.volume) for d in result.deltas] == [(999, 140)]
-        assert book.bid_volume_at(999) == 140
+        assert [(d.price, d.resting) for d in result.deltas] == [(999, 140)]
+        assert book.bid_size_at(999) == 140
 
     def test_withdrawing_a_whole_level_can_move_the_best_price_downwards(
         self, worked_example
@@ -325,7 +325,7 @@ class TestSizingFromAStream:
     def test_the_buy_sentinel_no_longer_asks_for_an_impossible_band(self, book_cls):
         # Before the filter this raised MemoryError on the tick-indexed rung.
         book = book_cls.for_prices([9995, MARKET_BUY_PRICE])
-        book.set_volume(BUY, 9995, 10)
+        book.set_size(BUY, 9995, 10)
         assert book.best_bid_price == 9995
 
 

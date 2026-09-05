@@ -67,23 +67,23 @@ def ascii_ladder(book: AggregateBook, bar: int = 28) -> str:
     largest = max([*bids.values(), *asks.values()])
     rows = []
     for price in sorted(asks, reverse=True):
-        volume = asks[price]
+        size = asks[price]
         rows.append(
-            f"  {price:>6}  {'#' * max(1, round(bar * volume / largest)):<{bar}} {volume:>5}  ask"
+            f"  {price:>6}  {'#' * max(1, round(bar * size / largest)):<{bar}} {size:>5}  ask"
         )
     if bids and asks:
         spread = min(asks) - max(bids)
         rows.append(f"  {'':>6}  {'-' * bar}  spread {spread}")
     for price in sorted(bids, reverse=True):
-        volume = bids[price]
+        size = bids[price]
         rows.append(
-            f"  {price:>6}  {'#' * max(1, round(bar * volume / largest)):<{bar}} {volume:>5}  bid"
+            f"  {price:>6}  {'#' * max(1, round(bar * size / largest)):<{bar}} {size:>5}  bid"
         )
     return "\n".join(rows)
 
 
 def _bars(book: AggregateBook, depth: int):
-    """Two plotly bar traces, bids and asks, as (price, volume) at the grid positions."""
+    """Two plotly bar traces, bids and asks, as (price, size) at the grid positions."""
     import plotly.graph_objects as go
 
     traces = []
@@ -91,15 +91,15 @@ def _bars(book: AggregateBook, depth: int):
         levels = [(p, v) for p, v in book.levels(direction, depth) if v]
         if not levels:
             continue
-        prices, volumes = zip(*levels)
+        prices, sizes = zip(*levels)
         cumulative = []
         total = 0
-        for volume in volumes:
-            total += volume
+        for size in sizes:
+            total += size
             cumulative.append(total)
         traces.append(
             go.Bar(
-                x=volumes,
+                x=sizes,
                 y=prices,
                 name=name,
                 orientation="h",
@@ -120,7 +120,7 @@ def book_figure(book: AggregateBook, depth: int = 10, title: str = "") -> "objec
     figure = go.Figure(_bars(book, depth))
     figure.update_layout(
         title=title,
-        xaxis_title="volume",
+        xaxis_title="size",
         yaxis_title="price (ticks)",
         barmode="overlay",
         template="simple_white",
@@ -156,13 +156,13 @@ def example_figure(example, depth: int = 8) -> "object":
         barmode="overlay",
         height=440,
     )
-    figure.update_xaxes(title_text="volume")
+    figure.update_xaxes(title_text="size")
     figure.update_yaxes(title_text="price (ticks)", row=1, col=1)
     return figure
 
 
 def depth_figure(book: AggregateBook, depth: int = 20) -> "object":
-    """Cumulative volume against price: what an order of a given size would cost.
+    """Cumulative size against price: what an order of a given size would cost.
 
     The same data as the ladder, read the other way: this is the curve a metaorder walks
     down, so its slope measures the book's resilience to size.
@@ -172,8 +172,8 @@ def depth_figure(book: AggregateBook, depth: int = 20) -> "object":
     figure = go.Figure()
     for direction, name, colour in ((BUY, "bid", BID_COLOUR), (SELL, "ask", ASK_COLOUR)):
         prices, cumulative, total = [], [], 0
-        for price, volume in book.levels(direction, depth):
-            total += volume
+        for price, size in book.levels(direction, depth):
+            total += size
             prices.append(price)
             cumulative.append(total)
         figure.add_trace(
@@ -190,7 +190,7 @@ def depth_figure(book: AggregateBook, depth: int = 20) -> "object":
     figure.update_layout(
         title="cumulative depth",
         xaxis_title="price (ticks)",
-        yaxis_title="cumulative volume",
+        yaxis_title="cumulative size",
         template="simple_white",
         height=420,
     )
@@ -229,13 +229,13 @@ def _level_series(session, side: str, kind: str, level: int, window: slice):
 def level_evolution_figure(session, window: slice):
     """Queues and prices at one reported level, with a dropdown choosing the level.
 
-    Two panels sharing a time axis: volume above, price below, each carrying both sides.
+    Two panels sharing a time axis: size above, price below, each carrying both sides.
     Splitting by quantity rather than by side puts the two sides on the same axis, so a
     queue draining above and a price stepping below are visibly the same event.  In the
     price panel the two lines cannot cross, and the distance between them is the
     ``n``-level spread.
 
-    ``n`` selects a *reported* level -- the ``n``-th price carrying volume -- because
+    ``n`` selects a *reported* level -- the ``n``-th price carrying size -- because
     that is what the frame holds.  On a book with holes that is not the grid level of
     the same number.
     """
@@ -245,7 +245,7 @@ def level_evolution_figure(session, window: slice):
     times = session.lobster_book.index[window]
     figure = make_subplots(
         rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.08,
-        subplot_titles=("Volume at the level", "Price of the level"),
+        subplot_titles=("Size at the level", "Price of the level"),
     )
     for level in range(1, depth + 1):
         for row, kind in ((1, "Size"), (2, "Price")):

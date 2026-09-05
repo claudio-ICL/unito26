@@ -3,13 +3,13 @@
 :mod:`unito26.lob.hawkes` decides *when* something happens and *what kind* of thing it
 is.  This module decides *what order* that is -- the ``(q, p, d)`` completing the
 ``(t, q, p, d)`` of section 1 -- and it needs the book to do so, because a price is
-quoted relative to the touch and a withdrawal must name volume that actually rests.
+quoted relative to the touch and a withdrawal must name size that actually rests.
 
 The two layers are kept apart.  The Hawkes layer is a point process and is tested as
 such; the mark layer is where the book enters.  One consequence: because a withdrawal on
 an empty side is dropped, the realised withdrawal process is not exactly Hawkes but a
 state-dependent thinning of one.  The extension that removes the caveat -- an intensity
-proportional to resting volume, after Cont, Stoikov and Talreja -- also removes the
+proportional to resting size, after Cont, Stoikov and Talreja -- also removes the
 separation, which is why it is not the starting point.
 """
 
@@ -119,7 +119,7 @@ class OrderFlowSimulator:
 
     The generator computes each message *after* the driver applied the previous one, so
     it always reads the current book.  That is what makes prices relative to the touch
-    and withdrawals able to name volume that is really there.
+    and withdrawals able to name size that is really there.
     """
 
     def __init__(
@@ -169,8 +169,8 @@ class OrderFlowSimulator:
         if not levels:
             return None
         prices = list(levels)
-        volumes = np.array([levels[price] for price in prices], dtype=float)
-        price = prices[int(self.rng.choice(len(prices), p=volumes / volumes.sum()))]
+        weights = np.array([levels[price] for price in prices], dtype=float)
+        price = prices[int(self.rng.choice(len(prices), p=weights / weights.sum()))]
         size = min(self._size(), levels[price])
         return withdrawal(time, size, price, direction)
 

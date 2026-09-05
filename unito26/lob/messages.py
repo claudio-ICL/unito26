@@ -46,7 +46,7 @@ SELL = -1
 GridDepth = NewType("GridDepth", int)
 
 #: A count of *occupied* levels, in the sense LOBSTER means: level ``i`` is the ``i``-th
-#: price carrying volume, however far from the touch it sits.
+#: price carrying size, however far from the touch it sits.
 #:
 #: The two coincide only on a book with no holes.  They are separate types because the
 #: alternative is three adjacent ``int`` arguments and a silent swap.
@@ -83,7 +83,7 @@ class MessageType(IntEnum):
     """A new limit order, possibly marketable, possibly a market order by sentinel."""
 
     WITHDRAW = 2
-    """Remove resting volume, addressed by ``(price, size, direction)``.
+    """Remove resting size, addressed by ``(price, size, direction)``.
 
     This is the *quantity-addressed* form: it names an amount at a price, not an
     order, so the aggregate book can apply it as one signed delta.  Withdrawal
@@ -133,8 +133,8 @@ class Fill:
 class LevelDelta:
     """A change to one price level: the book's own incremental update.
 
-    ``volume`` is the **new absolute volume** at that price, not a signed change, and
-    ``0`` means the level is now gone.  Absolute volumes are idempotent: a lost or
+    ``resting`` is the **new absolute size** at that price, not a signed change, and
+    ``0`` means the level is now gone.  Absolute sizes are idempotent: a lost or
     duplicated update is corrected by the next update at the same price, whereas a
     signed change needs a perfect gapless sequence to stay correct.  Real feeds send
     absolute size per level for exactly this reason.
@@ -145,7 +145,7 @@ class LevelDelta:
 
     side: int
     price: int
-    volume: int
+    resting: int
 
 
 @dataclass(frozen=True, slots=True)
@@ -195,5 +195,5 @@ def market_order(time: float, size: int, direction: int) -> Message:
 
 
 def withdrawal(time: float, size: int, price: int, direction: int) -> Message:
-    """Remove ``size`` shares of resting volume at ``price`` on side ``direction``."""
+    """Remove ``size`` shares of resting size at ``price`` on side ``direction``."""
     return Message(time, size, price, direction, MessageType.WITHDRAW)

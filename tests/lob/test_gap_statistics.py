@@ -9,7 +9,7 @@ import pytest
 from unito26.lob.messages import BUY, SELL, ReportedDepth
 from unito26.lob.orderbook import AXIS_B_VARIANTS
 
-#: The stub's example, written the way `occupied_levels` returns it: (price, volume).
+#: The stub's example, written the way `occupied_levels` returns it: (price, size).
 LADDER_BIDS = {100: 25, 99: 50, 97: 50, 96: 150, 93: 200}
 
 

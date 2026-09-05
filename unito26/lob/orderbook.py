@@ -1,10 +1,10 @@
 """The aggregate book, and the ladder of faster ways to find its best price.
 
-The state is ``{price: volume}`` on each side, in tick counts.  ``prop.lobUpdate`` is
+The state is ``{price: size}`` on each side, in tick counts.  ``prop.lobUpdate`` is
 stated entirely on that state, which is the whole content of holding it: the aggregate
 book is closed under the arrival of an order, so the queue inside a level never has to
 be represented.  What it cannot do is answer a question about a *named* order -- how
-much volume is ahead of mine, whose fill was that -- and that is the order-level book,
+much size is ahead of mine, whose fill was that -- and that is the order-level book,
 which lives elsewhere.
 
 Every class here is a **mutable fold accumulator**: one state, the current one, with no
@@ -142,7 +142,7 @@ class SideStatistics:
     """
 
     levels: list[tuple[int, int]]
-    """``(price, volume)``, best first, at most ``reported_depth`` of them."""
+    """``(price, size)``, best first, at most ``reported_depth`` of them."""
 
     occupied: int
     grid_span: int
@@ -154,7 +154,7 @@ class SideStatistics:
 
 
 class AggregateBook:
-    """The ``{price: volume}`` book: rungs L0 to L3 of the ladder.
+    """The ``{price: size}`` book: rungs L0 to L3 of the ladder.
 
     Prices are integer tick counts.  The two sides are plain dicts, and the best
     prices are found by scanning their keys: the baseline, O(number of occupied levels)
@@ -165,7 +165,7 @@ class AggregateBook:
     Parameters
     ----------
     strict
-        When True, a withdrawal for more volume than is resting raises.  When False
+        When True, a withdrawal for more than is resting raises.  When False
         (the default) it removes what is there and carries on, which is what replaying
         a real feed needs, since a feed's early messages often reference orders posted
         before the file began.
@@ -179,25 +179,25 @@ class AggregateBook:
     # ---- storage: the four operations every book must provide ---------------------
     #
     # Matching, the derived quantities and the housekeeping below are written against
-    # these and nothing else, so a book that keeps its volumes somewhere other than two
+    # these and nothing else, so a book that keeps its sizes somewhere other than two
     # dicts inherits all of it.  Here they are the obvious thing: the dicts are the
     # storage, and `levels_map` hands one back rather than building it.
 
     def levels_map(self, direction: int) -> dict[int, int]:
-        """Every occupied level on a side, as ``{price: volume}``.
+        """Every occupied level on a side, as ``{price: size}``.
 
         Read-only from the caller's point of view.  The baseline's storage *is* this
-        map, so it is returned; a book that stores volumes elsewhere builds one here,
+        map, so it is returned; a book that stores sizes elsewhere builds one here,
         and writing to what it returns would change nothing.
         """
         return self.bids if direction == BUY else self.asks
 
-    def volume_at(self, direction: int, price: int) -> int:
-        """Resting volume at an absolute price.  Zero where no level rests."""
+    def size_at(self, direction: int, price: int) -> int:
+        """Resting size at an absolute price.  Zero where no level rests."""
         return self.levels_map(direction).get(price, 0)
 
-    def set_volume(self, direction: int, price: int, volume: int) -> None:
-        """Set the resting volume at a price.
+    def set_size(self, direction: int, price: int, size: int) -> None:
+        """Set the resting size at a price.
 
         Zero **removes** the level: a price whose queue empties is gone from the book,
         not a level holding nothing.  Every write goes through here, so that invariant
@@ -205,8 +205,8 @@ class AggregateBook:
         maintain it by overriding this one method rather than the matching loop.
         """
         levels = self.levels_map(direction)
-        if volume > 0:
-            levels[price] = volume
+        if size > 0:
+            levels[price] = size
         else:
             levels.pop(price, None)
 
@@ -239,7 +239,7 @@ class AggregateBook:
         """``P^{b,i} = P^b - (i-1) tau``, in ticks.  Levels are 1-indexed.
 
         This is a position on the price *grid*, so it is defined whether or not any
-        volume rests there -- section 3 is explicit that intermediate levels may be
+        size rests there -- section 3 is explicit that intermediate levels may be
         empty, and case B of the worked example has two of them.
         """
         best = self.best_bid_price
@@ -250,46 +250,46 @@ class AggregateBook:
         best = self.best_ask_price
         return None if best is None else best + (level - 1)
 
-    def bid_volume_at(self, price: int) -> int:
-        """``V^b_t(p)``: resting buy volume at an absolute price."""
-        return self.volume_at(BUY, price)
+    def bid_size_at(self, price: int) -> int:
+        """``S^b_t(p)``: resting buy size at an absolute price."""
+        return self.size_at(BUY, price)
 
-    def ask_volume_at(self, price: int) -> int:
-        """``V^a_t(p)``: resting sell volume at an absolute price."""
-        return self.volume_at(SELL, price)
+    def ask_size_at(self, price: int) -> int:
+        """``S^a_t(p)``: resting sell size at an absolute price."""
+        return self.size_at(SELL, price)
 
-    def bid_volume(self, level: int) -> int:
-        """``V^{b,i}``, volume at the ``i``-th bid level.  Zero for ``i <= 0``."""
+    def bid_size(self, level: int) -> int:
+        """``S^{b,i}``, size at the ``i``-th bid level.  Zero for ``i <= 0``."""
         price = self.bid_price(level)
-        return 0 if price is None or level <= 0 else self.volume_at(BUY, price)
+        return 0 if price is None or level <= 0 else self.size_at(BUY, price)
 
-    def ask_volume(self, level: int) -> int:
-        """``V^{a,i}``, volume at the ``i``-th ask level.  Zero for ``i <= 0``."""
+    def ask_size(self, level: int) -> int:
+        """``S^{a,i}``, size at the ``i``-th ask level.  Zero for ``i <= 0``."""
         price = self.ask_price(level)
-        return 0 if price is None or level <= 0 else self.volume_at(SELL, price)
+        return 0 if price is None or level <= 0 else self.size_at(SELL, price)
 
     @property
-    def best_bid_volume(self) -> int:
-        """``V^b``, volume at the best bid."""
-        return self.bid_volume(1)
+    def best_bid_size(self) -> int:
+        """``S^b``, size at the best bid."""
+        return self.bid_size(1)
 
     @property
-    def best_ask_volume(self) -> int:
-        """``V^a``, volume at the best ask."""
-        return self.ask_volume(1)
+    def best_ask_size(self) -> int:
+        """``S^a``, size at the best ask."""
+        return self.ask_size(1)
 
     def levels(self, direction: int, depth: int) -> list[tuple[int, int]]:
-        """The first ``depth`` grid positions on a side, as ``(price, volume)``.
+        """The first ``depth`` grid positions on a side, as ``(price, size)``.
 
         Includes empty positions, so the result always has length ``depth`` when the
         side is non-empty.  That is what makes it comparable with a feed's fixed-width
         snapshot.
         """
         price_of = self.bid_price if direction == BUY else self.ask_price
-        volume_of = self.bid_volume if direction == BUY else self.ask_volume
+        size_of = self.bid_size if direction == BUY else self.ask_size
         if self.best_price(direction) is None:
             return []
-        return [(price_of(i), volume_of(i)) for i in range(1, depth + 1)]
+        return [(price_of(i), size_of(i)) for i in range(1, depth + 1)]
 
     # ---- section 4: derived quantities -------------------------------------------
 
@@ -309,21 +309,21 @@ class AggregateBook:
         """``I^n``: bid minus ask over the total, over the first ``n`` **grid** levels.
 
         ``n`` counts positions on the price grid, not occupied levels, so ``I^n`` is the
-        volume resting within ``n - 1`` ticks of each touch.  On a book with holes that is
-        not the same as the volume in the first ``n`` queues; see
+        size resting within ``n - 1`` ticks of each touch.  On a book with holes that is
+        not the same as the size in the first ``n`` queues; see
         ``documentation/grid-levels-and-lobster-levels.md``.
 
         Lies in ``[-1, +1]`` and is **positive when the book is bid-heavy**.  Inverting this
         sign silently inverts every signal built on it, which is why it is stated here
         rather than left to the reader.  For ``n >= 1`` with both sides non-empty the value
-        is *strictly* interior, because ``set_volume`` removes a level whose queue empties
-        and so ``V^{b,1}`` and ``V^{a,1}`` are both positive; it is ``+-1`` exactly when one
+        is *strictly* interior, because ``set_size`` removes a level whose queue empties
+        and so ``S^{b,1}`` and ``S^{a,1}`` are both positive; it is ``+-1`` exactly when one
         side is empty, and NaN when both are.
         """
         if n <= 0:
             raise ValueError(f"n counts grid levels from the touch and must be >= 1, got {n}")
-        bid_total = sum(self.bid_volume(i) for i in range(1, n + 1))
-        ask_total = sum(self.ask_volume(i) for i in range(1, n + 1))
+        bid_total = sum(self.bid_size(i) for i in range(1, n + 1))
+        ask_total = sum(self.ask_size(i) for i in range(1, n + 1))
         total = bid_total + ask_total
         if total == 0:
             return float("nan")
@@ -356,7 +356,7 @@ class AggregateBook:
                 # best - step * d walks down the bids and up the asks, which is the same
                 # expression the rest of the module uses to be generic in the side.
                 if best is not None:
-                    total += self.volume_at(direction, best - step * direction)
+                    total += self.size_at(direction, best - step * direction)
                 totals.append(total)
             running[direction] = totals
         profile = []
@@ -373,7 +373,7 @@ class AggregateBook:
         """``P^mu``, the imbalance-weighted mid.  None when either side is empty.
 
         Written as ``P^m + (phi/2) I^1``, which is exactly the crossed-weighted average
-        ``(P^a V^b + P^b V^a) / (V^a + V^b)`` -- the ask price carries the *bid* volume.
+        ``(P^a S^b + P^b S^a) / (S^a + S^b)`` -- the ask price carries the *bid* size.
         So it sits toward the **thin** side: a bid-heavy book pushes it up toward the ask.
         """
         spread, mid = self.spread, self.mid_price
@@ -384,22 +384,22 @@ class AggregateBook:
     # ---- occupied levels: the other indexing ---------------------------------------
     #
     # `levels` above walks the price grid.  These walk the prices that actually carry
-    # volume, which is what a LOBSTER file reports and what the gap statistics measure.
-    # Written against `best_price` and `volume_at` so every variant's index applies;
+    # size, which is what a LOBSTER file reports and what the gap statistics measure.
+    # Written against `best_price` and `size_at` so every variant's index applies;
     # reaching for `levels_map` would bypass the cache and the heap, and would make
     # TickArrayBook build a whole dict per call.
 
     def occupied_levels(
         self, direction: int, reported_depth: ReportedDepth
     ) -> list[tuple[int, int]]:
-        """The first ``reported_depth`` prices carrying volume, best first."""
+        """The first ``reported_depth`` prices carrying size, best first."""
         if reported_depth <= 0:
             raise ValueError(f"reported_depth must be >= 1, got {reported_depth}")
         best = self.best_price(direction)
         if best is None:
             return []
         if reported_depth == 1:
-            return [(best, self.volume_at(direction, best))]
+            return [(best, self.size_at(direction, best))]
         levels = self.levels_map(direction)
         pick = heapq.nlargest if direction == BUY else heapq.nsmallest
         return [(price, levels[price]) for price in pick(reported_depth, levels)]
@@ -552,7 +552,7 @@ class AggregateBook:
         """Inverse of :meth:`to_lobster_row`, for any rung of the ladder.
 
         A padded level carries a sentinel price and a size of zero, and is skipped: a
-        level of zero volume does not exist, and :meth:`set_volume` would remove it again.
+        level of zero size does not exist, and :meth:`set_size` would remove it again.
         """
         levels: dict[int, dict[int, int]] = {BUY: {}, SELL: {}}
         for level in range(1, reported_depth + 1):
@@ -610,23 +610,23 @@ class AggregateBook:
             # that fails the test does -- there is nothing eligible left.
             if best is None or best * direction > limit_price * direction:
                 break
-            resting = self.volume_at(-direction, best)
+            resting = self.size_at(-direction, best)
             traded = min(remaining, resting)
             remaining -= traded
-            self.set_volume(-direction, best, resting - traded)
+            self.set_size(-direction, best, resting - traded)
             # A fill trades at the RESTING order's price, never the incoming one.
             last_fill_price = best
             if record:
                 fills.append(Fill(price=best, size=traded, aggressor=direction))
-                deltas.append(LevelDelta(side=-direction, price=best, volume=resting - traded))
+                deltas.append(LevelDelta(side=-direction, price=best, resting=resting - traded))
 
         # 2. The resting part.
         rest_price = self.resting_price(limit_price, last_fill_price)
         if remaining > 0 and rest_price is not None:
-            resting = self.volume_at(direction, rest_price) + remaining
-            self.set_volume(direction, rest_price, resting)
+            resting = self.size_at(direction, rest_price) + remaining
+            self.set_size(direction, rest_price, resting)
             if record:
-                deltas.append(LevelDelta(side=direction, price=rest_price, volume=resting))
+                deltas.append(LevelDelta(side=direction, price=rest_price, resting=resting))
             remaining = 0
 
         if not record:
@@ -659,16 +659,16 @@ class AggregateBook:
         return last_fill_price
 
     def withdraw(self, message: Message, record: bool = False) -> SubmitResult | None:
-        """Remove resting volume at ``(price, direction)``, addressed by quantity.
+        """Remove resting size at ``(price, direction)``, addressed by quantity.
 
         A quantity-addressed withdrawal is one more signed
         delta on the aggregate state, so the state does not grow.  What changes is that
-        level volumes stop being monotone, the best price can now move in both
+        level sizes stop being monotone, the best price can now move in both
         directions, and the book can empty entirely.
 
         See :meth:`apply` for ``record``.
         """
-        resting = self.volume_at(message.direction, message.price)
+        resting = self.size_at(message.direction, message.price)
         if message.size > resting and self.strict:
             raise ValueError(
                 f"cannot withdraw {message.size} at price {message.price}: only "
@@ -678,11 +678,11 @@ class AggregateBook:
         if removed == 0:
             return SubmitResult() if record else None
         left = resting - removed
-        self.set_volume(message.direction, message.price, left)
+        self.set_size(message.direction, message.price, left)
         if not record:
             return None
         return SubmitResult(
-            deltas=[LevelDelta(side=message.direction, price=message.price, volume=left)]
+            deltas=[LevelDelta(side=message.direction, price=message.price, resting=left)]
         )
 
     # ---- housekeeping ---------------------------------------------------------------
@@ -696,27 +696,27 @@ class AggregateBook:
         """
         clone = self._empty_like()
         for direction in (BUY, SELL):
-            for price, volume in self.levels_map(direction).items():
-                clone.set_volume(direction, price, volume)
+            for price, size in self.levels_map(direction).items():
+                clone.set_size(direction, price, size)
         return clone
 
     @classmethod
     def from_levels(
         cls, bids: dict[int, int], asks: dict[int, int], strict: bool = False
     ) -> "AggregateBook":
-        """Build a book from ``{price: volume}`` maps on each side.
+        """Build a book from ``{price: size}`` maps on each side.
 
-        Goes through :meth:`set_volume` for every level, so a variant that keeps an
+        Goes through :meth:`set_size` for every level, so a variant that keeps an
         index is correctly initialised.  Assigning to ``book.bids`` directly would leave
         that index empty and the book quietly wrong -- precisely the class of bug a
         cache invites.
         """
         book = cls.for_prices(list(bids) + list(asks), strict)
         for direction, levels in ((BUY, bids), (SELL, asks)):
-            for price, volume in levels.items():
-                if volume <= 0:
-                    raise ValueError(f"level at {price} must hold positive volume")
-                book.set_volume(direction, price, volume)
+            for price, size in levels.items():
+                if size <= 0:
+                    raise ValueError(f"level at {price} must hold positive size")
+                book.set_size(direction, price, size)
         book.check_invariants()
         return book
 
@@ -756,18 +756,18 @@ class AggregateBook:
         if bid is not None and ask is not None and bid >= ask:
             raise AssertionError(f"crossed book: best bid {bid} >= best ask {ask}")
         for name, direction in (("bid", BUY), ("ask", SELL)):
-            for price, volume in self.levels_map(direction).items():
-                if volume <= 0:
+            for price, size in self.levels_map(direction).items():
+                if size <= 0:
                     raise AssertionError(
-                        f"{name} level at {price} holds {volume}: a price whose queue "
+                        f"{name} level at {price} holds {size}: a price whose queue "
                         "empties must be removed, not kept at zero"
                     )
 
     def __repr__(self) -> str:
         bid, ask = self.best_bid_price, self.best_ask_price
         return (
-            f"{type(self).__name__}(bid={bid}x{self.best_bid_volume}, "
-            f"ask={ask}x{self.best_ask_volume}, "
+            f"{type(self).__name__}(bid={bid}x{self.best_bid_size}, "
+            f"ask={ask}x{self.best_ask_size}, "
             f"levels={len(self.levels_map(BUY))}/{len(self.levels_map(SELL))})"
         )
 
@@ -776,11 +776,11 @@ class AggregateBook:
 #
 # Matching is identical in every class below; what differs is how the best price is
 # found.  The first three keep the dicts as storage and add an index beside them, and
-# override `best_price` plus the `set_volume` that keeps that index in step.  Varying
+# override `best_price` plus the `set_size` that keeps that index in step.  Varying
 # one factor is what lets a timing difference have a single cause.
 #
 # The last one stops varying one factor on purpose.  A real low-latency book *fuses*
-# storage and index -- the volumes live in the tick-indexed array itself -- and
+# storage and index -- the sizes live in the tick-indexed array itself -- and
 # TickArrayBook is that book, so the step from BitmapBook to it measures exactly the
 # fusion and nothing else.
 # ---------------------------------------------------------------------------------
@@ -809,24 +809,24 @@ class CachedBestBook(AggregateBook):
         super().__init__(strict)
         self._cached: dict[int, int | None] = {BUY: None, SELL: None}
 
-    def set_volume(self, direction: int, price: int, volume: int) -> None:
-        super().set_volume(direction, price, volume)
-        self._cached[direction] = self._best_after(direction, price, volume)
+    def set_size(self, direction: int, price: int, size: int) -> None:
+        super().set_size(direction, price, size)
+        self._cached[direction] = self._best_after(direction, price, size)
 
-    def _best_after(self, direction: int, price: int, volume: int) -> int | None:
-        """What the best price becomes once this level holds ``volume``.
+    def _best_after(self, direction: int, price: int, size: int) -> int | None:
+        """What the best price becomes once this level holds ``size``.
 
         Total in the three cases, so there is no fourth to forget.
         """
         best = self._cached[direction]
         # price * direction > best * direction: "better" for whichever side.
-        if volume > 0 and (best is None or price * direction > best * direction):
+        if size > 0 and (best is None or price * direction > best * direction):
             return price
-        if volume == 0 and price == best:
+        if size == 0 and price == best:
             # The cached price no longer names a level and nothing local says what
             # replaces it, so this is the one case that pays for a rescan.
             return self._rescan(direction)
-        # Any other change is at a price no better than the best, or leaves volume
+        # Any other change is at a price no better than the best, or leaves size
         # resting there: either way the best price cannot have moved.
         return best
 
@@ -872,9 +872,9 @@ class HeapBook(AggregateBook):
         super().__init__(strict)
         self._heaps: dict[int, list[int]] = {BUY: [], SELL: []}
 
-    def set_volume(self, direction: int, price: int, volume: int) -> None:
-        super().set_volume(direction, price, volume)
-        if volume > 0:
+    def set_size(self, direction: int, price: int, size: int) -> None:
+        super().set_size(direction, price, size)
+        if size > 0:
             # Negate on the bid side so that "largest price" becomes "smallest key".
             heapq.heappush(self._heaps[direction], -price if direction == BUY else price)
 
@@ -937,10 +937,10 @@ class BitmapBook(AggregateBook):
     def _empty_like(self) -> "BitmapBook":
         return type(self)(origin=self.origin, strict=self.strict)
 
-    def set_volume(self, direction: int, price: int, volume: int) -> None:
-        super().set_volume(direction, price, volume)
+    def set_size(self, direction: int, price: int, size: int) -> None:
+        super().set_size(direction, price, size)
         bit = 1 << (price - self.origin)
-        if volume > 0:
+        if size > 0:
             self._bits[direction] |= bit
         else:
             self._bits[direction] &= ~bit
@@ -971,9 +971,9 @@ class BitmapBook(AggregateBook):
 class TickArrayBook(AggregateBook):
     """Step 5: storage and index fused -- the shape of a real low-latency book.
 
-    Every class above keeps the volumes in a dict and puts an index beside it.  A
+    Every class above keeps the sizes in a dict and puts an index beside it.  A
     production book does not: prices already live on an integer grid, so the tick *is*
-    the array subscript, and the volume is read where the occupancy bit is set.  There
+    the array subscript, and the size is read where the occupancy bit is set.  There
     is no dict here at all, and :meth:`levels_map` builds one only when something asks
     to inspect the book.
 
@@ -993,7 +993,7 @@ class TickArrayBook(AggregateBook):
     ``price - origin`` -- and the best price on either side is the highest set bit.
     :class:`BitmapBook` cannot do this: it has no upper edge to count down from.
 
-    The volumes stay indexed by ``price - origin`` on both sides; only the occupancy
+    The sizes stay indexed by ``price - origin`` on both sides; only the occupancy
     bitmap is reversed.  The consequence is that the band's *upper* edge is now
     load-bearing on the ask side, where before only the lower one was, so the
     band-shifting this docstring anticipates would have to move the ask bitmap rather
@@ -1012,7 +1012,7 @@ class TickArrayBook(AggregateBook):
         #: part of the encoding and not a derived convenience: a copy that changed the
         #: width would decode every ask bit to the wrong price.
         self.ceiling = origin + width - 1
-        self._volumes: dict[int, list[int]] = {
+        self._sizes: dict[int, list[int]] = {
             BUY: [0] * width,
             SELL: [0] * width,
         }
@@ -1035,7 +1035,7 @@ class TickArrayBook(AggregateBook):
     def _empty_like(self) -> "TickArrayBook":
         return type(self)(origin=self.origin, width=self.width, strict=self.strict)
 
-    def volume_at(self, direction: int, price: int) -> int:
+    def size_at(self, direction: int, price: int) -> int:
         """Zero outside the band, rather than an error.
 
         Reads run off the edge in ordinary use -- ``levels(SELL, 10)`` walks ten grid
@@ -1046,9 +1046,9 @@ class TickArrayBook(AggregateBook):
         index = price - self.origin
         if not 0 <= index < self.width:
             return 0
-        return self._volumes[direction][index]
+        return self._sizes[direction][index]
 
-    def set_volume(self, direction: int, price: int, volume: int) -> None:
+    def set_size(self, direction: int, price: int, size: int) -> None:
         index = price - self.origin
         if not 0 <= index < self.width:
             raise ValueError(
@@ -1056,9 +1056,9 @@ class TickArrayBook(AggregateBook):
                 f"[{self.origin}, {self.origin + self.width}); a real book would shift "
                 "the band or fall back to a sorted map"
             )
-        self._volumes[direction][index] = volume
+        self._sizes[direction][index] = size
         bit = 1 << (index if direction == BUY else self.ceiling - price)
-        if volume > 0:
+        if size > 0:
             self._bits[direction] |= bit
         else:
             self._bits[direction] &= ~bit
@@ -1073,11 +1073,11 @@ class TickArrayBook(AggregateBook):
     def levels_map(self, direction: int) -> dict[int, int]:
         """Built on demand, by walking the occupancy bits from the bottom up.
 
-        Nothing on the hot path calls this -- matching reads single volumes and the
+        Nothing on the hot path calls this -- matching reads single sizes and the
         best price -- so the cost lands only where a caller genuinely wants the whole
         book, which is inspection, comparison and drawing.
         """
-        volumes = self._volumes[direction]
+        sizes = self._sizes[direction]
         bits = self._bits[direction]
         origin, ceiling = self.origin, self.ceiling
         buying = direction == BUY
@@ -1085,7 +1085,7 @@ class TickArrayBook(AggregateBook):
         while bits:
             index = bits.bit_length() - 1
             price = origin + index if buying else ceiling - index
-            levels[price] = volumes[price - origin]
+            levels[price] = sizes[price - origin]
             bits ^= 1 << index
         return levels
 
@@ -1100,14 +1100,14 @@ class TickArrayBook(AggregateBook):
         if reported_depth <= 0:
             raise ValueError(f"reported_depth must be >= 1, got {reported_depth}")
         bits = self._bits[direction]
-        volumes = self._volumes[direction]
+        sizes = self._sizes[direction]
         origin, ceiling = self.origin, self.ceiling
         buying = direction == BUY
         found: list[tuple[int, int]] = []
         while bits and len(found) < reported_depth:
             index = bits.bit_length() - 1
             price = origin + index if buying else ceiling - index
-            found.append((price, volumes[price - origin]))
+            found.append((price, sizes[price - origin]))
             bits ^= 1 << index
         return found
 
@@ -1135,9 +1135,9 @@ class TickArrayBook(AggregateBook):
         return measure_largest_binary_gap(self.span_bits(direction, reported_depth))
 
     def queue_imbalance(self, n: GridDepth) -> float:
-        """Read the grid window straight out of the volume array.
+        """Read the grid window straight out of the size array.
 
-        The inherited version walks ``bid_volume(i)``, each of which re-derives the best
+        The inherited version walks ``bid_size(i)``, each of which re-derives the best
         price; here the band *is* the grid, so the window is a slice of it.
         """
         if n <= 0:
@@ -1148,10 +1148,10 @@ class TickArrayBook(AggregateBook):
             if best is None:
                 totals.append(0)
                 continue
-            volumes = self._volumes[direction]
+            sizes = self._sizes[direction]
             start = best - self.origin
             indices = range(start, start - n, -1) if direction == BUY else range(start, start + n)
-            totals.append(sum(volumes[i] for i in indices if 0 <= i < self.width))
+            totals.append(sum(sizes[i] for i in indices if 0 <= i < self.width))
         total = totals[0] + totals[1]
         if total == 0:
             return float("nan")
@@ -1160,12 +1160,12 @@ class TickArrayBook(AggregateBook):
     def queue_imbalance_profile(
         self, imbalance_levels: tuple[GridDepth, ...]
     ) -> list[float]:
-        """The nested windows as one slice of the volume array per side.
+        """The nested windows as one slice of the size array per side.
 
         The band *is* the grid, so the running totals are ``itertools.accumulate`` over a
         slice and never enter Python.  Where the window runs off the band the slice comes
         back short, and the total stops growing: a position outside the band holds
-        nothing, which :meth:`volume_at` already gives as a true answer.
+        nothing, which :meth:`size_at` already gives as a true answer.
         """
         deepest = max(imbalance_levels)
         if deepest <= 0:
@@ -1178,11 +1178,11 @@ class TickArrayBook(AggregateBook):
             if best is None:
                 running[direction] = [0] * deepest
                 continue
-            volumes = self._volumes[direction]
+            sizes = self._sizes[direction]
             start = best - self.origin
             window = (
-                volumes[max(0, start - deepest + 1):start + 1][::-1] if direction == BUY
-                else volumes[start:start + deepest]
+                sizes[max(0, start - deepest + 1):start + 1][::-1] if direction == BUY
+                else sizes[start:start + deepest]
             )
             totals = list(accumulate(window))
             totals += [totals[-1]] * (deepest - len(totals))
@@ -1198,8 +1198,8 @@ class TickArrayBook(AggregateBook):
 
     def copy(self) -> "TickArrayBook":
         clone = self._empty_like()
-        clone._volumes = {
-            direction: volumes.copy() for direction, volumes in self._volumes.items()
+        clone._sizes = {
+            direction: sizes.copy() for direction, sizes in self._sizes.items()
         }
         clone._bits = dict(self._bits)
         return clone

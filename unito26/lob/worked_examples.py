@@ -15,8 +15,8 @@ The catalogue is consumed three ways: by the tests, which run every book variant
 through it; by the notebook, which draws it; and by
 ``documentation/order-flow-to-order-book.md``, which renders the ladders as text.
 
-**Encoding.** A book state is written here as one ``{price: signed volume}`` map, with
-bid volumes positive and ask volumes negative.  That is a convenience for writing
+**Encoding.** A book state is written here as one ``{price: signed size}`` map, with
+bid sizes positive and ask sizes negative.  That is a convenience for writing
 fixtures compactly and for drawing them on one axis; it is *not* how a book is held.
 The book itself keeps two sides of non-negative sizes, and nothing in this module's
 sign convention should leak into it.
@@ -77,8 +77,8 @@ class WorkedExample:
 
 def to_sides(state: dict[int, int]) -> tuple[dict[int, int], dict[int, int]]:
     """Split a signed state into the two non-negative sides the book actually holds."""
-    bids = {price: volume for price, volume in state.items() if volume > 0}
-    asks = {price: -volume for price, volume in state.items() if volume < 0}
+    bids = {price: resting for price, resting in state.items() if resting > 0}
+    asks = {price: -resting for price, resting in state.items() if resting < 0}
     return bids, asks
 
 
@@ -86,17 +86,17 @@ def signed_state(book: AggregateBook) -> dict[int, int]:
     """The inverse of :func:`to_sides`: a book's state in the catalogue's encoding.
 
     Goes through ``levels_map`` rather than ``book.bids``, because not every book keeps
-    its volumes in a dict.
+    its sizes in a dict.
     """
     state = dict(book.levels_map(BUY))
-    state.update({price: -volume for price, volume in book.levels_map(SELL).items()})
+    state.update({price: -resting for price, resting in book.levels_map(SELL).items()})
     return state
 
 
 CATALOGUE: tuple[WorkedExample, ...] = (
     WorkedExample(
         name="a passive buy joins an occupied level",
-        branch="N = 0, q^inf = q; the remainder lands where volume already rests",
+        branch="N = 0, q^inf = q; the remainder lands where size already rests",
         before=SECTION_8_BOOK,
         message=limit_order(1.0, 75, 999, BUY),
         after={1000: 100, 999: 275, 998: 150, 1002: -120, 1003: -180},
@@ -195,9 +195,9 @@ def reflect(example: WorkedExample, centre: int) -> WorkedExample:
     centre maps that one to itself, because its two sides have different shapes.
     """
     def mirror(state: dict[int, int]) -> dict[int, int]:
-        # Negating the volume is what swaps the side, the sign being this module's
+        # Negating the size is what swaps the side, the sign being this module's
         # encoding of which side a level is on.  Two operations, one minus sign.
-        return {2 * centre - price: -volume for price, volume in state.items()}
+        return {2 * centre - price: -resting for price, resting in state.items()}
 
     message = example.message
     if is_market_price(message.price):
@@ -227,7 +227,7 @@ def check(book_cls: type[AggregateBook], example: WorkedExample, depth: int = 6)
     check that will be.
 
     Beyond the state itself this compares the *derived* views against the baseline --
-    ``levels`` and the best volumes.  A book that stores volumes somewhere other than
+    ``levels`` and the best sizes.  A book that stores sizes somewhere other than
     the two dicts can agree on best prices and on the level map while returning zero to
     every one of those accessors, and nothing else here would notice.
     """
@@ -259,14 +259,14 @@ def check(book_cls: type[AggregateBook], example: WorkedExample, depth: int = 6)
                 f"read {book.levels(direction, depth)}, baseline says "
                 f"{reference.levels(direction, depth)}"
             )
-    if (book.best_bid_volume, book.best_ask_volume) != (
-        reference.best_bid_volume,
-        reference.best_ask_volume,
+    if (book.best_bid_size, book.best_ask_size) != (
+        reference.best_bid_size,
+        reference.best_ask_size,
     ):
         raise AssertionError(
-            f"{book_cls.__name__} on {example.name!r}: best volumes read "
-            f"{(book.best_bid_volume, book.best_ask_volume)}, baseline says "
-            f"{(reference.best_bid_volume, reference.best_ask_volume)}"
+            f"{book_cls.__name__} on {example.name!r}: best sizes read "
+            f"{(book.best_bid_size, book.best_ask_size)}, baseline says "
+            f"{(reference.best_bid_size, reference.best_ask_size)}"
         )
 
 

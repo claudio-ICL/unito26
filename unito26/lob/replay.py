@@ -220,9 +220,9 @@ def _write_occupied_levels(
     """
     for offset, side in enumerate((ask, bid)):
         column = 2 * offset
-        for level, (price, volume) in enumerate(side.levels):
+        for level, (price, size) in enumerate(side.levels):
             target[4 * level + column] = price * price_unit
-            target[4 * level + column + 1] = volume
+            target[4 * level + column + 1] = size
 
 
 # ---- a replay recorded sparsely ------------------------------------------------------
@@ -272,12 +272,12 @@ class DeltaLog:
         """A book in the state the recorded replay began from, sized for the whole log."""
         book = book_cls.for_prices(self.prices, strict)
         for direction, levels in ((BUY, self.opening_bids), (SELL, self.opening_asks)):
-            for price, volume in levels.items():
-                book.set_volume(direction, price, volume)
+            for price, resting in levels.items():
+                book.set_size(direction, price, resting)
         return book
 
     def to_table(self):
-        """Columnar table of the entries: ``(seq, time, side, price, volume)``.
+        """Columnar table of the entries: ``(seq, time, side, price, resting)``.
 
         One row per level *change*, against one row per *message* for the dense form.
         The saving comes from most messages touching a single level, and from the
@@ -286,20 +286,20 @@ class DeltaLog:
         """
         import pyarrow
 
-        sequences, times, sides, prices, volumes = [], [], [], [], []
+        sequences, times, sides, prices, resting = [], [], [], [], []
         for sequence, time, delta in self.entries:
             sequences.append(sequence)
             times.append(time)
             sides.append(delta.side)
             prices.append(delta.price)
-            volumes.append(delta.volume)
+            resting.append(delta.resting)
         return pyarrow.table(
             {
                 "seq": pyarrow.array(sequences, pyarrow.int64()),
                 "time": pyarrow.array(times, pyarrow.float64()),
                 "side": pyarrow.array(sides, pyarrow.int8()),
                 "price": pyarrow.array(prices, pyarrow.int32()),
-                "volume": pyarrow.array(volumes, pyarrow.int32()),
+                "resting": pyarrow.array(resting, pyarrow.int32()),
             }
         )
 
@@ -402,8 +402,8 @@ class MarketSession:
         """Read the four touch properties instead, which is a depth-1 session.
 
         This produces the same session as :meth:`from_occupied_levels` at
-        ``reported_depth = 1``.  :meth:`AggregateBook.set_volume` removes a level whose
-        volume reaches zero, so a best price always names an occupied price, and grid
+        ``reported_depth = 1``.  :meth:`AggregateBook.set_size` removes a level whose
+        size reaches zero, so a best price always names an occupied price, and grid
         level 1 therefore coincides with occupied level 1.
         """
         depth = ReportedDepth(1)
@@ -418,9 +418,9 @@ class MarketSession:
             index = rows.claim()
             rows.array[index] = (
                 frames.ASK_PADDING if ask is None else ask * price_unit,
-                book.best_ask_volume,
+                book.best_ask_size,
                 frames.BID_PADDING if bid is None else bid * price_unit,
-                book.best_bid_volume,
+                book.best_bid_size,
             )
             if online_statistics:
                 at = statistics.claim()
@@ -445,7 +445,7 @@ class MarketSession:
     ) -> "MarketSession":
         """Rebuild the session from a sparse recording, with no messages and no matching.
 
-        The log replaces the stream: applying a delta is a write of an absolute volume,
+        The log replaces the stream: applying a delta is a write of an absolute size,
         where applying a message is a search plus a match.  What the comparison with the
         dense recorders has to include is the cost of :meth:`DeltaLog.record`, which had
         to run first.
@@ -460,7 +460,7 @@ class MarketSession:
         for sequence in range(len(times)):
             while upcoming is not None and upcoming[0] == sequence:
                 _, _, delta = upcoming
-                book.set_volume(delta.side, delta.price, delta.volume)
+                book.set_size(delta.side, delta.price, delta.resting)
                 upcoming = next(pending, None)
             index = rows.claim()
             if online_statistics:
@@ -620,9 +620,9 @@ class MarketSession:
     def column_sliced_imbalance(self, n: GridDepth) -> pd.Series:
         """The imbalance computed from the first ``n`` size *columns* of the frame.
 
-        This is not ``I^n``.  Section 4 sums volume over the first ``n`` positions on the
+        This is not ``I^n``.  Section 4 sums size over the first ``n`` positions on the
         price grid; summing the first ``n`` columns sums the first ``n`` prices that carry
-        volume, and the two windows coincide only where the reported levels are
+        size, and the two windows coincide only where the reported levels are
         contiguous.  Kept because the difference is invisible in the output -- both stay
         in ``[-1, 1]`` and both move with the market -- and because it is what a column
         slice of a LOBSTER file gives.

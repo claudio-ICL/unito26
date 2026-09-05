@@ -256,7 +256,7 @@ in C, on one word, both are a single instruction.
 
 | operation | where |
 | --- | --- |
-| `1 << k`, `\|= bit`, `&= ~bit` | `BitmapBook.set_volume`, `TickArrayBook.set_volume` |
+| `1 << k`, `\|= bit`, `&= ~bit` | `BitmapBook.set_size`, `TickArrayBook.set_size` |
 | `bit_length() - 1` | `best_price` on both sides in `TickArrayBook`, the $d = +1$ branch in `BitmapBook` |
 | `(bits & -bits).bit_length() - 1` | the $d = -1$ branch of `BitmapBook.best_price` |
 | `bits ^= 1 << k` | walking the occupied levels in both |

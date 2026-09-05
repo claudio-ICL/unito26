@@ -10,7 +10,7 @@ Those edge cases stand between the ladder's top rung and real data:
 * **truncation** -- only events inside the visible price range are reported, so the
   deep levels are unknowable and even the last visible one degrades over the session;
 * **pre-existing orders** -- messages reference orders posted before the file begins,
-  so the book must be seeded from the first snapshot row, and that seeded volume has
+  so the book must be seeded from the first snapshot row, and that seeded size has
   no identity: a hybrid of aggregate and identified state;
 * **hidden liquidity** -- type-5 executions are trades that move no visible level;
 * **non-unique timestamps** -- section 1 assumes distinct timestamps, and real feeds

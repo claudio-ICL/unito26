@@ -5,7 +5,7 @@ The strand is built as a ladder of increasing complexity, and the modules follow
 ``messages``
     the order tuple ``(t, q, p, d)``, event types, and tick/currency conversion.
 ``orderbook``
-    both representations of the book -- the aggregate ``{price: volume}`` one and the
+    both representations of the book -- the aggregate ``{price: size}`` one and the
     order-level, identity-carrying one, in a single file.
 ``replay``
     the fold that drives a book with a stream of messages, and the ``MarketSession`` it

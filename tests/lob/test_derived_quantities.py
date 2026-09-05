@@ -9,15 +9,15 @@ from unito26.lob.messages import GridDepth
 from unito26.lob.orderbook import AggregateBook
 
 
-def crossed_weighted_mid(ask, bid, ask_volume, bid_volume):
+def crossed_weighted_mid(ask, bid, ask_size, bid_size):
     """P^mu written out directly, sharing no code with the implementation.
 
-    The ask price carries the *bid* volume.  This is the only independent witness the
+    The ask price carries the *bid* size.  This is the only independent witness the
     micro-price has: asserting instead that a bid-heavy book lifts it above the mid is
     tautological once it is implemented as ``P^m + (phi/2) I^1``, since inverting the
     imbalance inverts both sides of that.
     """
-    return (ask * bid_volume + bid * ask_volume) / (ask_volume + bid_volume)
+    return (ask * bid_size + bid * ask_size) / (ask_size + bid_size)
 
 
 class TestMicroPrice:
@@ -30,12 +30,12 @@ class TestMicroPrice:
         for _ in range(2000):
             bid = int(rng.integers(100, 10000))
             ask = bid + int(rng.integers(1, 50))
-            bid_volume, ask_volume = (int(rng.integers(1, 10000)) for _ in range(2))
-            book = AggregateBook.from_levels({bid: bid_volume}, {ask: ask_volume})
+            bid_size, ask_size = (int(rng.integers(1, 10000)) for _ in range(2))
+            book = AggregateBook.from_levels({bid: bid_size}, {ask: ask_size})
             # approx, not ==: the identity is exact over the rationals and the two
             # expressions disagree in the last bit for roughly three books in a thousand.
             assert book.micro_price == pytest.approx(
-                crossed_weighted_mid(ask, bid, ask_volume, bid_volume)
+                crossed_weighted_mid(ask, bid, ask_size, bid_size)
             )
 
     def test_it_sits_toward_the_thin_side(self):
@@ -87,7 +87,7 @@ class TestQueueImbalance:
         assert math.isnan(AggregateBook().queue_imbalance(GridDepth(1)))
 
     def test_zero_levels_is_refused(self):
-        """At n = 0 both windows are empty by the V^{.,j} = 0 convention, so the value
+        """At n = 0 both windows are empty by the S^{.,j} = 0 convention, so the value
         would be NaN on a perfectly healthy book."""
         book = AggregateBook.from_levels({100: 5}, {102: 5})
         with pytest.raises(ValueError):
