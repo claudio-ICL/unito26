@@ -28,7 +28,7 @@ from unito26.lob.hawkes import ExponentialHawkes, HawkesParams
 from unito26.lob.messages import BUY, SELL, Message, limit_order, market_order, withdrawal
 from unito26.lob.orderbook import AggregateBook
 
-__all__ = ["EventType", "MarkParams", "OrderFlowSimulator"]
+__all__ = ["EventType", "MarkParams", "EventJournal", "OrderFlowSimulator"]
 
 
 class EventType(IntEnum):
@@ -44,6 +44,21 @@ class EventType(IntEnum):
     @property
     def direction(self) -> int:
         return BUY if self % 2 == 0 else SELL
+
+    @property
+    def pressure(self) -> int:
+        """The sign the event *intends* to contribute to the mid-price.
+
+        A buy market order and a buy limit order both push up; withdrawing a bid pushes
+        down, because it takes size off the side it belongs to.  So pressure is the
+        direction for the four order types and its negation for the two withdrawals.
+
+        An intention, not an effect.  A limit order resting ten ticks behind the touch
+        has pressure ``+1`` and contributes ``e_n = 0``, while a cancellation at the
+        touch contributes a whole queue.  The gap between the two is where ``OFI``
+        stops being a signed event count.
+        """
+        return self.direction if self < EventType.WITHDRAW_BUY else -self.direction
 
 
 @dataclass(frozen=True, slots=True)
@@ -106,6 +121,40 @@ class MarkParams(FrameSerializable):
             sigma_log_size=float(row["SigmaLogSize"]),
             lot=int(row["Lot"]),
         )
+
+
+@dataclass(frozen=True, slots=True)
+class EventJournal:
+    """Every Hawkes event of a run, and whether it reached the book.
+
+    The two counts differ.  ``_withdrawal`` drops an event on an empty side, so the
+    message stream is a state-dependent thinning of the point process and an observer of
+    messages has a strictly coarser filtration than the Hawkes state does.  Nothing
+    downstream of the messages can recover the drop rate, and the drop rate is a property
+    of the *book* rather than of the model -- which is why it is worth a record rather
+    than an estimate.  At the example parametrization the drops are confined to the
+    warm-up, where the book fills from cold: 0.04% to 0.13% there, and none at all over
+    an hour of sample.
+
+    Recorded in message order, one entry per event, following ``DeltaLog``: a plain
+    frozen dataclass of parallel lists, filled by the fold that produced them.
+    """
+
+    times: list[float]
+    types: list[int]
+    emitted: list[bool]
+
+    @classmethod
+    def empty(cls) -> "EventJournal":
+        return cls([], [], [])
+
+    def __len__(self) -> int:
+        return len(self.times)
+
+    @property
+    def dropped(self) -> int:
+        """Events the book refused: the difference between the two filtrations."""
+        return len(self.times) - sum(self.emitted)
 
 
 class OrderFlowSimulator:
@@ -176,28 +225,47 @@ class OrderFlowSimulator:
 
     # ---- the stream ----------------------------------------------------------
 
-    def stream(self, book: AggregateBook, horizon: float) -> Iterator[Message]:
-        """Yield messages until ``horizon``, reading ``book`` as it currently stands."""
+    def stream(
+        self, book: AggregateBook, horizon: float, journal: EventJournal | None
+    ) -> Iterator[Message]:
+        """Yield messages until ``horizon``, reading ``book`` as it currently stands.
+
+        ``horizon`` is absolute, and the Hawkes state is shared with every other call on
+        this simulator, so ``warm_up(book, W, ...)`` followed by ``stream(book, T, ...)``
+        samples ``(W, T]`` and not ``(0, T]``.
+
+        ``journal`` records the events behind the messages, including the ones the book
+        refused; pass ``None`` not to record, as ``AggregateBook.apply`` takes its
+        ``record``.  It is required for the same reason that one is: a recording that can
+        be forgotten is a recording that is missing when it is wanted.
+        """
         for time, index in self._hawkes.events(horizon):
             event = EventType(index)
             direction = event.direction
 
             if event in (EventType.MARKET_BUY, EventType.MARKET_SELL):
-                yield market_order(time, self._size(), direction)
+                message = market_order(time, self._size(), direction)
             elif event in (EventType.LIMIT_BUY, EventType.LIMIT_SELL):
-                yield limit_order(time, self._size(), self._limit_price(book, direction), direction)
+                message = limit_order(time, self._size(), self._limit_price(book, direction), direction)
             else:
                 message = self._withdrawal(book, direction, time)
-                if message is not None:
-                    yield message
 
-    def warm_up(self, book: AggregateBook, horizon: float) -> AggregateBook:
+            if journal is not None:
+                journal.times.append(time)
+                journal.types.append(int(index))
+                journal.emitted.append(message is not None)
+            if message is not None:
+                yield message
+
+    def warm_up(
+        self, book: AggregateBook, horizon: float, journal: EventJournal | None
+    ) -> AggregateBook:
         """Run the stream into the book, discarding the messages.
 
         A book that starts empty is unrepresentative for a while: the first orders have
         nothing to trade against.  Benchmarks and studies should start from a book that
         has been running.
         """
-        for message in self.stream(book, horizon):
+        for message in self.stream(book, horizon, journal):
             book.apply(message, record=False)
         return book

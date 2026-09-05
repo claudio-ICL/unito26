@@ -15,7 +15,7 @@ from unito26.lob.messages import (
 )
 from unito26.lob.orderbook import AXIS_B_VARIANTS, AggregateBook
 from unito26.lob.delta_log import DeltaLog
-from unito26.lob.session import MarketSession, _rolling_sum, _window_start
+from unito26.lob.session import MarketSession, rolling_sum, window_start
 from unito26.lob.statistics import SessionStatistics
 
 LEVELS = (GridDepth(1), GridDepth(2))
@@ -141,6 +141,47 @@ class TestTheWindowedSum:
         assert rolling["AverageDepth1000"].iloc[2] == pytest.approx(depths.mean() / 2)
 
 
+class TestTheFloatWindowAccessor:
+    """``order_flow_imbalance`` stands to the declared columns as ``vwap`` does, and is
+    justified only by admitting a window that is not a whole number of seconds.  If the
+    two definitions can drift apart the package carries two meanings of ``OFI``."""
+
+    MESSAGES = [
+        limit_order(1.0, 60, 1000, BUY),
+        limit_order(2.0, 40, 1000, BUY),
+        withdrawal(3.0, 25, 1000, BUY),
+        market_order(3.5, 30, BUY),
+    ]
+
+    def test_it_reproduces_the_declared_column_at_a_whole_window(self):
+        recorded = session(self.MESSAGES)
+        for window in WINDOWS:
+            asked = recorded.order_flow_imbalance(float(window)).to_numpy()
+            declared = recorded.stats[f"OrderFlowImbalance{window}"].to_numpy()
+            assert np.array_equal(asked, declared, equal_nan=True)
+
+    def test_a_fractional_window_sees_fewer_events(self):
+        """Contributions are 40, -25 and 30 at t = 2, 3 and 3.5; the last row's window
+        reaches back 0.4, 0.75 and 1.6 seconds from 3.5."""
+        recorded = session(self.MESSAGES)
+        assert recorded.order_flow_imbalance(0.4).iloc[3] == 30
+        assert recorded.order_flow_imbalance(0.75).iloc[3] == 30 - 25
+        assert recorded.order_flow_imbalance(1.6).iloc[3] == 40 - 25 + 30
+
+    def test_a_window_reaching_the_undefined_opening_row_is_undefined(self):
+        """The one NaN clause the accessor has: ``e_0`` is undefined, so every window
+        containing it is, and the opening ``w`` of a session is lost."""
+        recorded = session(self.MESSAGES)
+        assert np.isnan(recorded.order_flow_imbalance(3.0).iloc[3])
+        assert not np.isnan(recorded.order_flow_imbalance(2.4).iloc[3])
+
+    def test_it_refuses_a_window_that_is_not_a_length_of_time(self):
+        recorded = session(self.MESSAGES)
+        for bad in (0.0, -1.0, float("inf")):
+            with pytest.raises(ValueError, match="positive number of seconds"):
+                recorded.order_flow_imbalance(bad)
+
+
 class TestVWAP:
     MESSAGES = [
         market_order(1.0, 200, BUY),          # 120 at 1002, 80 at 1003
@@ -224,7 +265,7 @@ class TestTheWindowItself:
 
     def rolling(self, times, values, window):
         times = np.asarray(times, dtype=float)
-        return _rolling_sum(_window_start(times, window), np.asarray(values, dtype=float))
+        return rolling_sum(window_start(times, window), np.asarray(values, dtype=float))
 
     def test_it_matches_a_brute_force_walk(self):
         """On distinct timestamps, where the two definitions coincide.

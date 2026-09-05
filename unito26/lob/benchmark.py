@@ -66,9 +66,9 @@ def session(name: str, marks: MarkParams, horizon: float, seed: int) -> Session:
         config.example_order_flow_params(), marks, REFERENCE_PRICE, rng=seed
     )
     book = AggregateBook()
-    simulator.warm_up(book, horizon=30.0)
+    simulator.warm_up(book, horizon=30.0, journal=None)
     messages = []
-    for message in simulator.stream(book, horizon=horizon):
+    for message in simulator.stream(book, horizon=horizon, journal=None):
         book.apply(message, record=False)
         messages.append(message)
     return Session(name=name, messages=messages)

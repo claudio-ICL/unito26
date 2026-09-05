@@ -17,6 +17,7 @@ import numbers
 from dataclasses import dataclass, field
 from enum import Enum
 
+import numpy as np
 import pandera.pandas as pa
 
 from unito26.lob import frames
@@ -49,6 +50,22 @@ def _whole(name: str, value) -> int:
     if not isinstance(value, numbers.Integral) or value < 1:
         raise ValueError(f"{name} must be a whole number of at least 1, got {value!r}")
     return int(value)
+
+
+def _span(name: str, value) -> float:
+    """``value`` as a length of time in seconds, not necessarily whole.
+
+    The counterpart of :func:`_whole` for the results that are long form: a window is a
+    *value in a column* there rather than part of a column's name, so nothing stops it
+    being 20.8 milliseconds.  What is lost is exactness at the boundary -- at LOBSTER's
+    seconds-after-midnight magnitudes ``t - w`` for a float ``w`` sits some ``4e-12``
+    off, which can fall on the wrong side of an exact tie.  Harmless on synthetic times
+    starting at zero, and the reason the column-naming route keeps the stricter rule.
+    """
+    value = float(value)
+    if not np.isfinite(value) or value <= 0:
+        raise ValueError(f"{name} must be a positive number of seconds, got {value!r}")
+    return value
 
 
 class Dependence(Enum):

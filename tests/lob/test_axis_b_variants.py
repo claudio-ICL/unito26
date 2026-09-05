@@ -44,9 +44,9 @@ def stream():
         config.example_order_flow_params(), config.example_mark_params(), 10000, rng=0
     )
     book = AggregateBook()
-    simulator.warm_up(book, horizon=30.0)
+    simulator.warm_up(book, horizon=30.0, journal=None)
     messages = []
-    for message in simulator.stream(book, horizon=400.0):
+    for message in simulator.stream(book, horizon=400.0, journal=None):
         book.apply(message, record=False)
         messages.append(message)
     return messages

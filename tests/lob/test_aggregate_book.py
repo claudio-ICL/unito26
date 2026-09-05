@@ -284,7 +284,7 @@ class TestRecordingIsOptional:
         )
         driver = AggregateBook()
         messages = []
-        for message in simulator.stream(driver, horizon=120.0):
+        for message in simulator.stream(driver, horizon=120.0, journal=None):
             driver.apply(message, record=False)
             messages.append(message)
 

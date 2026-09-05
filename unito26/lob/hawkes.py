@@ -40,8 +40,17 @@ import pandas as pd
 import pandera.pandas as pa
 
 from unito26.lob.frames import FrameSerializable
+from unito26.lob.messages import BranchingRatio, Decay
 
-__all__ = ["HawkesParams", "ExponentialHawkes", "OgataThinningHawkes", "compensators_at_events"]
+__all__ = [
+    "HawkesParams",
+    "ExponentialHawkes",
+    "OgataThinningHawkes",
+    "compensators_at_events",
+    "intensities_at_events",
+    "rescaled_excitation",
+    "with_cross_pressure_scaled",
+]
 
 
 @dataclass(frozen=True, slots=True)
@@ -62,7 +71,7 @@ class HawkesParams(FrameSerializable):
 
     baseline: np.ndarray
     excitation: np.ndarray
-    decay: float
+    decay: Decay
 
     def __post_init__(self) -> None:
         # A frozen dataclass cannot assign to its own fields, so coercion to arrays
@@ -131,6 +140,109 @@ class HawkesParams(FrameSerializable):
         """Long-run mean intensity ``(I - Gamma)^{-1} mu``, per type."""
         identity = np.eye(self.dimension)
         return np.linalg.solve(identity - self.branching_matrix, self.baseline)
+
+    @classmethod
+    def from_stationary_intensity(
+        cls,
+        stationary: np.ndarray,
+        shape: np.ndarray,
+        decay: Decay,
+        branching_ratio: BranchingRatio,
+    ) -> "HawkesParams":
+        """Build from the stationary intensity, holding the flow while the kernel moves.
+
+        ``lambda* = (I - Gamma)^{-1} mu`` is what sets the composition of the flow and
+        hence the book, so a ladder in ``rho`` that varies ``mu`` and reads ``lambda*``
+        off is varying the wrong end: raising the excitation with ``mu`` fixed starves
+        the book of whichever type is least excited.  Inverting instead,
+
+            mu = (I - Gamma) lambda*,
+
+        which is a baseline exactly where it is non-negative componentwise.  Refused
+        otherwise, and the refusal names the component: the market-order baseline is
+        usually the one that binds, market orders being heavily excited and small in
+        share.
+
+        ``shape`` fixes the *pattern* of excitation and is rescaled here to
+        ``branching_ratio``, since the spectral radius is homogeneous of degree one in
+        it.  Rescaling first is not an optimisation: an intermediate at the shape's own
+        radius is often non-stationary, and the constructor would reject it.
+        """
+        excitation = rescaled_excitation(shape, decay, branching_ratio)
+        stationary = np.asarray(stationary, dtype=float)
+        baseline = stationary - (excitation / float(decay)) @ stationary
+        if np.any(baseline < 0):
+            offending = [int(i) for i in np.flatnonzero(baseline < 0)]
+            raise ValueError(
+                f"mu = (I - Gamma) lambda* is negative on components {offending}: "
+                f"{np.round(baseline, 6).tolist()}.  That stationary intensity is not "
+                f"reachable at branching ratio {float(branching_ratio)}"
+            )
+        return cls(baseline=baseline, excitation=excitation, decay=decay)
+
+    def endogenous_fraction(self) -> float:
+        """``1 - mubar / nu``: the share of events that are offspring, not immigrants.
+
+        Not the branching ratio, which it equals only when ``Gamma`` has constant column
+        sums.  See :attr:`branching_ratio`.
+        """
+        return 1.0 - float(self.baseline.sum()) / float(self.stationary_intensity().sum())
+
+    def mean_cluster_size(self) -> float:
+        """Expected descendants of an immigrant, ``mu``-weighted over its type.
+
+        ``1' (I - Gamma)^{-1} e_j`` for a type-``j`` immigrant, averaged with weights
+        ``mu_j / mubar`` because clusters are founded by immigrants.  Certified by
+        ``mubar x mean_cluster_size == nu``.  Not ``1 / (1 - rho)``.
+        """
+        weights = self.baseline / self.baseline.sum()
+        return float(self._descendants() @ weights)
+
+    def signed_endogenous_fraction(self, pressure: np.ndarray) -> float:
+        """Direct offspring carrying the parent's sign, net of those carrying the other.
+
+        With ``p`` the pressure vector of plus and minus ones,
+
+            ((p' Gamma) * p) . lambda* / nu,
+
+        per event.  The elementwise ``* p`` is the whole content: without it the
+        expression collapses to ``p' Gamma lambda*``, which is identically zero whenever
+        the specification is symmetric in the two directions.
+
+        It is *not* a spectral radius.  ``P = diag(p)`` satisfies ``P^2 = I``, so
+        ``P Gamma P`` is similar to ``Gamma`` and has exactly its spectrum; nothing
+        signed can be read off the eigenvalues.  Setting ``p = 1`` recovers
+        :meth:`endogenous_fraction`, which therefore bounds this above, with equality
+        exactly when every offspring inherits its parent's sign.
+        """
+        return self._signed(pressure, self.branching_matrix)
+
+    def signed_descendants(self, pressure: np.ndarray) -> float:
+        """The same contrast over a whole cluster, ``((p' (I-Gamma)^{-1}) * p) . lambda* / nu``.
+
+        Weighted by ``lambda* / nu`` and not by ``mu / mubar``, so it counts the
+        descendants of a *randomly chosen event* where :meth:`mean_cluster_size` counts
+        those of an immigrant.  Two different questions; neither is the other's signed
+        version.
+        """
+        identity = np.eye(self.dimension)
+        return self._signed(pressure, np.linalg.inv(identity - self.branching_matrix))
+
+    def _descendants(self) -> np.ndarray:
+        """``1' (I - Gamma)^{-1}``: expected cluster size by the immigrant's type."""
+        identity = np.eye(self.dimension)
+        return np.linalg.solve(
+            (identity - self.branching_matrix).T, np.ones(self.dimension)
+        )
+
+    def _signed(self, pressure: np.ndarray, matrix: np.ndarray) -> float:
+        pressure = np.asarray(pressure, dtype=float)
+        if pressure.shape != (self.dimension,):
+            raise ValueError(
+                f"pressure must be a {self.dimension}-vector, got shape {pressure.shape}"
+            )
+        stationary = self.stationary_intensity()
+        return float(((pressure @ matrix) * pressure) @ stationary / stationary.sum())
 
     # ---- serialization ---------------------------------------------------------------
 
@@ -216,6 +328,9 @@ class _HawkesState:
         self.rng = rng if isinstance(rng, np.random.Generator) else np.random.default_rng(rng)
         self.time = 0.0
         self.decayed_counts = np.zeros(params.dimension)  # S
+        # The event that crossed the last horizon: drawn, so it has already excited the
+        # state, and owed to whoever asks for the next stretch.
+        self._crossing: tuple[float, int] | None = None
         # Column sums of A: the jump in the *total* intensity caused by each type.
         self._total_jump = params.excitation.sum(axis=0)
         self._baseline_total = float(params.baseline.sum())
@@ -254,10 +369,21 @@ class _HawkesState:
 
         A generator rather than a list: the stream is consumed by a fold, and nothing
         downstream needs it materialised.
+
+        Stopping costs one draw: the event that ends the loop is the first past
+        ``horizon``, and drawing it has already advanced the state and incremented ``S``.
+        It is held rather than discarded, so a warm-up to ``W`` followed by a run to
+        ``T`` yields every event of ``(0, T]`` exactly once.  Discarding it instead loses
+        one event per call, silently and only at the seam.
         """
         while True:
-            time, event_type = self.step()
+            if self._crossing is not None:
+                time, event_type = self._crossing
+                self._crossing = None
+            else:
+                time, event_type = self.step()
             if time > horizon:
+                self._crossing = (time, event_type)
                 return
             yield time, event_type
 
@@ -330,6 +456,82 @@ class OgataThinningHawkes(_HawkesState):
                 return self.time, self._draw_type_and_jump()
             # Rejected: the intensity has decayed further, so the bound tightens.
             bound = accepted
+
+
+def rescaled_excitation(
+    shape: np.ndarray, decay: Decay, branching_ratio: BranchingRatio
+) -> np.ndarray:
+    """``shape``, scaled so that ``rho(A / beta)`` is ``branching_ratio``.
+
+    The spectral radius is homogeneous of degree one in ``A``, so the *shape* of the
+    excitation and the overall endogeneity are independent choices and this is the map
+    between them.  A ladder in ``rho`` is built here and nowhere else.
+    """
+    shape = np.asarray(shape, dtype=float)
+    current = float(np.max(np.abs(np.linalg.eigvals(shape / float(decay)))))
+    if current <= 0:
+        raise ValueError("a shape with no excitation cannot be rescaled to a branching ratio")
+    return shape * (float(branching_ratio) / current)
+
+
+def with_cross_pressure_scaled(
+    shape: np.ndarray, pressure: np.ndarray, cross: float
+) -> np.ndarray:
+    """``shape`` with every opposite-pressure entry multiplied by ``cross``.
+
+    Entry ``(i, j)`` is opposite-pressure when ``p_i != p_j``: a type that pushes the
+    price one way exciting one that pushes it the other.  Turning ``cross`` down leaves
+    the total excitation to be restored by :func:`rescaled_excitation`, so the branching
+    ratio can be held while the *signed* endogenous fraction falls -- which is the only
+    way to vary one without the other.
+
+    At ``cross = 0`` every offspring inherits its parent's sign, and
+    :meth:`HawkesParams.signed_endogenous_fraction` then equals the unsigned one.
+    """
+    shape = np.asarray(shape, dtype=float)
+    pressure = np.asarray(pressure, dtype=float)
+    opposite = np.not_equal.outer(pressure, pressure)
+    return np.where(opposite, shape * float(cross), shape)
+
+
+def intensities_at_events(
+    params: HawkesParams, times: np.ndarray, types: np.ndarray
+) -> np.ndarray:
+    """``lambda`` of every component, read just *before* each event.
+
+    An independent replay, as :func:`compensators_at_events` is, and read pre-jump for
+    the same reason: the intensity that governs an event is the one standing when it
+    arrives, not the one its own arrival produces.
+
+    What this is a benchmark *for* needs care.  ``(lambda_up - lambda_down) / lambdabar``
+    is not the probability contrast of the next event's pressure: the components decay
+    towards ``mu`` while the process waits, so
+
+        P(+) - P(-) = kappa * int_0^inf e^{-beta s} e^{-Lambda(s)} ds,
+        kappa = p' A S,
+
+    a strictly shrunk version of it.  The *sign* survives the shrinkage, but only
+    because ``p' mu = 0``; on an asymmetric specification even that fails.  So
+    ``sign(kappa)`` is the flow-only oracle and the ratio is the instantaneous mark
+    expectation, which is a different quantity and is labelled as one.
+
+    Returns an ``(n, d)`` array whose row ``k`` is ``lambda(times[k]-)``.
+    """
+    times = np.asarray(times, dtype=float)
+    types = np.asarray(types, dtype=int)
+    beta = params.decay
+
+    decayed = np.zeros(params.dimension)
+    previous_time = 0.0
+    out = np.empty((times.size, params.dimension))
+
+    for k, (time, event_type) in enumerate(zip(times, types)):
+        decayed *= np.exp(-beta * (time - previous_time))
+        out[k] = params.baseline + params.excitation @ decayed
+        decayed[event_type] += 1.0
+        previous_time = time
+
+    return out
 
 
 def compensators_at_events(

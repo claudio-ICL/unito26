@@ -26,6 +26,10 @@ __all__ = [
     "ReportedDepth",
     "SweepSize",
     "PriceUnit",
+    "Window",
+    "Horizon",
+    "Decay",
+    "BranchingRatio",
     "TICK_TOLERANCE",
     "MARKET_BUY_PRICE",
     "MARKET_SELL_PRICE",
@@ -70,6 +74,23 @@ SweepSize = NewType("SweepSize", int)
 #: that sits next to other ``int``s in a signature and means something else entirely.
 #: Getting it wrong does not fail -- it rescales every price the session reports.
 PriceUnit = NewType("PriceUnit", int)
+
+#: The lookback of a backward statistic and the reach of a forward one, both in seconds.
+#: They are the ``w`` and the ``h`` of ``OFI_{t,w}`` and of ``P^m_{t+h} - P^m_t``.
+#:
+#: Two floats appearing together in one signature is exactly the swap the ``NewType``s
+#: above exist to prevent, and the house rule forbids forcing keywords instead.
+Window = NewType("Window", float)
+Horizon = NewType("Horizon", float)
+
+#: The two scalars of an exponential-kernel Hawkes specification: the common decay rate
+#: ``beta``, in inverse seconds, and the spectral radius ``rho`` of ``Gamma = A / beta``.
+#:
+#: A construction that rescales a shape to a target branching ratio takes both, and they
+#: are floats of very different meaning: one is a rate, the other a dimensionless number
+#: that must lie below 1.
+Decay = NewType("Decay", float)
+BranchingRatio = NewType("BranchingRatio", float)
 
 #: How far off the grid a currency price may sit before :meth:`TickGrid.to_ticks` rejects
 #: it.  A property of binary floating point, not a per-call choice.

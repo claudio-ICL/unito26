@@ -21,9 +21,9 @@ class TestDeltaStorage:
     def test_delta_table_is_much_smaller_than_dense_snapshots(self):
         sim = simulator(3)
         book = AggregateBook()
-        sim.warm_up(book, horizon=20.0)
+        sim.warm_up(book, horizon=20.0, journal=None)
         messages = []
-        for message in sim.stream(book, horizon=200.0):
+        for message in sim.stream(book, horizon=200.0, journal=None):
             book.apply(message, record=False)
             messages.append(message)
 

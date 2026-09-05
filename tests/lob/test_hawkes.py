@@ -154,3 +154,157 @@ class TestAgreementAndClustering:
 
         assert fano_factor(clustered) > 2.0
         assert fano_factor(control) == pytest.approx(1.0, abs=0.2)
+
+
+class TestTheBranchingStructure:
+    """The multivariate quantities that the scalar formulae get wrong."""
+
+    def test_the_endogenous_fraction_is_not_the_branching_ratio(self):
+        params = four_type_params()
+        assert params.endogenous_fraction() != pytest.approx(params.branching_ratio, rel=1e-3)
+
+    def test_the_two_coincide_under_constant_column_sums(self):
+        """The hypothesis, made to hold: 1' is then the left Perron vector of Gamma."""
+        excitation = np.array([[0.6, 0.2], [0.4, 0.8]])
+        params = HawkesParams(baseline=np.array([1.0, 2.0]), excitation=excitation, decay=2.0)
+        assert params.endogenous_fraction() == pytest.approx(params.branching_ratio)
+        assert params.mean_cluster_size() == pytest.approx(1 / (1 - params.branching_ratio))
+
+    def test_the_mean_cluster_size_accounts_for_every_event(self):
+        """``mubar x mean_cluster_size == nu`` -- every event belongs to one cluster."""
+        params = four_type_params()
+        assert params.baseline.sum() * params.mean_cluster_size() == pytest.approx(
+            params.stationary_intensity().sum()
+        )
+
+
+class TestTheStationaryConstructor:
+    def test_it_rescales_a_shape_whose_own_radius_is_unusable(self):
+        """The intermediate is supercritical, which ``__post_init__`` would refuse."""
+        shape = 10.0 * np.ones((2, 2))
+        decay = 2.0
+        assert np.max(np.abs(np.linalg.eigvals(shape / decay))) > 1
+        params = HawkesParams.from_stationary_intensity(
+            np.array([2.0, 2.0]), shape, decay, 0.7
+        )
+        assert params.branching_ratio == pytest.approx(0.7)
+        assert params.stationary_intensity() == pytest.approx(np.array([2.0, 2.0]))
+
+    def test_it_refuses_an_unreachable_stationary_intensity(self):
+        """A component that is heavily excited and small in share is the one that binds."""
+        shape = np.array([[1.0, 4.0], [1.0, 1.0]])
+        with pytest.raises(ValueError, match=r"negative on components \[0\]"):
+            HawkesParams.from_stationary_intensity(np.array([0.1, 10.0]), shape, 2.0, 0.9)
+
+
+class TestTheSignedContrasts:
+    PRESSURE = np.array([1.0, -1.0, 1.0, -1.0])
+
+    def test_it_is_not_a_spectral_radius(self):
+        """``P Gamma P`` is similar to ``Gamma``, so nothing signed is in the spectrum."""
+        params = four_type_params()
+        signed = np.diag(self.PRESSURE) @ params.branching_matrix @ np.diag(self.PRESSURE)
+        assert np.max(np.abs(np.linalg.eigvals(signed))) == pytest.approx(
+            params.branching_ratio
+        )
+        assert params.signed_endogenous_fraction(self.PRESSURE) != pytest.approx(
+            params.branching_ratio, rel=1e-3
+        )
+
+    def test_the_unsigned_fraction_bounds_it(self):
+        params = four_type_params()
+        assert params.signed_endogenous_fraction(self.PRESSURE) < params.endogenous_fraction()
+        assert params.signed_endogenous_fraction(np.ones(4)) == pytest.approx(
+            params.endogenous_fraction()
+        )
+
+    def test_they_coincide_when_no_offspring_crosses(self):
+        """At ``cross = 0`` every offspring inherits its parent's sign, so the signed
+        contrast has nothing to subtract."""
+        from unito26.lob.hawkes import with_cross_pressure_scaled
+
+        base = four_type_params()
+        shape = with_cross_pressure_scaled(base.excitation, self.PRESSURE, 0.0)
+        params = HawkesParams.from_stationary_intensity(
+            base.stationary_intensity(), shape, base.decay, base.branching_ratio
+        )
+        assert params.signed_endogenous_fraction(self.PRESSURE) == pytest.approx(
+            params.endogenous_fraction()
+        )
+
+    def test_the_cross_ladder_holds_the_total_branching(self):
+        from unito26.lob.hawkes import with_cross_pressure_scaled
+
+        base = four_type_params()
+        previous = base.signed_endogenous_fraction(self.PRESSURE)
+        for cross in (0.75, 0.5, 0.25):
+            shape = with_cross_pressure_scaled(base.excitation, self.PRESSURE, cross)
+            rung = HawkesParams.from_stationary_intensity(
+                base.stationary_intensity(), shape, base.decay, base.branching_ratio
+            )
+            assert rung.branching_ratio == pytest.approx(base.branching_ratio)
+            assert rung.signed_endogenous_fraction(self.PRESSURE) > previous
+            previous = rung.signed_endogenous_fraction(self.PRESSURE)
+
+    def test_descendants_are_weighted_by_the_stationary_intensity(self):
+        """``signed_descendants`` counts the descendants of a random *event*, weighting by
+        ``lambda*/nu``; ``mean_cluster_size`` counts those of an immigrant, weighting by
+        ``mu/mubar``.  Two questions, and neither is the other's signed version."""
+        params = four_type_params()
+        descendants = np.linalg.solve(
+            (np.eye(4) - params.branching_matrix).T, np.ones(4)
+        )
+        stationary = params.stationary_intensity()
+        assert params.signed_descendants(np.ones(4)) == pytest.approx(
+            descendants @ stationary / stationary.sum()
+        )
+        assert params.mean_cluster_size() == pytest.approx(
+            descendants @ params.baseline / params.baseline.sum()
+        )
+
+    def test_the_two_weightings_part_company_where_the_shape_is_lopsided(self):
+        """Equal here only by accident of a near-symmetric example."""
+        params = HawkesParams(
+            baseline=np.array([0.02, 4.0]),
+            excitation=np.array([[3.0, 1.0], [3.0, 0.2]]),
+            decay=4.0,
+        )
+        assert params.signed_descendants(np.ones(2)) == pytest.approx(22.02, rel=1e-3)
+        assert params.mean_cluster_size() == pytest.approx(10.12, rel=1e-3)
+
+
+class TestTheReplayedIntensity:
+    def test_it_reproduces_the_state_the_simulator_ran_on(self):
+        """Read pre-jump, as ``compensators_at_events`` reads it: the intensity that
+        governs an event is the one standing when it arrives."""
+        from unito26.lob.hawkes import intensities_at_events
+
+        simulator = ExponentialHawkes(four_type_params(), rng=17)
+        times, types, live = [], [], []
+        for _ in range(400):
+            live.append(simulator.intensities.copy())
+            time, event_type = simulator.step()
+            times.append(time)
+            types.append(event_type)
+        # ``intensities`` above is read *before* the step decays the state to the event
+        # time, so replay it the same way: decay from the previous event, then read.
+        replayed = intensities_at_events(four_type_params(), np.array(times), np.array(types))
+        decayed = np.exp(-four_type_params().decay * np.diff([0.0] + times))
+        expected = np.array(live)
+        baseline = four_type_params().baseline
+        assert replayed == pytest.approx(
+            baseline + (expected - baseline) * decayed[:, None]
+        )
+
+
+class TestTheSeam:
+    def test_the_crossing_event_is_not_swallowed(self):
+        """``events`` must draw one event past the horizon to know it is past it.  That
+        draw has already excited the state, so discarding it loses one event per call."""
+        whole = ExponentialHawkes(four_type_params(), rng=5)
+        in_one = list(whole.events(40.0))
+
+        split = ExponentialHawkes(four_type_params(), rng=5)
+        in_two = list(split.events(10.0)) + list(split.events(40.0))
+
+        assert in_two == in_one

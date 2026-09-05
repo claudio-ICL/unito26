@@ -59,8 +59,8 @@ class TestTheTwoRoutesAgree:
             config.example_order_flow_params(), config.example_mark_params(), 10000, rng=5
         )
         book = AggregateBook()
-        simulator.warm_up(book, horizon=20.0)
-        messages = list(simulator.stream(book, horizon=200.0))
+        simulator.warm_up(book, horizon=20.0, journal=None)
+        messages = list(simulator.stream(book, horizon=200.0, journal=None))
         session = MarketSession.from_occupied_levels(
             book_cls.for_prices([m.price for m in messages]),
             messages, DEPTH, SPEC, PRICE_UNIT, True,

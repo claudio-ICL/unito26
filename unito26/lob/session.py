@@ -42,11 +42,12 @@ from unito26.lob.messages import (
     PriceUnit,
     ReportedDepth,
     SweepSize,
+    Window,
 )
 from unito26.lob.orderbook import AggregateBook, SideStatistics, _sweep_cost
-from unito26.lob.statistics import SessionStatistics, _whole
+from unito26.lob.statistics import SessionStatistics, _span, _whole
 
-__all__ = ["run", "MarketSession"]
+__all__ = ["run", "window_start", "rolling_sum", "MarketSession"]
 
 def _quotient(numerator: np.ndarray, denominator: np.ndarray) -> np.ndarray:
     """``numerator / denominator`` where the denominator is positive, NaN elsewhere.
@@ -420,7 +421,7 @@ def _frame_order_flow(
 # that use it.
 
 
-def _window_start(times: np.ndarray, window: int) -> np.ndarray:
+def window_start(times: np.ndarray, window: float) -> np.ndarray:
     """First index inside ``(t - window, t]``, for every ``t`` in ``times``.
 
     ``side="right"`` puts an event exactly ``window`` old outside the window, and events
@@ -430,13 +431,17 @@ def _window_start(times: np.ndarray, window: int) -> np.ndarray:
     is what a hand-check at a repeated timestamp -- of which LOBSTER has many -- will
     otherwise fail to reproduce.
 
-    ``window`` is an integer, so ``t - window`` is exact at LOBSTER's seconds-after-
-    midnight offsets and the boundary is where it says it is.
+    Exactness at the boundary needs a whole ``window``: ``t - window`` is then exact at
+    LOBSTER's seconds-after-midnight offsets, and the boundary is where it says it is.
+    The declared statistics keep that restriction, a window there being part of a column's
+    name (:func:`unito26.lob.statistics._whole`).  A float window is admitted for the
+    long-form results, where a window is a value rather than a name, at the cost of some
+    ``4e-12`` of slack that can land on the wrong side of an exact tie.
     """
     return np.searchsorted(times, times - window, side="right")
 
 
-def _rolling_sum(start: np.ndarray, values: np.ndarray) -> np.ndarray:
+def rolling_sum(start: np.ndarray, values: np.ndarray) -> np.ndarray:
     """Sum of ``values`` over each window, by differencing a cumulative sum.
 
     Exact rather than merely accurate, which is why this is preferred to a sliding window:
@@ -457,17 +462,17 @@ def _with_rolling(
     undefined = np.isnan(flow).astype(float)
     measured = np.isfinite(depth).astype(float)
     for window in spec.windows:
-        start = _window_start(clock, window)
-        missing = _rolling_sum(start, undefined)
+        start = window_start(clock, window)
+        missing = rolling_sum(start, undefined)
         # Two sums rather than one: a NaN inside a cumulative sum poisons every window
         # after it, where the count confines it to the windows that contain it.
         columns[f"OrderFlowImbalance{window}"] = np.where(
-            missing > 0, np.nan, _rolling_sum(start, np.nan_to_num(flow))
+            missing > 0, np.nan, rolling_sum(start, np.nan_to_num(flow))
         )
         columns[f"OrderFlowImbalance{window}Covered"] = (missing == 0).astype(float)
-        events = _rolling_sum(start, measured)
+        events = rolling_sum(start, measured)
         columns[f"AverageDepth{window}"] = _quotient(
-            _rolling_sum(start, np.nan_to_num(depth)), 2 * events
+            rolling_sum(start, np.nan_to_num(depth)), 2 * events
         )
     return columns
 
@@ -479,14 +484,14 @@ def _with_vwap(
     columns = {name: rows[:, i] for i, name in enumerate(spec.trade_row_schema().columns)}
     volume, signed, value = (columns[n] for n in ("Volume", "SignedVolume", "TradedValue"))
     for window in spec.windows:
-        start = _window_start(clock, window)
+        start = window_start(clock, window)
         for label, taken in (
             ("", volume > 0), ("Buy", signed > 0), ("Sell", signed < 0)
         ):
-            traded = _rolling_sum(start, np.where(taken, volume, 0.0))
+            traded = rolling_sum(start, np.where(taken, volume, 0.0))
             # A window that traded nothing has no price.  Not zero, which is a price.
             columns[f"VWAP{label}{window}"] = _quotient(
-                _rolling_sum(start, np.where(taken, value, 0.0)), traded
+                rolling_sum(start, np.where(taken, value, 0.0)), traded
             )
     return columns
 
@@ -982,13 +987,39 @@ class MarketSession:
             )
         window = _whole("window", window)
         clock = self.lobster_book.index.to_numpy(dtype=float)
-        start = _window_start(clock, window)
-        traded = _rolling_sum(start, self.trades["Volume"].to_numpy(dtype=float))
-        value = _rolling_sum(start, self.trades["TradedValue"].to_numpy(dtype=float))
+        start = window_start(clock, window)
+        traded = rolling_sum(start, self.trades["Volume"].to_numpy(dtype=float))
+        value = rolling_sum(start, self.trades["TradedValue"].to_numpy(dtype=float))
         return pd.Series(
             _quotient(value, traded),
             index=self.lobster_book.index,
             name=f"VWAP{window}",
+        )
+
+    def order_flow_imbalance(self, window: Window) -> pd.Series:
+        """``OFI`` over ``(t - window, t]``, for a window the specification did not name.
+
+        Stands to the ``OrderFlowImbalance{w}`` columns as :meth:`vwap` stands to the
+        ``VWAP{w}`` ones, and differs from them in one way only: ``window`` is seconds
+        and need not be whole.  The declared columns cannot admit that, a window being
+        part of their name there; a study that sweeps ``w`` over a decade needs it.
+
+        The NaN rule is the columns' rule, and it is the one that matters.  ``e_n`` is
+        undefined on the first row of a session and wherever a side is empty -- and on
+        the row *after* one, ``_order_flow_contribution`` reading both states -- so a
+        window containing any such row has no sum, rather than a sum over the rest.
+        Counting the undefined rows and masking is not the same as summing with NaNs:
+        a NaN inside a cumulative sum poisons every window after it.
+        """
+        window = _span("window", window)
+        clock = self.lobster_book.index.to_numpy(dtype=float)
+        flow = self.stats["OrderFlowContribution"].to_numpy(dtype=float)
+        start = window_start(clock, window)
+        missing = rolling_sum(start, np.isnan(flow).astype(float))
+        return pd.Series(
+            np.where(missing > 0, np.nan, rolling_sum(start, np.nan_to_num(flow))),
+            index=self.lobster_book.index,
+            name=f"OrderFlowImbalance{window:g}",
         )
 
     def column_sliced_imbalance(self, n: GridDepth) -> pd.Series:
