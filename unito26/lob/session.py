@@ -1,13 +1,18 @@
-"""The fold: driving a book with a stream of messages, and recording what happened.
+"""The session: the time series of book states, and the statistics read off it.
 
-A book holds *one* state.  The time series of states is made here, by folding a stream
-through a book, and it comes out as a :class:`MarketSession` -- a LOBSTER-shaped frame
-plus the statistics read off it.
+A book holds *one* state.  The series of states is a :class:`MarketSession` -- a
+LOBSTER-shaped frame plus what follows from it -- and this module is that type and the
+ways of building one.  Three fold a stream of messages through a book, differing in what
+they ask the book for after every message; a fourth reads a session that was recorded
+elsewhere, from a delta log or from a LOBSTER file pair, and folds nothing.
 
-Three recorders build the same session, differing in what they ask the book for after
-every message, and the statistics can be computed either during the fold or afterwards
-from the finished frame.  The frame and the book do not share an indexing: the book knows
-the price grid, the frame knows only the levels it reports, and
+The statistics are computed twice over: once during a fold, from a live book, and once
+from the finished frame.  The two routes are written beside each other because the claim
+that they agree is checked by reading them against each other, and asserted in
+``tests/lob/test_market_session.py``.
+
+The frame and the book do not share an indexing: the book knows the price grid, the frame
+knows only the levels it reports, and
 ``documentation/grid-levels-and-lobster-levels.md`` is the whole of the difference.
 """
 
@@ -24,6 +29,7 @@ import pandas as pd
 import pandera.pandas as pa
 
 from unito26.lob import frames
+from unito26.lob.delta_log import DeltaLog
 from unito26.lob.messages import (
     BUY,
     SELL,
@@ -36,7 +42,7 @@ from unito26.lob.messages import (
 )
 from unito26.lob.orderbook import AggregateBook, SideStatistics, _sweep_cost
 
-__all__ = ["run", "DeltaLog", "SessionStatistics", "MarketSession"]
+__all__ = ["run", "SessionStatistics", "MarketSession"]
 
 #: The gap statistics, which are the same for every session.  Last in a statistics row,
 #: because ``_write_statistics`` fills them with one slice assignment from the tail.
@@ -438,7 +444,65 @@ def _write_trades(
     out[row] = (traded, direction * traded, book.last_traded_value)
 
 
-# ---- the rolling reduction -------------------------------------------------------------
+# ---- the same two statistics, read off a frame -----------------------------------------
+
+
+def _frame_sweep_cost(
+    prices: np.ndarray,
+    sizes: np.ndarray,
+    mid: np.ndarray,
+    size: SweepSize,
+    direction: int,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Sweep cost per row, and whether the reported levels filled the size.
+
+    ``before`` is the size resting strictly above each level, and it is computed from the
+    sizes **unmasked**.  That is what makes a padded level transparent: its size is zero,
+    so it consumes nothing and the level below it still sees the right running total.
+    Masking the sizes the way the prices are masked looks tidier and sends ``before`` to
+    NaN for every level under a padded one.
+
+    The ``where`` on the value is load-bearing for the mirror-image reason: a padded level
+    has size 0 and price NaN, and ``0 * nan`` is NaN, silently and without a warning.
+    """
+    before = np.cumsum(sizes, axis=1) - sizes
+    taken = np.clip(size - before, 0.0, sizes)
+    filled = taken.sum(1) >= size
+    value = np.where(taken > 0, taken * prices, 0.0).sum(1)
+    return np.where(filled, direction * (value / size - mid), np.nan), filled
+
+
+def _frame_order_flow(
+    bid_price: np.ndarray, bid_size: np.ndarray,
+    ask_price: np.ndarray, ask_size: np.ndarray,
+) -> np.ndarray:
+    """``e_n`` from consecutive touches.  See :func:`_order_flow_contribution`.
+
+    The mask is not implied by the formula and has to be written: a padded touch gives a
+    NaN price, ``NaN >= NaN`` is False, so both indicators are False and the expression
+    evaluates to a perfectly ordinary zero where the event is undefined.
+    """
+    contribution = np.full(len(bid_price), np.nan)
+    if len(bid_price) < 2:
+        return contribution
+    now, before = slice(1, None), slice(None, -1)
+    bid = (
+        (bid_price[now] >= bid_price[before]) * bid_size[now]
+        - (bid_price[now] <= bid_price[before]) * bid_size[before]
+    )
+    ask = (
+        (ask_price[now] <= ask_price[before]) * ask_size[now]
+        - (ask_price[now] >= ask_price[before]) * ask_size[before]
+    )
+    known = (
+        np.isfinite(bid_price[now]) & np.isfinite(bid_price[before])
+        & np.isfinite(ask_price[now]) & np.isfinite(ask_price[before])
+    )
+    contribution[1:] = np.where(known, bid - ask, np.nan)
+    return contribution
+
+
+# ---- the windows, shared by both routes -------------------------------------------------
 #
 # A window is a reduction over a recorded series, not a statistic of the book, so it is
 # made once here rather than carried through the fold.  Every rolling column is one
@@ -515,143 +579,6 @@ def _with_vwap(
                 _rolling_sum(start, np.where(taken, value, 0.0)), traded
             )
     return columns
-
-
-# ---- the same two statistics, read off a frame -----------------------------------------
-
-
-def _frame_sweep_cost(
-    prices: np.ndarray,
-    sizes: np.ndarray,
-    mid: np.ndarray,
-    size: SweepSize,
-    direction: int,
-) -> tuple[np.ndarray, np.ndarray]:
-    """Sweep cost per row, and whether the reported levels filled the size.
-
-    ``before`` is the size resting strictly above each level, and it is computed from the
-    sizes **unmasked**.  That is what makes a padded level transparent: its size is zero,
-    so it consumes nothing and the level below it still sees the right running total.
-    Masking the sizes the way the prices are masked looks tidier and sends ``before`` to
-    NaN for every level under a padded one.
-
-    The ``where`` on the value is load-bearing for the mirror-image reason: a padded level
-    has size 0 and price NaN, and ``0 * nan`` is NaN, silently and without a warning.
-    """
-    before = np.cumsum(sizes, axis=1) - sizes
-    taken = np.clip(size - before, 0.0, sizes)
-    filled = taken.sum(1) >= size
-    value = np.where(taken > 0, taken * prices, 0.0).sum(1)
-    return np.where(filled, direction * (value / size - mid), np.nan), filled
-
-
-def _frame_order_flow(
-    bid_price: np.ndarray, bid_size: np.ndarray,
-    ask_price: np.ndarray, ask_size: np.ndarray,
-) -> np.ndarray:
-    """``e_n`` from consecutive touches.  See :func:`_order_flow_contribution`.
-
-    The mask is not implied by the formula and has to be written: a padded touch gives a
-    NaN price, ``NaN >= NaN`` is False, so both indicators are False and the expression
-    evaluates to a perfectly ordinary zero where the event is undefined.
-    """
-    contribution = np.full(len(bid_price), np.nan)
-    if len(bid_price) < 2:
-        return contribution
-    now, before = slice(1, None), slice(None, -1)
-    bid = (
-        (bid_price[now] >= bid_price[before]) * bid_size[now]
-        - (bid_price[now] <= bid_price[before]) * bid_size[before]
-    )
-    ask = (
-        (ask_price[now] <= ask_price[before]) * ask_size[now]
-        - (ask_price[now] >= ask_price[before]) * ask_size[before]
-    )
-    known = (
-        np.isfinite(bid_price[now]) & np.isfinite(bid_price[before])
-        & np.isfinite(ask_price[now]) & np.isfinite(ask_price[before])
-    )
-    contribution[1:] = np.where(known, bid - ask, np.nan)
-    return contribution
-
-
-# ---- a replay recorded sparsely ------------------------------------------------------
-
-
-@dataclass(frozen=True, slots=True)
-class DeltaLog:
-    """A replay recorded as level changes: the opening state, and what moved after it.
-
-    A delta names only the levels a message changed, so the log determines the session
-    relative to the state the replay started from; the opening book is part of the
-    record and not an optional extra.
-
-    ``times`` carries one entry per message, including the messages that changed nothing
-    -- a withdrawal against an empty level produces no delta, so message boundaries
-    cannot be recovered from ``entries`` by counting.
-    """
-
-    opening_bids: dict[int, int]
-    opening_asks: dict[int, int]
-    times: list[float]
-    entries: list[tuple[int, float, LevelDelta]]
-    """``(index into times, time, delta)``, in message order."""
-
-    @classmethod
-    def record(cls, book: AggregateBook, messages: Iterable[Message]) -> "DeltaLog":
-        opening_bids = dict(book.levels_map(BUY))
-        opening_asks = dict(book.levels_map(SELL))
-        times: list[float] = []
-        entries: list[tuple[int, float, LevelDelta]] = []
-        for sequence, message in enumerate(messages):
-            result = book.apply(message, record=True)
-            times.append(message.time)
-            entries += [(sequence, message.time, delta) for delta in result.deltas]
-        return cls(opening_bids, opening_asks, times, entries)
-
-    @property
-    def prices(self) -> list[int]:
-        """Every price the log touches, for the books that must be sized in advance."""
-        return (
-            list(self.opening_bids)
-            + list(self.opening_asks)
-            + [delta.price for _, _, delta in self.entries]
-        )
-
-    def opening_book(self, book_cls: type[AggregateBook], strict: bool) -> AggregateBook:
-        """A book in the state the recorded replay began from, sized for the whole log."""
-        book = book_cls.for_prices(self.prices, strict)
-        for direction, levels in ((BUY, self.opening_bids), (SELL, self.opening_asks)):
-            for price, resting in levels.items():
-                book.set_size(direction, price, resting)
-        return book
-
-    def to_table(self):
-        """Columnar table of the entries: ``(seq, time, side, price, resting)``.
-
-        One row per level *change*, against one row per *message* for the dense form.
-        The saving comes from most messages touching a single level, and from the
-        ``price`` column compressing well, since consecutive changes cluster around the
-        touch.
-        """
-        import pyarrow
-
-        sequences, times, sides, prices, resting = [], [], [], [], []
-        for sequence, time, delta in self.entries:
-            sequences.append(sequence)
-            times.append(time)
-            sides.append(delta.side)
-            prices.append(delta.price)
-            resting.append(delta.resting)
-        return pyarrow.table(
-            {
-                "seq": pyarrow.array(sequences, pyarrow.int64()),
-                "time": pyarrow.array(times, pyarrow.float64()),
-                "side": pyarrow.array(sides, pyarrow.int8()),
-                "price": pyarrow.array(prices, pyarrow.int32()),
-                "resting": pyarrow.array(resting, pyarrow.int32()),
-            }
-        )
 
 
 # ---- the session ---------------------------------------------------------------------

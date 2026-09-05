@@ -7,7 +7,7 @@ Where they disagree, code that confuses them does not fail — it computes a dif
 quantity and reports it under the same name.
 
 This file is the reference for that difference, and for the machinery in
-`unito26.lob.orderbook` and `unito26.lob.replay` that exists to handle it.
+`unito26.lob.orderbook` and `unito26.lob.session` that exists to handle it.
 
 ---
 

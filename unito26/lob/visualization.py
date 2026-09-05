@@ -386,7 +386,7 @@ def imbalance_figure(session, n, window: slice):
 
     Both series stay in ``[-1, 1]`` and both move with the market.  They coincide while
     the reported levels are contiguous and separate as soon as they are not; the second
-    is :meth:`~unito26.lob.replay.MarketSession.column_sliced_imbalance`, which says what
+    is :meth:`~unito26.lob.session.MarketSession.column_sliced_imbalance`, which says what
     it computes.
     """
     import plotly.graph_objects as go

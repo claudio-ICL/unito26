@@ -14,8 +14,9 @@ from unito26.lob.messages import (
     BUY, SELL, GridDepth, ReportedDepth, SweepSize, limit_order, market_order,
 )
 from unito26.lob.orderbook import AXIS_B_VARIANTS, AggregateBook
-from unito26.lob.replay import (
-    DeltaLog, MarketSession, SessionStatistics, _book_buffer, _write_occupied_levels,
+from unito26.lob.delta_log import DeltaLog
+from unito26.lob.session import (
+    MarketSession, SessionStatistics, _book_buffer, _write_occupied_levels,
 )
 from unito26.lob.simulate import OrderFlowSimulator
 

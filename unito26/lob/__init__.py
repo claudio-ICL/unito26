@@ -7,9 +7,12 @@ The strand is built as a ladder of increasing complexity, and the modules follow
 ``orderbook``
     both representations of the book -- the aggregate ``{price: size}`` one and the
     order-level, identity-carrying one, in a single file.
-``replay``
-    the fold that drives a book with a stream of messages, and the ``MarketSession`` it
-    produces -- a LOBSTER-shaped frame plus the statistics read off it.
+``delta_log``
+    a session recorded as the level changes rather than as the states, and the book
+    rebuilt from them.
+``session``
+    the ``MarketSession`` -- a LOBSTER-shaped frame plus the statistics read off it --
+    and the ways of building one: two folds through a book, and a delta log replayed.
 ``frames``
     the serialization protocol the parameter classes implement, and LOBSTER's vocabulary.
 ``config``

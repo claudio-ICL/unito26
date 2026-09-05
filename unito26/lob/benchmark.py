@@ -21,7 +21,7 @@ from dataclasses import dataclass
 from unito26.lob import config
 from unito26.lob.messages import Message, ReportedDepth, is_market_price
 from unito26.lob.orderbook import AggregateBook
-from unito26.lob.replay import MarketSession, SessionStatistics, run
+from unito26.lob.session import MarketSession, SessionStatistics, run
 from unito26.lob.simulate import MarkParams, OrderFlowSimulator
 
 __all__ = [
@@ -98,9 +98,9 @@ def time_fold(
     online_statistics: bool,
     repeat: int,
 ) -> float:
-    """Seconds to fold the session into a :class:`~unito26.lob.replay.MarketSession`.
+    """Seconds to fold the session into a :class:`~unito26.lob.session.MarketSession`.
 
-    What :func:`time_variants` measures is :func:`~unito26.lob.replay.run`, which records
+    What :func:`time_variants` measures is :func:`~unito26.lob.session.run`, which records
     no states at all.  The statistics are paid per message on top of that, and this is
     where the difference between the two is read.  A fresh book each time, since a fold
     leaves one full.

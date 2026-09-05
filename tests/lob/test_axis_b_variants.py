@@ -29,7 +29,7 @@ from unito26.lob.orderbook import (
     TickArrayBook,
 )
 from unito26.lob import config
-from unito26.lob.replay import run
+from unito26.lob.session import run
 from unito26.lob.simulate import OrderFlowSimulator
 from unito26.lob.worked_examples import CATALOGUE, check, reflect
 

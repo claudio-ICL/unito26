@@ -14,8 +14,9 @@ from unito26.lob.messages import (
     BUY, SELL, GridDepth, ReportedDepth, SweepSize, limit_order, market_order, withdrawal,
 )
 from unito26.lob.orderbook import AXIS_B_VARIANTS, AggregateBook
-from unito26.lob.replay import (
-    DeltaLog, MarketSession, SessionStatistics, _rolling_sum, _window_start,
+from unito26.lob.delta_log import DeltaLog
+from unito26.lob.session import (
+    MarketSession, SessionStatistics, _rolling_sum, _window_start,
 )
 
 LEVELS = (GridDepth(1), GridDepth(2))

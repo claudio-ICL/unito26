@@ -41,8 +41,8 @@ It is produced by the driver, which taps the fold at whatever resolution is want
 | leg | where |
 | --- | --- |
 | formulae | §1–§2, §6 of the notation file |
-| code | `unito26.lob.messages` (`Message`, `TickGrid`); `unito26.lob.orderbook.AggregateBook.apply`; `unito26.lob.replay.run` and `replay` |
-| tests | `tests/lob/test_aggregate_book.py::TestConfiguration`; `tests/lob/test_replay_and_simulate.py::TestTaps` |
+| code | `unito26.lob.messages` (`Message`, `TickGrid`); `unito26.lob.orderbook.AggregateBook.apply`; `unito26.lob.session.run` |
+| tests | `tests/lob/test_aggregate_book.py::TestConfiguration`; `tests/lob/test_fold_and_simulate.py::TestSimulatedFlow` |
 
 Two conventions earn their place in the code rather than in prose.
 $d$ is an `int`, never a string and never a bool,
@@ -173,7 +173,7 @@ because every index shifts by $\delta P^a_t/\tau$, exactly as in §5.
 | --- | --- |
 | formulae | §5 and §6 of the notation file |
 | code | `AggregateBook.submit` (both parts), `AggregateBook.withdraw`, `messages.LevelDelta` |
-| tests | `tests/lob/test_aggregate_book.py::TestCaseB` (walks the book, residual inside the spread, index shift, empty levels), `::TestExhaustedSide`, `::TestMarketOrders`; `tests/lob/test_replay_and_simulate.py::TestDeltaStorage` |
+| tests | `tests/lob/test_aggregate_book.py::TestCaseB` (walks the book, residual inside the spread, index shift, empty levels), `::TestExhaustedSide`, `::TestMarketOrders`; `tests/lob/test_delta_log.py::TestDeltaStorage` |
 
 The worked examples are a catalogue rather than a single fixture,
 and it is indexed by the branch of the update rule each one pins,

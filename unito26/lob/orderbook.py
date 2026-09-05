@@ -8,7 +8,7 @@ much size is ahead of mine, whose fill was that -- and that is the order-level b
 which lives elsewhere.
 
 Every class here is a **mutable fold accumulator**: one state, the current one, with no
-history and no time index.  The time series is the business of :mod:`unito26.lob.replay`.
+history and no time index.  The time series is the business of :mod:`unito26.lob.session`.
 
 The faster variants change *only* how the best price is found; the matching logic is
 written once, in :class:`AggregateBook`, and inherited unchanged.  That isolation is
