@@ -27,6 +27,14 @@ The strand is built as a ladder of increasing complexity, and the modules follow
     multivariate Hawkes order flow: the timing and type of events.
 ``simulate``
     marks -- turning an event type into an actual order, given the book.
+``imbalance_regression``
+    the two regressions of the mid-price change on the imbalances -- the contemporaneous
+    one, which is a statement about price formation, and the predictive one, which is a
+    statement about forecasting -- with the alignment that keeps them apart.
+``estimation``
+    the estimators and their uncertainty: least squares, HAC, the block bootstrap over
+    blocks of time, and the lattice-aware scores that replace ``R^2`` on an outcome that
+    does not move on nine rows in ten.  Knows nothing about a book.
 ``lobster``
     the LOBSTER sample files: the named pair, the tick-size to price-unit conversion,
     the schema-declared loaders and the windowed aligned read.
