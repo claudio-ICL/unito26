@@ -15,13 +15,14 @@ from __future__ import annotations
 
 import numbers
 from dataclasses import dataclass, field
+from enum import Enum
 
 import pandera.pandas as pa
 
 from unito26.lob import frames
 from unito26.lob.messages import GridDepth, SweepSize
 
-__all__ = ["StatisticColumn", "RowLayout", "SessionStatistics"]
+__all__ = ["Dependence", "StatisticColumn", "RowLayout", "SessionStatistics"]
 
 #: The gap statistics, which are the same for every session.  Last in a statistics row,
 #: because ``_write_statistics`` fills them with one slice assignment from the tail.
@@ -50,17 +51,34 @@ def _whole(name: str, value) -> int:
     return int(value)
 
 
+class Dependence(Enum):
+    """What a statistic is a function of, which decides what regrouping the rows does to it.
+
+    Intrinsic to the statistic and not to any particular transformation: the spread is a
+    function of one configuration whoever asks and whatever is done to the frame.  What
+    makes it worth declaring is that a session read from a file and a session folded from
+    messages disagree about what a *row* is, so any comparison between them has to be stated
+    per dependence -- see ``unito26.lob.lobster_session.coarsening_report``.
+    """
+
+    CONFIGURATION = "one book state"
+    INCREMENT = "two consecutive book states"
+    EXTENSIVE = "additive over the rows it is summed with"
+    WINDOW = "a reduction over the rows in a window"
+
+
 @dataclass(frozen=True, slots=True)
 class StatisticColumn:
-    """One column of a statistics frame, and whether it is a coverage flag.
+    """One column of a statistics frame: what it depends on, and whether it is a flag.
 
-    The flag is a field rather than a suffix on the name.  Every coverage column happens to
+    Both are fields rather than facts about the spelling.  Every coverage column happens to
     end in ``Covered``, but a name is not a type: reading the kind of a column out of its
     spelling makes the schema depend on a convention nothing enforces.
     """
 
     name: str
     covered: bool
+    dependence: Dependence
 
     def column(self) -> pa.Column:
         """A flag is 0 or 1 and always determined; a value may be NaN where it is not."""
@@ -69,12 +87,12 @@ class StatisticColumn:
         return pa.Column(float, nullable=True, coerce=True)
 
 
-def _value(name: str) -> StatisticColumn:
-    return StatisticColumn(name, False)
+def _value(name: str, dependence: Dependence) -> StatisticColumn:
+    return StatisticColumn(name, False, dependence)
 
 
-def _flag(name: str) -> StatisticColumn:
-    return StatisticColumn(name, True)
+def _flag(name: str, dependence: Dependence) -> StatisticColumn:
+    return StatisticColumn(name, True, dependence)
 
 
 def _row_schema(declaration: tuple[StatisticColumn, ...]) -> pa.DataFrameSchema:
@@ -84,11 +102,13 @@ def _row_schema(declaration: tuple[StatisticColumn, ...]) -> pa.DataFrameSchema:
     )
 
 
-def _frame_schema(declaration: tuple[StatisticColumn, ...]) -> pa.DataFrameSchema:
-    """An assembled frame, on the session clock."""
+def _frame_schema(
+    declaration: tuple[StatisticColumn, ...], index: pa.Index
+) -> pa.DataFrameSchema:
+    """An assembled frame, on whichever index its session is laid out over."""
     return pa.DataFrameSchema(
         {column.name: column.column() for column in declaration},
-        index=frames.session_index(),
+        index=index,
         strict=True,
         ordered=True,
     )
@@ -168,37 +188,49 @@ class SessionStatistics:
         them carrying the buffer's zero background, and would put unwritten columns in the
         middle of the row that ``_write_statistics`` fills by slice.
         """
-        columns = [_value("Spread"), _value("MidPrice"), _value("MicroPrice")]
+        one = Dependence.CONFIGURATION
+        columns = [_value("Spread", one), _value("MidPrice", one), _value("MicroPrice", one)]
         for n in self.imbalance_levels:
-            columns += [_value(f"QueueImbalance{n}"), _flag(f"QueueImbalance{n}Covered")]
+            columns += [
+                _value(f"QueueImbalance{n}", one), _flag(f"QueueImbalance{n}Covered", one)
+            ]
         for size in self.sweep_sizes:
             for side in ("Buy", "Sell"):
                 columns += [
-                    _value(f"SweepCost{side}{size}"), _flag(f"SweepCost{side}{size}Covered")
+                    _value(f"SweepCost{side}{size}", one),
+                    _flag(f"SweepCost{side}{size}Covered", one),
                 ]
-        columns += [_value("OrderFlowContribution"), _value("TouchDepth")]
-        return tuple(columns + [_value(name) for name in GAP_COLUMNS])
+        columns += [
+            _value("OrderFlowContribution", Dependence.INCREMENT), _value("TouchDepth", one)
+        ]
+        return tuple(columns + [_value(name, one) for name in GAP_COLUMNS])
 
     def declaration(self) -> tuple[StatisticColumn, ...]:
         """Every column of the statistics frame: the rows above plus the rolling ones."""
         columns = list(self.row_declaration())
         for w in self.windows:
             columns += [
-                _value(f"OrderFlowImbalance{w}"),
-                _flag(f"OrderFlowImbalance{w}Covered"),
-                _value(f"AverageDepth{w}"),
+                _value(f"OrderFlowImbalance{w}", Dependence.WINDOW),
+                _flag(f"OrderFlowImbalance{w}Covered", Dependence.WINDOW),
+                _value(f"AverageDepth{w}", Dependence.WINDOW),
             ]
         return tuple(columns)
 
     def trade_row_declaration(self) -> tuple[StatisticColumn, ...]:
         """What the fold records about the trades, per message."""
-        return tuple(_value(name) for name in ("Volume", "SignedVolume", "TradedValue"))
+        return tuple(
+            _value(name, Dependence.EXTENSIVE) for name in ("Volume", "SignedVolume", "TradedValue")
+        )
 
     def trade_declaration(self) -> tuple[StatisticColumn, ...]:
         """Every column of the trades frame."""
         columns = list(self.trade_row_declaration())
         for w in self.windows:
-            columns += [_value(f"VWAP{w}"), _value(f"VWAPBuy{w}"), _value(f"VWAPSell{w}")]
+            columns += [
+                _value(f"VWAP{w}", Dependence.WINDOW),
+                _value(f"VWAPBuy{w}", Dependence.WINDOW),
+                _value(f"VWAPSell{w}", Dependence.WINDOW),
+            ]
         return tuple(columns)
 
     # ---- the schemas -----------------------------------------------------------------
@@ -207,13 +239,23 @@ class SessionStatistics:
         return _row_schema(self.row_declaration())
 
     def statistics_schema(self) -> pa.DataFrameSchema:
-        return _frame_schema(self.declaration())
+        return _frame_schema(self.declaration(), frames.session_index())
 
     def trade_row_schema(self) -> pa.DataFrameSchema:
         return _row_schema(self.trade_row_declaration())
 
     def trades_schema(self) -> pa.DataFrameSchema:
-        return _frame_schema(self.trade_declaration())
+        return _frame_schema(self.trade_declaration(), frames.session_index())
+
+    # The same columns over a frame that is rows of a file rather than states at a time.
+    # Two methods and not one parametrized by an index, following `lobster_book_schema` and
+    # `session_book_schema`, which are also the same columns under two indices.
+
+    def positional_statistics_schema(self) -> pa.DataFrameSchema:
+        return _frame_schema(self.declaration(), frames.positional_index())
+
+    def positional_trades_schema(self) -> pa.DataFrameSchema:
+        return _frame_schema(self.trade_declaration(), frames.positional_index())
 
     def _layout(self) -> RowLayout:
         names = [column.name for column in self.row_declaration()]

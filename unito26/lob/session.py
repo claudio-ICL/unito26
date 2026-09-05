@@ -510,6 +510,208 @@ def _with_vwap(
     return columns
 
 
+# ---- the statistics an assembled frame determines ---------------------------------------
+#
+# Read off a frame of book states and its clock, and nothing else.  Free functions rather
+# than methods because two session types compute them -- one whose rows are messages and one
+# whose rows are executions of resting orders -- and the arithmetic is the same for both.
+# What differs is the index the answer is laid out over, so the frame comes back unvalidated
+# and each caller validates against its own schema.
+
+
+@dataclass(frozen=True, slots=True)
+class _SideShape:
+    """One side of a frame, per row: how many levels it reports, and how far they reach.
+
+    The frame-route counterpart of :class:`~unito26.lob.orderbook.SideStatistics`, named
+    after it.  Two arrays of one shape and opposite meanings, which is why they travel as
+    one object rather than as two arguments a caller could exchange in silence.
+    """
+
+    occupied: np.ndarray
+    grid_span: np.ndarray
+
+
+@dataclass(frozen=True, slots=True)
+class _SideGaps:
+    """The holes on one side, per row and per reported level.
+
+    ``sizes`` counts the grid positions a gap spans; ``starts`` says how far from the touch
+    it opens.  Same shape again, and exchanged they answer a distance where a length was
+    asked for.
+    """
+
+    sizes: np.ndarray
+    starts: np.ndarray
+
+
+def _side(
+    book: pd.DataFrame, side: str, reported_depth: ReportedDepth, price_unit: PriceUnit
+) -> tuple[np.ndarray, np.ndarray]:
+    """One side's prices and sizes: prices in ticks, a padded level NaN, sizes as written.
+
+    The prices divide an already-checked frame.  ``lobster.prices_on_the_tick_grid`` refuses
+    an off-grid book once, at load, which is what lets this divide without a remainder test
+    per statistic.
+    """
+    padding = frames.ASK_PADDING if side == "Ask" else frames.BID_PADDING
+    prices = book[
+        [f"{side}Price{k}" for k in range(1, reported_depth + 1)]
+    ].to_numpy(dtype=float)
+    sizes = book[
+        [f"{side}Size{k}" for k in range(1, reported_depth + 1)]
+    ].to_numpy(dtype=float)
+    return np.where(prices == padding, np.nan, prices) / price_unit, sizes
+
+
+def _covers(
+    n: GridDepth, side: _SideShape, reported_depth: ReportedDepth, truncated: bool
+) -> np.ndarray:
+    """Per side; the caller conjoins.  See :func:`_side_covers` for why it is one-way."""
+    fully_reported = (
+        side.occupied < reported_depth
+        if not truncated
+        else np.zeros_like(side.occupied, dtype=bool)
+    )
+    return (side.occupied == 0) | (n <= side.grid_span) | fully_reported
+
+
+def _gap_positions(name: str, gaps: _SideGaps, rows: int) -> dict:
+    """Where the nearest and the largest gap open, in ticks from the touch.
+
+    ``argmax`` returns the *first* of equal elements and the columns run outward from the
+    touch, so the largest gap's tie-break -- the nearest of those that tie -- needs no
+    expression of its own.  A side with no gap has no position to name and answers NaN; its
+    gap has no length and answers zero, as ``LargestGap`` does.
+    """
+    if gaps.sizes.shape[1] == 0:
+        return {
+            f"{name}FirstGapDistance": np.full(rows, np.nan),
+            f"{name}FirstGapSize": np.zeros(rows),
+            f"{name}LargestGapDistance": np.full(rows, np.nan),
+        }
+    somewhere = (gaps.sizes > 0).any(1)
+    index = np.arange(rows)
+    first = np.argmax(gaps.sizes > 0, axis=1)
+    biggest = np.argmax(gaps.sizes, axis=1)
+    return {
+        f"{name}FirstGapDistance": np.where(somewhere, gaps.starts[index, first], np.nan),
+        f"{name}FirstGapSize": np.where(somewhere, gaps.sizes[index, first], 0.0),
+        f"{name}LargestGapDistance": np.where(
+            somewhere, gaps.starts[index, biggest], np.nan
+        ),
+    }
+
+
+def statistics_from_book(
+    book: pd.DataFrame,
+    clock: np.ndarray,
+    reported_depth: ReportedDepth,
+    price_unit: PriceUnit,
+    truncated: bool,
+    spec: SessionStatistics,
+) -> pd.DataFrame:
+    """Every statistic the frame determines, on the frame's own index, unvalidated.
+
+    Two things make this harder than it looks, and both return a plausible number when got
+    wrong.  Levels are selected **by price**, never by column position: on a book with holes
+    the k-th column is not the k-th grid level, so a column slice computes a different
+    statistic under the same name.  And the sums are masked explicitly rather than left to
+    ``sum``, whose default skips NaN and so treats a missing level as absent instead of
+    unknown.
+
+    ``clock`` is passed rather than taken from the index because the two are not the same
+    thing on every session: a frame of file rows is indexed by position and carries its
+    clock in the message file beside it.
+    """
+    ask_prices, ask_sizes = _side(book, "Ask", reported_depth, price_unit)
+    bid_prices, bid_sizes = _side(book, "Bid", reported_depth, price_unit)
+    best_ask, best_bid = ask_prices[:, 0], bid_prices[:, 0]
+
+    ask_here, bid_here = ~np.isnan(ask_prices), ~np.isnan(bid_prices)
+    ask_top, bid_top = ask_sizes[:, 0], bid_sizes[:, 0]
+    touch = ask_top + bid_top
+
+    columns = {
+        "Spread": best_ask - best_bid,
+        "MidPrice": (best_ask + best_bid) / 2,
+        # A zero touch means both tops are padded, so both best prices are NaN and the
+        # numerator is NaN already: this division is the one that needs no guard.
+        "MicroPrice": np.where(
+            touch > 0, (best_ask * bid_top + best_bid * ask_top) / touch, np.nan
+        ),
+    }
+
+    # Filled rather than nan-aggregated: an entirely padded side is all-NaN, which nanmax
+    # warns about and answers NaN to.  Its span is 0.
+    ask_count, bid_count = ask_here.sum(1), bid_here.sum(1)
+    deepest_ask = np.where(ask_here, ask_prices, -np.inf).max(1)
+    deepest_bid = np.where(bid_here, bid_prices, np.inf).min(1)
+    ask = _SideShape(ask_count, np.where(ask_count > 0, deepest_ask - best_ask + 1, 0))
+    bid = _SideShape(bid_count, np.where(bid_count > 0, best_bid - deepest_bid + 1, 0))
+
+    for n in spec.imbalance_levels:
+        in_ask = ask_here & (ask_prices <= best_ask[:, None] + (n - 1))
+        in_bid = bid_here & (bid_prices >= best_bid[:, None] - (n - 1))
+        ask_total = np.where(in_ask, ask_sizes, 0.0).sum(1)
+        bid_total = np.where(in_bid, bid_sizes, 0.0).sum(1)
+        total = ask_total + bid_total
+        covered = _covers(n, ask, reported_depth, truncated) & _covers(
+            n, bid, reported_depth, truncated
+        )
+        imbalance = _quotient(bid_total - ask_total, total)
+        columns[f"QueueImbalance{n}"] = np.where(covered, imbalance, np.nan)
+        columns[f"QueueImbalance{n}Covered"] = covered.astype(float)
+
+    mid = columns["MidPrice"]
+    for size in spec.sweep_sizes:
+        for label, prices, sizes, count, direction in (
+            ("Buy", ask_prices, ask_sizes, ask_count, BUY),
+            ("Sell", bid_prices, bid_sizes, bid_count, SELL),
+        ):
+            cost, filled = _frame_sweep_cost(prices, sizes, mid, size, direction)
+            # Determined when it filled, or when the side genuinely ran out on a book we
+            # hold -- and never without a mid to price it against.
+            covered = np.isfinite(mid) & (
+                filled | ((count < reported_depth) & (not truncated))
+            )
+            columns[f"SweepCost{label}{size}"] = cost
+            columns[f"SweepCost{label}{size}Covered"] = covered.astype(float)
+
+    columns["OrderFlowContribution"] = _frame_order_flow(
+        best_bid, bid_sizes[:, 0], best_ask, ask_sizes[:, 0]
+    )
+    columns["TouchDepth"] = np.where(
+        np.isfinite(best_bid) & np.isfinite(best_ask), bid_top + ask_top, np.nan
+    )
+
+    columns["BidOccupiedLevels"] = bid_count.astype(float)
+    columns["AskOccupiedLevels"] = ask_count.astype(float)
+    rows = len(book)
+    # Bid prices descend with the level and ask prices climb, so each side's gap lengths and
+    # the distances they open at carry that sign of their own.
+    for label, spans, starts in (
+        ("Bid", -np.diff(bid_prices, axis=1) - 1, best_bid[:, None] - bid_prices[:, :-1] + 1),
+        ("Ask", np.diff(ask_prices, axis=1) - 1, ask_prices[:, :-1] - best_ask[:, None] + 1),
+    ):
+        gaps = _SideGaps(np.where(np.isnan(spans), 0.0, np.maximum(spans, 0.0)), starts)
+        columns[f"{label}GapCount"] = (gaps.sizes > 0).sum(1).astype(float)
+        columns[f"{label}LargestGap"] = gaps.sizes.max(1) if gaps.sizes.size else 0.0
+        columns.update(_gap_positions(label, gaps, rows))
+
+    # Validated, not merely reordered: a projection by name list drops a column the dict
+    # holds and the list does not, silently, and the two are built in different orders.
+    # Strict and ordered, so an extra, a missing and a misplaced column all raise here
+    # rather than surfacing as a shape mismatch further down.
+    row_schema = spec.row_schema()
+    written = row_schema.validate(
+        pd.DataFrame(columns, index=book.index, dtype=float)[list(row_schema.columns)]
+    )
+    return pd.DataFrame(
+        _with_rolling(spec, clock, written.to_numpy(dtype=float)), index=book.index
+    )
+
+
 # ---- the session ---------------------------------------------------------------------
 
 
@@ -806,147 +1008,22 @@ class MarketSession:
 
     # ---- the statistics, computed from the finished frame -----------------------------
 
-    def _side(self, side: str, padding: int) -> tuple[np.ndarray, np.ndarray]:
-        depth = self.reported_depth
-        prices = self.lobster_book[
-            [f"{side}Price{k}" for k in range(1, depth + 1)]
-        ].to_numpy(dtype=float)
-        sizes = self.lobster_book[
-            [f"{side}Size{k}" for k in range(1, depth + 1)]
-        ].to_numpy(dtype=float)
-        return np.where(prices == padding, np.nan, prices) / self.price_unit, sizes
-
     def stats_from_frame(self) -> pd.DataFrame:
         """Recompute every statistic from ``lobster_book``, touching no book.
 
-        Two things make this harder than it looks, and both return a plausible number
-        when got wrong.  Levels are selected **by price**, never by column position: on a
-        book with holes the k-th column is not the k-th grid level, so a column slice
-        computes a different statistic under the same name.  And the sums are masked
-        explicitly rather than left to ``sum``, whose default skips NaN and so treats a
-        missing level as absent instead of unknown.
+        The reconciliation this session's online route is checked against: one quantity
+        computed twice, once from a live book and once from the finished frame.
         """
-        ask_prices, ask_sizes = self._side("Ask", frames.ASK_PADDING)
-        bid_prices, bid_sizes = self._side("Bid", frames.BID_PADDING)
-        best_ask, best_bid = ask_prices[:, 0], bid_prices[:, 0]
-
-        ask_here, bid_here = ~np.isnan(ask_prices), ~np.isnan(bid_prices)
-        ask_top, bid_top = ask_sizes[:, 0], bid_sizes[:, 0]
-        touch = ask_top + bid_top
-
-        columns = {
-            "Spread": best_ask - best_bid,
-            "MidPrice": (best_ask + best_bid) / 2,
-            # A zero touch means both tops are padded, so both best prices are NaN and the
-            # numerator is NaN already: this division is the one that needs no guard.
-            "MicroPrice": np.where(
-                touch > 0, (best_ask * bid_top + best_bid * ask_top) / touch, np.nan
-            ),
-        }
-
-        # Filled rather than nan-aggregated: an entirely padded side is all-NaN, which
-        # nanmax warns about and answers NaN to.  Its span is 0.
-        ask_count, bid_count = ask_here.sum(1), bid_here.sum(1)
-        deepest_ask = np.where(ask_here, ask_prices, -np.inf).max(1)
-        deepest_bid = np.where(bid_here, bid_prices, np.inf).min(1)
-        ask_span = np.where(ask_count > 0, deepest_ask - best_ask + 1, 0)
-        bid_span = np.where(bid_count > 0, best_bid - deepest_bid + 1, 0)
-
-        for n in self.statistics.imbalance_levels:
-            in_ask = ask_here & (ask_prices <= best_ask[:, None] + (n - 1))
-            in_bid = bid_here & (bid_prices >= best_bid[:, None] - (n - 1))
-            ask_total = np.where(in_ask, ask_sizes, 0.0).sum(1)
-            bid_total = np.where(in_bid, bid_sizes, 0.0).sum(1)
-            total = ask_total + bid_total
-            covered = self._covers(n, ask_span, ask_count) & self._covers(n, bid_span, bid_count)
-            imbalance = _quotient(bid_total - ask_total, total)
-            columns[f"QueueImbalance{n}"] = np.where(covered, imbalance, np.nan)
-            columns[f"QueueImbalance{n}Covered"] = covered.astype(float)
-
-        mid = columns["MidPrice"]
-        for size in self.statistics.sweep_sizes:
-            for side, prices, sizes_, count, direction in (
-                ("Buy", ask_prices, ask_sizes, ask_count, BUY),
-                ("Sell", bid_prices, bid_sizes, bid_count, SELL),
-            ):
-                cost, filled = _frame_sweep_cost(prices, sizes_, mid, size, direction)
-                # Determined when it filled, or when the side genuinely ran out on a book
-                # we hold -- and never without a mid to price it against.
-                covered = np.isfinite(mid) & (
-                    filled | ((count < self.reported_depth) & (not self.truncated))
-                )
-                columns[f"SweepCost{side}{size}"] = cost
-                columns[f"SweepCost{side}{size}Covered"] = covered.astype(float)
-
-        columns["OrderFlowContribution"] = _frame_order_flow(
-            best_bid, bid_sizes[:, 0], best_ask, ask_sizes[:, 0]
-        )
-        columns["TouchDepth"] = np.where(
-            np.isfinite(best_bid) & np.isfinite(best_ask), bid_top + ask_top, np.nan
-        )
-
-        columns["BidOccupiedLevels"] = bid_count.astype(float)
-        columns["AskOccupiedLevels"] = ask_count.astype(float)
-        bid_gaps = -np.diff(bid_prices, axis=1) - 1  # bid prices descend with level
-        ask_gaps = np.diff(ask_prices, axis=1) - 1
-        # Where each gap opens, in ticks from the touch: the level above it sits that
-        # many ticks down, and the gap starts one further.  Signed per side, since bid
-        # prices descend with the level and ask prices climb.
-        bid_starts = best_bid[:, None] - bid_prices[:, :-1] + 1
-        ask_starts = ask_prices[:, :-1] - best_ask[:, None] + 1
-        for name, gaps, starts in (
-            ("Bid", bid_gaps, bid_starts), ("Ask", ask_gaps, ask_starts)
-        ):
-            positive = np.where(np.isnan(gaps), 0.0, np.maximum(gaps, 0.0))
-            columns[f"{name}GapCount"] = (positive > 0).sum(1).astype(float)
-            columns[f"{name}LargestGap"] = positive.max(1) if positive.size else 0.0
-            columns.update(self._gap_positions(name, positive, starts))
-        # Validated, not merely reordered: a projection by name list drops a column the
-        # dict holds and the list does not, silently, and the two are built in different
-        # orders.  Strict and ordered, so an extra, a missing and a misplaced column all
-        # raise here rather than surfacing as a shape mismatch further down.
-        row_schema = self.statistics.row_schema()
-        rows = row_schema.validate(
-            pd.DataFrame(columns, index=self.lobster_book.index, dtype=float)[
-                list(row_schema.columns)
-            ]
-        )
-        clock = self.lobster_book.index.to_numpy(dtype=float)
         return self.statistics.statistics_schema().validate(
-            pd.DataFrame(
-                _with_rolling(self.statistics, clock, rows.to_numpy(dtype=float)),
-                index=self.lobster_book.index,
+            statistics_from_book(
+                self.lobster_book,
+                self.lobster_book.index.to_numpy(dtype=float),
+                self.reported_depth,
+                self.price_unit,
+                self.truncated,
+                self.statistics,
             )
         )
-
-    def _gap_positions(self, side: str, positive, starts) -> dict:
-        """Where the nearest and the largest gap open, in ticks from the touch.
-
-        ``argmax`` returns the *first* of equal elements and the columns run outward from
-        the touch, so the largest gap's tie-break -- the nearest of those that tie --
-        needs no expression of its own.  A side with no gap has no position to name and
-        answers NaN; its gap has no length and answers zero, as ``LargestGap`` does.
-        """
-        rows = len(self.lobster_book)
-        if positive.shape[1] == 0:
-            return {
-                f"{side}FirstGapDistance": np.full(rows, np.nan),
-                f"{side}FirstGapSize": np.zeros(rows),
-                f"{side}LargestGapDistance": np.full(rows, np.nan),
-            }
-        somewhere = (positive > 0).any(1)
-        index = np.arange(rows)
-        first = np.argmax(positive > 0, axis=1)
-        biggest = np.argmax(positive, axis=1)
-        return {
-            f"{side}FirstGapDistance": np.where(
-                somewhere, starts[index, first], np.nan
-            ),
-            f"{side}FirstGapSize": np.where(somewhere, positive[index, first], 0.0),
-            f"{side}LargestGapDistance": np.where(
-                somewhere, starts[index, biggest], np.nan
-            ),
-        }
 
     def vwap(self, window: int) -> pd.Series:
         """VWAP over ``(t - window, t]``, for a window the specification did not name.
@@ -998,11 +1075,3 @@ class MarketSession:
         asks = self.lobster_book[[f"AskSize{k}" for k in range(1, width + 1)]].sum(axis=1)
         total = bids + asks
         return ((bids - asks) / total.where(total > 0)).astype(float)
-
-    def _covers(self, n: GridDepth, span, count):
-        """Per side; the caller conjoins.  See :func:`_side_covers` for why it is one-way."""
-        fully_reported = (
-            count < self.reported_depth if not self.truncated
-            else np.zeros_like(count, dtype=bool)
-        )
-        return (count == 0) | (n <= span) | fully_reported

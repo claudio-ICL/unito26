@@ -7,10 +7,12 @@ columns by name and so is blind to a transposed pair whose values happen to agre
 fixtures, which four of the twelve gap columns do.
 """
 
+import pandas as pd
+import pandera.errors as pe
 import pytest
 
 from unito26.lob.messages import GridDepth, SweepSize
-from unito26.lob.statistics import GAP_COLUMNS, SessionStatistics
+from unito26.lob.statistics import GAP_COLUMNS, Dependence, SessionStatistics
 
 SPEC = SessionStatistics((GridDepth(1), GridDepth(5)), (SweepSize(100),), (10,))
 
@@ -45,7 +47,7 @@ class TestTheDeclaredOrder:
         ]
 
 
-class TestTheKindIsAFieldNotASpelling:
+class TestCoverageIsAFieldNotASpelling:
     def test_a_flag_is_constrained_to_zero_or_one(self):
         column = SPEC.row_schema().columns["QueueImbalance1Covered"]
         assert not column.nullable
@@ -101,3 +103,64 @@ class TestDegenerateSpecifications:
         argument = {"imbalance_levels": (), "sweep_sizes": (), "windows": (1,)}
         with pytest.raises(ValueError, match="whole number"):
             SessionStatistics(**{**argument, field: (1.5,)})
+
+
+class TestDependenceIsAFieldNotASpelling:
+    """What a statistic reads decides what regrouping the rows does to it."""
+
+    def test_a_statistic_of_one_configuration_says_so(self):
+        for name in ("Spread", "MidPrice", "QueueImbalance1", "SweepCostBuy100Covered"):
+            assert _declared(name).dependence is Dependence.CONFIGURATION
+
+    def test_the_order_flow_contribution_reads_two(self):
+        assert _declared("OrderFlowContribution").dependence is Dependence.INCREMENT
+
+    def test_a_rolling_column_reads_a_window(self):
+        for name in ("OrderFlowImbalance10", "AverageDepth10", "VWAP10", "VWAPBuy10"):
+            assert _declared(name).dependence is Dependence.WINDOW
+
+    def test_the_traded_quantities_are_extensive(self):
+        for name in ("Volume", "SignedVolume", "TradedValue"):
+            assert _declared(name).dependence is Dependence.EXTENSIVE
+
+    def test_every_declared_column_carries_one(self):
+        for column in SPEC.declaration() + SPEC.trade_declaration():
+            assert isinstance(column.dependence, Dependence)
+
+
+class TestThePositionalSchemasAreNotTheClockedOnes:
+    """The same columns, laid out over a file's rows rather than over a clock."""
+
+    def test_the_clocked_schema_wants_a_named_float_index(self):
+        assert SPEC.statistics_schema().index.name == "TimeStamp"
+        assert SPEC.positional_statistics_schema().index.name is None
+
+    def test_a_positional_frame_is_refused_by_the_clocked_schema(self):
+        frame = _statistics_frame(pd.RangeIndex(2))
+        SPEC.positional_statistics_schema().validate(frame)
+        with pytest.raises(pe.SchemaError):
+            SPEC.statistics_schema().validate(frame)
+
+    def test_a_clocked_frame_is_refused_by_the_positional_schema(self):
+        frame = _statistics_frame(pd.Index([1.0, 2.0], name="TimeStamp"))
+        SPEC.statistics_schema().validate(frame)
+        with pytest.raises(pe.SchemaError):
+            SPEC.positional_statistics_schema().validate(frame)
+
+    def test_the_columns_are_the_same_ones(self):
+        assert list(SPEC.statistics_schema().columns) == list(
+            SPEC.positional_statistics_schema().columns
+        )
+
+
+def _declared(name):
+    for column in SPEC.declaration() + SPEC.trade_declaration():
+        if column.name == name:
+            return column
+    raise AssertionError(f"{name} is not declared")
+
+
+def _statistics_frame(index):
+    return pd.DataFrame(
+        {column.name: [0.0, 1.0] for column in SPEC.declaration()}, index=index
+    )

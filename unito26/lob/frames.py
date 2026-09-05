@@ -32,6 +32,7 @@ __all__ = [
     "lobster_message_schema",
     "lobster_orderbook_file_schema",
     "lobster_padding_row",
+    "positional_index",
     "session_book_schema",
     "session_index",
 ]
@@ -182,6 +183,25 @@ def session_index() -> pa.Index:
     )
 
 
+def positional_index() -> pa.Index:
+    """The index of a frame that is rows of a file: 0, 1, 2, and nothing further.
+
+    Declared rather than omitted.  A schema with no ``index`` validates *any* index, so
+    leaving it out does not say "positional", it says "unchecked": a clocked session frame
+    passes a file schema that is silent about its index, and the two shapes this package
+    exists to keep apart would meet without a word.
+    """
+    return pa.Index(
+        "int64",
+        pa.Check(
+            lambda rows: bool(rows.is_monotonic_increasing),
+            error="a frame of file rows is indexed by position",
+        ),
+        name=None,
+        unique=True,
+    )
+
+
 def session_book_schema(reported_depth: ReportedDepth) -> pa.DataFrameSchema:
     """The book frame a session holds: the columns above, on the session clock.
 
@@ -206,7 +226,10 @@ def lobster_orderbook_file_schema(reported_depth: ReportedDepth) -> pa.DataFrame
     which on a file-sized frame costs more memory than reading only the rows wanted saves.
     """
     return pa.DataFrameSchema(
-        _book_columns(reported_depth, "int64"), strict=True, ordered=True
+        _book_columns(reported_depth, "int64"),
+        index=positional_index(),
+        strict=True,
+        ordered=True,
     )
 
 
@@ -245,6 +268,7 @@ def lobster_message_schema() -> pa.DataFrameSchema:
             "Price": pa.Column("int64", pa.Check.ge(-1), coerce=True),
             "Direction": pa.Column("int64", pa.Check.isin((-1, 1)), coerce=True),
         },
+        index=positional_index(),
         strict=True,
         ordered=True,
     )
