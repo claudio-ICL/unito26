@@ -134,7 +134,8 @@ the visible price range" — and, as `unito26/lob/lobster.py` records, even the 
 level degrades over the session as the range is exhausted.
 
 So the second branch of §5 is exact for a frame we generated and only an upper bound for
-one we loaded. `MarketSession.from_file` carries that provenance and drops the branch.
+one we loaded. `MarketSession.truncated` carries that, and drops the branch — named for the
+property the coverage rules test rather than for where the frame came from.
 The honest account has three states, not two:
 
 - **covered** — the window is inside the reported span;
