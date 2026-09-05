@@ -114,8 +114,16 @@ class HawkesParams(FrameSerializable):
     def branching_ratio(self) -> float:
         """Spectral radius of the branching matrix.  Stationarity needs it below 1.
 
-        Calibrations on high-frequency order flow report values around 0.7-0.9: most
-        order flow is triggered by other order flow.
+        It is *not* the fraction of flow that is endogenous.  That fraction is
+        ``1 - mubar / nu`` with ``nu = 1' (I - Gamma)^{-1} mu``, and it equals ``rho``
+        only when ``Gamma`` has constant column sums -- ``1'`` is then its left Perron
+        vector.  The shipped example has column sums ``(1.31, 1.31, 0.44, 0.44, 0.47,
+        0.47)``, one market order spawning 1.31 direct offspring against a limit order's
+        0.44, and an endogenous fraction of 0.58 at ``rho = 0.6``.
+
+        For the same reason the mean cluster size is not ``1 / (1 - rho)``: it is
+        ``1' (I - Gamma)^{-1} e_j`` for an immigrant of type ``j``, spanning 1.96 to 4.64
+        across the six types here.
         """
         return float(np.max(np.abs(np.linalg.eigvals(self.branching_matrix))))
 

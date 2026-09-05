@@ -528,7 +528,7 @@ That number was real, and it was a fact about a strawman rather than about the d
 ## 5. Hawkes order flow
 
 Order flow clusters, and the clustering is the phenomenon:
-calibrations on exchange data put 70–90% of high-frequency flow as endogenous.
+most high-frequency flow is triggered by other flow rather than arriving from outside.
 A Poisson simulator produces a book that looks nothing like a real one.
 
 For $d$ event types the conditional intensity of type $i$ is
@@ -569,47 +569,76 @@ $$\mathbb{E}[\lambda] = (I - \Gamma)^{-1}\mu .$$
 
 $\rho$ is homogeneous of degree one in $A$,
 so the *shape* of the excitation matrix and the overall endogeneity are independent choices;
-the default parameters fix the shape by hand and rescale to $\rho(\Gamma) = 0.8$.
+the example parameters fix the shape by hand and rescale to $\rho(\Gamma) = 0.6$.
+
+### What $\rho$ is not
+
+Two quantities are routinely read off $\rho$ and are not it.
+
+Write $\lambda^* = (I-\Gamma)^{-1}\mu$ for the stationary intensity vector,
+$\nu = \mathbf{1}^\top\lambda^*$ for the total rate
+and $\bar\mu = \mathbf{1}^\top\mu$ for the total baseline.
+The **endogenous fraction** — the share of events that are offspring rather than immigrants — is
+
+$$1 - \frac{\bar\mu}{\nu},$$
+
+and it equals $\rho$ only when $\Gamma$ has constant column sums,
+$\mathbf{1}^\top$ being its left Perron vector in that case.
+The example's column sums are $(1.31, 1.31, 0.44, 0.44, 0.47, 0.47)$ —
+one market order spawns $1.31$ direct offspring where a limit order spawns $0.44$,
+which is the replenishment asymmetry of the shape written as a number —
+and the endogenous fraction is $0.577$ at $\rho = 0.6$.
+
+The **mean cluster size** is likewise not $1/(1-\rho)$.
+A type-$j$ immigrant has $\mathbf{1}^\top(I-\Gamma)^{-1}e_j$ descendants in expectation,
+here $4.64$ for a market order and $1.96$ for a limit order;
+averaging with weights $\mu_j/\bar\mu$ gives $2.365$, against the scalar formula's $2.5$.
+The weight is the right one because clusters are founded by immigrants,
+and it is certified by $\bar\mu \times 2.365 = \nu$.
+Weighting by $\lambda^*/\nu$ instead answers a different question —
+descendants of a *randomly chosen* event rather than of an immigrant — and gives $2.430$.
 
 ### Exact simulation (`prop.hawkesExactSimulation`)
 
 Because every $\alpha_{ij} \ge 0$ and $\beta$ is common,
-the **total** intensity $\Lambda(t) = \sum_i \lambda_i(t)$
+the **total** intensity $\bar\lambda(t) = \sum_i \lambda_i(t)$
 is itself a one-dimensional exponentially decaying process:
 it relaxes at rate $\beta$ towards $\bar\mu = \sum_i \mu_i$,
 and at an event of type $j$ it jumps by the column sum $c_j = \sum_i \alpha_{ij}$.
-So the scalar Dassios–Zhao scheme applies to $\Lambda$ directly,
+So the scalar Dassios–Zhao scheme applies to $\bar\lambda$ directly,
 and the type is drawn afterwards.
+The bar is not decoration: $\Lambda$ is reserved for the compensator of entry 6,
+and the two are different objects.
 
-Given $\Lambda_n$, the intensity just after the last event at $t_n$,
+Given $\bar\lambda_n$, the intensity just after the last event at $t_n$,
 the compensator over the next $s$ splits into two increasing pieces:
 
-$$\bar\Lambda(s) = \underbrace{\bar\mu\, s}_{\text{baseline}}
- + \underbrace{(\Lambda_n - \bar\mu)\frac{1 - e^{-\beta s}}{\beta}}_{\text{excited part}} .$$
+$$\Lambda(s) = \underbrace{\bar\mu\, s}_{\text{baseline}}
+ + \underbrace{(\bar\lambda_n - \bar\mu)\frac{1 - e^{-\beta s}}{\beta}}_{\text{excited part}} .$$
 
-A point process with compensator $\bar\Lambda_1 + \bar\Lambda_2$
+A point process with compensator $\Lambda_1 + \Lambda_2$
 is the superposition of two independent ones,
 so the next inter-arrival is the **minimum of two closed-form draws**,
 for $U_1, U_2 \sim \mathrm{Unif}(0,1)$:
 
 $$S_1 = -\frac{\ln U_1}{\bar\mu},
 \qquad
-S_2 = -\frac{1}{\beta}\ln\!\Big(1 + \frac{\beta \ln U_2}{\Lambda_n - \bar\mu}\Big),
+S_2 = -\frac{1}{\beta}\ln\!\Big(1 + \frac{\beta \ln U_2}{\bar\lambda_n - \bar\mu}\Big),
 \qquad S = S_1 \wedge S_2 ,$$
 
-with $S_2 = +\infty$ exactly when $1 + \beta \ln U_2 / (\Lambda_n - \bar\mu) \le 0$.
+with $S_2 = +\infty$ exactly when $1 + \beta \ln U_2 / (\bar\lambda_n - \bar\mu) \le 0$.
 That is not an edge case to patch around:
-the excited part carries only the finite total mass $(\Lambda_n - \bar\mu)/\beta$,
+the excited part carries only the finite total mass $(\bar\lambda_n - \bar\mu)/\beta$,
 and $S_2 = \infty$ is the event that it expires without firing.
 Then $t_{n+1} = t_n + S$, the state decays, the type $i$ is drawn
-with probability $\lambda_i(t_{n+1})/\Lambda(t_{n+1})$, and $S_i$ increments.
+with probability $\lambda_i(t_{n+1})/\bar\lambda(t_{n+1})$, and $S_i$ increments.
 
 $O(1)$ per event, exact, no rejection, no discretisation bias, no time grid.
 
 **This reduction is derived here, not quoted.**
 Dassios and Zhao state the scalar case with i.i.d. jump sizes;
 ours are type-dependent, which the derivation permits
-because the inter-arrival law depends on the state only through $\Lambda_n$.
+because the inter-arrival law depends on the state only through $\bar\lambda_n$.
 It is therefore certified numerically, by entry 6, rather than asserted.
 
 Ogata's thinning is kept alongside as the control,

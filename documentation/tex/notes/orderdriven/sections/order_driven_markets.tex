@@ -190,9 +190,15 @@ where $\sum_{i\leq n}\nthBestBidSize[i]_t$
 (respectively, $\sum_{i\leq n}\nthBestAskSize[i]_t$)
 is the cumulative size on the first $n$ bid (ask) levels.
 The queue imbalance $\queueImbalance^n$, called volume imbalance in \cite{CDJ18enh},
-is widely accepted as a reliable signal for the next mid-price move:
-when it is close to -1 the mid-price will likely decrease,
-and when it is close to +1 it will likely increase.
+carries information about the direction the price takes next,
+and it is worth stating what was actually shown.
+Inside a Markov-modulated model of the book,
+\cite{CDJ18enh} establish that volume imbalance predicts the sign of the next market order,
+and the price change that follows a market order arrival.
+The unconditional reading --- that it predicts the next mid-price move, whatever moves it ---
+is a stronger claim, and it is not theirs.
+The sign convention matters in either reading:
+a book close to $+1$ is bid-heavy, so the pressure is upward.
 
 When a limit order comes to the market, it modifies the previous configuration of the order book.
 Proposition \ref{prop.lobUpdate} gives the updating rule for the variables

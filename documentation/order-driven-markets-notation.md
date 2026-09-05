@@ -130,10 +130,14 @@ Conventions that matter for code:
 | mid-price | $P^m_t$ | $(P^a_t + P^b_t)/2$ |
 | $n$-level queue imbalance | $I^n_t$ | $\dfrac{\sum_{i \le n} S^{b,i}_t - \sum_{i \le n} S^{a,i}_t}{\sum_{i \le n} S^{b,i}_t + \sum_{i \le n} S^{a,i}_t}$ |
 
-$I^n_t \in [-1, +1]$, **bid minus ask over the total** — bid-heavy is positive. It is widely
-accepted as a reliable signal for the next mid-price move (Cartea, Donnelly and Jaimungal,
-2018): close to $+1$ the mid-price will likely rise, close to $-1$ it will likely fall.
-Getting this sign backwards silently inverts every signal built on it.
+$I^n_t \in [-1, +1]$, **bid minus ask over the total** — bid-heavy is positive. Getting this
+sign backwards silently inverts every signal built on it.
+
+What it predicts is worth stating precisely. Inside a Markov-modulated model of the book,
+Cartea, Donnelly and Jaimungal (2018) show that volume imbalance predicts the sign of the
+next *market order*, and the price change that follows a market order arrival. The
+unconditional reading — a signal for the next mid-price move, whatever moves it — is a
+stronger claim and is not theirs.
 
 Three further statistics, developed in the notes under "Three statistics read off the book
 and the tape". The first is read off one configuration, as everything above is; the other
@@ -400,6 +404,33 @@ Python identifier — use it, and nothing else, in `unito26/` and in the noteboo
 | $K$ | `\cashAccount` | cash account | `cash` |
 | $H$ | `\inventory` | inventory (signed position) | `inventory` |
 | $X$ | `\wealth` | wealth / portfolio value | `wealth` |
+
+### The order flow
+
+The table above is the book's; the flow that drives it has none of its symbols. These are
+the ones `order-flow-to-order-book.md` §5–6 uses and the ones the imbalance regressions are
+reported against. They have no macros yet, the notes carrying no Hawkes chapter; they enter
+`notation.tex` when one is written.
+
+| symbol | meaning | Python |
+| --- | --- | --- |
+| $N$ | the counting process, one coordinate per event type | — |
+| $\lambda(t)$ | the conditional intensity **vector**, $\lambda = \mu + A\,S(t)$ | — |
+| $\bar\lambda(t)$ | its total, $\mathbf{1}^\top\lambda(t)$ — the scalar the exact scheme thins against | — |
+| $\Lambda$ | the compensator, $\mathrm{d}\Lambda = \lambda\,\mathrm{d}t$ | `compensators_at_events` |
+| $\mu$, $\bar\mu$ | the baseline intensity vector and its total | `baseline` |
+| $\alpha_{ij}$, $A$ | excitation of type $i$ by type $j$, and the matrix of them | `excitation` |
+| $\beta$ | the common exponential decay rate, in s$^{-1}$ | `decay` |
+| $S(t)$ | the decayed-count state, $S_j(t) = \sum_k e^{-\beta(t - t^j_k)}$ | — |
+| $\Gamma$ | the branching matrix $A/\beta$ | `branching_matrix` |
+| $\rho$ | its spectral radius — **not** the endogenous fraction, and not $1/(1-\rho)$'s cluster size | `branching_ratio` |
+| $\lambda^*$ | the stationary intensity vector $(I-\Gamma)^{-1}\mu$ | `stationary_intensity()` |
+| $\nu$ | its total $\mathbf{1}^\top\lambda^*$, a rate in events per second | — |
+| $w$, $h$ | the $\mathrm{OFI}$ lookback and the forecast horizon, both in seconds | `window`, `horizon` |
+
+$S$ collides with a level size and $\rho$ with the resting price of $(s, \rho, \pi, -d)$;
+both are disambiguated by context in prose and by distinct identifiers in code, as the
+collisions below are.
 
 Names carried by the implementation rather than by the notes, recorded here so they are
 not reinvented: `occupied_levels(direction, reported_depth)` for the LOBSTER indexing,
