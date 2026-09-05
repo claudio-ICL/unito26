@@ -34,6 +34,7 @@ from unito26.lob.messages import (
     LevelDelta,
     Message,
     MessageType,
+    PriceUnit,
     ReportedDepth,
     SweepSize,
     is_market_price,
@@ -601,7 +602,7 @@ class AggregateBook:
 
     # ---- the LOBSTER row: the book as one line of a file ---------------------------
 
-    def to_lobster_row(self, price_unit: int, reported_depth: ReportedDepth) -> list[int]:
+    def to_lobster_row(self, price_unit: PriceUnit, reported_depth: ReportedDepth) -> list[int]:
         """The top ``reported_depth`` **occupied** levels, in file units.
 
         ``price_unit`` is the number of LOBSTER price units in one tick -- 100 for a
@@ -621,7 +622,8 @@ class AggregateBook:
         return row
 
     def write_lobster_row(
-        self, out: np.ndarray, row: int, price_unit: int, reported_depth: ReportedDepth
+        self, out: np.ndarray, row: int, price_unit: PriceUnit,
+        reported_depth: ReportedDepth,
     ) -> None:
         """The same row, written in place into row ``row`` of a preallocated array.
 
@@ -632,7 +634,7 @@ class AggregateBook:
 
     @classmethod
     def from_lobster_row(
-        cls, row, price_unit: int, reported_depth: ReportedDepth
+        cls, row, price_unit: PriceUnit, reported_depth: ReportedDepth
     ) -> "AggregateBook":
         """Inverse of :meth:`to_lobster_row`, for any rung of the ladder.
 

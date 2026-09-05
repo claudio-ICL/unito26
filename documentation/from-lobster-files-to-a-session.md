@@ -271,3 +271,72 @@ worth stating plainly: schemas are necessary and they are not sufficient.
 
 How the discrepancy should be reconciled is an open question, recorded in
 [`../dev-context/lobster-execution-granularity.md`](../dev-context/lobster-execution-granularity.md).
+
+---
+
+## 6. The pipeline, and the schema at each stage
+
+Every frame that crosses a function boundary here is declared before any data is read and
+validated on the way out. There are five shapes, and no two of them are interchangeable
+even where their columns agree.
+
+| stage | what it produces | schema | index |
+| --- | --- | --- | --- |
+| `LobsterFiles.parse(name)` | the pair, the depth, the span | — | reads nothing |
+| `load_messages` | the message file, plus the exact clock | `lobster_message_schema` | positional |
+| `load_orderbook` | the book states as written | `lobster_orderbook_file_schema` | positional |
+| `load_aligned` | both, cut to a `TradingWindow` | the two above | positional |
+| `prices_on_the_tick_grid` | the same book, or a refusal | — | — |
+| `MarketSession.from_lobster_files` | `lobster_book` | `session_book_schema` | `TimeStamp` |
+| " | `trades` | `trades_schema` | `TimeStamp` |
+| `stats_from_frame` | `stats` | `statistics_schema` | `TimeStamp` |
+
+Four things in that table are worth saying out loud.
+
+**The schema is fixed before the file is opened.** `LEVEL` is in the filename, so
+`LobsterFiles.parse` knows there are $4 \times \text{LEVEL}$ columns and what they are called
+without reading a byte. `read_csv` is then *told* the names and the dtypes. Inference agrees
+with the declaration on every shipped file, so this fixes nothing today; what it does is turn
+a future malformed row into an exception. A fractional size, an empty field or a
+non-numeric type each currently changes the dtype of a whole column in silence.
+
+**But declaring a dtype is not the same as narrowing one.** `Type` and `Direction` are read
+as `int64`, not as the `int8` that would obviously hold them. A narrow integer *launders*
+corruption rather than catching it: read as `int8`, a `Type` of 260 becomes 4 — a valid
+visible execution — inside `read_csv`, and any membership check downstream then passes it.
+
+**Positional and clocked frames are different schemas.** The columns off the orderbook file
+and the columns of a session's `lobster_book` are spelled identically. One is a frame of
+rows of a file and the other is a book at a time, and they are validated against different
+declarations: `int64` against `Int64`, no index against a named, non-decreasing,
+**non-unique** one. The nullable extension dtype is why the file schema is the plain one —
+coercing replaces one contiguous integer block with one masked column per field, which on a
+file-sized frame costs more than reading only the wanted rows saves.
+
+**Alignment is assumed, not verified.** `load_aligned` reads the message file whole — it is
+the smaller of the two and carries the only clock — and uses it as the index into the other,
+parsing only the rows the window covers. The row counts are compared, which catches a file
+truncated or extended at either end. Nothing can catch a row missing from the *middle*: the
+orderbook file has no timestamp, no sequence number and no key, so row $i$ corresponds to
+message $i$ because of how the file was written and for no reason recoverable from its
+contents. An off-by-one there yields a complete session with every statistic finite and
+every timestamp on the wrong book state.
+
+### Units: the conversion that rescales everything and fails nothing
+
+Prices are integer **tick counts** everywhere inside the package. LOBSTER counts
+ten-thousandths of a dollar. The bridge is one integer, `PriceUnit` — how many of the file's
+units make one tick — and the whole session's prices are the file's divided by it.
+
+The caller does not state that integer. It states the **tick size**, which is a fact about
+the instrument, and `price_unit` derives the rest from `LOBSTER_UNITS_PER_DOLLAR = 10000`,
+refusing a tick that is not a whole number of file units. Stating the unit directly invites
+the magic `100`, and the failure mode is the reason to care: a wrong unit does not raise. It
+rescales every price, spread, mid-price, micro-price and sweep cost the session reports, by a
+factor that **cancels in any round trip through the same constant** — so a test that writes a
+book out and reads it back cannot detect one, however carefully it is written.
+
+The grid is checked once, when the book is loaded, and refused with the offending price and
+its level. Padded levels are skipped, the sentinels being not prices; neither is a multiple
+of any ordinary unit. And the check is a claim about the **lit** book only: hidden prints are
+sub-penny, so the tick grid is a property of what the book displays rather than of the feed.

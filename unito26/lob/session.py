@@ -26,7 +26,7 @@ from typing import Iterable
 import numpy as np
 import pandas as pd
 
-from unito26.lob import frames
+from unito26.lob import frames, lobster
 from unito26.lob.delta_log import DeltaLog
 from unito26.lob.messages import (
     BUY,
@@ -35,6 +35,8 @@ from unito26.lob.messages import (
     LevelDelta,
     Message,
     MessageType,
+    PriceUnit,
+    TickGrid,
     ReportedDepth,
     SweepSize,
 )
@@ -148,7 +150,7 @@ def _trades_buffer(spec: SessionStatistics, expected: int) -> _RowBuffer:
 
 
 def _side_covers(
-    side: SideStatistics, n: GridDepth, reported_depth: ReportedDepth, from_file: bool
+    side: SideStatistics, n: GridDepth, reported_depth: ReportedDepth, truncated: bool
 ) -> bool:
     """Whether a frame reporting this side to this depth determines ``I^n`` on it.
 
@@ -158,14 +160,14 @@ def _side_covers(
     consistent with a level just below the window and with a gap there.
 
     An empty side contributes nothing at every ``n`` and so is covered.  A side reporting
-    fewer levels than the depth is fully known -- but only for a book we hold; in a file
-    it means "nothing further in the visible price range", which is a weaker claim.
+    fewer levels than the depth is fully known -- unless the view is truncated, where it
+    means only "nothing further in the visible price range".
     """
     if side.occupied == 0:
         return True
     if n <= side.grid_span:
         return True
-    return side.occupied < reported_depth and not from_file
+    return side.occupied < reported_depth and not truncated
 
 
 def _sweep_covers(
@@ -173,14 +175,14 @@ def _sweep_covers(
     cost: float | None,
     mid: float | None,
     reported_depth: ReportedDepth,
-    from_file: bool,
+    truncated: bool,
 ) -> bool:
     """Whether the frame determines the sweep cost, filled or not.
 
     Three cases, and only the first two are "covered".  The sweep filled, so the answer is
     a number.  Or it did not fill and the side genuinely ran out short of the reported
-    depth on a book we hold, so the answer is that this size cannot be bought at any price
-    -- a true answer, reported as NaN.  Or the window simply ended, and nothing is known.
+    depth, so the answer is that this size cannot be bought at any price -- a true answer,
+    reported as NaN.  Or the window simply ended, and nothing is known.
 
     Conjoined with the mid existing, which the plain ``occupied`` rule cannot see: a frame
     with three ask levels and a padded bid side fills a buy perfectly well and still
@@ -192,7 +194,7 @@ def _sweep_covers(
         return False
     if cost is not None:
         return True
-    return side.occupied < reported_depth and not from_file
+    return side.occupied < reported_depth and not truncated
 
 
 def _touch(bid: SideStatistics, ask: SideStatistics) -> tuple:
@@ -236,7 +238,7 @@ def _write_statistics(
     row: int,
     reported_depth: ReportedDepth,
     spec: SessionStatistics,
-    from_file: bool,
+    truncated: bool,
     bid: SideStatistics,
     ask: SideStatistics,
     previous_touch: tuple | None,
@@ -277,8 +279,8 @@ def _write_statistics(
     ):
         target[column] = imbalance
         target[column + 1] = float(
-            _side_covers(bid, n, reported_depth, from_file)
-            and _side_covers(ask, n, reported_depth, from_file)
+            _side_covers(bid, n, reported_depth, truncated)
+            and _side_covers(ask, n, reported_depth, truncated)
         )
     buys = _sweep_cost(ask.levels, mid, spec.sweep_sizes, BUY)
     sells = _sweep_cost(bid.levels, mid, spec.sweep_sizes, SELL)
@@ -288,7 +290,7 @@ def _write_statistics(
         ):
             target[column] = as_float(cost)
             target[column + 1] = float(
-                _sweep_covers(side, cost, mid, reported_depth, from_file)
+                _sweep_covers(side, cost, mid, reported_depth, truncated)
             )
     touch = _touch(bid, ask)
     target[at.order_flow] = _order_flow_contribution(previous_touch, touch)
@@ -310,7 +312,7 @@ def _write_occupied_levels(
     target: np.ndarray,
     bid: SideStatistics,
     ask: SideStatistics,
-    price_unit: int,
+    price_unit: PriceUnit,
     reported_depth: ReportedDepth,
 ) -> None:
     """A LOBSTER row from the levels the statistics already walked for.
@@ -347,6 +349,28 @@ def _write_trades(
     """
     traded = book.last_traded_size
     out[row] = (traded, direction * traded, book.last_traded_value)
+
+
+def _lobster_trade_rows(messages: pd.DataFrame, price_unit: PriceUnit) -> np.ndarray:
+    """The trade counters a LOBSTER message file determines, in ``trade_row_schema`` order.
+
+    Visible executions only.  A type-5 print is a trade against an order that was never
+    displayed, and it rests at or inside the touch, so including it would give the traded
+    average of a tape the book never showed.  The lit VWAP is the one a book route could
+    also produce, which is what makes it the comparable number.
+
+    LOBSTER reports the *resting* side of a fill, so ``Direction`` names the passive order
+    and the aggressor is its negation: an executed sell limit order is a buyer-initiated
+    trade.  The name carries it, so the arithmetic below needs no comment of its own.
+
+    ``TradedValue`` is in tick-shares, matching :func:`_write_trades`, which is why the
+    price is divided by the unit here and not left in the file's.
+    """
+    executed = (messages["Type"] == lobster.LobsterEvent.EXECUTION_VISIBLE).to_numpy()
+    aggressor = -messages["Direction"].to_numpy()
+    size = np.where(executed, messages["Size"].to_numpy(), 0).astype(float)
+    price = np.where(executed, messages["Price"].to_numpy(), 0) / price_unit
+    return np.column_stack([size, aggressor * size, size * price])
 
 
 # ---- the same two statistics, read off a frame -----------------------------------------
@@ -506,8 +530,17 @@ class MarketSession:
 
     reported_depth: ReportedDepth
     statistics: SessionStatistics
-    price_unit: int
-    from_file: bool
+    price_unit: PriceUnit
+    truncated: bool
+    """Whether an unreported level may exist below the ones the frame carries.
+
+    False for a book we folded: a side holding fewer levels than the reported depth is
+    exhausted, and the frame says everything there is.  True for a frame read from a file,
+    where the same shortfall means only "nothing further in the visible price range", so
+    every coverage claim that rests on it weakens to an upper bound.  Named for what it
+    asserts rather than for where the frame came from, because four sites test it and only
+    the property is what they mean.
+    """
     lobster_book: pd.DataFrame
     stats: pd.DataFrame | None
     level_deltas: list[tuple[int, float, LevelDelta]] | None = None
@@ -517,9 +550,10 @@ class MarketSession:
 
     Held apart from ``stats`` because :meth:`stats_from_frame` reproduces ``stats`` and no
     route reproduces this: a level shrinks by cancellation as well as by execution, so no
-    sequence of book configurations determines a volume.  None for a session rebuilt from
-    a delta log, which records configurations and nothing else, and for one read from a
-    LOBSTER orderbook file.
+    sequence of book configurations determines a volume.  None for a session rebuilt from a
+    delta log, which records configurations and nothing else.  A LOBSTER pair carries them,
+    the message file recording executions beside the states -- which is the whole of why the
+    pair is read together and not the orderbook file alone.
     """
 
     # ---- axis C: three ways to record the same session --------------------------------
@@ -531,7 +565,7 @@ class MarketSession:
         messages: Iterable[Message],
         reported_depth: ReportedDepth,
         spec: SessionStatistics,
-        price_unit: int,
+        price_unit: PriceUnit,
         online_statistics: bool,
     ) -> "MarketSession":
         """Ask the book for its top ``reported_depth`` levels after every message.
@@ -571,7 +605,9 @@ class MarketSession:
             traded_at = trades.claim()
             _write_trades(book, trades.array, traded_at, message.direction)
         return cls._assemble(
-            reported_depth, spec, price_unit, times, rows, statistics, trades, None,
+            reported_depth, spec, price_unit, False, times, rows.finished(),
+            None if statistics is None else statistics.finished(),
+            None if trades is None else trades.finished(), None,
         )
 
     @classmethod
@@ -580,7 +616,7 @@ class MarketSession:
         book: AggregateBook,
         messages: Iterable[Message],
         spec: SessionStatistics,
-        price_unit: int,
+        price_unit: PriceUnit,
         online_statistics: bool,
     ) -> "MarketSession":
         """Read the four touch properties instead, which is a depth-1 session.
@@ -619,7 +655,11 @@ class MarketSession:
                 # claim() may grow the buffer, which replaces `array`; read it after.
                 traded_at = trades.claim()
                 _write_trades(book, trades.array, traded_at, message.direction)
-        return cls._assemble(depth, spec, price_unit, times, rows, statistics, trades, None)
+        return cls._assemble(
+            depth, spec, price_unit, False, times, rows.finished(),
+            None if statistics is None else statistics.finished(),
+            None if trades is None else trades.finished(), None,
+        )
 
     @classmethod
     def from_delta_log(
@@ -628,7 +668,7 @@ class MarketSession:
         book_cls: type[AggregateBook],
         reported_depth: ReportedDepth,
         spec: SessionStatistics,
-        price_unit: int,
+        price_unit: PriceUnit,
         online_statistics: bool,
     ) -> "MarketSession":
         """Rebuild the session from a sparse recording, with no messages and no matching.
@@ -669,40 +709,95 @@ class MarketSession:
             else:
                 book.write_lobster_row(rows.array, index, price_unit, reported_depth)
         return cls._assemble(
-            reported_depth, spec, price_unit, times, rows, statistics, None, log.entries,
+            reported_depth, spec, price_unit, False, times, rows.finished(),
+            None if statistics is None else statistics.finished(), None, log.entries,
         )
+
+    @classmethod
+    def from_lobster_files(
+        cls,
+        files: lobster.LobsterFiles,
+        spec: SessionStatistics,
+        grid: TickGrid,
+        window: lobster.TradingWindow,
+        statistics: bool,
+    ) -> "MarketSession":
+        """Read a session off a LOBSTER file pair.  The first route that folds nothing.
+
+        The orderbook file already *is* the sequence of book states, and the message file
+        supplies the clock and the trades, so there is no book here and no matching.  What
+        this is not is a reconstruction: nothing replays the messages, and the states are
+        taken as the file gives them.
+
+        Three things separate the session from a folded one.  Its coverage flags are
+        weaker, because ``truncated`` is True: a side reporting fewer levels than the depth
+        means "nothing further in the visible price range" rather than "nothing further".
+        Its trades are the lit tape, hidden executions being excluded.  And its rows are
+        not comparable one-for-one with a fold's, because the feed writes a row per resting
+        order consumed where a fold writes one per message -- see
+        ``documentation/from-lobster-files-to-a-session.md``.
+
+        ``grid`` rather than a price unit: the caller states the instrument's tick size and
+        the file's unit follows from it, since a wrong unit does not fail but rescales
+        every price the session reports.
+        """
+        unit = lobster.price_unit(grid)
+        messages, book = lobster.load_aligned(files, window)
+        lobster.prices_on_the_tick_grid(book, unit, files.reported_depth)
+        session = cls._assemble(
+            files.reported_depth,
+            spec,
+            unit,
+            True,
+            messages["Time"].tolist(),
+            book.to_numpy(),
+            None,
+            _lobster_trade_rows(messages, unit),
+            None,
+        )
+        # Filled here rather than left to the caller: `stats` is what four of the five
+        # session figures read, and a file-built session is the one a reader plots first.
+        if statistics:
+            session.stats = session.stats_from_frame()
+        return session
 
     @classmethod
     def _assemble(
         cls,
         reported_depth: ReportedDepth,
         spec: SessionStatistics,
-        price_unit: int,
+        price_unit: PriceUnit,
+        truncated: bool,
         times: list[float],
-        rows: _RowBuffer,
-        statistics: _RowBuffer | None,
-        trades: _RowBuffer | None,
+        rows: np.ndarray,
+        statistics: np.ndarray | None,
+        trades: np.ndarray | None,
         deltas: list[tuple[int, float, LevelDelta]] | None,
     ) -> "MarketSession":
+        """Arrays in declared column order to validated frames.
+
+        The arrays are what a recorder produced; whether it folded a book, replayed a log
+        or read a file is spent by the time they arrive, and only ``truncated`` survives it.
+        """
         clock = np.asarray(times, dtype=float)
         # From the array, not the list: `pd.Index([])` is dtype object, and an empty
         # session would then fail the index schema rather than validate as empty.
         index = pd.Index(clock, name="TimeStamp")
         book_frame = pd.DataFrame(
-            rows.finished(), columns=frames.lobster_book_columns(reported_depth), index=index
+            rows, columns=frames.lobster_book_columns(reported_depth), index=index
         )
         stats = None if statistics is None else pd.DataFrame(
-            _with_rolling(spec, clock, statistics.finished()),
+            _with_rolling(spec, clock, statistics),
             index=index,
         )
         traded = None if trades is None else pd.DataFrame(
-            _with_vwap(spec, clock, trades.finished()), index=index
+            _with_vwap(spec, clock, trades), index=index
         )
         return cls(
             reported_depth=reported_depth,
             statistics=spec,
             price_unit=price_unit,
-            from_file=False,
+            truncated=truncated,
             lobster_book=frames.session_book_schema(reported_depth).validate(book_frame),
             stats=None if stats is None else spec.statistics_schema().validate(stats),
             level_deltas=deltas,
@@ -778,7 +873,7 @@ class MarketSession:
                 # Determined when it filled, or when the side genuinely ran out on a book
                 # we hold -- and never without a mid to price it against.
                 covered = np.isfinite(mid) & (
-                    filled | ((count < self.reported_depth) & (not self.from_file))
+                    filled | ((count < self.reported_depth) & (not self.truncated))
                 )
                 columns[f"SweepCost{side}{size}"] = cost
                 columns[f"SweepCost{side}{size}Covered"] = covered.astype(float)
@@ -861,12 +956,13 @@ class MarketSession:
         ask it something else.
 
         Raises where ``trades`` is None, which is the honest answer rather than a NaN
-        column: a delta log and a LOBSTER orderbook file both record configurations, and no
-        sequence of configurations determines a volume.  A LOBSTER *message* file does, its
-        types 4 and 5 being executions, but that is a different object.
+        column: a delta log records configurations, and no sequence of configurations
+        determines a volume.  An orderbook file alone is in the same position; its message
+        file is what supplies the executions, and that is why the two are read as a pair.
 
-        Covers the executions the fold saw.  The tape's VWAP also carries hidden and
-        auction prints, which rest at or inside the touch and so print better than these.
+        Covers the executions the fold saw, or the visible ones the file reported.  The
+        tape's VWAP also carries hidden and auction prints, which rest at or inside the
+        touch and so print better than these.
         """
         if self.trades is None:
             raise ValueError(
@@ -906,7 +1002,7 @@ class MarketSession:
     def _covers(self, n: GridDepth, span, count):
         """Per side; the caller conjoins.  See :func:`_side_covers` for why it is one-way."""
         fully_reported = (
-            count < self.reported_depth if not self.from_file
+            count < self.reported_depth if not self.truncated
             else np.zeros_like(count, dtype=bool)
         )
         return (count == 0) | (n <= span) | fully_reported

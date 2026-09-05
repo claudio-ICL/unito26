@@ -12,7 +12,8 @@ The strand is built as a ladder of increasing complexity, and the modules follow
     rebuilt from them.
 ``session``
     the ``MarketSession`` -- a LOBSTER-shaped frame plus the statistics read off it --
-    and the ways of building one: two folds through a book, and a delta log replayed.
+    and the four ways of building one: two folds through a book, a delta log replayed,
+    and a LOBSTER file pair read.
 ``statistics``
     which statistics a session records: the one declaration its column names, their
     order, its coverage flags and the fold's write positions are all read off.
