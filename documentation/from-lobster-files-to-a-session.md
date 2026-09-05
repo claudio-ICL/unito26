@@ -13,6 +13,12 @@ It is written to be lifted into the LaTeX lecture notes,
 so it is self-contained:
 the sample files and LOBSTER's own ReadMe live under `data/`, which is not in the repository.
 
+**Reproducing them.** Every measurement below is made by
+[`notebooks/a-session-from-lobster-files.ipynb`](../notebooks/a-session-from-lobster-files.ipynb),
+section by section, with the code that makes it. The functions it calls are in
+`unito26.lob.lobster` and `unito26.lob.lobster_session`; this file states and the notebook
+measures.
+
 **Measurements.** Numbers below were taken on 2026-09-05 from the eight sample pairs of
 2012-06-21 — AAPL, AMZN, GOOG, INTC, MSFT, SPY — 3,499,101 book states in all. They describe
 one day of one sample and are quoted to make a point concrete, never as a property of the
@@ -181,24 +187,30 @@ rejects 3.1% of the file.
 
 ### Nothing may group on the float
 
-Equality on a float is exact-bit equality, and it works here:
+Equality on a float is exact-bit equality, and it works here. The two numbers to read against
+each other are the spacing float64 can represent at that magnitude and the closest pair of
+distinct instants the file actually holds:
 
-| | |
-| --- | --- |
-| float64 spacing at seconds after midnight | $7.276 \times 10^{-12}$ s, about 137 ticks per nanosecond |
-| distinct timestamps as text | 261,265 |
-| distinct after parsing to float64 | 261,265 |
-| adjacent rows distinct in text but equal as float64 | 0 |
+| origin | representable spacing | closest pair in the file | instants lost |
+| --- | --- | --- | --- |
+| seconds after midnight, $3.4 \times 10^4$ | $7.3 \times 10^{-12}$ s | 230 ns (AMZN) | 0 |
+| seconds after the Unix epoch, $1.34 \times 10^9$ | $2.4 \times 10^{-7}$ s | 230 ns (AMZN) | 0 |
+| " | " | 171 ns (INTC) | 18 |
+| " | " | 167 ns (SPY) | 83 |
 
-It works *because the clock is seconds after midnight*, which keeps the exponent small.
-The same nanosecond resolution measured from the Unix epoch, $1.34 \times 10^9$ s, has a
-float64 spacing of 238 nanoseconds, and every group of the next section collapses into its
-neighbours. The safety is a property of the encoding, not of the format, and the file already
-carries digits finer than float64 can separate at a larger origin.
+From midnight the spacing is four orders of magnitude below the closest pair, and every one of
+AMZN's 261,265 distinct instants survives the parse. From the Unix epoch the spacing is
+*larger* than the closest pair, and whether anything merges stops being a property of the
+format and becomes a property of how busy the ticker is: nothing on AMZN, eighteen instants on
+INTC, eighty-three on SPY.
+
+So the margin, and not the mere fact that it works, is what the measurement is for. The safety
+is a property of the encoding, and the file already carries digits finer than float64 can
+separate at a larger origin.
 
 So the *key* is an exact integer, built from the text by splitting on the decimal point and
 never by scaling the parsed float: `int64` nanoseconds, which reproduces the same 261,265
-distinct values and the same run boundaries, over a range $3.42 \times 10^{13}$ to
+distinct values and the same run boundaries at any origin, over a range $3.42 \times 10^{13}$ to
 $5.76 \times 10^{13}$ against an `int64` ceiling of $9.22 \times 10^{18}$. The two
 twelve-decimal rows lose their picoseconds.
 
@@ -223,53 +235,78 @@ second, 15 against the third, with the intermediate states 80 and 60 visible in 
 file. Those two intermediate configurations exist *inside* the matching of a single incoming
 order.
 
-It is common:
+**What counts as one order has to be said before it can be counted**, and the answer is not
+the obvious one. A market order is a maximal **contiguous** block of visible executions
+sharing an instant and a direction, together with any hidden executions lying strictly
+between two of them. Contiguity, because the fills of one aggressive order are consecutive in
+the sequence and a `groupby` on the instant joins two orders that merely arrived together.
+Interior hidden prints, because one aggressor can take lit and hidden liquidity in a single
+sweep — 19 blocks on AMZN — while one at the edge of a block has nothing to say it shares an
+aggressor, and absorbing it would destroy the classification below by adding a price that
+moved no level. `market_order_index` implements exactly this.
 
-| ticker (depth 10) | type-4 rows | trades | multi-row trades | rows inside them | largest |
+Then:
+
+| ticker (depth 10) | fills | market orders | multi-fill | fills inside them | largest |
 | --- | --- | --- | --- | --- | --- |
 | AMZN | 8,974 | 6,591 | 1,511 (22.9%) | 3,894 (43.4%) | 28 |
 | GOOG | 7,765 | 5,931 | 1,190 (20.1%) | 3,024 (38.9%) | 35 |
 | AAPL | 23,658 | 18,016 | 3,883 (21.6%) | 9,525 (40.3%) | 43 |
-| INTC | 28,924 | 8,006 | 3,888 (48.6%) | 24,806 (85.8%) | 105 |
+| INTC | 28,924 | 8,035 | 3,901 (48.6%) | 24,790 (85.7%) | 105 |
 
-grouping maximal runs of type-4 rows that share a timestamp and a direction. On INTC, 85.8%
-of all executions sit inside a multi-row trade.
+On INTC, 86% of all executions sit inside a multi-fill order.
 
 **Two causes, and only one of them needs identity.** A multi-row trade is either a *level
 walk* — the aggressor consumes several prices, which an aggregate book could report one level
 at a time if it chose — or a *queue split*, several resting orders at one price, which no
 sequence of aggregate states determines, because the aggregate book does not know the level
-is five orders. Splitting the same groups by whether all their prices agree: **80% AMZN, 79%
-GOOG, 82% AAPL, 99% INTC** are queue splits. One AMZN buy at \$225.00 consumes 25 resting
-orders — 500, 100, 30, 200, 1, ... — as 25 rows.
+is five orders. Splitting the same orders by whether all their **visible** prices agree:
+**80% AMZN, 79% GOOG, 82% AAPL, 99% INTC** are queue splits. AMZN's largest is one buy taking
+28 fills across two prices, of which 25 — 500, 100, 30, 200, 1, ... — are one queue at
+\$224.99.
 
 So the granularity gap is overwhelmingly the part an aggregate book cannot reach in
 principle. It is the aggregation-versus-identity break of the strand, arriving as a property
 of a file rather than as a design choice.
 
-**Within a split the timestamp is exactly equal.** Consecutive type-4 rows sharing a price
-and a direction give 1,988 pairs at a gap of exactly zero and 2,694 at a non-zero gap whose
-minimum is 1.5 microseconds — six orders of magnitude above the float64 resolution of section
-4. There is no ambiguous middle, so grouping on equality neither merges distinct trades nor
-splits one.
+**Within a split the timestamp is exactly equal.** Visible executions sharing a price and a
+direction and adjacent in the file give 1,988 pairs at a gap of exactly zero and 924 at a
+non-zero gap whose minimum is 1.52 microseconds — four orders of magnitude above the float64
+resolution of section 4. (Adjacent among the executions rather than in the file, the
+non-zero pairs are 2,694; the zero ones are the same 1,988.) There is no ambiguous middle, so
+grouping on equality neither merges distinct orders nor splits one.
 
 ### What it changes, quantity by quantity
 
 - **volume, traded value, VWAP** — nothing. 20 + 20 + 15 at one price is 55 at that price;
-- **order flow imbalance over a window** — nothing. $e_n$ differences consecutive touches,
-  and three consecutive decrements sum to the single decrement;
+- **the order flow contribution** — nothing on a queue split, and never on a level walk. An
+  execution touches only the resting side, so with $(P_j, S_j)$ that side's touch and $j_1 <
+  \dots < j_r$ the fills at which its price moved,
+  $\sum_n e_n - e(\text{first}, \text{last}) = S_{\text{end}} - \sum_i S_{j_i}$ for $r \ge 1$
+  and $0$ for $r = 0$. A split moves the price at most once and empties the level on its last
+  fill, so the terms cancel; a walk fills again after emptying one, which strictly reduces the
+  size at the new touch. Measured: 1,214 of 1,214 splits preserved on AMZN and 0 of 297 walks.
+  **The criterion is not "the touch did not move"** — 732 of those splits move it and survive
+  anyway;
+- **order flow imbalance over a window** — whatever its contributions do. A window containing
+  a level walk changes: 111,035 of AMZN's 264,921 rows at $w = 60$;
+- **VWAP over a window** — nothing, being a ratio of two sums each additive over the fills;
 - **any per-row average** — everything. A mean over rows weights a five-way split five times,
   and LOBSTER has more rows per unit of trading than a fold does;
 - **mean trade size** — everything, and this is the trap LOBSTER's demo names outright. Mean
   *execution* size is not mean *trade* size, and nothing in the file marks the difference;
-- **comparing a simulated session against a loaded one row by row** — impossible. The two
-  frames have the same columns, the same dtypes and the same index name, and a different unit
-  of observation. A schema pins the fields and cannot pin what a row *is*.
+- **comparing a simulated session against a loaded one row by row** — impossible. Both frames
+  would carry the same columns and the same dtypes, and a different unit of observation. A
+  schema pins the fields and cannot pin what a row *is*.
 
-That last one is the limit of the discipline the rest of this file argues for, and it is
-worth stating plainly: schemas are necessary and they are not sufficient.
+That last one is as far as a schema reaches, and section 6 takes it that far: a raw pair is
+indexed by position and a session by its clock, so passing one for the other is now a
+validation error rather than a wrong answer. What no index reaches is the arithmetic, which is
+why the reconciliation is measured column by column rather than asserted.
 
-How the discrepancy should be reconciled is an open question, recorded in
+The discrepancy is resolved by **coarsening**: `LobsterMarketSession.coarsened` groups the
+fills of each market order onto the last of its rows, and `coarsening_report` measures what
+that costs. The decision and what it discards are recorded in
 [`../dev-context/lobster-execution-granularity.md`](../dev-context/lobster-execution-granularity.md).
 
 ---
@@ -277,8 +314,9 @@ How the discrepancy should be reconciled is an open question, recorded in
 ## 6. The pipeline, and the schema at each stage
 
 Every frame that crosses a function boundary here is declared before any data is read and
-validated on the way out. There are five shapes, and no two of them are interchangeable
-even where their columns agree.
+validated on the way out. No two of the shapes are interchangeable, even where their columns
+agree — and the coarsening of section 5 is the line down the middle of the table: above it a
+row is the execution of one resting order, below it a row is one aggressive order.
 
 | stage | what it produces | schema | index |
 | --- | --- | --- | --- |
@@ -287,9 +325,12 @@ even where their columns agree.
 | `load_orderbook` | the book states as written | `lobster_orderbook_file_schema` | positional |
 | `load_aligned` | both, cut to a `TradingWindow` | the two above | positional |
 | `prices_on_the_tick_grid` | the same book, or a refusal | — | — |
-| `MarketSession.from_lobster_files` | `lobster_book` | `session_book_schema` | `TimeStamp` |
+| `LobsterMarketSession.from_files` | the pair as the files hold it | the two above | positional |
+| `.stats_from_frame` | statistics per file row | `positional_statistics_schema` | positional |
+| `.trades_from_messages` | the lit tape, per fill | `positional_trades_schema` | positional |
+| `.coarsened` | `lobster_book` | `session_book_schema` | `TimeStamp` |
 | " | `trades` | `trades_schema` | `TimeStamp` |
-| `stats_from_frame` | `stats` | `statistics_schema` | `TimeStamp` |
+| `MarketSession.stats_from_frame` | `stats` | `statistics_schema` | `TimeStamp` |
 
 Four things in that table are worth saying out loud.
 
@@ -305,13 +346,16 @@ as `int64`, not as the `int8` that would obviously hold them. A narrow integer *
 corruption rather than catching it: read as `int8`, a `Type` of 260 becomes 4 — a valid
 visible execution — inside `read_csv`, and any membership check downstream then passes it.
 
-**Positional and clocked frames are different schemas.** The columns off the orderbook file
-and the columns of a session's `lobster_book` are spelled identically. One is a frame of
-rows of a file and the other is a book at a time, and they are validated against different
-declarations: `int64` against `Int64`, no index against a named, non-decreasing,
-**non-unique** one. The nullable extension dtype is why the file schema is the plain one —
-coercing replaces one contiguous integer block with one masked column per field, which on a
-file-sized frame costs more than reading only the wanted rows saves.
+**Positional and clocked frames are different schemas, and the index is what says so.** The
+columns off the orderbook file and the columns of a session's `lobster_book` are spelled
+identically. One is a frame of rows of a file and the other is a book at a time, and they
+are validated against different declarations: `int64` against `Int64`, and an `int64`
+positional index against a named, non-decreasing, **non-unique** float one. Both indices are
+*declared*, which is the part worth insisting on: a schema with no `index` validates any
+index, so leaving it out does not say "positional", it says "unchecked", and the refusal has
+to be mutual or it is not a boundary. The nullable extension dtype is why the file schema is
+the plain one — coercing replaces one contiguous integer block with one masked column per
+field, which on a file-sized frame costs more than reading only the wanted rows saves.
 
 **Alignment is assumed, not verified.** `load_aligned` reads the message file whole — it is
 the smaller of the two and carries the only clock — and uses it as the index into the other,

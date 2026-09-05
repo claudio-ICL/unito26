@@ -46,16 +46,19 @@ Built:
 - `unito26/lob/binary_gaps.py` — an integer as a set of bit positions
 - `unito26/lob/frames.py` — pandera schemas and the round trips to validated DataFrames
 - `unito26/lob/config.py` — example parametrizations, frozen as serialized frames
-- `unito26/lob/session.py` — the `MarketSession` and the four ways of building one
+- `unito26/lob/session.py` — the `MarketSession` and the three ways of building one; every
+  row of one is an aggressive order or another single message
 - `unito26/lob/statistics.py` — the one declaration the columns, their order, their
   coverage flags and the fold's write positions are all read off
 - `unito26/lob/delta_log.py` — a session recorded as level changes rather than states
 - `unito26/lob/hawkes.py` — multivariate Hawkes with exact simulation
 - `unito26/lob/simulate.py` — marks: event type to order, against a live book
-- `unito26/lob/lobster.py` — the file pair, the price-unit conversion, the loaders and
-  the windowed aligned read; `MarketSession.from_lobster_files` builds a session from
-  one. Still short of L6, which reconstructs the book from the messages rather than
-  reading the states the file already carries
+- `unito26/lob/lobster.py` — the file pair, the price-unit conversion, the loaders, the
+  windowed aligned read, and the censuses that measure the sample against the format
+- `unito26/lob/lobster_session.py` — a pair held as the files hold it, positionally
+  indexed, and the coarsening that makes it a `MarketSession`. Still short of L6, which
+  reconstructs the book from the messages rather than reading the states the file already
+  carries
 
 The simulator no longer offers a submission-only mode: the ladder's early rungs are a
 conceptual progression, not a runtime switch.
@@ -330,6 +333,24 @@ From the LOBSTER-frame work, all of them live bugs or near-misses in this codeba
   size 0, and `set_size`'s zero rule silently removes it. "Why does this bug *not*
   bite?" tests the removal invariant, and is a better question than "find the bug";
 - **a type-7 halt message** replayed as an order at price −1.
+
+From the coarsening, where the interesting answers are the ones that are right on this data:
+
+- **summing `e_n` over the fills of a market order and expecting the coarse value.** True on
+  every queue split and on no level walk, which is a theorem rather than a coincidence. "For
+  which trades does this hold, and why?" is the question; "does it hold here?" is not;
+- **`groupby(["TimeNanoseconds", "Direction"])` to recover a trade.** Right on three of the
+  four depth-10 samples and wrong on the fourth, because it joins two orders that merely
+  arrived in the same nanosecond. The discriminating question is what would have to change
+  for it to stop working, not whether it works;
+- **grouping type 4 and type 5 together.** A hidden print leaves the visible book identical
+  while carrying a price of its own, so it turns a queue split into an apparent level walk and
+  430 of AMZN's 727 "walks" then preserve an order flow that walks never preserve;
+- **comparing `AverageDepth300` between a loaded session and a simulated one.** Both are
+  finite, both are plausible, and they divide by counts of different things;
+- **mean execution size read as mean trade size** — 68.3 against 93.0 shares on AMZN;
+- **a schema with no `index=`**, offered as "the positional one". It validates any index, so
+  the clocked frame passes it and the boundary exists only in the docstring.
 
 From the performance pass, all three live mistakes rather than invented ones:
 
