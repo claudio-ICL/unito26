@@ -133,6 +133,61 @@ accepted as a reliable signal for the next mid-price move (Cartea, Donnelly and 
 2018): close to $+1$ the mid-price will likely rise, close to $-1$ it will likely fall.
 Getting this sign backwards silently inverts every signal built on it.
 
+Three further statistics, developed in the notes under "Three statistics read off the book
+and the tape". The first is read off one configuration, as everything above is; the other
+two are read over a window, and that difference decides what a series of configurations can
+tell us.
+
+**Sweep cost.** The per-share cost, in ticks, of a market order for $Q$ shares in direction $d$,
+measured against the mid:
+
+$$\mathrm{sc}_t(Q, d) = \frac{d}{Q}\sum_i q_i (\pi_i - P^m_t)
+ = \frac{\phi_t}{2} + \frac{1}{Q}\sum_i q_i (k_i - 1)\tau,$$
+
+$q_i$ shares executing at the resting price $\pi_i$, $\sum_i q_i = Q$, and $k_i$ the **grid**
+level of $\pi_i$. Every share pays the half-spread; each additionally pays its own distance from
+the touch. That distance grows one tick per level only where the consumed side is occupied at
+every tick — it is a grid distance, not a count of queues, and
+[`grid-levels-and-lobster-levels.md`](grid-levels-and-lobster-levels.md) is why the difference
+matters. It is the $\tfrac{\phi_t}{2}\lvert V\rvert$ term of §7 generalised to an order that
+walks; $2\,\mathrm{sc}$ is the effective spread. Undefined when the price-eligible side holds
+fewer than $Q$ shares, and when the opposite side is empty, since the mid it is measured against
+does not then exist. Being a cost, $\mathrm{sc}_t \ge 0$ — a consequence of the book not
+crossing, not an extra assumption, so it is worth asserting.
+
+**Order flow imbalance** (Cont, Kukanov and Stoikov, 2014). $I^n$ is a stock; this is the
+corresponding flow. The contribution of the $n$-th event, $n$ counting events and not time, is
+
+$$e_n = \mathbf 1_{\{P^b_n \ge P^b_{n-1}\}} S^b_n - \mathbf 1_{\{P^b_n \le P^b_{n-1}\}} S^b_{n-1}
+ - \big[\mathbf 1_{\{P^a_n \le P^a_{n-1}\}} S^a_n - \mathbf 1_{\{P^a_n \ge P^a_{n-1}\}} S^a_{n-1}\big],$$
+
+and $\mathrm{OFI}_{t,w} = \sum e_n$ over the events in $(t-w,\,t]$. **The name belongs to the
+sum**; $e_n$ is a contribution. Both bid indicators fire when the best bid price is unchanged, so
+such an event contributes $S^b_n - S^b_{n-1}$, and one that moves the best bid contributes a whole
+queue. Positive under buy pressure, which is the orientation of $I^n$ — but not comparable in
+magnitude, $I^n$ lying in $[-1,1]$ and $\mathrm{OFI}$ being an unbounded share count. The
+mid-price change over the window is approximately $\mathrm{OFI}_{t,w}$ over twice the average
+size at the touch, so the sum is a prediction in ticks only after that normalisation. It reads
+the touch alone, so a market order that walks registers only the *old* best-ask size.
+
+**VWAP.** The value transacted over $(t-w,\,t]$ per share transacted:
+
+$$\mathrm{TV}_{t,w} = \sum_{n} \sum_i \pi_i q_i, \qquad
+V_{t,w} = \sum_{n} \sum_i q_i, \qquad
+\mathrm{VWAP}_{t,w} = \frac{\mathrm{TV}_{t,w}}{V_{t,w}},$$
+
+the inner sums running over the fills of the $n$-th event — the market-order component $q_M$ of
+§6 — each at the **resting** price and never at the price the incoming order named. Undefined on
+a window that traded nothing.
+
+By the size-versus-volume convention above, $V_{t,w}$ is not determined by the sizes however
+finely they are sampled, so **VWAP is not recoverable from a record of book configurations**,
+where sweep cost and OFI are. The asymmetry runs one way: size appearing at a price where none
+rested is unambiguously a limit order; size falling at the best bid is a cancellation or an
+execution, and the configuration does not say which. That is why trade-sign inference is a
+literature. A LOBSTER *message* file does carry executions, as types 4 and 5, so VWAP is
+recoverable from one of those.
+
 ## 5. The update rule
 
 **Proposition (`prop.lobUpdate`).** Let a sell limit order $(t,q,p,-1)$ arrive at time $t$
@@ -322,7 +377,11 @@ Python identifier — use it, and nothing else, in `unito26/` and in the noteboo
 | $S^a_t(p)$ | `\askSizePriceP` | ask size at absolute price $p$ | `ask_size_at(p)` |
 | $\phi$ | `\LOBspread` | spread | `spread` |
 | $I$, $I^n$ | `\queueImbalance` (alias `\queueImb`) | queue imbalance, *volume imbalance* in the literature | `queue_imbalance(n)` |
-| $\mathrm{OFI}$ | `\OFI` (alias `\orderFlowImbalance`) | order flow imbalance | `order_flow_imbalance` |
+| $\mathrm{OFI}$ | `\OFI` (alias `\orderFlowImbalance`) | order flow imbalance — the **sum** of $e_n$ over a window | `order_flow_imbalance` |
+| $e_n$ | `\orderFlowContribution` | contribution of one event to $\mathrm{OFI}$ | `order_flow_contribution` |
+| $\mathrm{sc}$ | `\sweepCost` | sweep cost: per-share cost of a market order, in ticks | `sweep_cost` |
+| $\mathrm{TV}$ | `\tradedValue` | traded value, $\sum \pi_i q_i$, in tick-shares | `traded_value` |
+| $\mathrm{VWAP}$ | `\VWAP` | volume-weighted average price | `vwap` |
 | $A$ | `\askOrderQueue` | set of active sell orders | `ask_orders` |
 | $B$ | `\bidOrderQueue` | set of active buy orders | `bid_orders` |
 | $Q^b_t$, $Q^a_t$ | `\bidQueue`, `\askQueue` | size process at the touch, $Q^b_t = S^{b,1}_t$ | `bid_queue`, `ask_queue` |

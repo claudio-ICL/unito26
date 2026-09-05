@@ -521,3 +521,128 @@ rests
 on whether
 or not
 the bid-ask spread adequately compensates for this risk.
+
+\subsection{Three statistics read off the book and the tape}
+\label{sec.bookStatistics}
+
+The quantities of \eqref{eq.queueImbalance} and of Section \ref{sec.pnlOfTradeExecution}
+are read off a single configuration of the book.
+Two of the three statistics below are not:
+they are read over a window of time,
+and the distinction is worth making explicit
+because it decides what a series of book configurations can and cannot tell us.
+
+\subsubsection{Sweep cost}
+
+Equation \eqref{eq.wealthMarketOrder} charges a market order half the spread,
+$\LOBspread_t/2$ per share,
+whatever the size transacted.
+That is exact only while the order does not walk the book.
+The \emph{sweep cost} is the per-share cost of a market order for
+$\quantityToLiquidate$ shares in direction $d$,
+measured against the mid-price:
+\begin{equation}
+\label{eq.sweepCost}
+\sweepCost_t(\quantityToLiquidate, d)
+=
+\frac{d}{\quantityToLiquidate}\sum_{i} q_i (\pi_i - \midPrice_t)
+=
+\frac{\LOBspread_t}{2}
++
+\frac{1}{\quantityToLiquidate}\sum_{i} q_i (k_i - 1)\tickSizeOfLOB,
+\end{equation}
+where $q_i$ shares execute at the resting price $\pi_i$,
+$\sum_i q_i = \quantityToLiquidate$,
+and $k_i$ is the level of $\pi_i$ on the price grid of Definition \ref{def.orderQueue}.
+The second form separates the two terms.
+Every share pays the half-spread;
+each additionally pays its own distance from the touch.
+Where the consumed side is occupied at every tick that distance grows one tick per level,
+but the levels of a real book are not contiguous,
+so the increment is a grid distance and not a count of queues.
+
+The quantity is undefined when the price-eligible side holds fewer than
+$\quantityToLiquidate$ shares,
+and when the opposite side is empty,
+since the mid-price it is measured against does not then exist.
+It is a cost, so $\sweepCost_t \geq 0$;
+this is a consequence of the book not crossing
+and not an additional assumption.
+
+\subsubsection{Order flow imbalance}
+
+The queue imbalance $\queueImbalance^n_t$ is a stock:
+it reads the sizes resting at one instant.
+The \emph{order flow imbalance} of \cite{CKS14pri} is the corresponding flow.
+Write $\orderFlowContribution$ for the contribution of the $n$-th event to it,
+\begin{equation}
+\label{eq.orderFlowContribution}
+\orderFlowContribution
+=
+\indicator{\bestBidPrice_n \geq \bestBidPrice_{n-1}}\bestBidSize_n
+-
+\indicator{\bestBidPrice_n \leq \bestBidPrice_{n-1}}\bestBidSize_{n-1}
+-
+\left[
+\indicator{\bestAskPrice_n \leq \bestAskPrice_{n-1}}\bestAskSize_n
+-
+\indicator{\bestAskPrice_n \geq \bestAskPrice_{n-1}}\bestAskSize_{n-1}
+\right],
+\end{equation}
+the index $n$ counting events rather than time.
+Both bid indicators fire when the best bid price is unchanged,
+so an event that leaves the price alone contributes
+$\bestBidSize_n - \bestBidSize_{n-1}$,
+the change in the size resting at the touch;
+an event that moves the best bid contributes the whole of one queue.
+The order flow imbalance over the window $(t-w, t]$ is the sum
+\begin{equation}
+\label{eq.orderFlowImbalance}
+\OFI_{t,w} = \sum_{n \, : \, t-w < t_n \leq t} \orderFlowContribution .
+\end{equation}
+It is positive when buy pressure dominates,
+which is the orientation of $\queueImbalance^n$,
+but the two are not comparable in magnitude:
+$\queueImbalance^n$ lies in $[-1,1]$ and $\OFI$ is an unbounded number of shares.
+What \cite{CKS14pri} establish is that the mid-price change over the window
+is approximately $\OFI_{t,w}$ divided by twice the average size at the touch,
+so the sum becomes a prediction in ticks only after that normalisation.
+
+Both \eqref{eq.orderFlowContribution} and \eqref{eq.sweepCost}
+are functions of the configuration of the book alone.
+Neither requires knowing which of the orders that left the book were executed
+and which were cancelled.
+
+\subsubsection{Volume-weighted average price}
+
+The third statistic does require exactly that knowledge.
+Write $\tradedValue_{t,w}$ for the value transacted over the window $(t-w,t]$,
+\begin{equation}
+\label{eq.tradedValue}
+\tradedValue_{t,w} = \sum_{n \, : \, t-w < t_n \leq t} \, \sum_i \pi_i q_i ,
+\end{equation}
+the inner sum running over the fills of the $n$-th event,
+which by Proposition \ref{prop.decompositionOfLimitOrder}
+are the market-order component $\marketOrderSize$ of that event,
+each at the resting price $\pi_i$ of Section \ref{sec.orderDrivenMarkets}
+and never at the price the incoming order named.
+The \emph{volume-weighted average price} is that value per share transacted,
+\begin{equation}
+\label{eq.vwap}
+\VWAP_{t,w} = \frac{\tradedValue_{t,w}}{\volume_{t,w}},
+\qquad
+\volume_{t,w} = \sum_{n \, : \, t-w < t_n \leq t} \, \sum_i q_i ,
+\end{equation}
+undefined on a window in which nothing traded.
+
+By Remark \ref{remark.sizeVersusVolume} the volume $\volume_{t,w}$ is not determined by
+the sizes $\nthBestBidSize[i]_t$ and $\nthBestAskSize[i]_t$,
+however finely they are sampled:
+a level shrinks by cancellation as well as by execution,
+and no sequence of configurations separates the two.
+So $\VWAP$ is not recoverable from a record of book configurations,
+where $\sweepCost$ and $\OFI$ are.
+The asymmetry runs one way only.
+A size appearing at a price where none rested is unambiguously a limit order;
+a size falling at the best bid is a cancellation or an execution,
+and the configuration does not say which.
