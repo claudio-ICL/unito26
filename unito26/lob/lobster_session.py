@@ -27,10 +27,12 @@ from unito26.lob import frames, lobster
 from unito26.lob.lobster import LobsterEvent, LobsterFiles, TradingWindow
 from unito26.lob.messages import PriceUnit, ReportedDepth, TickGrid
 from unito26.lob.session import MarketSession, _with_vwap, statistics_from_book
-from unito26.lob.statistics import SessionStatistics
+from unito26.lob.statistics import Dependence, SessionStatistics
 
 __all__ = [
     "LobsterMarketSession",
+    "coarsening_report",
+    "coarsening_totals",
     "execution_gap_census",
     "market_order_census",
     "market_order_index",
@@ -506,4 +508,219 @@ def price_reversing_orders(messages: pd.DataFrame) -> pd.DataFrame:
             "FirstRow": [int(rows[label == order][0]) for order in reversing],
             "LastRow": [int(rows[label == order][-1]) for order in reversing],
         }
+    )
+
+
+# ---- what the crossing costs -------------------------------------------------------------
+
+
+def coarsening_report_schema() -> pa.DataFrameSchema:
+    return pa.DataFrameSchema(
+        {
+            "Statistic": pa.Column(str, coerce=True),
+            "Dependence": pa.Column(str, coerce=True),
+            "Comparison": pa.Column(str, coerce=True),
+            "Guaranteed": pa.Column(bool, coerce=True),
+            "RowsCompared": pa.Column("int64", pa.Check.ge(0), coerce=True),
+            "RowsDiffering": pa.Column("int64", pa.Check.ge(0), coerce=True),
+            "LargestDifference": pa.Column(float, nullable=True, coerce=True),
+            "RelativeChange": pa.Column(float, nullable=True, coerce=True),
+        },
+        strict=True,
+        ordered=True,
+    )
+
+
+#: How the fine session's rows have to be combined before its answer is comparable with one
+#: row of the coarse one.  A statistic of a configuration is read at the surviving row; an
+#: additive one is summed over the fills that were merged into it; a window is already a
+#: reduction over rows and is read where it stands.
+_COMPARISON = {
+    Dependence.CONFIGURATION: "at the row",
+    Dependence.INCREMENT: "summed over the order",
+    Dependence.EXTENSIVE: "summed over the order",
+    Dependence.WINDOW: "at the row",
+}
+
+
+def _guaranteed(dependence: Dependence, merged: bool, walked: bool) -> bool:
+    """Whether the theorem promises the two sides agree, once combined that way.
+
+    A **sufficient** condition and not a necessary one, which is the whole point of putting
+    it beside a measurement.  A statistic of one configuration agrees because the surviving
+    row is one of the file's own rows.  An additive one agrees because every fill belongs to
+    exactly one order.  An increment agrees when the touch is emptied at most once inside an
+    order -- a queue split, never a level walk.  A window is a reduction over rows that were
+    regrouped, and nothing about its dependence alone promises anything.
+
+    So a column may be measured unchanged and not guaranteed, and every ``VWAP{w}`` is: it
+    is a ratio of two sums each additive over the fills, which no argument from the
+    dependence reaches.  A report whose two columns agreed everywhere would have learnt
+    nothing.
+    """
+    if dependence is Dependence.CONFIGURATION or dependence is Dependence.EXTENSIVE:
+        return True
+    if dependence is Dependence.INCREMENT:
+        return not walked
+    return not merged
+
+
+def _summed_over_orders(values: np.ndarray, target: np.ndarray, kept: int) -> np.ndarray:
+    """``values`` summed onto the row that survives each market order.
+
+    NaN is not skipped: a group holding one is undetermined, and ``bincount`` would answer
+    a number.  The opening row's order flow contribution is NaN on both sides, and that
+    agreement is a real one.
+    """
+    inside = target >= 0
+    missing = np.bincount(
+        target[inside], weights=np.isnan(values[inside]).astype(float), minlength=kept
+    )
+    summed = np.bincount(
+        target[inside], weights=np.nan_to_num(values[inside]), minlength=kept
+    )
+    return np.where(missing > 0, np.nan, summed)
+
+
+def coarsening_report(
+    fine: LobsterMarketSession, coarse: MarketSession
+) -> pd.DataFrame:
+    """Statistic by statistic: what was promised, and what actually happened.
+
+    Compared at the rows the coarse session kept, which are rows of the fine one, so the
+    comparison is between two numbers for the same instant and the same book state.  A
+    difference is therefore never an alignment artefact; it is the regrouping.
+
+    ``Comparison`` says how the fine side was combined first, and it is not a detail: the
+    order flow contribution of a market order is the sum of its fills' contributions, and
+    comparing the *last* fill instead would report a difference on every multi-fill order
+    and tell you nothing about what the coarsening cost.
+
+    NaN counts as equal to NaN.  An undetermined statistic that stays undetermined has not
+    changed, and treating it as a difference would report the coverage flags as broken.
+    """
+    orders = fine.market_orders()
+    keep = _retained_rows(fine.messages, orders)
+    inside = orders >= 0
+    fills = np.bincount(orders[inside]) if inside.any() else np.zeros(0, dtype=int)
+    merged = bool((fills > 1).any()) or len(keep) < len(fine.messages)
+    price = fine.messages["Price"].to_numpy()
+    visible = (fine.messages["Type"] == LobsterEvent.EXECUTION_VISIBLE).to_numpy()
+    walked = any(
+        len(np.unique(price[(orders == order) & visible])) > 1
+        for order in np.flatnonzero(fills > 1)
+    )
+
+    target = np.full(len(orders), -1)
+    target[keep] = np.arange(len(keep))
+    last = np.zeros(len(fills), dtype=np.int64)
+    if inside.any():
+        np.maximum.at(last, orders[inside], np.flatnonzero(inside))
+        target[inside] = target[last[orders[inside]]]
+
+    before = pd.concat([fine.stats_from_frame(), fine.trades_from_messages()], axis=1)
+    after = pd.concat(
+        [
+            coarse.stats if coarse.stats is not None else coarse.stats_from_frame(),
+            coarse.trades,
+        ],
+        axis=1,
+    )
+    rows = []
+    for column in fine.statistics.declaration() + fine.statistics.trade_declaration():
+        whole = before[column.name].to_numpy(dtype=float)
+        was = (
+            whole[keep]
+            if _COMPARISON[column.dependence] == "at the row"
+            else _summed_over_orders(whole, target, len(keep))
+        )
+        now = after[column.name].to_numpy(dtype=float)
+        differs = ~((was == now) | (np.isnan(was) & np.isnan(now)))
+        # The magnitude is over the rows where both sides are numbers.  A row where one is
+        # undetermined and the other is not has no size of difference, only the fact of one,
+        # which `RowsDiffering` already carries.
+        measurable = differs & np.isfinite(was) & np.isfinite(now)
+        rows.append(
+            {
+                "Statistic": column.name,
+                "Dependence": column.dependence.name,
+                "Comparison": _COMPARISON[column.dependence],
+                "Guaranteed": _guaranteed(column.dependence, merged, walked),
+                "RowsCompared": len(was),
+                "RowsDiffering": int(differs.sum()),
+                "LargestDifference": (
+                    float(np.abs(now[measurable] - was[measurable]).max())
+                    if measurable.any()
+                    else 0.0
+                ),
+                "RelativeChange": _relative_change(was, now),
+            }
+        )
+    return coarsening_report_schema().validate(pd.DataFrame(rows))
+
+
+def _relative_change(was: np.ndarray, now: np.ndarray) -> float:
+    """How far the column's average moved, as a fraction of where it was.
+
+    Over the determined rows on each side, which are not always the same rows: a statistic
+    that becomes determined more often has moved its average for that reason too, and the
+    row counts beside it say so.
+    """
+    before, after = was[np.isfinite(was)], now[np.isfinite(now)]
+    if not before.size or not after.size or before.mean() == 0.0:
+        return float("nan")
+    return float((after.mean() - before.mean()) / before.mean())
+
+
+def coarsening_totals_schema() -> pa.DataFrameSchema:
+    return pa.DataFrameSchema(
+        {
+            "Quantity": pa.Column(str, coerce=True),
+            "Fine": pa.Column(float, nullable=True, coerce=True),
+            "Coarse": pa.Column(float, nullable=True, coerce=True),
+        },
+        strict=True,
+        ordered=True,
+    )
+
+
+def coarsening_totals(
+    fine: LobsterMarketSession, coarse: MarketSession
+) -> pd.DataFrame:
+    """The session totals on each side of the coarsening.
+
+    Volume, traded value and the session VWAP are equal to the bit: a market order's fills
+    are additive, and every fill belongs to exactly one order.  The row count and the mean
+    are not, and the second is the trap LOBSTER's own demo names -- the mean of the fine
+    column is the mean *execution*, the mean of the coarse one is the mean *trade*, and
+    nothing in the file marks the difference.
+    """
+    before, after = fine.trades_from_messages(), coarse.trades
+    traded = before["Volume"].to_numpy()
+    order_traded = after["Volume"].to_numpy()
+    rows = [
+        ("rows", float(len(fine.book)), float(len(coarse.lobster_book))),
+        ("shares", float(traded.sum()), float(order_traded.sum())),
+        (
+            "traded value in tick-shares",
+            float(before["TradedValue"].sum()),
+            float(after["TradedValue"].sum()),
+        ),
+        (
+            "VWAP in ticks",
+            float(before["TradedValue"].sum() / traded.sum()) if traded.sum() else np.nan,
+            float(after["TradedValue"].sum() / order_traded.sum())
+            if order_traded.sum()
+            else np.nan,
+        ),
+        (
+            "mean size of what trades",
+            float(traded[traded > 0].mean()) if (traded > 0).any() else np.nan,
+            float(order_traded[order_traded > 0].mean())
+            if (order_traded > 0).any()
+            else np.nan,
+        ),
+    ]
+    return coarsening_totals_schema().validate(
+        pd.DataFrame(rows, columns=["Quantity", "Fine", "Coarse"])
     )

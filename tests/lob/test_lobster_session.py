@@ -14,7 +14,9 @@ from pathlib import Path
 
 from unito26.lob import frames, lobster
 from unito26.lob.lobster import LobsterEvent
-from unito26.lob.lobster_session import LobsterMarketSession, market_order_index
+from unito26.lob.lobster_session import (
+    LobsterMarketSession, coarsening_report, coarsening_totals, market_order_index,
+)
 from unito26.lob.messages import (
     BUY, SELL, GridDepth, ReportedDepth, SweepSize, TickGrid, limit_order,
 )
@@ -516,3 +518,95 @@ class TestAPaddedSide:
     def test_the_touch_is_unharmed_by_padding_far_from_it(self, session):
         padded = (session.lobster_book["AskPrice50"] == frames.ASK_PADDING).to_numpy()
         assert session.stats.loc[padded, "Spread"].notna().all()
+
+
+# ---- the report: what was promised, and what happened -----------------------------------
+
+
+class TestTheCoarseningReport:
+    def report(self, tmp_path, fixture):
+        raw = pair(tmp_path, *fixture)
+        return raw, coarsening_report(raw, raw.coarsened(True))
+
+    def test_nothing_guaranteed_ever_differs(self, tmp_path):
+        """The soundness check, and the only direction the theorem claims."""
+        for fixture in (QUEUE_SPLIT, LEVEL_WALK):
+            _, report = self.report(tmp_path, fixture)
+            promised = report[report["Guaranteed"]]
+            assert (promised["RowsDiffering"] == 0).all()
+
+    def test_an_increment_is_promised_on_a_split_and_not_on_a_walk(self, tmp_path):
+        _, split = self.report(tmp_path, QUEUE_SPLIT)
+        _, walk = self.report(tmp_path, LEVEL_WALK)
+        flow = "OrderFlowContribution"
+        assert split.set_index("Statistic").loc[flow, "Guaranteed"]
+        assert not walk.set_index("Statistic").loc[flow, "Guaranteed"]
+        assert walk.set_index("Statistic").loc[flow, "RowsDiffering"] == 1
+
+    def test_the_traded_quantities_are_compared_as_sums(self, tmp_path):
+        """Comparing the last fill instead would report a difference on every split."""
+        _, report = self.report(tmp_path, QUEUE_SPLIT)
+        rows = report.set_index("Statistic")
+        assert rows.loc["Volume", "Comparison"] == "summed over the order"
+        assert rows.loc["Spread", "Comparison"] == "at the row"
+        assert rows.loc["Volume", "RowsDiffering"] == 0
+
+    def test_a_column_may_survive_more_than_the_theorem_promises(self, tmp_path):
+        """VWAP is a ratio of two additive sums, which no dependence alone reaches."""
+        _, report = self.report(tmp_path, LEVEL_WALK)
+        vwap = report.set_index("Statistic").loc["VWAP1"]
+        assert not vwap["Guaranteed"]
+        assert vwap["RowsDiffering"] == 0
+
+    def test_a_per_row_average_is_where_the_cost_shows(self, tmp_path):
+        _, report = self.report(tmp_path, QUEUE_SPLIT)
+        assert report.set_index("Statistic").loc["AverageDepth1", "RowsDiffering"] > 0
+
+
+class TestTheTotals:
+    def test_what_traded_is_preserved_and_what_a_trade_is_is_not(self, tmp_path):
+        raw = pair(tmp_path, *QUEUE_SPLIT)
+        totals = coarsening_totals(raw, raw.coarsened(False)).set_index("Quantity")
+        for quantity in ("shares", "traded value in tick-shares", "VWAP in ticks"):
+            assert totals.loc[quantity, "Fine"] == totals.loc[quantity, "Coarse"]
+        assert totals.loc["rows", "Fine"] == 5
+        assert totals.loc["rows", "Coarse"] == 3
+        # The mean of the fine column is the mean execution; of the coarse, the mean trade.
+        assert totals.loc["mean size of what trades", "Fine"] == pytest.approx(55 / 3)
+        assert totals.loc["mean size of what trades", "Coarse"] == 55.0
+
+
+@needs_sample
+class TestTheReportOnRealData:
+    @pytest.fixture(scope="class")
+    @classmethod
+    def report(cls):
+        raw = LobsterMarketSession.from_files(
+            lobster.LobsterFiles.parse(AMZN), SAMPLE_SPEC, CENT, OPENING
+        )
+        return raw, coarsening_report(raw, raw.coarsened(True))
+
+    def test_nothing_guaranteed_differs(self, report):
+        _, measured = report
+        assert not ((measured["Guaranteed"]) & (measured["RowsDiffering"] > 0)).any()
+
+    def test_the_order_flow_differs_on_exactly_the_level_walks(self, report):
+        raw, measured = report
+        orders = raw.market_orders()
+        price = raw.messages["Price"].to_numpy()
+        visible = (raw.messages["Type"] == LobsterEvent.EXECUTION_VISIBLE).to_numpy()
+        fills = np.bincount(orders[orders >= 0])
+        walks = sum(
+            len(np.unique(price[(orders == order) & visible])) > 1
+            for order in np.flatnonzero(fills > 1)
+        )
+        differing = measured.set_index("Statistic").loc[
+            "OrderFlowContribution", "RowsDiffering"
+        ]
+        assert walks and differing == walks
+
+    def test_every_window_average_moves_and_every_vwap_does_not(self, report):
+        _, measured = report
+        rows = measured.set_index("Statistic")
+        assert rows.loc["AverageDepth300", "RowsDiffering"] > 0
+        assert rows.loc["VWAP300", "RowsDiffering"] == 0
