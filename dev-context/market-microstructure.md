@@ -74,6 +74,11 @@ it reduces the multivariate case to the scalar Dassios–Zhao exact scheme: O(1)
 no rejection, no time grid. That reduction is *derived* rather than quoted, so it is
 certified numerically by the random-time-change residual test.
 
+`notebooks/the-cost-of-the-statistics.ipynb` asks what the statistics on the fold cost, and
+is the notebook to re-run before changing what `_write_statistics` reads. Two decisions in
+`unito26/lob/orderbook.py` rest on it: that `submit` accumulates the traded totals rather
+than the fold recording fills, and that the sweep costs reuse `SideStatistics.levels`.
+
 ## Measured findings worth teaching
 
 Recorded because two of them contradicted the plan's own predictions:
@@ -223,6 +228,48 @@ long the longest is, but not where: `FirstGapDistance`, `FirstGapSize`,
 agree row for row on both regimes. On the deep book the nearest gap is a median of 1 tick
 from the touch and the largest spans up to 27 levels.
 
+From the sweep-cost / OFI / VWAP work (`notebooks/the-cost-of-the-statistics.ipynb`, 34.8k
+messages, reported depth 10). **Three of these contradict the review that shaped the plan**,
+which is why the notebook exists rather than the estimate:
+
+- **the statistics, not the book, are the fold.** Against a fold with them off: the existing
+  statistics cost 3.5–3.7×, and adding three sweep sizes and three windows takes it to
+  4.3–4.4×. So everything added here is about 20% on top of what was already being read,
+  and the whole family is four times the cost of driving the book;
+- **windows are free in the fold, as predicted.** `+ sweep` to `+ windows` is 1.22s to 1.24s.
+  A window is a reduction over a recorded series and is made once at assembly; if that column
+  ever stops being flat, something is being computed per message that should not be;
+- **recording would have cost 1.6–3.2% of the fold, not the 8–11% the review measured.**
+  `apply` with `record=True` costs +75% to +174% — the review's ratio, confirmed — but
+  `apply` is only 1.6–2.1% of the fold here, and the product is what lands. The decision to
+  accumulate three integers in the matching loop instead stands either way, and it costs
+  nothing measurable; but the *reason* given for it in the plan was three times too large.
+  Neither number means anything alone, which is the transferable lesson;
+- **reuse and batching are both levers, and which one dominates depends on the
+  specification** — where the review said reuse was worth 83–95% and batching "a 2%
+  pessimisation at three sizes". On the deep book, sweep cost above the two side walks it
+  shares: at **one** size, reusing `SideStatistics.levels` is nearly the whole saving
+  (depth 50: 0.0029s → 0.0001s; depth 10: 0.0010s → 0.0003s), because the walk dominates a
+  single accumulation. At **ten** sizes, batching is the bigger one (depth 10, reused:
+  0.0059s → 0.0023s), because the accumulation dominates the walk. Together at depth 50 and
+  ten sizes: 0.0093s → 0.0026s. Batching is not a pessimisation at three sizes here
+  (0.0017s → 0.0012s at depth 10);
+- **there is no crossover between the two routes.** The statistics cost 0.88–0.96s online
+  against 0.046s vectorised over the finished frame — about 20×, at every size measured. The
+  online route exists because it is the *fold*, not because it is ever faster. The real
+  asymmetry is elsewhere: VWAP has no from-frame route at all;
+- **pandera costs 1.3% of the fold here, not 15%.** `lobster_schema.validate` is 0.015s
+  against a 1.11s fold. The `Int64` coercion the review identified is real and does widen the
+  frame — 11.4MB to 12.8MB, one contiguous int64 block becoming one masked column per field
+  — but the time it takes is not where this path spends anything;
+- **a sweep column on a thin book is mostly empty, and that is the finding to teach.** A
+  sweep size is an absolute number of shares. On the deep regime at reported depth 1,
+  `SweepCostBuy400` is priced on 7.1% of messages and `SweepCostBuy1600` on **none of them**;
+  at depth 10 they reach 99.9% and 71.7%. The `Covered` flag separates "cannot be filled at
+  any price", which is an answer, from "the window ended", which is not. Choosing a sweep size
+  without looking at this produces a column that is NaN more often than not and reads like a
+  bug in the code.
+
 ## Exercises & exam snippets
 
 Harvested from the implementation, for the multiple-choice format: float tick prices; a
@@ -263,6 +310,52 @@ From the performance pass, all three live mistakes rather than invented ones:
   writes. Ask for the values it produces — small non-negative integers that pass a
   `Check.ge(0)` schema and read as a crossed book. Better than "find the bug", because the
   bug is a missing line rather than a wrong one.
+
+From the sweep-cost / OFI / VWAP work. Every one of these is a **plausible wrong answer**
+rather than an error, and four of them were found by review or by measurement rather than by
+a failing test:
+
+- **`np.where(pb[1:] >= pb[:-1], sb[1:], -sb[:-1])` for the bid half of `e_n`.** The best of
+  the whole set. It reads as an exact transcription of Cont–Kukanov–Stoikov's indicator, and
+  it loses only the case where the price is *unchanged* and **both** indicators fire — which
+  is most of the events. A limit buy of 50 joining the best bid gives −50 where the answer is
+  +50; a message that changes nothing gives −100 where the answer is 0. It differs on 47.8%
+  of a random touch sequence and turns a session OFI of −2065 into +349,755: same sign
+  convention, same shape, two orders of magnitude out and the wrong way up. Ask what it
+  computes, not where the bug is;
+- **`NaN >= NaN` in those indicators.** A padded touch gives a NaN price, both comparisons
+  are False, and the expression evaluates to an ordinary **0** where the event is undefined.
+  Twelve rows of a 5738-message session, silently. The mask is not implied by the formula and
+  has to be written;
+- **`0 * nan` in the vectorised sweep.** A padded level has size 0 and price NaN, so
+  `taken * price` is NaN where nothing was taken, and a perfectly determined row comes back
+  NaN — no warning emitted;
+- **masking the sizes as well as the prices** when the sentinels are cleaned. `before`, the
+  cumulative size above each level, then goes NaN for every level under a padded one. "Why
+  does cleaning *more* of the frame break it?" is a better question than "find the bug";
+- **`abs(value / size - mid)` for the sweep cost**, in place of `direction * (…)`. It agrees
+  on every uncrossed book — 20,000 random trials — which is exactly why it survives review.
+  Handed the wrong side it returns a well-formed tick cost that is silently the other side's;
+  on a crossed row, which real LOBSTER files contain and `describe_orderbook` already counts,
+  it reports a *gain* as a cost and makes the per-share cost fall in the size;
+- **a statement de-dented out of its `if`, in a recorder.** The trade columns were written
+  outside `if online_statistics:` in `from_top_of_book` and inside it in
+  `from_occupied_levels`, with the comment explaining them left behind at the inner
+  indentation. Nothing in the output changed, because the buffer is discarded when the
+  statistics are off, so no test could fail — but the notebook times those two recorders
+  against each other on exactly that path and reports them as one session recorded two ways,
+  so the wasted work was charged to one side of a published comparison. The fix that makes
+  it impossible is not the indentation: it is allocating the buffer only where it is used,
+  so the stray call meets `None` and raises. "What would you have to write to catch this?"
+  is a better question than "find the bug";
+- **reading `buffer.array` before `buffer.claim()`.** `claim` may grow the buffer, which
+  replaces the array, so the write lands in the copy about to be discarded — or, past the
+  boundary, raises `IndexError`. This one was a live bug here, caught by the growth test the
+  earlier pass left behind;
+- **a rolling window on a float lookback.** `f"{w:g}"` names a column `OFI0.5`, and
+  `frame.query("OFI0.5 > 0")` fails in a way that reads as a pandas bug; `1e6` names
+  `OFI1e+06`; and two windows differing below `%g` precision name one column, so the frame
+  comes back a column short of what was asked for.
 
 ## References
 
