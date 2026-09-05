@@ -330,3 +330,33 @@ class TestTheRowBufferKeepsItsPadding:
                 PRICE_UNIT, depth,
             )
         assert rows.array[1].tolist() == shallow.to_lobster_row(PRICE_UNIT, depth)
+
+
+class TestABookEmptyOnBothSides:
+    """Every level padded: the degenerate row the ratios divide by zero on.
+
+    ``AggregateBook`` answers None or NaN here by construction, but the frame route
+    reaches the same answers through array arithmetic, where a guarded quotient and an
+    unguarded one are indistinguishable in the output and differ only in whether they
+    raise the invalid-value flag on the way.  The flags are made fatal so they are.
+    """
+
+    @pytest.fixture
+    def session(self):
+        return MarketSession.from_occupied_levels(
+            AggregateBook(), [market_order(1.0, 100, BUY)], DEPTH, SPEC, PRICE_UNIT, True
+        )
+
+    def test_the_recorded_row_is_all_padding(self, session):
+        assert session.lobster_book.to_numpy().tolist() == [
+            frames.lobster_padding_row(DEPTH).tolist()
+        ]
+
+    def test_the_frame_route_answers_nan_without_raising(self, session):
+        with np.errstate(all="raise"):
+            frame_route = session.stats_from_frame()
+            vwap = session.vwap(1)
+        for name in ("Spread", "MidPrice", "MicroPrice", "QueueImbalance1", "AverageDepth1"):
+            assert np.isnan(frame_route[name].iloc[0])
+        assert np.isnan(session.trades["VWAP1"].iloc[0])
+        assert np.isnan(vwap.iloc[0])
