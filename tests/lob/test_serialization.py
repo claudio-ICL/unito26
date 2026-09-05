@@ -181,10 +181,30 @@ class TestFrozenExamples:
         """The construction that produced these numbers is gone, so what it was built to
         achieve is asserted here instead."""
         params = config.example_order_flow_params()
-        assert params.branching_ratio == pytest.approx(0.8)
+        assert params.branching_ratio == pytest.approx(0.6)
         replenishment = params.excitation[EventType.LIMIT_SELL, EventType.MARKET_BUY]
         reverse = params.excitation[EventType.MARKET_BUY, EventType.LIMIT_SELL]
         assert replenishment > 5 * reverse
 
-    def test_the_two_regimes_differ_in_depth(self):
-        assert config.shallow_mark_params().depth_decay > config.deep_mark_params().depth_decay
+    def test_the_flow_composition_is_the_declared_one(self):
+        """The baselines were read off a target stationary intensity, so the target is
+        what has to be asserted; the baselines themselves carry no interpretation."""
+        stationary = config.example_order_flow_params().stationary_intensity()
+        limit = stationary[[EventType.LIMIT_BUY, EventType.LIMIT_SELL]].sum()
+        consuming = stationary.sum() - limit
+        assert stationary.sum() == pytest.approx(30.1878, abs=1e-3)
+        assert limit / consuming == pytest.approx(0.98, abs=1e-6)
+
+    def test_the_baselines_are_admissible(self):
+        """``mu = (I - Gamma) lambda*`` is a baseline only where it is non-negative, and
+        the market-order component is the one that binds."""
+        params = config.example_order_flow_params()
+        assert (params.baseline > 0).all()
+        assert params.baseline.argmin() in (EventType.MARKET_BUY, EventType.MARKET_SELL)
+
+    def test_the_three_depth_regimes_are_distinct(self):
+        assert (
+            config.shallow_mark_params().depth_decay
+            > config.example_mark_params().depth_decay
+            > config.deep_mark_params().depth_decay
+        )

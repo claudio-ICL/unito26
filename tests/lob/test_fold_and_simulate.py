@@ -63,7 +63,7 @@ class TestSimulatedFlow:
 
     def test_the_example_flow_sits_in_the_documented_regime(self):
         params = config.example_order_flow_params()
-        assert params.branching_ratio == pytest.approx(0.8)
+        assert params.branching_ratio == pytest.approx(0.6)
         # Market orders excite the limit-order flow far more than the reverse.
         replenishment = params.excitation[EventType.LIMIT_SELL, EventType.MARKET_BUY]
         reverse = params.excitation[EventType.MARKET_BUY, EventType.LIMIT_SELL]

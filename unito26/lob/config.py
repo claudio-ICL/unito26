@@ -17,9 +17,22 @@ the only way in.
 
 Every diagonal carries self-excitation, which is the order-splitting story: a large parent
 order arrives as a burst of children.  The matrix was then rescaled to a branching ratio of
-0.8, inside the 0.7-0.9 range calibrations report.  That rescaling is separable from the
-shape because the spectral radius is homogeneous of degree one in the excitation, so
-doubling every entry doubles it.
+0.6.  That rescaling is separable from the shape because the spectral radius is homogeneous
+of degree one in the excitation, so doubling every entry doubles it.
+
+**Where the baselines came from.**  Not chosen directly.  What is chosen is the stationary
+intensity ``lambda* = (I - Gamma)^{-1} mu``, since that is what sets the composition of the
+flow and hence the book; the baselines are then read off as ``mu = (I - Gamma) lambda*``,
+which is admissible exactly when it is non-negative componentwise.  The target holds a total
+rate of 30.19 events per second, a limit-to-consuming ratio
+``lambda_L / (lambda_M + lambda_W) = 0.98``, and the market-to-withdrawal split of the shape.
+The binding component is the market-order baseline, market orders being heavily excited and
+small in share; here it is 0.786 of a total baseline of 12.76.
+
+Together with ``EXAMPLE_MARK_PARAMS`` this is a book that never empties: the mark offset
+spreads limit orders over roughly a dozen ticks, so a side is contiguous and no run of market
+orders exhausts it.  The price of that is the spread, which averages 1.75 ticks rather than
+sitting at one.
 
 tests/lob/test_serialization.py asserts those properties of what loads, so they remain
 checked although the code that produced them is gone.
@@ -41,86 +54,86 @@ __all__ = [
     "deep_mark_params",
 ]
 
-#: A six-type flow with the asymmetry described above, at a branching ratio of 0.8.
+#: A six-type flow with the asymmetry described above, at a branching ratio of 0.6.
 #: ``Component`` is the type being excited, ``Cause`` the type exciting it.
 EXAMPLE_ORDER_FLOW_PARAMS: list[dict] = [
-    {"Component": 0, "Cause": 0, "BaseIntensity": 0.3,
-     "Kernel": 24.1862913658, "Decay": 60.0},
+    {"Component": 0, "Cause": 0, "BaseIntensity": 0.7857772467,
+     "Kernel": 18.1397185244, "Decay": 60.0},
     {"Component": 0, "Cause": 1, "BaseIntensity": None,
-     "Kernel": 5.3747314146, "Decay": 60.0},
+     "Kernel": 4.0310485610, "Decay": 60.0},
     {"Component": 0, "Cause": 2, "BaseIntensity": None,
-     "Kernel": 1.3436828537, "Decay": 60.0},
+     "Kernel": 1.0077621403, "Decay": 60.0},
     {"Component": 0, "Cause": 3, "BaseIntensity": None,
-     "Kernel": 1.3436828537, "Decay": 60.0},
+     "Kernel": 1.0077621403, "Decay": 60.0},
     {"Component": 0, "Cause": 4, "BaseIntensity": None,
-     "Kernel": 2.6873657073, "Decay": 60.0},
+     "Kernel": 2.0155242805, "Decay": 60.0},
     {"Component": 0, "Cause": 5, "BaseIntensity": None,
-     "Kernel": 2.6873657073, "Decay": 60.0},
+     "Kernel": 2.0155242805, "Decay": 60.0},
     {"Component": 1, "Cause": 0, "BaseIntensity": None,
-     "Kernel": 5.3747314146, "Decay": 60.0},
-    {"Component": 1, "Cause": 1, "BaseIntensity": 0.3,
-     "Kernel": 24.1862913658, "Decay": 60.0},
+     "Kernel": 4.0310485610, "Decay": 60.0},
+    {"Component": 1, "Cause": 1, "BaseIntensity": 0.7857772467,
+     "Kernel": 18.1397185244, "Decay": 60.0},
     {"Component": 1, "Cause": 2, "BaseIntensity": None,
-     "Kernel": 1.3436828537, "Decay": 60.0},
+     "Kernel": 1.0077621403, "Decay": 60.0},
     {"Component": 1, "Cause": 3, "BaseIntensity": None,
-     "Kernel": 1.3436828537, "Decay": 60.0},
+     "Kernel": 1.0077621403, "Decay": 60.0},
     {"Component": 1, "Cause": 4, "BaseIntensity": None,
-     "Kernel": 2.6873657073, "Decay": 60.0},
+     "Kernel": 2.0155242805, "Decay": 60.0},
     {"Component": 1, "Cause": 5, "BaseIntensity": None,
-     "Kernel": 2.6873657073, "Decay": 60.0},
+     "Kernel": 2.0155242805, "Decay": 60.0},
     {"Component": 2, "Cause": 0, "BaseIntensity": None,
-     "Kernel": 26.8736570732, "Decay": 60.0},
+     "Kernel": 20.1552428049, "Decay": 60.0},
     {"Component": 2, "Cause": 1, "BaseIntensity": None,
-     "Kernel": 18.8115599512, "Decay": 60.0},
-    {"Component": 2, "Cause": 2, "BaseIntensity": 2.0,
-     "Kernel": 24.1862913658, "Decay": 60.0},
+     "Kernel": 14.1086699634, "Decay": 60.0},
+    {"Component": 2, "Cause": 2, "BaseIntensity": 3.3303382252,
+     "Kernel": 18.1397185244, "Decay": 60.0},
     {"Component": 2, "Cause": 3, "BaseIntensity": None,
-     "Kernel": 2.6873657073, "Decay": 60.0},
+     "Kernel": 2.0155242805, "Decay": 60.0},
     {"Component": 2, "Cause": 4, "BaseIntensity": None,
-     "Kernel": 2.6873657073, "Decay": 60.0},
+     "Kernel": 2.0155242805, "Decay": 60.0},
     {"Component": 2, "Cause": 5, "BaseIntensity": None,
-     "Kernel": 2.6873657073, "Decay": 60.0},
+     "Kernel": 2.0155242805, "Decay": 60.0},
     {"Component": 3, "Cause": 0, "BaseIntensity": None,
-     "Kernel": 18.8115599512, "Decay": 60.0},
+     "Kernel": 14.1086699634, "Decay": 60.0},
     {"Component": 3, "Cause": 1, "BaseIntensity": None,
-     "Kernel": 26.8736570732, "Decay": 60.0},
+     "Kernel": 20.1552428049, "Decay": 60.0},
     {"Component": 3, "Cause": 2, "BaseIntensity": None,
-     "Kernel": 2.6873657073, "Decay": 60.0},
-    {"Component": 3, "Cause": 3, "BaseIntensity": 2.0,
-     "Kernel": 24.1862913658, "Decay": 60.0},
+     "Kernel": 2.0155242805, "Decay": 60.0},
+    {"Component": 3, "Cause": 3, "BaseIntensity": 3.3303382252,
+     "Kernel": 18.1397185244, "Decay": 60.0},
     {"Component": 3, "Cause": 4, "BaseIntensity": None,
-     "Kernel": 2.6873657073, "Decay": 60.0},
+     "Kernel": 2.0155242805, "Decay": 60.0},
     {"Component": 3, "Cause": 5, "BaseIntensity": None,
-     "Kernel": 2.6873657073, "Decay": 60.0},
+     "Kernel": 2.0155242805, "Decay": 60.0},
     {"Component": 4, "Cause": 0, "BaseIntensity": None,
-     "Kernel": 8.0620971219, "Decay": 60.0},
+     "Kernel": 6.0465728414, "Decay": 60.0},
     {"Component": 4, "Cause": 1, "BaseIntensity": None,
-     "Kernel": 21.4989256585, "Decay": 60.0},
+     "Kernel": 16.1241942439, "Decay": 60.0},
     {"Component": 4, "Cause": 2, "BaseIntensity": None,
-     "Kernel": 2.6873657073, "Decay": 60.0},
+     "Kernel": 2.0155242805, "Decay": 60.0},
     {"Component": 4, "Cause": 3, "BaseIntensity": None,
-     "Kernel": 2.6873657073, "Decay": 60.0},
-    {"Component": 4, "Cause": 4, "BaseIntensity": 1.2,
-     "Kernel": 24.1862913658, "Decay": 60.0},
+     "Kernel": 2.0155242805, "Decay": 60.0},
+    {"Component": 4, "Cause": 4, "BaseIntensity": 2.2658241335,
+     "Kernel": 18.1397185244, "Decay": 60.0},
     {"Component": 4, "Cause": 5, "BaseIntensity": None,
-     "Kernel": 2.6873657073, "Decay": 60.0},
+     "Kernel": 2.0155242805, "Decay": 60.0},
     {"Component": 5, "Cause": 0, "BaseIntensity": None,
-     "Kernel": 21.4989256585, "Decay": 60.0},
+     "Kernel": 16.1241942439, "Decay": 60.0},
     {"Component": 5, "Cause": 1, "BaseIntensity": None,
-     "Kernel": 8.0620971219, "Decay": 60.0},
+     "Kernel": 6.0465728414, "Decay": 60.0},
     {"Component": 5, "Cause": 2, "BaseIntensity": None,
-     "Kernel": 2.6873657073, "Decay": 60.0},
+     "Kernel": 2.0155242805, "Decay": 60.0},
     {"Component": 5, "Cause": 3, "BaseIntensity": None,
-     "Kernel": 2.6873657073, "Decay": 60.0},
+     "Kernel": 2.0155242805, "Decay": 60.0},
     {"Component": 5, "Cause": 4, "BaseIntensity": None,
-     "Kernel": 2.6873657073, "Decay": 60.0},
-    {"Component": 5, "Cause": 5, "BaseIntensity": 1.2,
-     "Kernel": 24.1862913658, "Decay": 60.0},
+     "Kernel": 2.0155242805, "Decay": 60.0},
+    {"Component": 5, "Cause": 5, "BaseIntensity": 2.2658241335,
+     "Kernel": 18.1397185244, "Decay": 60.0},
 ]
 
-#: Sizes lognormal about exp(4) and rounded to a round lot, quotes clustered at the touch.
+#: Sizes lognormal about exp(4) and rounded to a round lot, quotes spread over a dozen ticks.
 EXAMPLE_MARK_PARAMS: list[dict] = [
-    {"DepthDecay": 0.45, "MeanLogSize": 4.0,
+    {"DepthDecay": 0.10, "MeanLogSize": 4.0,
      "SigmaLogSize": 0.8, "Lot": 10},
 ]
 
