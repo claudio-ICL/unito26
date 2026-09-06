@@ -123,16 +123,11 @@ class HawkesParams(FrameSerializable):
     def branching_ratio(self) -> float:
         """Spectral radius of the branching matrix.  Stationarity needs it below 1.
 
-        It is *not* the fraction of flow that is endogenous.  That fraction is
-        ``1 - mubar / nu`` with ``nu = 1' (I - Gamma)^{-1} mu``, and it equals ``rho``
-        only when ``Gamma`` has constant column sums -- ``1'`` is then its left Perron
-        vector.  The shipped example has column sums ``(1.31, 1.31, 0.44, 0.44, 0.47,
-        0.47)``, one market order spawning 1.31 direct offspring against a limit order's
-        0.44, and an endogenous fraction of 0.576 at ``rho = 0.6``.
-
-        For the same reason the mean cluster size is not ``1 / (1 - rho)``: it is
-        ``1' (I - Gamma)^{-1} e_j`` for an immigrant of type ``j``, spanning 1.96 to 4.64
-        across the six types here.
+        What it says, and what it does not, is section 4 of the point-process chapter;
+        documentation/point-processes-and-hawkes.md maps that section onto this module.
+        The one thing worth repeating at the call site: it is not the endogenous fraction
+        and not the reciprocal of the mean cluster size, and here it is 0.6 against 0.682
+        and 3.149.
         """
         return float(np.max(np.abs(np.linalg.eigvals(self.branching_matrix))))
 
@@ -183,17 +178,23 @@ class HawkesParams(FrameSerializable):
     def endogenous_fraction(self) -> float:
         """``1 - mubar / nu``: the share of events that are offspring, not immigrants.
 
-        Not the branching ratio, which it equals only when ``Gamma`` has constant column
-        sums.  See :attr:`branching_ratio`.
+        A ratio of rates, not a probability attached to any one event.  It equals the
+        branching ratio in particular when ``Gamma`` has constant column sums, and in
+        particular when ``mu`` is a right Perron vector of ``Gamma``; neither is generic
+        and neither holds here.  See :attr:`branching_ratio`.
         """
         return 1.0 - float(self.baseline.sum()) / float(self.stationary_intensity().sum())
 
     def mean_cluster_size(self) -> float:
-        """Expected descendants of an immigrant, ``mu``-weighted over its type.
+        """Expected size of an immigrant's cluster, ``mu``-weighted over its type.
 
         ``1' (I - Gamma)^{-1} e_j`` for a type-``j`` immigrant, averaged with weights
-        ``mu_j / mubar`` because clusters are founded by immigrants.  Certified by
-        ``mubar x mean_cluster_size == nu``.  Not ``1 / (1 - rho)``.
+        ``mu_j / mubar`` because clusters are founded by immigrants.  The ``k = 0`` term of
+        the series is the immigrant itself, so this **counts the ancestor**; the expected
+        number of its strict descendants is one less.  Certified by
+        ``mubar x mean_cluster_size == nu``, which says every event lies in exactly one
+        cluster.  Not ``1 / (1 - rho)``, except under the conditions in
+        :meth:`endogenous_fraction`.
         """
         weights = self.baseline / self.baseline.sum()
         return float(self._descendants() @ weights)
@@ -342,7 +343,7 @@ class _HawkesState:
 
     @property
     def total_intensity(self) -> float:
-        """``Lambda(t) = sum_i lambda_i(t)``, computed via the column sums."""
+        """``lambda_bar(t) = sum_i lambda_i(t)``, computed via the column sums."""
         return self._baseline_total + float(self._total_jump @ self.decayed_counts)
 
     def _advance(self, elapsed: float) -> None:
@@ -391,12 +392,21 @@ class _HawkesState:
 class ExponentialHawkes(_HawkesState):
     """Exact simulation, by the Dassios-Zhao decomposition applied to the total intensity.
 
-    Because every ``alpha_ij >= 0`` and the decay is common, the *total* intensity
-    ``Lambda(t) = sum_i lambda_i(t)`` is itself a one-dimensional exponentially
-    decaying process: it relaxes at rate ``beta`` towards ``mu_bar = sum_i mu_i`` and
-    jumps by the column sum ``c_j = sum_i alpha_ij`` on a type-``j`` event.  So the
-    scalar exact scheme applies to ``Lambda`` directly, and the type is drawn
-    afterwards with probability ``lambda_i / Lambda``.
+    Because the decay is common to every pair, the *total* intensity
+    ``lambda_bar(t) = sum_i lambda_i(t)`` decays as a single exponential **between
+    events**: it relaxes at rate ``beta`` towards ``mu_bar = sum_i mu_i`` and jumps by the
+    column sum ``c_j = sum_i alpha_ij`` on a type-``j`` event.  The common decay is all
+    that is needed for this; ``alpha_ij >= 0`` does a different job, making the excess over
+    ``mu_bar`` non-negative so that both factors of the survival function are genuine.
+
+    It is not, however, an autonomous one-dimensional process -- its jump size depends on
+    the type that fires -- so the full state is still carried.  Only the *waiting time*
+    uses the scalar form, and the type is then drawn with probability
+    ``lambda_i / lambda_bar`` on the pre-jump intensities.  That draw is where the full
+    matrix re-enters, the waiting time having seen only its column sums.
+
+    ``Lambda`` is not used for the total intensity here: the notes reserve it for the
+    compensator.
 
     Given ``Lambda_n``, the intensity just after the last event, the compensator over
     the next ``s`` splits into two increasing pieces::
@@ -507,12 +517,12 @@ def intensities_at_events(
     is not the probability contrast of the next event's pressure: the components decay
     towards ``mu`` while the process waits, so
 
-        P(+) - P(-) = kappa * int_0^inf e^{-beta s} e^{-Lambda(s)} ds,
-        kappa = p' A S,
+        P(+) - P(-) = dlambda * int_0^inf e^{-beta s} e^{-Lambda(s)} ds,
+        dlambda = p' A S,
 
     a strictly shrunk version of it.  The *sign* survives the shrinkage, but only
     because ``p' mu = 0``; on an asymmetric specification even that fails.  So
-    ``sign(kappa)`` is the flow-only oracle and the ratio is the instantaneous mark
+    ``sign(dlambda)`` is the flow-only oracle and the ratio is the instantaneous mark
     expectation, which is a different quantity and is labelled as one.
 
     Returns an ``(n, d)`` array whose row ``k`` is ``lambda(times[k]-)``.

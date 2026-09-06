@@ -222,6 +222,32 @@ class TestFrozenExamples:
         assert stationary.sum() == pytest.approx(30.1878, abs=1e-3)
         assert limit / consuming == pytest.approx(0.965, abs=1e-6)
 
+    def test_the_two_regimes_have_opposite_signed_endogeneity(self):
+        """The two shipped flows differ in one structural property, and it is the one that
+        decides the sign of what OFI predicts.
+
+        The example excites *across* the pressure partition -- what depletes a side calls
+        forth what refills it -- so offspring carry the opposite pressure to their parent
+        and a burst predicts reversal.  The trending flow excites *within* it, so offspring
+        carry the parent's pressure and a burst predicts continuation.  Both hold the same
+        branching ratio and the same total rate, so nothing else can be the cause.
+        """
+        pressure = np.array([event.pressure for event in EventType], dtype=float)
+        example = config.example_order_flow_params()
+        trending = config.trending_order_flow_params()
+        assert example.signed_endogenous_fraction(pressure) < -0.3
+        assert trending.signed_endogenous_fraction(pressure) > +0.5
+        assert example.branching_ratio == pytest.approx(trending.branching_ratio)
+        assert example.stationary_intensity().sum() == pytest.approx(
+            trending.stationary_intensity().sum()
+        )
+
+    def test_the_trending_flow_round_trips(self):
+        assert config.trending_order_flow_params().to_records() == (
+            config.TRENDING_ORDER_FLOW_PARAMS
+        )
+        assert config.trending_mark_params().to_records() == config.TRENDING_MARK_PARAMS
+
     def test_the_baselines_are_admissible(self):
         """``mu = (I - Gamma) lambda*`` is a baseline only where it is non-negative, and
         the limit-order component is the one that binds.

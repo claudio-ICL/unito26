@@ -8,9 +8,7 @@ quoted relative to the touch and a withdrawal must name size that actually rests
 The two layers are kept apart.  The Hawkes layer is a point process and is tested as
 such; the mark layer is where the book enters.  One consequence: because a withdrawal on
 an empty side is dropped, the realised withdrawal process is not exactly Hawkes but a
-state-dependent thinning of one.  The extension that removes the caveat -- an intensity
-proportional to resting size, after Cont, Stoikov and Talreja -- also removes the
-separation, which is why it is not the starting point.
+state-dependent thinning of one.
 """
 
 from __future__ import annotations

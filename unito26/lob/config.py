@@ -75,10 +75,14 @@ from unito26.lob.simulate import MarkParams
 
 __all__ = [
     "EXAMPLE_ORDER_FLOW_PARAMS",
+    "TRENDING_ORDER_FLOW_PARAMS",
+    "TRENDING_MARK_PARAMS",
     "EXAMPLE_MARK_PARAMS",
     "SHALLOW_MARK_PARAMS",
     "DEEP_MARK_PARAMS",
     "example_order_flow_params",
+    "trending_order_flow_params",
+    "trending_mark_params",
     "example_mark_params",
     "shallow_mark_params",
     "deep_mark_params",
@@ -162,6 +166,93 @@ EXAMPLE_ORDER_FLOW_PARAMS: list[dict] = [
 ]
 
 #: Sizes lognormal about exp(4) and rounded to a round lot, quotes within a few ticks.
+
+#: The same flow, in the regime where excitation follows the *pressure* partition instead
+#: of the queue: an event excites the types that push the price the same way it did.
+#: Signed endogenous fraction +0.554 against the example's -0.351.
+TRENDING_ORDER_FLOW_PARAMS: list[dict] = [
+    {"Component": 0, "Cause": 0, "BaseIntensity": 0.4591361692,
+     "Kernel": 0.9001807356, "Decay": 4.0},
+    {"Component": 0, "Cause": 1, "BaseIntensity": None,
+     "Kernel": 0.0150030123, "Decay": 4.0},
+    {"Component": 0, "Cause": 2, "BaseIntensity": None,
+     "Kernel": 0.0045009037, "Decay": 4.0},
+    {"Component": 0, "Cause": 3, "BaseIntensity": None,
+     "Kernel": 0.0045009037, "Decay": 4.0},
+    {"Component": 0, "Cause": 4, "BaseIntensity": None,
+     "Kernel": 0.0150030123, "Decay": 4.0},
+    {"Component": 0, "Cause": 5, "BaseIntensity": None,
+     "Kernel": 0.9001807356, "Decay": 4.0},
+    {"Component": 1, "Cause": 0, "BaseIntensity": None,
+     "Kernel": 0.0150030123, "Decay": 4.0},
+    {"Component": 1, "Cause": 1, "BaseIntensity": 0.4591361692,
+     "Kernel": 0.9001807356, "Decay": 4.0},
+    {"Component": 1, "Cause": 2, "BaseIntensity": None,
+     "Kernel": 0.0045009037, "Decay": 4.0},
+    {"Component": 1, "Cause": 3, "BaseIntensity": None,
+     "Kernel": 0.0045009037, "Decay": 4.0},
+    {"Component": 1, "Cause": 4, "BaseIntensity": None,
+     "Kernel": 0.9001807356, "Decay": 4.0},
+    {"Component": 1, "Cause": 5, "BaseIntensity": None,
+     "Kernel": 0.0150030123, "Decay": 4.0},
+    {"Component": 2, "Cause": 0, "BaseIntensity": None,
+     "Kernel": 0.9001807356, "Decay": 4.0},
+    {"Component": 2, "Cause": 1, "BaseIntensity": None,
+     "Kernel": 0.0150030123, "Decay": 4.0},
+    {"Component": 2, "Cause": 2, "BaseIntensity": 4.0173011153,
+     "Kernel": 0.9001807356, "Decay": 4.0},
+    {"Component": 2, "Cause": 3, "BaseIntensity": None,
+     "Kernel": 0.0150030123, "Decay": 4.0},
+    {"Component": 2, "Cause": 4, "BaseIntensity": None,
+     "Kernel": 0.0150030123, "Decay": 4.0},
+    {"Component": 2, "Cause": 5, "BaseIntensity": None,
+     "Kernel": 0.9001807356, "Decay": 4.0},
+    {"Component": 3, "Cause": 0, "BaseIntensity": None,
+     "Kernel": 0.0150030123, "Decay": 4.0},
+    {"Component": 3, "Cause": 1, "BaseIntensity": None,
+     "Kernel": 0.9001807356, "Decay": 4.0},
+    {"Component": 3, "Cause": 2, "BaseIntensity": None,
+     "Kernel": 0.0150030123, "Decay": 4.0},
+    {"Component": 3, "Cause": 3, "BaseIntensity": 4.0173011153,
+     "Kernel": 0.9001807356, "Decay": 4.0},
+    {"Component": 3, "Cause": 4, "BaseIntensity": None,
+     "Kernel": 0.9001807356, "Decay": 4.0},
+    {"Component": 3, "Cause": 5, "BaseIntensity": None,
+     "Kernel": 0.0150030123, "Decay": 4.0},
+    {"Component": 4, "Cause": 0, "BaseIntensity": None,
+     "Kernel": 0.0150030123, "Decay": 4.0},
+    {"Component": 4, "Cause": 1, "BaseIntensity": None,
+     "Kernel": 0.9001807356, "Decay": 4.0},
+    {"Component": 4, "Cause": 2, "BaseIntensity": None,
+     "Kernel": 0.0150030123, "Decay": 4.0},
+    {"Component": 4, "Cause": 3, "BaseIntensity": None,
+     "Kernel": 0.9001807356, "Decay": 4.0},
+    {"Component": 4, "Cause": 4, "BaseIntensity": 1.9496606913,
+     "Kernel": 0.9001807356, "Decay": 4.0},
+    {"Component": 4, "Cause": 5, "BaseIntensity": None,
+     "Kernel": 0.0150030123, "Decay": 4.0},
+    {"Component": 5, "Cause": 0, "BaseIntensity": None,
+     "Kernel": 0.9001807356, "Decay": 4.0},
+    {"Component": 5, "Cause": 1, "BaseIntensity": None,
+     "Kernel": 0.0150030123, "Decay": 4.0},
+    {"Component": 5, "Cause": 2, "BaseIntensity": None,
+     "Kernel": 0.9001807356, "Decay": 4.0},
+    {"Component": 5, "Cause": 3, "BaseIntensity": None,
+     "Kernel": 0.0150030123, "Decay": 4.0},
+    {"Component": 5, "Cause": 4, "BaseIntensity": None,
+     "Kernel": 0.0150030123, "Decay": 4.0},
+    {"Component": 5, "Cause": 5, "BaseIntensity": 1.9496606913,
+     "Kernel": 0.9001807356, "Decay": 4.0},
+]
+
+#: The trending regime is studied with a sharper offset than the example uses.  That is not
+#: a free choice: a book flat enough to be resilient is resilient mechanically too, and
+#: flattening this one drives its predictive sign back to the example's.
+TRENDING_MARK_PARAMS: list[dict] = [
+    {"DepthDecay": 0.15, "MeanLogSize": 4.0,
+     "SigmaLogSize": 0.8, "Lot": 10},
+]
+
 EXAMPLE_MARK_PARAMS: list[dict] = [
     {"DepthDecay": 0.08, "MeanLogSize": 4.0,
      "SigmaLogSize": 0.8, "Lot": 10},
@@ -194,3 +285,13 @@ def shallow_mark_params() -> MarkParams:
 
 def deep_mark_params() -> MarkParams:
     return MarkParams.from_records(DEEP_MARK_PARAMS)
+
+
+def trending_order_flow_params() -> HawkesParams:
+    """The momentum regime: excitation follows the pressure partition."""
+    return HawkesParams.from_records(TRENDING_ORDER_FLOW_PARAMS)
+
+
+def trending_mark_params() -> MarkParams:
+    """The marks the trending regime is studied with."""
+    return MarkParams.from_records(TRENDING_MARK_PARAMS)
