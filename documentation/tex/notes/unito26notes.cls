@@ -1,5 +1,4 @@
 %% unito26notes -- class for the lecture notes of `Python for Finance'.
-%% Modelled on the class of Claudio's thesis.
 %% This file owns the whole preamble: content files carry none.
 \LoadClass[11pt,oneside,a4paper,table]{book}
 

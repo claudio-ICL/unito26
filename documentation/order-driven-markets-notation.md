@@ -464,5 +464,11 @@ in the option-pricing block; $V$ is a volume in both its uses, but signed and pe
 execution is by market order. Context disambiguates them in prose, but Python names must not —
 hence the distinct identifiers above.
 
-The notation departs from the thesis on one symbol: the thesis writes $V$ for the size of a
-level. Here that is $S$, and $V$ is the volume transacted.
+Part of the literature writes $V$ for the size of a level. Here that is $S$, and $V$ is the
+volume transacted; the two are different words throughout, since a level shrinks by
+cancellation as well as by execution.
+
+$S$ carries one further use once the point-process chapter is in play: `\decayedCounts`, the
+vector of exponentially decayed event counts that makes the Hawkes intensity Markov. It is
+always subscripted by an event type, $S_e$, where a level size always carries a side and a
+level, $S^{a,i}$, so the two do not meet in an expression.

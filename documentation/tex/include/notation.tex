@@ -86,10 +86,9 @@
 \newcommand{\VegaHedge}{\mathtt{Vega}}
 
 %% LIMIT ORDER BOOKS %%
-% Kept identical to the notation of the thesis, so that the course and the
-% thesis denote the same objects in the same way, with one divergence: the
-% thesis writes \volume for the quantity resting at a level, where here that
-% is \size and \volume is the volume transacted.
+% Size and volume are different words here: \size is the quantity resting at a
+% level, \volume the quantity transacted over an interval. Part of the
+% literature writes volume for both.
 \newcommand{\price}{P}
 \newcommand{\size}{S}
 \newcommand{\volume}{V}
@@ -141,3 +140,32 @@
 \newcommand{\inventory}{H}
 \newcommand{\wealth}{X}
 \newcommand{\marketOrderSize}{q_{M}}
+
+%% POINT PROCESSES AND HAWKES %%
+% The index order is fixed once: \excitation\subscriptee is the influence that
+% \eone exerts on e, so the row is excited and the column excites. Every object
+% of the chapter is then a plain product on column vectors, and the column sums
+% of \branchingMatrix are the readable quantity. The opposite order is common in
+% the literature and stability cannot tell the two apart, since a matrix and its
+% transpose share a spectral radius.
+\newcommand{\numEventTypes}{d_{E}}
+\newcommand{\eone}{e\derivative}
+\newcommand{\subscriptee}{_{e,\, \eone}}
+\newcommand{\groundProc}{N_{\mathfrak{g}}}
+\newcommand{\event}[1][n]{E_{#1}}
+\newcommand{\Lone}{L^{1}}
+\newcommand{\baseIntensity}{\mu}
+\newcommand{\hawkesKernel}{\kappa}
+\newcommand{\excitation}{A}
+\newcommand{\decay}{\beta}
+\newcommand{\branchingMatrix}{\Gamma}
+\newcommand{\branchingRatio}{\rho}
+% The decayed event counts: the state that makes the exponential kernel Markov.
+\newcommand{\decayedCounts}{S}
+\newcommand{\stationaryIntensity}{\intensity[ ]^{*}}
+\newcommand{\totalRate}{\nu}
+\newcommand{\totalIntensity}{\bar{\intensity[ ]}}
+\newcommand{\pressure}{p}
+\newcommand{\upIntensity}{\intensity[ ]^{\uparrow}}
+\newcommand{\downIntensity}{\intensity[ ]^{\downarrow}}
+\newcommand{\intensityContrast}{\Delta\intensity[ ]}
