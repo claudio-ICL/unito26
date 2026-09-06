@@ -39,6 +39,9 @@ __all__ = [
     "backward_change",
     "forward_change",
     "forward_change_to_next_event",
+    "bucket_series",
+    "forward_jump_counts",
+    "forward_vwap",
     "Predictors",
     "predictors",
     "outcome_classes",
@@ -181,6 +184,84 @@ def forward_change_to_next_event(series: AlignedSeries) -> np.ndarray:
 
 
 # ---- predictors ---------------------------------------------------------------------------
+
+
+def bucket_series(series: AlignedSeries, bucket: Horizon) -> AlignedSeries:
+    """The last value in each non-overlapping bucket of length ``bucket``, on a fixed clock.
+
+    A bucket is closed on the right, so the value carried is the state as the bucket ends,
+    and differencing the result is the change over one bucket.  Empty buckets are dropped
+    rather than forward-filled: a bucket that saw no event has no state of its own, and
+    inventing one would put a zero change into a regression that never happened.
+
+    The segment index is the one in force at the bucket's end.  A bucket spanning a broken
+    book inherits the later segment, so a difference across it is correctly undefined.
+    """
+    bucket = _span("bucket", bucket)
+    if series.times.size == 0:
+        return AlignedSeries(series.times, series.values, series.segments)
+    index = np.floor((series.times - series.times[0]) / bucket).astype(np.int64)
+    last = np.flatnonzero(np.diff(index, append=index[-1] + 1))
+    return AlignedSeries(
+        times=series.times[0] + (index[last] + 1) * bucket,
+        values=series.values[last],
+        segments=series.segments[last],
+    )
+
+
+def forward_jump_counts(series: AlignedSeries, horizon: Horizon) -> tuple[np.ndarray, np.ndarray]:
+    """How many up and how many down moves of ``series`` fall in ``(t, t + h]``.
+
+    The outcome the atom forces on us.  ``Delta P^m`` over a horizon is mostly zero and
+    lives on a lattice; the *number* of moves in each direction is a count, it is not
+    lattice-valued in the same crippling way, and a window holding one up and one down move
+    is distinguishable from one holding neither -- which the net change is not.
+
+    A move is a change of sign between consecutive rows, so a row whose predecessor lies in
+    another segment contributes to neither count.  Both counts are NaN where no row lies
+    strictly after ``t``, matching :func:`forward_change`.
+    """
+    horizon = _span("horizon", horizon)
+    step = np.diff(series.values, prepend=np.nan)
+    step[np.diff(series.segments, prepend=series.segments[:1]) != 0] = np.nan
+    ups = np.cumsum(np.where(step > 0, 1.0, 0.0))
+    downs = np.cumsum(np.where(step < 0, 1.0, 0.0))
+    ahead = np.searchsorted(series.times, series.times + horizon, side="right") - 1
+    rows = np.arange(series.times.size)
+    reachable = ahead > rows
+    out = []
+    for cumulative in (ups, downs):
+        counts = np.where(reachable, cumulative[ahead] - cumulative[rows], np.nan)
+        out.append(counts)
+    return out[0], out[1]
+
+
+def forward_vwap(session: MarketSession, horizon: Horizon) -> np.ndarray:
+    """Volume-weighted average traded price over ``(t, t + h]``, minus ``P^m_t``, in ticks.
+
+    ``MarketSession.vwap`` is backward and integer-windowed, so this is not it.
+
+    **NaN where the window traded nothing, and that is a result rather than a nuisance.**
+    Market orders arrive at a fraction of the total rate, so at short horizons most windows
+    are empty: the rate is reported before any VWAP number is, because dropping those rows
+    conditions the sample on activity, and activity is exactly what the predictor measures.
+    """
+    horizon = _span("horizon", horizon)
+    if session.trades is None:
+        raise ValueError("the session determines no volume, so no VWAP is defined")
+    mid = aligned_mid_price(session)
+    value = session.trades["TradedValue"].to_numpy(dtype=float)
+    volume = session.trades["Volume"].to_numpy(dtype=float)
+    cumulative_value = np.cumsum(np.nan_to_num(value))
+    cumulative_volume = np.cumsum(np.nan_to_num(volume))
+    ahead = np.searchsorted(mid.times, mid.times + horizon, side="right") - 1
+    rows = np.arange(mid.times.size)
+    traded_value = cumulative_value[ahead] - cumulative_value[rows]
+    traded_volume = cumulative_volume[ahead] - cumulative_volume[rows]
+    crosses = mid.segments[ahead] != mid.segments[rows]
+    with np.errstate(invalid="ignore", divide="ignore"):
+        vwap = np.where(traded_volume > 0, traded_value / traded_volume, np.nan)
+    return np.where((ahead > rows) & ~crosses, vwap - mid.values, np.nan)
 
 
 @dataclass(frozen=True, slots=True)

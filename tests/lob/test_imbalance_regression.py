@@ -358,3 +358,241 @@ class TestTheBlockBootstrap:
         scores = np.column_stack([np.ones(2000), np.ones(2000)])
         means = est.bootstrap_means(times, scores, 2.0, 20, rng)
         assert means == pytest.approx(1.0)
+
+
+class TestTheInformationMeasures:
+    """The estimators the atom forces on us, and the four ways they are misused."""
+
+    def test_the_in_sample_identity_with_the_log_score(self):
+        """Unshrunk and in sample, the binned skill is ``I`` over the climatological entropy.
+
+        This is why the mutual information looks free, and the next test is why it is not.
+        """
+        rng = np.random.default_rng(0)
+        rows = 40_000
+        predictor = rng.normal(size=rows)
+        outcome = np.digitize(0.05 * predictor + rng.normal(size=rows), [-0.3, 0.3])
+        model = est.ThreeClassModel.fit(predictor, outcome, 6, 0.0)
+        probabilities = model.predict(predictor)
+        cross_entropy = -np.mean(np.log(probabilities[np.arange(rows), outcome]))
+        entropy = -np.sum(model.climatology * np.log(model.climatology))
+        information = est.mutual_information(predictor, outcome, 6)
+        assert information.plug_in / entropy == pytest.approx(
+            1.0 - cross_entropy / entropy, abs=1e-12
+        )
+
+    def test_the_correction_subtracts_the_theoretical_bias(self):
+        """Miller-Madow for a mutual information removes ``(mx-1)(my-1)/2N``, downward.
+
+        The entropy correction has the other sign; applied here it would double the bias.
+        """
+        rng = np.random.default_rng(1)
+        rows, bins = 100_000, 6
+        predictor = rng.normal(size=rows)
+        outcome = np.digitize(rng.normal(size=rows), [-0.3, 0.3])
+        information = est.mutual_information(predictor, outcome, bins)
+        assert information.removed > 0
+        assert information.removed == pytest.approx((bins - 1) * 2 / (2 * rows), rel=1e-9)
+        assert abs(information.miller_madow) < information.plug_in
+
+    def test_it_finds_a_dependence_that_is_there(self):
+        rng = np.random.default_rng(2)
+        rows = 40_000
+        predictor = rng.normal(size=rows)
+        outcome = np.digitize(predictor + 0.5 * rng.normal(size=rows), [-0.5, 0.5])
+        assert est.mutual_information(predictor, outcome, 6).miller_madow > 0.1
+
+    def test_the_outcome_must_never_be_quantile_binned(self):
+        """With an atom, every interior quantile is zero and the bins collapse to two --
+        and the surviving split puts flat with up, so the estimate measures the wrong thing.
+
+        Pinned by a test rather than by a comment, because the failure is silent.
+        """
+        rng = np.random.default_rng(3)
+        outcome = np.where(rng.random(100_000) < 0.93, 0.0, rng.choice([-0.5, 0.5], 100_000))
+        for bins in (3, 6, 10, 20):
+            assigned = est.quantile_bins(outcome, bins)
+            assert assigned.max() + 1 == 2
+        assigned = est.quantile_bins(outcome, 6)
+        assert set(np.unique(assigned[outcome == 0.0])) == set(np.unique(assigned[outcome > 0.0]))
+
+    def test_the_realised_bin_count_is_reported(self):
+        rng = np.random.default_rng(4)
+        tied = np.where(rng.random(10_000) < 0.8, 0.0, rng.normal(size=10_000))
+        information = est.mutual_information(tied, np.zeros(10_000, dtype=int), 10)
+        assert information.realised_bins < 10
+        assert information.rows == 10_000
+
+
+class TestTheCircularShiftNull:
+    """Why the null is a rotation and not a permutation."""
+
+    @staticmethod
+    def _ar1(rows, phi, rng):
+        noise = rng.normal(size=rows)
+        out = np.empty(rows)
+        out[0] = noise[0]
+        for i in range(1, rows):
+            out[i] = phi * out[i - 1] + noise[i]
+        return out
+
+    def test_it_centres_on_the_bias_and_not_on_zero(self):
+        """A serially dependent but *independent* pair has a positive null mean."""
+        rng = np.random.default_rng(5)
+        rows = 8_000
+        predictor = self._ar1(rows, 0.95, rng)
+        outcome = np.digitize(self._ar1(rows, 0.95, rng), [-1.0, 1.0])
+        statistic = lambda p, o: est.mutual_information(p, o, 6).plug_in
+        null = est.circular_shift_null(statistic, predictor, outcome, 400, 60, rng)
+        assert null.mean() > (6 - 1) * 2 / (2 * rows)
+
+    def test_a_permutation_null_would_be_anti_conservative(self):
+        """The reason the rotation exists, asserted rather than asserted about.
+
+        On the same independent pair the permutation null sits well below the rotation
+        null, so a true null crosses its upper tail and is called significant.
+        """
+        rng = np.random.default_rng(6)
+        rows = 8_000
+        predictor = self._ar1(rows, 0.95, rng)
+        outcome = np.digitize(self._ar1(rows, 0.95, rng), [-1.0, 1.0])
+        statistic = lambda p, o: est.mutual_information(p, o, 6).plug_in
+        rotated = est.circular_shift_null(statistic, predictor, outcome, 400, 60, rng)
+        permuted = np.array(
+            [statistic(rng.permutation(predictor), outcome) for _ in range(60)]
+        )
+        assert rotated.mean() > 2 * permuted.mean()
+        assert rotated.std(ddof=1) > 2 * permuted.std(ddof=1)
+
+    def test_it_refuses_a_guard_that_leaves_no_room(self):
+        rng = np.random.default_rng(7)
+        with pytest.raises(ValueError, match="guard"):
+            est.circular_shift_null(
+                lambda p, o: 0.0, np.zeros(100), np.zeros(100, dtype=int), 60, 5, rng
+            )
+
+
+class TestTransferEntropy:
+    """One lag, both directions reported separately, never their difference."""
+
+    def test_it_is_one_way_on_a_one_way_chain(self):
+        """``y`` is driven by the previous ``x``; ``x`` is driven by nothing.
+
+        The reverse direction is a separate call with a forward increment of the *source*,
+        not this one with its arguments swapped -- swapping would pair ``y_{t+1}`` against
+        ``x_t`` where ``y_{t+1}`` is a function of ``x_t``, and report a flow in both
+        directions on a chain that has one.
+        """
+        rng = np.random.default_rng(8)
+        rows = 60_000
+        x = rng.normal(size=rows)
+        y = np.empty(rows)
+        y[0] = rng.normal()
+        y[1:] = 0.9 * x[:-1] + 0.4 * rng.normal(size=rows - 1)
+        cut = [-0.5, 0.5]
+        forward = est.transfer_entropy(
+            x[:-1], np.digitize(y[1:], cut), np.digitize(y[:-1], cut), 6
+        )
+        reverse = est.transfer_entropy(
+            y[:-1], np.digitize(x[1:], cut), np.digitize(x[:-1], cut), 6
+        )
+        assert forward.miller_madow > 0.1
+        assert forward.miller_madow > 20 * abs(reverse.miller_madow)
+
+    def test_it_is_near_zero_when_nothing_flows(self):
+        rng = np.random.default_rng(9)
+        rows = 60_000
+        estimate = est.transfer_entropy(
+            rng.normal(size=rows),
+            np.digitize(rng.normal(size=rows), [-0.5, 0.5]),
+            np.digitize(rng.normal(size=rows), [-0.5, 0.5]),
+            6,
+        )
+        assert abs(estimate.miller_madow) < 5e-3
+
+
+class TestBucketSeries:
+    """Aggregation to a fixed clock, for the coarse-bucket regression."""
+
+    def test_it_keeps_the_last_state_of_each_bucket(self):
+        source = series([0.0, 0.4, 0.9, 1.2, 2.7], [10.0, 11.0, 12.0, 13.0, 14.0])
+        bucketed = ir.bucket_series(source, Horizon(1.0))
+        assert bucketed.values.tolist() == [12.0, 13.0, 14.0]
+        assert bucketed.times.tolist() == [1.0, 2.0, 3.0]
+
+    def test_an_empty_bucket_is_dropped_and_not_filled(self):
+        """A bucket that saw no event has no state; inventing one puts a zero change
+        into a regression that never happened."""
+        source = series([0.0, 0.5, 5.5], [1.0, 2.0, 3.0])
+        bucketed = ir.bucket_series(source, Horizon(1.0))
+        assert bucketed.times.tolist() == [1.0, 6.0]
+        assert bucketed.values.tolist() == [2.0, 3.0]
+
+    def test_it_carries_the_segment_in_force_at_the_end(self):
+        source = series([0.0, 0.5, 1.5], [1.0, 2.0, 3.0], segments=[0, 1, 1])
+        assert ir.bucket_series(source, Horizon(1.0)).segments.tolist() == [1, 1]
+
+    def test_the_row_count_matches_the_grid_arithmetic(self):
+        """``T / b`` rows, which is why half-hour buckets on an hour-long session are two."""
+        times = np.linspace(0.0, 3600.0, 100_000, endpoint=False)
+        source = series(times, np.arange(times.size, dtype=float))
+        assert ir.bucket_series(source, Horizon(1800.0)).values.size == 2
+        assert ir.bucket_series(source, Horizon(60.0)).values.size == 60
+
+
+class TestForwardJumpCounts:
+    """Up and down moves in ``(t, t + h]``: an outcome the atom does not flatten."""
+
+    def test_it_counts_each_direction(self):
+        source = series([0.0, 1.0, 2.0, 3.0, 4.0], [10.0, 11.0, 11.0, 10.5, 12.0])
+        ups, downs = ir.forward_jump_counts(source, Horizon(3.0))
+        assert ups[0] == 1.0 and downs[0] == 1.0
+        assert ups[1] == 1.0 and downs[1] == 1.0
+
+    def test_it_distinguishes_a_quiet_window_from_a_round_trip(self):
+        """The point of the statistic: a net change of zero is two different states."""
+        quiet = series([0.0, 1.0, 2.0], [10.0, 10.0, 10.0])
+        round_trip = series([0.0, 1.0, 2.0], [10.0, 11.0, 10.0])
+        assert ir.forward_change(quiet, Horizon(2.0))[0] == ir.forward_change(round_trip, Horizon(2.0))[0]
+        assert ir.forward_jump_counts(quiet, Horizon(2.0))[0][0] == 0.0
+        assert ir.forward_jump_counts(round_trip, Horizon(2.0))[0][0] == 1.0
+
+    def test_a_move_across_a_segment_boundary_counts_for_neither(self):
+        source = series([0.0, 1.0, 2.0], [10.0, 99.0, 99.0], segments=[0, 1, 1])
+        ups, downs = ir.forward_jump_counts(source, Horizon(2.0))
+        assert ups[0] == 0.0 and downs[0] == 0.0
+
+    def test_it_is_nan_where_nothing_lies_ahead(self):
+        source = series([0.0, 1.0], [10.0, 11.0])
+        ups, downs = ir.forward_jump_counts(source, Horizon(1.0))
+        assert np.isnan(ups[-1]) and np.isnan(downs[-1])
+
+
+class TestForwardVwap:
+    """VWAP over ``(t, t + h]`` minus the mid, and the missingness that comes with it."""
+
+    def test_it_is_the_volume_weighted_price_ahead(self):
+        messages = [
+            market_order(1.0, 50, BUY),
+            market_order(2.0, 70, BUY),
+            limit_order(3.0, 10, 995, BUY),
+        ]
+        book = session(messages)
+        ahead = ir.forward_vwap(book, Horizon(2.5))
+        traded = book.trades["TradedValue"].to_numpy(float)
+        volume = book.trades["Volume"].to_numpy(float)
+        mid = ir.aligned_mid_price(book).values
+        expected = traded[1:3].sum() / volume[1:3].sum() - mid[0]
+        assert ahead[0] == pytest.approx(expected)
+
+    def test_a_window_that_traded_nothing_is_nan(self):
+        """And the *rate* of that is reportable: it conditions the sample on activity."""
+        messages = [limit_order(1.0, 10, 995, BUY), limit_order(2.0, 10, 994, BUY)]
+        ahead = ir.forward_vwap(session(messages), Horizon(1.5))
+        assert np.isnan(ahead).all()
+
+    def test_it_refuses_a_session_that_determines_no_volume(self):
+        book = session([market_order(1.0, 50, BUY)])
+        book.trades = None
+        with pytest.raises(ValueError, match="no VWAP"):
+            ir.forward_vwap(book, Horizon(1.0))

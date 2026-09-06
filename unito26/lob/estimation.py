@@ -29,6 +29,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from typing import Callable
+
 import numpy as np
 from scipy import stats
 
@@ -50,6 +52,11 @@ __all__ = [
     "hill_tail_index",
     "clark_west",
     "purged_folds",
+    "InformationEstimate",
+    "quantile_bins",
+    "mutual_information",
+    "transfer_entropy",
+    "circular_shift_null",
 ]
 
 DOWN, FLAT, UP = 0, 1, 2
@@ -511,3 +518,145 @@ def purged_folds(
         train = np.flatnonzero((times < low - purge) | (times > high + purge))
         out.append((train, test))
     return out
+
+
+# ---- information measures ----------------------------------------------------------------
+
+
+@dataclass(frozen=True, slots=True)
+class InformationEstimate:
+    """An information quantity in nats, with the bias that was removed and the table it came from.
+
+    All three travel together because reading one without the others is how this estimator
+    is misused.  ``plug_in`` is biased *upward* under the null; ``miller_madow`` removes the
+    leading term computed at the nominal row count, and on serially dependent rows a
+    positive residual of the same order as the signal survives it.  ``realised_bins`` is the
+    number of predictor bins that actually materialised, which ties can make smaller than
+    the number asked for -- and two estimates are comparable only at a fixed realised count.
+    """
+
+    plug_in: float
+    miller_madow: float
+    realised_bins: int
+    rows: int
+
+    @property
+    def removed(self) -> float:
+        """The correction applied, ``plug_in - miller_madow``.  Positive by construction."""
+        return self.plug_in - self.miller_madow
+
+
+def quantile_bins(predictor: np.ndarray, bins: int) -> np.ndarray:
+    """Bin a **predictor** by quantiles, exactly as :meth:`ThreeClassModel.fit` does.
+
+    Never apply this to an outcome that carries an atom.  With ``P(dP = 0)`` near one every
+    interior quantile is zero, ``np.unique`` collapses the edges to a single one, and the
+    two surviving bins are ``{dP < 0}`` and ``{dP >= 0}`` -- which merges flat with up, so
+    the estimate measures "is the change negative" and nothing else.  Outcomes are the three
+    classes of ``imbalance_regression.outcome_classes``.
+    """
+    edges = np.unique(np.quantile(predictor, np.linspace(0, 1, bins + 1)[1:-1]))
+    return np.searchsorted(edges, predictor, side="right")
+
+
+def _information(table: np.ndarray, rows: int, realised: int) -> InformationEstimate:
+    """Mutual information of a contingency table, plug-in and Miller-Madow corrected.
+
+    The correction for a mutual information is a **subtraction**.  It is assembled from the
+    three entropy corrections, ``+(m - 1) / 2N`` each, which cancel to
+    ``-(m_xy - m_x - m_y + 1) / 2N``; applying the entropy form to a mutual information adds
+    the bias instead of removing it, and doubles it.
+    """
+    total = table.sum()
+    joint = table / total
+    px = joint.sum(axis=1, keepdims=True)
+    py = joint.sum(axis=0, keepdims=True)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        terms = joint * np.log(joint / (px * py))
+    plug_in = float(np.nansum(terms))
+    occupied_xy = int(np.count_nonzero(table))
+    occupied_x = int(np.count_nonzero(table.sum(axis=1)))
+    occupied_y = int(np.count_nonzero(table.sum(axis=0)))
+    correction = (occupied_xy - occupied_x - occupied_y + 1) / (2.0 * total)
+    return InformationEstimate(plug_in, plug_in - correction, realised, rows)
+
+
+def mutual_information(predictor: np.ndarray, outcome: np.ndarray, bins: int) -> InformationEstimate:
+    """``I(bin(x); y)`` in nats, on the predictor's quantile bins and the outcome's classes.
+
+    In sample and unshrunk this is the binned three-class log-score skill times the
+    climatological entropy.  It is **not** the out-of-fold shrunk skill that
+    :func:`log_score_skill` reports, which is typically two to four times smaller; the two
+    are different estimators of different things and both are reported.
+    """
+    predictor = np.asarray(predictor, dtype=float)
+    outcome = np.asarray(outcome, dtype=int)
+    assigned = quantile_bins(predictor, bins)
+    table = np.zeros((assigned.max() + 1, CLASSES))
+    np.add.at(table, (assigned, outcome), 1.0)
+    return _information(table, predictor.size, int(assigned.max()) + 1)
+
+
+def transfer_entropy(
+    source: np.ndarray, forward: np.ndarray, past: np.ndarray, bins: int
+) -> InformationEstimate:
+    """One-lag ``T(source -> target) = I(x_t ; y_forward | y_past)`` in nats.
+
+    Transfer entropy conditions on the **target's** own past and on nothing else.  Adding
+    the source's past would give a different quantity, one that vanishes whenever ``x`` is
+    nearly a deterministic function of its own past -- which a backward window sum is.
+
+    ``forward`` and ``past`` are the target's classes over ``(t, t + h]`` and ``(t - h, t]``,
+    so the source window must equal ``h`` or "one lag" names nothing.  The reverse direction
+    is a separate call with a forward increment of the source; it is **not** this function
+    with its arguments swapped, which would pair overlapping windows and return a number
+    guaranteed to be non-zero.
+
+    Never report the difference of the two directions.  A common unobserved driver -- here
+    the Hawkes state, which drives the flow and the price jointly -- makes it non-zero under
+    no predictive relation at all.
+    """
+    assigned = quantile_bins(np.asarray(source, dtype=float), bins)
+    forward = np.asarray(forward, dtype=int)
+    past = np.asarray(past, dtype=int)
+    table = np.zeros((assigned.max() + 1, CLASSES, CLASSES))
+    np.add.at(table, (assigned, forward, past), 1.0)
+    total = table.sum()
+    joint = table / total
+    conditional = joint.sum(axis=(0, 1))
+    with np.errstate(divide="ignore", invalid="ignore"):
+        p_y_given_xz = joint / joint.sum(axis=1, keepdims=True)
+        p_y_given_z = joint.sum(axis=0, keepdims=True) / joint.sum(axis=(0, 1), keepdims=True)
+        terms = joint * np.log(p_y_given_xz / p_y_given_z)
+    plug_in = float(np.nansum(terms))
+    occupied = int(np.count_nonzero(table))
+    axes = int(np.count_nonzero(table.sum(axis=(1, 2)))) * int(np.count_nonzero(conditional))
+    correction = max(occupied - axes, 0) * (CLASSES - 1) / (2.0 * total * CLASSES)
+    return InformationEstimate(plug_in, plug_in - correction, int(assigned.max()) + 1, assigned.size)
+
+
+def circular_shift_null(
+    statistic: Callable[[np.ndarray, np.ndarray], float],
+    predictor: np.ndarray,
+    outcome: np.ndarray,
+    guard: int,
+    draws: int,
+    rng: np.random.Generator,
+) -> np.ndarray:
+    """The null distribution of ``statistic`` under a circular shift of ``predictor``.
+
+    **Not an i.i.d. permutation.**  These rows are overlapping windows on a self-exciting
+    process, and permuting destroys the serial dependence along with the cross-dependence:
+    the null then sits too low and too tight, and a true null is called significant at any
+    level.  A rotation preserves each series' own autocorrelation exactly and breaks only
+    the alignment between them, which is the hypothesis being tested.
+
+    ``guard`` is the smallest admissible shift, in rows, and should be at least twice the
+    block length of :func:`politis_white_block_length`, so that no rotation leaves a row
+    near its own neighbourhood.
+    """
+    size = predictor.size
+    if not 0 < guard < size // 2:
+        raise ValueError(f"guard {guard} must lie in (0, {size // 2}) for {size} rows")
+    offsets = rng.integers(guard, size - guard, size=draws)
+    return np.array([statistic(np.roll(predictor, int(k)), outcome) for k in offsets])
