@@ -93,25 +93,25 @@ than the fold recording fills, and that the sweep costs reuse `SideStatistics.le
 
 ## The example parametrization changed
 
-`example_order_flow_params()` moved from a branching ratio of 0.8 to 0.6 and
-`example_mark_params()` from a depth decay of 0.45 to 0.10, so that no side of the book is
-ever empty; `config.py` carries the construction. The total stationary rate is held at 30.19
-events per second, so **message counts are unchanged** — 107,724 and 108,068 over an hour
-against the 16.7k and 34.8k runs' unchanged 16,084 and 34,786 — and every horizon-based
-figure below keeps its scale.
+`example_order_flow_params()` moved from a branching ratio of 0.8 to 0.6, its composition
+from `lambda_L / (lambda_M + lambda_W) = 0.9956` to exactly 1, and `example_mark_params()`
+from a depth decay of 0.45 to 0.15; `config.py` carries the construction and the reasons.
+The total stationary rate is held at 30.19 events per second, so **message counts are
+unchanged** — 107,853 and 108,162 over an hour against the 16.7k and 34.8k runs' unchanged
+16,121 and 34,781 — and every horizon-based figure below keeps its scale.
 
 Everything that reads the *book* moved, and the re-measured shape is:
 
 | run | before | after |
 | --- | --- | --- |
-| `benchmark.session(shallow, 3600s, seed 0)`, `L` | ~12 | **22** |
-| `benchmark.session(deep, 3600s, seed 0)`, `L` | ~966 | **429** |
-| gap regimes (seed 3, 120s warm-up), levels a side | 18 / 241 | **14 / 102** |
-| `example_mark_params` (seed 11, 300s), levels a side | 13 | **39** |
-| `deep_mark_params` (seed 11, 300s), levels a side | 136 | **125** |
+| `benchmark.session(shallow, 3600s, seed 0)`, `L` | ~12 | **25** |
+| `benchmark.session(deep, 3600s, seed 0)`, `L` | ~966 | **459** |
+| gap regimes (seed 3, 120s warm-up), levels a side | 18 / 241 | **13 / 106** |
+| `example_mark_params` (seed 11, 300s), levels a side | 13 | **30** |
+| `deep_mark_params` (seed 11, 300s), levels a side | 136 | **140** |
 
 The direction is uniform: the book is thinner in shares and wider in levels, which is what
-`depth_decay = 0.10` buys and what the composition costs.
+the mark offset buys and what the composition costs.
 
 **The timing figures below were measured at the superseded parametrization**, together with
 the occupied-level counts quoted beside them as regime labels, and none can be re-derived
@@ -157,11 +157,11 @@ Three of these contradict the predictions written into the plan, which is the us
   0.014, which is what tips the dict-backed cases against it. The prediction that a
   reconstruction must always lose was wrong: the rebuild does no matching at all;
 - `CachedBestBook` is fastest on every recording strategy;
-- **the column-sliced imbalance differs from the grid-indexed one on 47% of rows, and by
-  as much as 1.38** — on a scale that only spans 2. Not a perturbation: a different
+- **the column-sliced imbalance differs from the grid-indexed one on 20% of rows, and by
+  as much as 1.33** — on a scale that only spans 2. Not a perturbation: a different
   statistic;
 - **coverage is sharp.** At reported depth 1 only `I^1` is recoverable; at depth 2, `I^2` is
-  recoverable everywhere and `I^3` on 2.4% of rows; at depth 10 everything asked for. How
+  recoverable everywhere and `I^3` on 0.8% of rows; at depth 10 everything asked for. How
   deep a file you need is a question about the market, not the code.
 
 From the second pass over the same work (register, serialization on the classes, and the
@@ -268,7 +268,7 @@ a better way to find a best price.
 long the longest is, but not where: `FirstGapDistance`, `FirstGapSize`,
 `LargestGapDistance`. Both routes — from a book and vectorized from the frame — verified to
 agree row for row on both regimes. On the deep book the nearest gap is a median of 1 tick
-from the touch and the largest spans up to 29 levels.
+from the touch and the largest spans up to 28 levels.
 
 From the sweep-cost / OFI / VWAP work (`notebooks/the-cost-of-the-statistics.ipynb`, 34.8k
 messages, reported depth 10). **Three of these contradict the review that shaped the plan**,
@@ -306,8 +306,8 @@ which is why the notebook exists rather than the estimate:
   — but the time it takes is not where this path spends anything;
 - **a sweep column on a thin book is mostly empty, and that is the finding to teach.** A
   sweep size is an absolute number of shares. On the deep regime at reported depth 1,
-  `SweepCostBuy400` is priced on 4.0% of messages and `SweepCostBuy1600` on **none of them**;
-  at depth 10 they reach 100% and 74.5%. The `Covered` flag separates "cannot be filled at
+  `SweepCostBuy400` is priced on 6.9% of messages and `SweepCostBuy1600` on **none of them**;
+  at depth 10 they reach 100% and 72.8%. The `Covered` flag separates "cannot be filled at
   any price", which is an answer, from "the window ended", which is not. Choosing a sweep size
   without looking at this produces a column that is NaN more often than not and reads like a
   bug in the code.

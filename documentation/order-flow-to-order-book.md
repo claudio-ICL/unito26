@@ -587,16 +587,16 @@ $\mathbf{1}^\top$ being its left Perron vector in that case.
 The example's column sums are $(1.31, 1.31, 0.44, 0.44, 0.47, 0.47)$ —
 one market order spawns $1.31$ direct offspring where a limit order spawns $0.44$,
 which is the replenishment asymmetry of the shape written as a number —
-and the endogenous fraction is $0.577$ at $\rho = 0.6$.
+and the endogenous fraction is $0.576$ at $\rho = 0.6$.
 
 The **mean cluster size** is likewise not $1/(1-\rho)$.
 A type-$j$ immigrant has $\mathbf{1}^\top(I-\Gamma)^{-1}e_j$ descendants in expectation,
 here $4.64$ for a market order and $1.96$ for a limit order;
-averaging with weights $\mu_j/\bar\mu$ gives $2.365$, against the scalar formula's $2.5$.
+averaging with weights $\mu_j/\bar\mu$ gives $2.357$, against the scalar formula's $2.5$.
 The weight is the right one because clusters are founded by immigrants,
-and it is certified by $\bar\mu \times 2.365 = \nu$.
+and it is certified by $\bar\mu \times 2.357 = \nu$.
 Weighting by $\lambda^*/\nu$ instead answers a different question —
-descendants of a *randomly chosen* event rather than of an immigrant — and gives $2.430$.
+descendants of a *randomly chosen* event rather than of an immigrant — and gives $2.425$.
 
 ### Exact simulation (`prop.hawkesExactSimulation`)
 

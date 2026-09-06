@@ -188,12 +188,16 @@ class TestFrozenExamples:
 
     def test_the_flow_composition_is_the_declared_one(self):
         """The baselines were read off a target stationary intensity, so the target is
-        what has to be asserted; the baselines themselves carry no interpretation."""
+        what has to be asserted; the baselines themselves carry no interpretation.
+
+        The ratio is exactly one, and not approximately one: below it the book is consumed
+        faster than it is replenished and a side empties, above it the resting depth grows
+        through a session.  One is where the depth is stationary."""
         stationary = config.example_order_flow_params().stationary_intensity()
         limit = stationary[[EventType.LIMIT_BUY, EventType.LIMIT_SELL]].sum()
         consuming = stationary.sum() - limit
         assert stationary.sum() == pytest.approx(30.1878, abs=1e-3)
-        assert limit / consuming == pytest.approx(0.98, abs=1e-6)
+        assert limit / consuming == pytest.approx(1.0, abs=1e-6)
 
     def test_the_baselines_are_admissible(self):
         """``mu = (I - Gamma) lambda*`` is a baseline only where it is non-negative, and

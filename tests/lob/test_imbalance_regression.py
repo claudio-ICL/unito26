@@ -234,6 +234,40 @@ class TestTheLogScoreSkill:
         assert np.isfinite(skill)
 
 
+class TestTheIncrementalSkill:
+    """The confirmatory statistic: nested, so it needs no separate null."""
+
+    def setup_method(self):
+        rng = np.random.default_rng(11)
+        self.n = 40000
+        self.half = self.n // 2
+        self.base = rng.normal(size=self.n)
+        self.extra = rng.normal(size=self.n)
+        self.noise = rng.normal(size=self.n)
+        rate = np.clip(0.03 + 0.05 * self.base, 0.002, 0.45)
+        self.outcome = np.array([rng.choice(3, p=[q, 1 - 2 * q, q]) for q in rate])
+        joint = np.clip(0.03 + 0.04 * self.base + 0.04 * self.extra, 0.002, 0.45)
+        self.joint_outcome = np.array([rng.choice(3, p=[q, 1 - 2 * q, q]) for q in joint])
+
+    def skill(self, extra, outcome):
+        h = self.half
+        return est.incremental_log_score_skill(
+            self.base[:h], extra[:h], outcome[:h],
+            self.base[h:], extra[h:], outcome[h:], 6, 20.0,
+        )
+
+    def test_a_redundant_predictor_adds_nothing(self):
+        """The shrinkage target is the base model itself, so a second copy of the base
+        predictor lands back on it rather than on climatology."""
+        assert self.skill(self.base, self.outcome) == pytest.approx(0.0, abs=1e-3)
+
+    def test_an_irrelevant_predictor_pays_the_finite_sample_penalty(self):
+        assert -0.02 < self.skill(self.noise, self.outcome) < 0.0
+
+    def test_an_informative_predictor_scores_positive(self):
+        assert self.skill(self.extra, self.joint_outcome) > 0.02
+
+
 class TestTheNestedFit:
     def test_it_recovers_a_planted_pair_of_coefficients(self):
         rng = np.random.default_rng(5)

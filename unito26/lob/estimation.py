@@ -43,6 +43,7 @@ __all__ = [
     "kendall_tau_b",
     "ThreeClassModel",
     "log_score_skill",
+    "incremental_log_score_skill",
     "brier_skill",
     "reliability",
     "participation_ratio",
@@ -343,6 +344,60 @@ def log_score_skill(
     if baseline <= 0:
         return float("nan")
     return 1.0 - model.cross_entropy(test_predictor, test_outcome) / baseline
+
+
+def incremental_log_score_skill(
+    train_base: np.ndarray,
+    train_extra: np.ndarray,
+    train_outcome: np.ndarray,
+    test_base: np.ndarray,
+    test_extra: np.ndarray,
+    test_outcome: np.ndarray,
+    bins: int,
+    prior_weight: float,
+) -> float:
+    """Skill of a two-predictor binned model over the one-predictor model it **nests**.
+
+    The lattice-aware form of the nested test, and the confirmatory statistic of the
+    imbalance study.  ``train_base`` is binned on its own; the joint model bins the pair
+    into product cells and shrinks each cell toward *the base model's* probability for the
+    base bin it sits in -- not toward climatology.  That is what makes the statistic
+    exactly zero when the extra predictor adds nothing, so it needs no separate null.
+
+    Preferred to the ``b2 = 0`` coefficient test for two reasons.  The outcome is an atom
+    of over nine tenths with a heavy-tailed remainder, which a linear magnitude slope reads
+    badly; and a binned joint model does not force the extra predictor's contribution to be
+    linear, where ``b2`` forces it onto an equally weighted boxcar.
+
+    The product grid costs resolution: ``bins`` squared cells on one training fold.  Use
+    fewer bins here than for a single predictor, and compare only at a fixed ``bins``.
+    """
+    base = ThreeClassModel.fit(train_base, train_outcome, bins, prior_weight)
+    train_outcome = np.asarray(train_outcome, dtype=int)
+
+    base_cell = np.searchsorted(base.edges, np.asarray(train_base, dtype=float), side="right")
+    extra_edges = np.unique(
+        np.quantile(np.asarray(train_extra, dtype=float), np.linspace(0, 1, bins + 1)[1:-1])
+    )
+    extra_cell = np.searchsorted(extra_edges, np.asarray(train_extra, dtype=float), side="right")
+    width = extra_edges.size + 1
+    cell = base_cell * width + extra_cell
+
+    counts = np.zeros((base.probabilities.shape[0] * width, CLASSES))
+    np.add.at(counts, (cell, train_outcome), 1.0)
+    totals = counts.sum(axis=1, keepdims=True)
+    target = np.repeat(base.probabilities, width, axis=0)
+    joint = (counts + prior_weight * target) / (totals + prior_weight)
+
+    test_outcome = np.asarray(test_outcome, dtype=int)
+    test_cell = (
+        np.searchsorted(base.edges, np.asarray(test_base, dtype=float), side="right") * width
+        + np.searchsorted(extra_edges, np.asarray(test_extra, dtype=float), side="right")
+    )
+    rows = np.arange(test_outcome.size)
+    richer = float(-np.mean(np.log(joint[test_cell][rows, test_outcome])))
+    simpler = base.cross_entropy(test_base, test_outcome)
+    return float("nan") if simpler <= 0 else 1.0 - richer / simpler
 
 
 def brier_skill(probabilities: np.ndarray, outcome: np.ndarray, climatology: np.ndarray) -> float:
