@@ -223,7 +223,12 @@ def predictors(session: MarketSession, window: Window, levels: GridDepth) -> Pre
     depth = session.stats["TouchDepth"].to_numpy(dtype=float)
     measured = np.isfinite(depth).astype(float)
     rows = rolling_sum(start, measured)
-    mean_depth = np.where(rows > 0, rolling_sum(start, np.nan_to_num(depth)) / (2 * rows), np.nan)
+    # A window with no finite TouchDepth has no mean depth.  Guarding the divisor rather
+    # than the result: np.where evaluates both branches.
+    mean_depth = np.divide(
+        rolling_sum(start, np.nan_to_num(depth)), 2 * rows,
+        out=np.full(rows.shape, np.nan), where=rows > 0,
+    )
 
     ofi = backward_sum(flow, window)
     last = flow.values

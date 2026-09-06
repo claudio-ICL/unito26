@@ -51,6 +51,11 @@ The strand is built as a ladder of increasing complexity, and the modules follow
     a book drawn as text for the documentation, and a book or a session drawn as plotly
     for the notebooks.
 
+The theory behind ``imbalance_regression`` is in
+``documentation/point-processes-and-prediction.md``, and the confirmatory claims of the
+study built on it were frozen in
+``documentation/pre-registration-imbalance-regression.md`` before the first run.
+
 The organising idea is in ``documentation/order-flow-to-order-book.md``: the aggregate
 state is closed under the arrival of an order, so it reproduces the whole public book,
 and it stops being sufficient the moment a question concerns a *named* order.
