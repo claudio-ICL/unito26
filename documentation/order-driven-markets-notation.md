@@ -408,25 +408,37 @@ Python identifier — use it, and nothing else, in `unito26/` and in the noteboo
 ### The order flow
 
 The table above is the book's; the flow that drives it has none of its symbols. These are
-the ones `order-flow-to-order-book.md` §5–6 uses and the ones the imbalance regressions are
-reported against. They have no macros yet, the notes carrying no Hawkes chapter; they enter
-`notation.tex` when one is written.
+the ones the point-process chapter `chap.hawkes` develops and the ones the imbalance
+regressions are reported against; [`point-processes-and-hawkes.md`](point-processes-and-hawkes.md)
+is their code-facing half.
 
-| symbol | meaning | Python |
-| --- | --- | --- |
-| $N$ | the counting process, one coordinate per event type | — |
-| $\lambda(t)$ | the conditional intensity **vector**, $\lambda = \mu + A\,S(t)$ | — |
-| $\bar\lambda(t)$ | its total, $\mathbf{1}^\top\lambda(t)$ — the scalar the exact scheme thins against | — |
-| $\Lambda$ | the compensator, $\mathrm{d}\Lambda = \lambda\,\mathrm{d}t$ | `compensators_at_events` |
-| $\mu$, $\bar\mu$ | the baseline intensity vector and its total | `baseline` |
-| $\alpha_{ij}$, $A$ | excitation of type $i$ by type $j$, and the matrix of them | `excitation` |
-| $\beta$ | the common exponential decay rate, in s$^{-1}$ | `decay` |
-| $S(t)$ | the decayed-count state, $S_j(t) = \sum_k e^{-\beta(t - t^j_k)}$ | — |
-| $\Gamma$ | the branching matrix $A/\beta$ | `branching_matrix` |
-| $\rho$ | its spectral radius — **not** the endogenous fraction, and not $1/(1-\rho)$'s cluster size | `branching_ratio` |
-| $\lambda^*$ | the stationary intensity vector $(I-\Gamma)^{-1}\mu$ | `stationary_intensity()` |
-| $\nu$ | its total $\mathbf{1}^\top\lambda^*$, a rate in events per second | — |
-| $w$, $h$ | the $\mathrm{OFI}$ lookback and the forecast horizon, both in seconds | `window`, `horizon` |
+| symbol | macro | meaning | Python |
+| --- | --- | --- | --- |
+| $d_E$ | `\numEventTypes` | the number of event types | `dimension` |
+| $N$ | `\multiCountingProc` | the counting process, one coordinate per event type | — |
+| $N_{\mathfrak g}$ | `\groundProc` | its ground process, $\sum_e N_e$ | — |
+| $E_n$ | `\event` | the type of the $n$-th event | `EventType` |
+| $\lambda(t)$ | `\intensity` | the conditional intensity **vector**, $\lambda = \mu + A\,S(t)$ | — |
+| $\bar\lambda(t)$ | `\totalIntensity` | its total, $\mathbf{1}^\top\lambda(t)$ — the scalar the exact scheme decomposes | `total_intensity` |
+| $\Lambda$ | `\compensator` | the compensator, $\mathrm{d}\Lambda = \lambda\,\mathrm{d}t$ | `compensators_at_events` |
+| $\kappa_{e,e'}$ | `\hawkesKernel\subscriptee` | the kernel: the influence of $e'$ on $e$ | — |
+| $\mu$, $\bar\mu$ | `\baseIntensity` | the baseline intensity vector and its total | `baseline` |
+| $A_{e,e'}$ | `\excitation` | excitation of type $e$ **by** type $e'$, and the matrix of them | `excitation` |
+| $\beta$ | `\decay` | the common exponential decay rate, in s$^{-1}$ | `decay` |
+| $S(t)$ | `\decayedCounts` | the decayed-count state, $S_e(t) = \sum_{T^e_j < t} e^{-\beta(t - T^e_j)}$ | `decayed_counts` |
+| $\Gamma$ | `\branchingMatrix` | the branching matrix $A/\beta$ | `branching_matrix` |
+| $\rho$ | `\branchingRatio` | its spectral radius — **not** the endogenous fraction, and $1/(1-\rho)$ **not** the cluster size | `branching_ratio` |
+| $\lambda^*$ | `\stationaryIntensity` | the stationary intensity vector $(I-\Gamma)^{-1}\mu$ | `stationary_intensity()` |
+| $\nu$ | `\totalRate` | its total $\mathbf{1}^\top\lambda^*$, a rate in events per second | — |
+| $p$ | `\pressure` | the pressure vector, $p_e \in \{-1, 0, +1\}$ | `EventType.pressure` |
+| $\lambda^\uparrow$, $\lambda^\downarrow$ | `\upIntensity`, `\downIntensity` | the up- and down-pushing intensities | — |
+| $\Delta\lambda$ | `\intensityContrast` | the intensity contrast $p^\top\lambda$ | — |
+| $w$, $h$ | — | the $\mathrm{OFI}$ lookback and the forecast horizon, both in seconds | `window`, `horizon` |
+
+**The second index excites.** $A_{e,e'}$ is the influence of $e'$ on $e$, so $\lambda = \mu + AS$
+is a plain matrix–vector product and the *column* sums of $\Gamma$ are the readable quantity.
+A matrix and its transpose share a spectral radius, so a transposed kernel passes every
+stability check; the convention is the only defence.
 
 $S$ collides with a level size and $\rho$ with the resting price of $(s, \rho, \pi, -d)$;
 both are disambiguated by context in prose and by distinct identifiers in code, as the
