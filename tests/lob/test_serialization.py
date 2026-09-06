@@ -186,25 +186,53 @@ class TestFrozenExamples:
         reverse = params.excitation[EventType.MARKET_BUY, EventType.LIMIT_SELL]
         assert replenishment > 5 * reverse
 
+    @pytest.mark.parametrize(
+        "depleting, replenisher, further",
+        [
+            (EventType.MARKET_SELL, EventType.LIMIT_BUY, EventType.WITHDRAW_BUY),
+            (EventType.WITHDRAW_BUY, EventType.LIMIT_BUY, EventType.WITHDRAW_BUY),
+            (EventType.MARKET_BUY, EventType.LIMIT_SELL, EventType.WITHDRAW_SELL),
+            (EventType.WITHDRAW_SELL, EventType.LIMIT_SELL, EventType.WITHDRAW_SELL),
+        ],
+    )
+    def test_a_depleting_event_calls_forth_replenishment(
+        self, depleting, replenisher, further
+    ):
+        """The mechanism that keeps a side from emptying, asserted as the inequality it is.
+
+        What depletes a queue must excite the orders that refill it far more than it
+        excites further removals from it.  This is local and conditional, where the flow
+        composition is global and slow; it is the reason no side empties in two million
+        rows.  Both sides, and both kinds of depleting event.
+        """
+        excitation = config.example_order_flow_params().excitation
+        assert excitation[replenisher, depleting] > 10 * excitation[further, depleting]
+
     def test_the_flow_composition_is_the_declared_one(self):
         """The baselines were read off a target stationary intensity, so the target is
         what has to be asserted; the baselines themselves carry no interpretation.
 
-        The ratio is exactly one, and not approximately one: below it the book is consumed
-        faster than it is replenished and a side empties, above it the resting depth grows
-        through a session.  One is where the depth is stationary."""
+        The ratio is below one, and that is the point.  One balances the flow in counts,
+        which is not the same as balancing it in size: a truncated withdrawal is removal
+        capacity thrown away, so at one the depth grows without bound, ever more slowly.
+        One is the critical point; 0.965 is where twenty seeds show no detectable drift."""
         stationary = config.example_order_flow_params().stationary_intensity()
         limit = stationary[[EventType.LIMIT_BUY, EventType.LIMIT_SELL]].sum()
         consuming = stationary.sum() - limit
         assert stationary.sum() == pytest.approx(30.1878, abs=1e-3)
-        assert limit / consuming == pytest.approx(1.0, abs=1e-6)
+        assert limit / consuming == pytest.approx(0.965, abs=1e-6)
 
     def test_the_baselines_are_admissible(self):
         """``mu = (I - Gamma) lambda*`` is a baseline only where it is non-negative, and
-        the market-order component is the one that binds."""
+        the limit-order component is the one that binds.
+
+        That it is the limit orders is a consequence of the replenishment mechanism, not an
+        accident: tying their arrival to the depleting rates makes them overwhelmingly
+        endogenous, so little of their rate is left for immigration.  It is also what caps
+        how far the composition can be pushed towards a flat depth."""
         params = config.example_order_flow_params()
         assert (params.baseline > 0).all()
-        assert params.baseline.argmin() in (EventType.MARKET_BUY, EventType.MARKET_SELL)
+        assert params.baseline.argmin() in (EventType.LIMIT_BUY, EventType.LIMIT_SELL)
 
     def test_the_three_depth_regimes_are_distinct(self):
         assert (

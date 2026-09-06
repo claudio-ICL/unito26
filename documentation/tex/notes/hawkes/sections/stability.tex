@@ -29,14 +29,16 @@ For the six-type order flow used in these notes they are
   $\eone$ & market & market & limit & limit & withdraw & withdraw \\
   & buy & sell & buy & sell & bid & ask \\
   \midrule
-  $\sum_e \branchingMatrix\subscriptee$ & $1.310$ & $1.310$ & $0.437$ & $0.437$ & $0.470$ & $0.470$ \\
+  $\sum_e \branchingMatrix\subscriptee$ & $1.425$ & $1.425$ & $0.199$ & $0.199$ & $1.036$ & $1.036$ \\
   \bottomrule
  \end{tabular}
 \end{center}
-One market order begets $1.31$ direct events of one type or another,
-against a limit order's $0.44$.
-That single line is the replenishment asymmetry of the model expressed as a number:
-aggression propagates, passive posting does not.
+One market order begets $1.43$ direct events of one type or another,
+a withdrawal $1.04$, and a limit order only $0.20$.
+That single line is the replenishment mechanism of the model expressed as a number:
+the two kinds of event that deplete a queue --- an aggression against it and a withdrawal
+from it --- both beget successors, and what they chiefly beget is the limit orders that
+refill the side they emptied, while a limit order that has already refilled begets little.
 Note again, per Section \ref{sec.exponentialKernel},
 that the corresponding column sums of $\excitation$ are $\decay$ times these,
 and are jumps in intensity rather than counts.
@@ -120,9 +122,9 @@ and by \eqref{eq.meanClusterSize} it equals $1 - 1/\bar C$.
  and in particular when $\branchingMatrix\baseIntensity = \branchingRatio\baseIntensity$,
  the baselines being proportional to a right Perron vector.
  Neither is generic, and neither holds for the parametrisation of these notes:
- there the column sums are $(1.31, 1.31, 0.44, 0.44, 0.47, 0.47)$,
- and at $\branchingRatio = 0.60$ the endogenous fraction is $0.576$ and
- $\bar C = 2.357$, against $1/(1-\branchingRatio) = 2.5$.
+ there the column sums are $(1.43, 1.43, 0.20, 0.20, 1.04, 1.04)$,
+ and at $\branchingRatio = 0.60$ the endogenous fraction is $0.682$ and
+ $\bar C = 3.149$, against $1/(1-\branchingRatio) = 2.5$.
  The gap is small here and need not be;
  the point is that $\branchingRatio$ is a spectral radius,
  while \eqref{eq.meanClusterSize} and \eqref{eq.endogenousFraction} are averages against
