@@ -1,0 +1,234 @@
+We begin by fixing the notation for counting processes,
+reviewing the concepts from the general theory that the rest of the chapter uses.
+Our main reference is \cite[Chapter 14]{DVJ08int}.
+
+Let $\numEventTypes$ be a positive integer.
+For each $e$ ranging from $1$ to $\numEventTypes$,
+let $\arrivalTimes_{j}$, $j = 1, 2, \dots$, be a strictly increasing sequence of positive random times,
+and assume that
+\begin{equation}\label{eq.noCommonJumps}
+ \arrivalTimes_{j} \neq \arrivalTimes[\eone]_{j\derivative}
+ \qquad \text{whenever } (e,j) \neq (\eone, j\derivative).
+\end{equation}
+No two events ever occur at the same instant.
+This is a modelling assumption and not a triviality:
+it will be needed again for the second-order structure of Section \ref{sec.secondOrder}
+and for the goodness-of-fit test of Section \ref{sec.simulation},
+and it is the hypothesis that fails first when a model is fitted to recorded data,
+where a single aggressive order is reported as several fills sharing a timestamp.
+
+Under \eqref{eq.noCommonJumps},
+\begin{equation*}
+ \countingProc(t) := \sum_{j} \indicator{\arrivalTimes_{j} \leq t},
+ \qquad t \geq 0,
+\end{equation*}
+is a non-decreasing right-continuous process;
+we call $\countingProc$ the counting process associated with the sequence $(\arrivalTimes_{j})_j$.
+Notice that $(\arrivalTimes_{j})_j$ can be retrieved from $\countingProc$ by
+\begin{equation*}
+ \arrivalTimes_{j} = \inf \left\lbrace t>0: \, \countingProc(t) \geq j \right\rbrace;
+\end{equation*}
+hence there is a one-to-one correspondence between $\countingProc$ and $(\arrivalTimes_{j})_j$.
+
+For $t>0$ we define
+\begin{equation*}
+ \delta\countingProc(t) := \lim_{h\downarrow 0} \Big( \countingProc(t) - \countingProc(t-h) \Big),
+\end{equation*}
+and we notice that $\delta \countingProc(t) = 1$ if and only if $t = \arrivalTimes_{j}$ for some $j$,
+and $\delta \countingProc(t) = 0$ otherwise.
+
+The $\numEventTypes$-dimensional vector
+$\multiCountingProc(t) = (\countingProc[1](t), \dots , \countingProc[\numEventTypes](t))$
+is referred to as the multivariate counting process associated with the $\numEventTypes$ sequences
+$(\arrivalTimes_{j})_j$, $e = 1, \dots, \numEventTypes$.
+Let $\groundProc(t) := \countingProc[1](t) + \dots + \countingProc[\numEventTypes](t)$
+be the ground process of $\multiCountingProc$,
+and let
+\begin{equation*}
+ \arrivalTimes[ ]_{n} := \inf \left\lbrace t>0: \, \groundProc(t) \geq n\right\rbrace,
+ \qquad n = 1, 2, \dots,
+\end{equation*}
+be the ordered sequence of random times stemming from the union
+$\lbrace \arrivalTimes_{j}: \, j = 1,2,\dots; \,\, e = 1,\dots,\numEventTypes\rbrace$.
+By defining, for $n = 1, 2, \dots$,
+\begin{equation*}
+ \event := \sum_{e=1}^{\numEventTypes} e \,
+ \indicator{\delta \groundProc(\arrivalTimes[ ]_{n}) = \delta\countingProc(\arrivalTimes[ ]_{n})},
+\end{equation*}
+we have that the pair $(\arrivalTimes[ ]_{n}, \event[n])$ equivalently characterises the
+multivariate counting process, because
+\begin{equation}\label{eq.NTE_counting_proc}
+ \countingProc(t) = \sum_{n} \indicator{\arrivalTimes[ ]_{n}\leq t, \, \event[n] = e},
+\end{equation}
+for all $t>0$ and all $e = 1,\dots, \numEventTypes$.
+
+We can interpret this construction by saying that the index $e$ labels $\numEventTypes$ types
+of events that occur in time,
+and that $\countingProc(t)$ counts the number of events of type $e$ that have occurred by time $t$.
+The two representations are the two we shall use throughout:
+$\multiCountingProc$ when we compute,
+and $(\arrivalTimes[ ]_{n}, \event[n])$ when we simulate,
+since a simulator produces one time and one label at a time.
+
+\begin{example}[``Poisson process'']
+ Let $\tau_e^j$, $j = 1,2,\dots$, $e = 1,\dots, \numEventTypes$, be independent random variables
+ such that $\tau_e^j$ is exponentially distributed with parameter $\intensity>0$.
+ Let $\arrivalTimes_{j} := \sum_{k\leq j} \tau_e^{k}$,
+ and notice that $\arrivalTimes_{j}$ has probability density function
+ \begin{equation*}
+  f_{e,j}(t) = \frac{\intensity^j}{(j-1)!}t^{j-1} e^{-\intensity t} \indicator{t>0}.
+ \end{equation*}
+ Then the multivariate counting process $\multiCountingProc$ associated with the arrival times
+ $\arrivalTimes_{j}$ is called $\numEventTypes$-dimensional Poisson process of rates
+ $\intensity[1], \dots, \intensity[\numEventTypes]$.
+ This name is justified as follows.
+ Since $\lbrace \countingProc(t)\geq j\rbrace = \lbrace \arrivalTimes_{j} \leq t\rbrace$,
+ we have that $\frac{d}{dt} \Prob(\countingProc(t) \geq j) = f_{e,j} (t)$.
+ On the other hand, if we define
+ \begin{equation*}
+  G_{e,j}(t) := \sum_{k\geq j} \frac{(\intensity t)^k}{k!}e^{-\intensity t},
+ \end{equation*}
+ we also have that $\frac{d}{dt} G_{e,j}(t) = f_{e,j}(t)$, by telescopic sum.
+ Since $G_{e,j}(0) = \Prob (\countingProc(t)\geq 0)$,
+ we deduce that $\Prob(\countingProc(t) \geq j) = G_{e,j}(t)$, and that
+ \begin{equation*}
+  \Prob\left( \countingProc(t) = j\right) =
+  \frac{(\intensity t)^j}{j!} \exp\left( -\intensity t\right).
+ \end{equation*}
+ Therefore for every $t$, $\countingProc(t)$ is a Poisson random variable of parameter
+ $\intensity t$,
+ and the ground process $\groundProc$ of $\multiCountingProc$ is such that for every $t$,
+ $\groundProc(t) \sim \text{Pois}(\intensity[1]t + \dots + \intensity[\numEventTypes]t)$.
+\end{example}
+
+The minimal filtration to which a multivariate counting process $\multiCountingProc$ is adapted
+-- and which satisfies the usual conditions of completeness and right-continuity --
+is called the internal history of $\multiCountingProc$.
+Any other filtration to which $\multiCountingProc$ is adapted is called a history of
+$\multiCountingProc$, and it must be a superset of the internal history.
+The distinction will matter in Section \ref{sec.readingOrderFlow}:
+an observer who sees less than the internal history has a different compensator for the same
+process, and the quantity he can estimate is not the one the model specifies.
+
+\begin{defi}\label{def.compensator}
+ Let $\stochasticBase$ be a filtered probability space where the multivariate counting process
+ $\multiCountingProc$ is defined,
+ and assume that $\filtrationF$ is a history of $\multiCountingProc$.
+ We say that the $\numEventTypes$-dimensional stochastic process
+ $\compensator = (\compensator_1, \dots , \compensator_{\numEventTypes})$
+ is an $\filtrationF$-compensator for $\multiCountingProc$ if:
+ \emph{o.} $\compensator(0)=0$ and $\compensator$ is of finite variation;
+ \emph{i.} $\compensator$ is $\filtrationF$-predictable;
+ \emph{ii.} $\compensator$ is right-continuous;
+ \emph{iii.} $\multiCountingProc - \compensator$ is a local martingale.
+\end{defi}
+
+Since a counting process $\multiCountingProc$ is non-decreasing,
+as soon as an $\filtrationF$-compensator $\compensator$ for $\multiCountingProc$ exists,
+not only is it of finite variation as required by Definition \ref{def.compensator},
+but in fact it must be non-decreasing too.
+Furthermore, because of requirements \emph{i.} and \emph{ii.},
+the discontinuities of $\compensator$ -- if any --
+are typically associated with the occurrence of deterministic events,
+such as fixed atoms in the distribution of $\multiCountingProc$.
+In the following, our concern will be with continuous compensators.
+
+Given the counting process $\multiCountingProc$ and a history $\filtrationF$,
+the $\filtrationF$-compensator is unique up to an evanescent set,
+and it is equivalently characterised as the $\filtrationF$-predictable projection of
+$\multiCountingProc$,
+namely as the $\filtrationF$-predictable non-decreasing process $\compensator$ such that
+\begin{equation}\label{eq.compensators_and_predict_projections}
+ \Expectation \left[ \int_{\R_+} Y d\multiCountingProc\right]
+ =
+ \Expectation \left[ \int_{\R_+} Y d\compensator\right]
+\end{equation}
+for all non-negative $\filtrationF$-predictable processes $Y$
+(see \cite[Proposition 14.2.II]{DVJ08int}).
+
+If $\compensator$ is absolutely continuous, we write
+\begin{equation*}
+ \compensator (t) = \intzerot \intensity[ ](s)ds,
+\end{equation*}
+for some $\filtrationF$-predictable process
+$\intensity[ ] = (\intensity[1],\dots,\intensity[\numEventTypes])$,
+which is called the intensity of the counting process $\multiCountingProc$.
+Predictability is not a technical afterthought:
+it is what makes $\intensity(t)$ a function of the strict past,
+and every intensity we write down in this chapter will be left-continuous for that reason.
+Combining this with equation \eqref{eq.compensators_and_predict_projections},
+one obtains the formula
+\begin{equation*}
+ \Expectation\left[ \countingProc(t)-\countingProc(s) \vert \filtrationF_s \right]
+ =
+ \Expectation\left[ \int_{s}^{t} \intensity(u) du
+  \vert \filtrationF_s \right],
+  \qquad  s\leq t,
+\end{equation*}
+which allows us to interpret $\intensity(t)$ as a measure of the ``instantaneous risk'' of a
+jump at time $t$ in the $e$-th component of $\multiCountingProc$.
+Notice that this ``risk'' evolves in time,
+and that it varies depending on the information available up to time $s$.
+
+We record one consequence separately, because both simulation algorithms of
+Section \ref{sec.simulation} rest on it and on nothing else.
+Write $\totalIntensity(t) := \intensity[1](t) + \dots + \intensity[\numEventTypes](t)$
+for the intensity of the ground process.
+
+\begin{prop}\label{prop.conditionalSurvival}
+ Let $\multiCountingProc$ admit the $\filtrationF$-intensity $\intensity[ ]$,
+ and let $\arrivalTimes[ ]_{n}$ be the $n$-th arrival of the ground process.
+ Then
+ \begin{equation}\label{eq.conditionalSurvival}
+  \Prob \left( \arrivalTimes[ ]_{n+1} - \arrivalTimes[ ]_{n} > s
+  \, \vert \, \filtrationF_{\arrivalTimes[ ]_{n}} \right)
+  =
+  \exp \left( - \int_{\arrivalTimes[ ]_{n}}^{\arrivalTimes[ ]_{n}+s}
+  \totalIntensity(u) \, du \right),
+  \qquad s \geq 0,
+ \end{equation}
+ where $\totalIntensity$ is evaluated on the event that no arrival occurs in the interval.
+\end{prop}
+
+On that event the integrand is a deterministic function of the history up to
+$\arrivalTimes[ ]_{n}$,
+so the right-hand side is $\filtrationF_{\arrivalTimes[ ]_{n}}$-measurable
+and \eqref{eq.conditionalSurvival} is a genuine survival function that we can invert.
+For a homogeneous Poisson process it reduces to $e^{-\totalIntensity s}$,
+and the inter-arrival times are exponential;
+in general the whole difficulty of simulating a point process is that
+$\int \totalIntensity$ has no closed form,
+and the whole point of the kernel we choose in Section \ref{sec.exponentialKernel} is that it does.
+
+Compensators are also the ingredient of the following time-change result,
+which we shall use to test whether a simulated path is a path of the model we intended.
+
+\begin{thm}[{\cite{Mey71dem}}]\label{thm.meyer1971}
+ Let $\multiCountingProc$ be a $\numEventTypes$-dimensional counting process with arrival times
+ $\arrivalTimes$, and assume that
+ \emph{i.} no two components of $\multiCountingProc$ jump simultaneously, almost surely;
+ \emph{ii.} the compensator $\compensator$ of $\multiCountingProc$ is continuous;
+ \emph{iii.} $\compensator_{e}(t) \rightarrow \infty$ as $t\rightarrow \infty$,
+ for every $e = 1, \dots, \numEventTypes$.
+ Then the time-changed processes
+ $\tilde{\countingProc}(u) := \countingProc \big( \inf\lbrace t: \compensator_e(t) > u \rbrace \big)$,
+ $e = 1, \dots, \numEventTypes$,
+ are mutually independent standard Poisson processes of unit rate.
+ Equivalently, the time-changed inter-arrival times
+ \begin{equation}\label{eq.time-changed_intertimes}
+  \tau_e^j := \compensator(\arrivalTimes_{j}) - \compensator(\arrivalTimes_{j-1})
+ \end{equation}
+ are independent and exponentially distributed with unit mean,
+ jointly over $j = 1, 2, \dots$ and $e = 1,\dots,\numEventTypes$.
+\end{thm}
+
+For a proof see \cite{BN88sim}, which also recovers Watanabe's characterisation of the Poisson
+process as the special case $\compensator(t) = t$.
+Hypothesis \emph{i.} is the one that buys the \emph{joint} independence across components:
+the univariate statement, that each $\tilde{\countingProc}$ is separately unit-rate Poisson,
+holds without it \citep{Pap72int}.
+This distinction is worth keeping in view,
+because a goodness-of-fit test that compares each margin against $\text{Exp}(1)$
+leaves both of the independences in Theorem \ref{thm.meyer1971} untested
+-- the serial independence within a component and the joint independence across components --
+and it is exactly a violation of \emph{i.} that such a test cannot see.

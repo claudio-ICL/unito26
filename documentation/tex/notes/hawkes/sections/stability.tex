@@ -1,0 +1,191 @@
+The branching ratio $\branchingRatio$ is the number one quotes to say how self-excited a
+process is.
+This section says what it, and the quantities that travel with it, actually tell us.
+Throughout, $\excitation \geq 0$, $\baseIntensity \geq 0$ and $\baseIntensity \neq 0$,
+and $\branchingMatrix = \excitation/\decay$ as in \eqref{eq.GammaIsAOverBeta}.
+
+We shall use three facts about non-negative matrices,
+all of them consequences of the Perron--Frobenius theorem.
+For $\branchingMatrix \geq 0$:
+the branching ratio $\branchingRatio$ is itself an eigenvalue of $\branchingMatrix$, and it is real;
+it lies between the smallest and the largest column sum,
+so constant column sums $c$ force $\branchingRatio = c$;
+and if $\branchingRatio < 1$ then
+$(I-\branchingMatrix)^{-1} = \sum_{k\geq 0} \branchingMatrix^{k}$
+converges with non-negative entries.
+
+\subsection{What the branching matrix says}
+
+By Proposition \ref{prop.clusterRepresentation},
+$\branchingMatrix\subscriptee$ is the expected number of direct offspring of type $e$
+born of one event of type $\eone$.
+Its column sums are therefore readable one by one,
+without any spectral computation,
+and they are the most informative single summary of a fitted or specified kernel.
+For the six-type order flow used in these notes they are
+\begin{center}
+ \begin{tabular}{lcccccc}
+  \toprule
+  $\eone$ & market & market & limit & limit & withdraw & withdraw \\
+  & buy & sell & buy & sell & bid & ask \\
+  \midrule
+  $\sum_e \branchingMatrix\subscriptee$ & $1.310$ & $1.310$ & $0.437$ & $0.437$ & $0.470$ & $0.470$ \\
+  \bottomrule
+ \end{tabular}
+\end{center}
+One market order begets $1.31$ direct events of one type or another,
+against a limit order's $0.44$.
+That single line is the replenishment asymmetry of the model expressed as a number:
+aggression propagates, passive posting does not.
+Note again, per Section \ref{sec.exponentialKernel},
+that the corresponding column sums of $\excitation$ are $\decay$ times these,
+and are jumps in intensity rather than counts.
+
+\subsection{Stationarity and the mean intensity}
+
+\begin{prop}\label{prop.stationarity}
+ Let $\hawkesKernel \geq 0$ be locally integrable with $\branchingMatrix$ finite,
+ and let $\baseIntensity \geq 0$, $\baseIntensity \neq 0$.
+ A stationary version of the Hawkes process of Definition \ref{def.hawkesprocess}
+ with finite mean intensity exists if and only if $\branchingRatio < 1$,
+ and in that case
+ \begin{equation}\label{eq.stationaryIntensity}
+  \stationaryIntensity := \Expectation \big[ \intensity[ ](t) \big]
+  = (I - \branchingMatrix)^{-1} \baseIntensity.
+ \end{equation}
+\end{prop}
+
+Taking expectations in \eqref{eq.intensity_ordHawkes} at stationarity gives
+$\stationaryIntensity = \baseIntensity + \branchingMatrix \stationaryIntensity$,
+which is \eqref{eq.stationaryIntensity};
+what $\branchingRatio<1$ supplies is that the Neumann series converges,
+so that the solution exists and is non-negative.
+We write
+\begin{equation*}
+ \totalRate := \mathbf{1}^{\transpose} \stationaryIntensity,
+ \qquad
+ \bar{\baseIntensity} := \mathbf{1}^{\transpose} \baseIntensity
+\end{equation*}
+for the total event rate and the total immigration rate.
+
+Read in the other direction, \eqref{eq.stationaryIntensity} is how one specifies a model:
+choose the total rate one wants to observe, choose the shape of the excitation and the
+branching ratio, and let $\baseIntensity = (I - \branchingMatrix)\stationaryIntensity$ follow.
+The baselines are then an output, and the constraint $\baseIntensity \geq 0$ is a genuine
+restriction on the pairs $(\stationaryIntensity, \branchingMatrix)$ one may ask for.
+
+\subsection{Clusters, and how much of the flow is endogenous}
+
+The events partition into clusters, one per immigrant.
+Write $C_j$ for the expected size of the cluster founded by an immigrant of type $j$.
+Summing the generations of the Galton--Watson process of
+Proposition \ref{prop.clusterRepresentation},
+\begin{equation}\label{eq.clusterSize}
+ C_j = \mathbf{1}^{\transpose} (I - \branchingMatrix)^{-1} e_j .
+\end{equation}
+The $k$-th term of the series counts the $k$-th generation,
+and the term $k=0$ is the immigrant itself:
+$C_j$ counts the ancestor.
+The expected number of its strict descendants is $C_j - 1$.
+Averaging over the type of the immigrant --- weighted by $\baseIntensity_j / \bar{\baseIntensity}$,
+since it is immigrants that found clusters --- gives
+\begin{equation}\label{eq.meanClusterSize}
+ \bar{C} = \sum_j \frac{\baseIntensity_j}{\bar{\baseIntensity}} C_j
+ = \frac{\mathbf{1}^{\transpose}(I-\branchingMatrix)^{-1}\baseIntensity}{\bar{\baseIntensity}}
+ = \frac{\totalRate}{\bar{\baseIntensity}} .
+\end{equation}
+The identity $\bar{\baseIntensity} \, \bar{C} = \totalRate$ is worth stating on its own:
+immigrants arrive at rate $\bar{\baseIntensity}$, each brings $\bar C$ events,
+and every event belongs to exactly one cluster.
+It is the cheapest available check that an implementation of
+\eqref{eq.stationaryIntensity} and \eqref{eq.clusterSize} is consistent.
+
+The complementary quantity is the \emph{endogenous fraction}
+\begin{equation}\label{eq.endogenousFraction}
+ 1 - \frac{\bar{\baseIntensity}}{\totalRate},
+\end{equation}
+the long-run share of events that are offspring rather than immigrants.
+It is a ratio of rates, not a probability attached to any single event,
+and by \eqref{eq.meanClusterSize} it equals $1 - 1/\bar C$.
+
+\begin{remark}[what $\branchingRatio$ is, and what it is not]\label{remark.rhoIsNot}
+ It is tempting to read $\branchingRatio$ as the endogenous fraction,
+ and $1/(1-\branchingRatio)$ as the mean cluster size.
+ The two readings are equivalent to each other, by \eqref{eq.meanClusterSize},
+ and they hold exactly when
+ $\totalRate = \bar{\baseIntensity}/(1-\branchingRatio)$.
+ That is the case in particular when
+ $\mathbf{1}^{\transpose}\branchingMatrix = \branchingRatio \mathbf{1}^{\transpose}$,
+ the column sums of $\branchingMatrix$ being constant,
+ and in particular when $\branchingMatrix\baseIntensity = \branchingRatio\baseIntensity$,
+ the baselines being proportional to a right Perron vector.
+ Neither is generic, and neither holds for the parametrisation of these notes:
+ there the column sums are $(1.31, 1.31, 0.44, 0.44, 0.47, 0.47)$,
+ and at $\branchingRatio = 0.60$ the endogenous fraction is $0.576$ and
+ $\bar C = 2.357$, against $1/(1-\branchingRatio) = 2.5$.
+ The gap is small here and need not be;
+ the point is that $\branchingRatio$ is a spectral radius,
+ while \eqref{eq.meanClusterSize} and \eqref{eq.endogenousFraction} are averages against
+ $\baseIntensity$, and a spectral radius does not know about $\baseIntensity$.
+ Only the stronger statement --- that $C_j = 1/(1-\branchingRatio)$ for \emph{every} $j$ ---
+ genuinely requires constant column sums.
+\end{remark}
+
+\subsection{Timescales}
+
+The mean response of the state to a single event is
+$\mathbf{1}^{\transpose} e^{(\excitation - \decay I)t} e_j$,
+a sum of $\numEventTypes$ exponentials at the rates $\decay(1-\gamma_i)$,
+$\gamma_i$ running over the eigenvalues of $\branchingMatrix$.
+Since $\branchingMatrix \geq 0$, the branching ratio is a real eigenvalue and
+$\decay(1-\branchingRatio)$ is the smallest of these rates.
+We therefore call
+\begin{equation}\label{eq.relaxationTime}
+ \frac{1}{\decay(1-\branchingRatio)}
+\end{equation}
+the relaxation time of the process.
+It is the time constant of the \emph{slowest} mode,
+which is to say that the response is asymptotically proportional to
+$e^{-\decay(1-\branchingRatio)t}$;
+it does not describe the response at short times,
+and it is not a half-life.
+On the parametrisation of these notes the response to a market order rises above one before
+it falls.
+
+Two dimensionless groups organise everything that follows.
+The first, $\totalRate/\decay$, is the number of events that arrive within one excitation
+timescale: it says whether clustering is visible at the rate the process is sampled.
+The second, $\totalRate w$, is the number of events in an observation window of length $w$,
+and it says whether a window sum is a statistic or a single event.
+A study conducted at $\totalRate/\decay \ll 1$ measures a process whose self-excitation has
+expired between consecutive events, and finds, correctly, that there is nothing there.
+
+\subsection{Sub- and supercriticality}
+
+Everything above assumes $\branchingRatio < 1$.
+It is worth being precise about what fails otherwise, because it is less than one expects.
+
+For a linear Hawkes process and every finite horizon $\timeHorizon$,
+$\Expectation[\countingProc(\timeHorizon)^2] < \infty$,
+so on $[0,\timeHorizon]$ the process
+$\martingale := \multiCountingProc - \compensator$
+is a square-integrable martingale,
+with $\langle \martingale_e \rangle = \compensator_e$
+and $\langle \martingale_e, \martingale_{\eone} \rangle \equiv 0$ for $e \neq \eone$,
+the latter by \eqref{eq.noCommonJumps}.
+This holds at every $\branchingRatio$, sub- or supercritical.
+Subcriticality is not what makes $\multiCountingProc - \compensator$ a martingale.
+
+What subcriticality buys is three other things:
+a stationary version exists, by Proposition \ref{prop.stationarity};
+the second moments of the \emph{state} $(\decayedCounts, \intensity[ ])$ are bounded uniformly
+in $\timeHorizon$, which is the subject of Section \ref{sec.secondOrder};
+and the process is ergodic, so that time averages along one path estimate the stationary
+quantities above.
+Each of these fails at $\branchingRatio \geq 1$, where the intensity grows without bound and
+the event count grows exponentially.
+Note that the martingale is not bounded in $L^2$ on $[0,\infty)$ even when
+$\branchingRatio<1$:
+$\Expectation[\martingale_e(\timeHorizon)^2] = \Expectation[\compensator_e(\timeHorizon)]
+\sim \stationaryIntensity[e] \timeHorizon$ diverges.
+The boundedness that subcriticality delivers is boundedness of the state, not of the martingale.

@@ -1,0 +1,116 @@
+Definition \ref{def.hawkesprocess} leaves the kernel free.
+We now fix it, and we fix it in the way that makes the process simulable and estimable
+in linear time:
+\begin{equation}\label{eq.exponentialKernel}
+ \hawkesKernel\subscriptee(t) = \excitation\subscriptee \, e^{-\decay t},
+ \qquad t \geq 0,
+\end{equation}
+with $\excitation\subscriptee \geq 0$ and a single decay rate $\decay > 0$ shared by every pair
+of types.
+We call $\excitation$ the excitation matrix and $\decay$ the decay.
+From \eqref{eq.branchingMatrix},
+\begin{equation}\label{eq.GammaIsAOverBeta}
+ \branchingMatrix = \frac{\excitation}{\decay},
+\end{equation}
+so the branching matrix is dimensionless while the excitation matrix is a rate.
+It is worth carrying that distinction:
+$\sum_e \branchingMatrix\subscriptee$ is a count of offspring,
+$\sum_e \excitation\subscriptee = \decay \sum_e \branchingMatrix\subscriptee$ is
+the jump in the total intensity when one event of type $\eone$ fires,
+measured per second.
+The two are quoted together often enough that it is worth saying they differ by $\decay$.
+
+\subsection{The state}
+
+Define, for each type $e$,
+\begin{equation}\label{eq.decayedCounts}
+ \decayedCounts_e(t) := \sum_{j \, : \, \arrivalTimes_{j} < t} e^{-\decay (t - \arrivalTimes_{j})}.
+\end{equation}
+The inequality under the sum is strict.
+This is not a detail: it makes $\decayedCounts$ left-continuous,
+and therefore makes
+\begin{equation}\label{eq.intensityFromState}
+ \intensity[ ](t) = \baseIntensity + \excitation \decayedCounts(t)
+\end{equation}
+predictable, as Definition \ref{def.compensator} requires of an intensity.
+Substituting \eqref{eq.exponentialKernel} into \eqref{eq.intensity_ordHawkes}
+and separating the factor $e^{-\decay t}$ gives \eqref{eq.intensityFromState} directly.
+
+We call $\decayedCounts$ the decayed counts.
+Between events it solves $d\decayedCounts = -\decay \decayedCounts \, dt$,
+and at an event of type $e$ it gains the unit vector $e_e$:
+\begin{equation}\label{eq.stateDynamics}
+ d\decayedCounts(t) = -\decay \decayedCounts(t) \, dt + d\multiCountingProc(t).
+\end{equation}
+The pair $(\multiCountingProc, \decayedCounts)$ is therefore a piecewise-deterministic Markov
+process:
+the whole of the past enters the future only through the $\numEventTypes$ numbers
+$\decayedCounts$.
+This is the property that the exponential kernel is chosen for,
+and \eqref{eq.stateDynamics} is the form in which we shall use it in
+Section \ref{sec.secondOrder}.
+
+\begin{remark}[choosing the kernel is choosing the size of the state]\label{remark.stateSize}
+ A single $\decay$ shared by all pairs buys a state of dimension $\numEventTypes$.
+ Allowing a decay $\decay\subscriptee$ per pair would require one decayed count per pair,
+ a state of dimension $\numEventTypes^2$,
+ and every expression of Sections \ref{sec.stability} and \ref{sec.secondOrder} would have to be
+ rewritten on it.
+ What the single decay costs is that the model has one excitation timescale and cannot describe
+ a market whose market orders relax quickly and whose cancellations relax slowly.
+ What it buys is \eqref{eq.stateDynamics}, and with it the closed forms of this chapter.
+ We take the trade throughout, and we say where it binds.
+\end{remark}
+
+\subsection{The recursion}
+
+Let $\arrivalTimes[ ]_{n}$ and $\event[n]$ be the arrival times and labels of the ground process.
+Between $\arrivalTimes[ ]_{n}$ and $\arrivalTimes[ ]_{n+1}$ the state merely decays,
+so from \eqref{eq.decayedCounts},
+\begin{equation}\label{eq.update_of_exponential_intensity}
+ \decayedCounts(\arrivalTimes[ ]_{n+1}-)
+ = \Big( \decayedCounts(\arrivalTimes[ ]_{n}-) + e_{\event[n]} \Big)
+ \, e^{-\decay (\arrivalTimes[ ]_{n+1} - \arrivalTimes[ ]_{n})},
+\end{equation}
+and equivalently, on the intensity itself,
+\begin{equation*}
+ \intensity[ ](\arrivalTimes[ ]_{n+1}-)
+ = \baseIntensity
+ + \Big( \intensity[ ](\arrivalTimes[ ]_{n}-) + \excitation e_{\event[n]} - \baseIntensity \Big)
+ \, e^{-\decay (\arrivalTimes[ ]_{n+1} - \arrivalTimes[ ]_{n})}.
+\end{equation*}
+Both values are needed and they are different objects.
+The pre-jump value $\decayedCounts(\arrivalTimes[ ]_{n+1}-)$ is the one that enters the
+intensity, by predictability;
+the post-jump value $\decayedCounts(\arrivalTimes[ ]_{n+1}-) + e_{\event[n+1]}$ is the one
+carried forward as the state.
+Confusing them shifts every intensity by one event, which is a mistake that produces a
+plausible path.
+
+The recursion costs $O(1)$ per event.
+Evaluating \eqref{eq.decayedCounts} directly at each of $n$ arrival times costs $O(n^2)$,
+which is the difference between a simulation that runs and one that does not.
+
+\subsection{The compensator in closed form}
+
+Integrating \eqref{eq.stateDynamics} over $[0,\timeHorizon]$ with
+$\decayedCounts(0) = \multiCountingProc(0) = 0$ gives
+$\int_{0}^{\timeHorizon} \decayedCounts_{\eone} =
+\big( \countingProc[\eone](\timeHorizon) - \decayedCounts_{\eone}(\timeHorizon) \big) / \decay$,
+and therefore
+\begin{equation}\label{eq.compensatorClosedForm}
+ \compensator_e(\timeHorizon)
+ = \baseIntensity_e \timeHorizon
+ + \sum_{\eone=1}^{\numEventTypes} \frac{\excitation\subscriptee}{\decay}
+ \Big( \countingProc[\eone](\timeHorizon) - \decayedCounts_{\eone}(\timeHorizon) \Big).
+\end{equation}
+The compensator is thus available exactly, at any time, from the state and the counts,
+with no numerical integration.
+Notice that $\countingProc[\eone] - \decayedCounts_{\eone}$ is continuous:
+both jump by one at an arrival of type $\eone$.
+So \eqref{eq.compensatorClosedForm} is insensitive to the jump convention,
+and we may read it at $\timeHorizon-$ or at $\timeHorizon$ indifferently.
+This is what makes the goodness-of-fit test of Section \ref{sec.simulation} cheap,
+and it is the reason we compute the compensator independently of the simulator rather than
+accumulating it as the path is generated:
+an independent computation is a test, an accumulated one is a tautology.

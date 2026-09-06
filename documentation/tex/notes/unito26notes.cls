@@ -11,6 +11,8 @@
     {../include/}
     {./orderdriven/}
     {./orderdriven/sections/}
+    {./hawkes/}
+    {./hawkes/sections/}
 }
 \makeatother
 
@@ -32,6 +34,7 @@
 \graphicspath{
     {./figures/}
     {./orderdriven/figures/}
+    {./hawkes/figures/}
 }
 \usepackage{booktabs}
 \usepackage{pdflscape} %make landscape orientation available

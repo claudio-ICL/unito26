@@ -1,0 +1,118 @@
+We now specialise to the order flow of Chapter \ref{chap.orderDrivenMarkets}.
+The six event types are the market, limit and withdrawal orders on each side:
+\begin{center}
+ \begin{tabular}{lcccccc}
+  \toprule
+  $e$ & market buy & market sell & limit buy & limit sell & withdraw bid & withdraw ask \\
+  \midrule
+  $\pressure_e$ & $+1$ & $-1$ & $+1$ & $-1$ & $-1$ & $+1$ \\
+  \bottomrule
+ \end{tabular}
+\end{center}
+The vector $\pressure$ records the direction in which each type pushes the mid price:
+a market buy consumes the ask and a withdrawal from the bid removes support,
+so the first pushes up and the second down.
+
+\begin{defi}\label{def.intensityContrast}
+ Let $\pressure \in \lbrace -1, 0, +1\rbrace^{\numEventTypes}$, and set
+ \begin{equation*}
+  \upIntensity(t) := \sum_{e \, : \, \pressure_e = +1} \intensity(t),
+  \qquad
+  \downIntensity(t) := \sum_{e \, : \, \pressure_e = -1} \intensity(t) .
+ \end{equation*}
+ The intensity contrast is
+ \begin{equation}\label{eq.intensityContrast}
+  \intensityContrast(t) := \upIntensity(t) - \downIntensity(t)
+  = \pressure^{\transpose}\intensity[ ](t)
+  = \pressure^{\transpose}\baseIntensity
+  + \pressure^{\transpose}\excitation \decayedCounts(t) .
+ \end{equation}
+\end{defi}
+
+The restriction of $\pressure$ to $\lbrace -1,0,+1\rbrace$ is what makes the middle equality
+hold: for a general real vector $\pressure^{\transpose}\intensity[ ]$ is a weighted contrast
+and is not the difference of two sums, and $\upIntensity$, $\downIntensity$ have no meaning.
+
+The last term of \eqref{eq.intensityContrast} is the one that carries information,
+and the first is a constant.
+Under the symmetry
+\begin{equation}\label{eq.baselineSymmetry}
+ \pressure^{\transpose}\baseIntensity = 0,
+\end{equation}
+that is, when the up-pushing and down-pushing baselines balance,
+the contrast reduces to $\pressure^{\transpose}\excitation\decayedCounts$ exactly,
+and its sign is a statement about the state alone.
+Every parametrisation used in these notes satisfies \eqref{eq.baselineSymmetry},
+by construction: the baselines are equal in pairs.
+We state the assumption here, where it is used, rather than folding it into the definition,
+because it is not innocuous --- on an asymmetric parametrisation the contrast has a constant
+offset, and a rule that trades on its sign inherits that offset as a permanent bias.
+
+Note also that the $\eone$-th entry of $\pressure^{\transpose}\excitation$
+is the signed jump in $\intensityContrast$ caused by one event of type $\eone$,
+and that it scales with $\decay$ at fixed $\branchingRatio$,
+whereas $\pressure^{\transpose}\branchingMatrix$ does not.
+
+\subsection{The contrast and the order flow imbalance}
+
+The contrast $\intensityContrast$ is an oracle: it is a function of the model's parameters and
+of its state, both of which we know only because we generated the path.
+The order flow imbalance of Chapter \ref{chap.orderDrivenMarkets},
+$\OFI_{t,w} = \sum_n \orderFlowContribution$ over the events in $(t-w, t]$,
+is an estimator built from observables alone.
+It is tempting to describe the second as a crude version of the first --- a causal linear
+filter on the same state, with a boxcar in place of the exponential.
+The description is wrong, and it is worth saying why, because it is the difference that makes
+$\OFI$ worth computing.
+
+The two are statistics of different things.
+
+$\intensityContrast$ sees the self-excited part of the intensity, and only that.
+By \eqref{eq.intensityContrast} it is a function of $\decayedCounts$,
+so it knows nothing about the immigrants that are about to arrive;
+under \eqref{eq.baselineSymmetry} it is blind to $\baseIntensity$ altogether.
+It also requires $\excitation$ and $\decay$ to be known.
+
+$\OFI$ is model free.
+It counts events as they occurred, immigrants and offspring alike,
+without asking which was which,
+and it therefore carries information about the exogenous flow that $\intensityContrast$
+discards by construction.
+
+And $\OFI$ reads the book.
+The contribution $\orderFlowContribution$ of a single event is a touch-size increment:
+it carries the size of the order and the state of the queue it arrived at,
+neither of which appears anywhere in $\hawkesKernel$.
+The kernel governs \emph{when} events happen and of \emph{which type};
+the marks govern \emph{how much} they move.
+No function of $\decayedCounts$ can recover a mark.
+
+There remain three differences of shape, and they are real, but they are differences between
+two estimators of different quantities rather than defects of one of them:
+the window is a boxcar where the kernel is an exponential;
+the types are weighted by $\pressure$ alone where the kernel weights them by
+$\pressure^{\transpose}\excitation$;
+and the marks enter one and not the other.
+
+\subsection{What the model does not contain}
+
+The apparatus of this chapter generates order flow in a controlled setting,
+and a reader should not mistake a result obtained in it for a result about a traded market.
+The following are absent by construction.
+
+The intensities do not read the book: there is no queue-depletion feedback,
+so the arrival rates are indifferent to whether a queue is about to empty.
+The \emph{marks} do read it, and that is the mechanism behind the book's restoring force.
+There is no informed trading and no adverse selection,
+which is where the value of the queue imbalance $\queueImbalance[1]$ would otherwise live.
+There is no queue-position economics.
+There is a single excitation timescale, the kernel being one exponential,
+per Remark \ref{remark.stateSize}.
+There is no intraday non-stationarity, so a window tuned here is not tested against one.
+And there is no anchor for the price level, so the level wanders freely
+and the mean price change over a session is a per-seed random drift.
+
+Two questions cannot be asked in this setting at all,
+because they require recorded data:
+whether any of the regimes studied here occurs in a traded market,
+and whether one excitation timescale suffices to describe one.
