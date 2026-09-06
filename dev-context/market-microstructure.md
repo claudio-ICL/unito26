@@ -542,6 +542,19 @@ From `notebooks/regressing-the-mid-on-the-imbalances.ipynb`, twelve seeds of an 
 - **A rare-event property cannot be asserted from a block sized for a common one.** Six seeds
   and 654,000 messages showed no empty side and were read as "never"; thirty seeds showed
   twelve emptying. The gate is a rate with a tolerance, and the segment mask stays.
+- **The confirmatory run, seeds 3000-3011, read by nothing beforehand.** Window fixed on a
+  tuning block (2000-2019) at `w* = 0.200 s` resilient and `0.080 s` trending; horizon fixed
+  a priori. All four claims reject under Holm at FWER 5%, every one with all twelve seeds on
+  the claimed side: the window adds over the last event alone (+2.42e-3, p 5.7e-8); OFI adds
+  over `I^1` (+1.35e-3, p 3.6e-7); `I^1` adds more over OFI than OFI over `I^1` (+1.66e-2,
+  p 1.2e-13); and the predictive sign is **opposite between the regimes** (contrast +0.1075,
+  trending +0.0192 with 12/12 positive, resilient -0.0882 with 12/12 negative, compound
+  p 3.4e-5). Row survival 99.993% resilient and 99.79% trending.
+- **The two regimes need different survival gates, and the reason is structural.** A trending
+  book is one whose liquidity is stripped, so emptying is the phenomenon: 310 segments a seed
+  against the resilient regime's 2. A gate that refused it would refuse the regime, so the
+  trending one is gated at 1.0% masked rather than 0.1% and carries a boundary-distance
+  sensitivity check instead.
 - **Balancing the flow in counts does not balance it in size, and the book grows.** A
   withdrawal takes `min(drawn, resting at the level)`, so a truncated removal is capacity
   thrown away: effective removal is 0.9856 of a full size per consuming event, the same at
