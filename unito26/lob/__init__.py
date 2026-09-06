@@ -52,7 +52,7 @@ The strand is built as a ladder of increasing complexity, and the modules follow
     for the notebooks.
 
 The theory behind ``imbalance_regression`` is in
-``documentation/point-processes-and-prediction.md``, and the confirmatory claims of the
+``documentation/point-processes-and-hawkes.md``, and the confirmatory claims of the
 study built on it were frozen in
 ``documentation/pre-registration-imbalance-regression.md`` before the first run.
 

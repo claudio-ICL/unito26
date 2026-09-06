@@ -510,7 +510,7 @@ complete, plausible answer, and most of them pass a test suite written from the 
 - [`.claude/plans/tick-array-book-performance.md`](../.claude/plans/tick-array-book-performance.md)
   — the plan for the third pass: the diagnosis, the five changes, the three rejections, and
   the conditions the correctness review attached to each.
-- [`documentation/point-processes-and-prediction.md`](../documentation/point-processes-and-prediction.md)
+- [`documentation/point-processes-and-hawkes.md`](../documentation/point-processes-and-hawkes.md)
   — the theory the imbalance regressions use, in the statement/code/test triple form: the
   filtration, what subcriticality is and is not for, adaptedness versus predictability, the
   cluster representation, and what `OFI` is an estimator of.
