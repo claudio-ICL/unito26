@@ -542,12 +542,21 @@ From `notebooks/regressing-the-mid-on-the-imbalances.ipynb`, twelve seeds of an 
 - **A rare-event property cannot be asserted from a block sized for a common one.** Six seeds
   and 654,000 messages showed no empty side and were read as "never"; thirty seeds showed
   twelve emptying. The gate is a rate with a tolerance, and the segment mask stays.
+- **Balancing the flow in counts does not balance it in size, and the book grows.** A
+  withdrawal takes `min(drawn, resting at the level)`, so a truncated removal is capacity
+  thrown away: effective removal is 0.9856 of a full size per consuming event, the same at
+  every decay tested. At `limit/consuming = 1` the book gains ~1.4% of the limit inflow
+  indefinitely — measured 29,835 shares in the second half hour against 29,200 predicted by
+  the size balance, agreement to 2%. Over eight hours the whole book runs 39,000 → 250,000
+  shares. The ratio of one is the *critical* point, not the stationary one, and the
+  deceleration as levels fatten is what makes a two-hour measurement read the transient as a
+  plateau. The earlier "924 shares, stationary" figure was that mistake.
 - **`nu * w` is not the window's occupancy.** Rows are event-sampled, so the realised count is
   the Palm count: 2.70 where `nu * w = 0.63`. The excess is one for the sampling event itself
   plus the pair correlation; nothing is length-biased, so it is Palm sampling and not the
   inspection paradox.
 - **The textbook scalar formulae are the constant-column-sum special case, and the column
   sums here are not constant.** The endogenous fraction is 0.576 where `rho` is 0.6, the mean
-  cluster size 2.357 where `1/(1-rho)` is 2.5, and `Var(1'S)` misses by 5.1% — with the
+  cluster size 2.357 where `1/(1-rho)` is 2.5, and `Var(1'S)` misses by 4.9% — with the
   discrepancy vanishing to machine precision when the column sums are forced equal, which is
   what pins the cause.
