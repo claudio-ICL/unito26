@@ -53,3 +53,6 @@ documentation/**/*.synctex.gz
 
 # Figures are generated, not stored: regenerate them rather than commit them.
 documentation/tex/**/figures/
+
+# Editor swap files
+*.sw[a-p]

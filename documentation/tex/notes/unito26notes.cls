@@ -1,5 +1,4 @@
 %% unito26notes -- class for the lecture notes of `Python for Finance'.
-%% Modelled on the class of Claudio's thesis.
 %% This file owns the whole preamble: content files carry none.
 \LoadClass[11pt,oneside,a4paper,table]{book}
 
@@ -10,8 +9,10 @@
 \def\input@path{
     {./}{../}
     {../include/}
-    {./lob/}
-    {./lob/sections/}
+    {./orderdriven/}
+    {./orderdriven/sections/}
+    {./hawkes/}
+    {./hawkes/sections/}
 }
 \makeatother
 
@@ -32,7 +33,8 @@
 \usepackage{graphicx}
 \graphicspath{
     {./figures/}
-    {./lob/figures/}
+    {./orderdriven/figures/}
+    {./hawkes/figures/}
 }
 \usepackage{booktabs}
 \usepackage{pdflscape} %make landscape orientation available

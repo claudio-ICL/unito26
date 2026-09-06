@@ -25,6 +25,7 @@
 \newcommand{\suchThat}{\text{ s.t. }}
 \newcommand{\argmin}{\mathrm{argmin}}
 \newcommand{\argmax}{\mathrm{argmax}}
+\newcommand{\diag}{\mathrm{diag}}
 \newcommand{\indicator}[1]{\mathbf{1}_{\lbrace {#1} \rbrace}}
 
 %% DERIVATIVES %%
@@ -86,9 +87,11 @@
 \newcommand{\VegaHedge}{\mathtt{Vega}}
 
 %% LIMIT ORDER BOOKS %%
-% Kept identical to the notation of the thesis, so that the course and the
-% thesis denote the same objects in the same way.
+% Size and volume are different words here: \size is the quantity resting at a
+% level, \volume the quantity transacted over an interval. Part of the
+% literature writes volume for both.
 \newcommand{\price}{P}
+\newcommand{\size}{S}
 \newcommand{\volume}{V}
 \newcommand{\tickSizeOfLOB}{\tau}
 \newcommand{\midPrice}{\price^{m}}
@@ -98,22 +101,29 @@
 \newcommand{\bestAskPrice}{\price^{a}}
 \newcommand{\nthBestBidPrice}[1][1]{\price^{b,{#1}}}
 \newcommand{\nthBestAskPrice}[1][1]{\price^{a,{#1}}}
-\newcommand{\bestBidVolume}{\volume^{b}}
-\newcommand{\bestAskVolume}{\volume^{a}}
-\newcommand{\nthBestBidVolume}[1][1]{\volume^{b,{#1}}}
-\newcommand{\nthBestAskVolume}[1][1]{\volume^{a,{#1}}}
-\newcommand{\bidVolumePriceP}[1][t]{\volume^{b}_{{#1}}(p)}
-\newcommand{\askVolumePriceP}[1][t]{\volume^{a}_{{#1}}(p)}
+\newcommand{\bestBidSize}{\size^{b}}
+\newcommand{\bestAskSize}{\size^{a}}
+\newcommand{\nthBestBidSize}[1][1]{\size^{b,{#1}}}
+\newcommand{\nthBestAskSize}[1][1]{\size^{a,{#1}}}
+\newcommand{\bidSizePriceP}[1][t]{\size^{b}_{{#1}}(p)}
+\newcommand{\askSizePriceP}[1][t]{\size^{a}_{{#1}}(p)}
 \newcommand{\LOBspread}{\phi}
-\newcommand{\volumeImbalance}{I}
-\newcommand{\queueImb}{\volumeImbalance}
+\newcommand{\queueImbalance}{I}
+\newcommand{\queueImb}{\queueImbalance}
 \newcommand{\OFI}{\text{OFI}}
 \newcommand{\orderFlowImbalance}{\OFI}
+% The per-event contribution to \OFI, which is the sum of these over a window.
+\newcommand{\orderFlowContribution}[1][n]{e_{{#1}}}
+\newcommand{\VWAP}{\text{VWAP}}
+\newcommand{\tradedValue}{\text{TV}}
+\newcommand{\sweepCost}{\text{sc}}
 \newcommand{\arrivals}[1][ ]{A_{{#1}}}
 \newcommand{\departures}[1][ ]{D_{{#1}}}
 \newcommand{\queue}[1][ ]{Q_{{#1}}}
 \newcommand{\bidQueue}[1][t]{Q^{b}_{{#1}}}
 \newcommand{\askQueue}[1][t]{Q^{a}_{{#1}}}
+\newcommand{\askOrderQueue}{A}
+\newcommand{\bidOrderQueue}{B}
 \newcommand{\bidArrivals}[1][t]{A^{b}_{{#1}}}
 \newcommand{\askArrivals}[1][t]{A^{a}_{{#1}}}
 \newcommand{\bidDepartures}[1][t]{D^{b}_{{#1}}}
@@ -125,3 +135,38 @@
 \newcommand{\quantityToLiquidate}{Q}
 \newcommand{\metaorderSize}{Q_{0}}
 \newcommand{\impactProfile}{\mathtt{imp}}
+
+%% EXECUTION AND PnL %%
+\newcommand{\cashAccount}{K}
+\newcommand{\inventory}{H}
+\newcommand{\wealth}{X}
+\newcommand{\marketOrderSize}{q_{M}}
+
+%% POINT PROCESSES AND HAWKES %%
+% The index order is fixed once: \excitation\subscriptee is the influence that
+% \eone exerts on e, so the row is excited and the column excites. Every object
+% of the chapter is then a plain product on column vectors, and the column sums
+% of \branchingMatrix are the readable quantity. The opposite order is common in
+% the literature and stability cannot tell the two apart, since a matrix and its
+% transpose share a spectral radius.
+\newcommand{\numEventTypes}{d_{E}}
+\newcommand{\eone}{e\derivative}
+\newcommand{\subscriptee}{_{e,\, \eone}}
+\newcommand{\groundProc}{N_{\mathfrak{g}}}
+\newcommand{\event}[1][n]{E_{#1}}
+\newcommand{\Lone}{L^{1}}
+\newcommand{\baseIntensity}{\mu}
+\newcommand{\hawkesKernel}{\kappa}
+\newcommand{\excitation}{A}
+\newcommand{\decay}{\beta}
+\newcommand{\branchingMatrix}{\Gamma}
+\newcommand{\branchingRatio}{\rho}
+% The decayed event counts: the state that makes the exponential kernel Markov.
+\newcommand{\decayedCounts}{S}
+\newcommand{\stationaryIntensity}[1][ ]{\intensity[#1]^{*}}
+\newcommand{\totalRate}{\nu}
+\newcommand{\totalIntensity}{\bar{\intensity[ ]}}
+\newcommand{\pressure}{p}
+\newcommand{\upIntensity}{\intensity[ ]^{\uparrow}}
+\newcommand{\downIntensity}{\intensity[ ]^{\downarrow}}
+\newcommand{\intensityContrast}{\Delta\intensity[ ]}

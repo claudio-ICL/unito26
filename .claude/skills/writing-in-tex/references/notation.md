@@ -45,7 +45,7 @@ the symbol is a one-line edit rather than a search-and-replace over the whole co
 \newcommand{\R}{\mathbb{R}}
 \newcommand{\Rd}{\R^{d}}
 \newcommand{\midPrice}{\price^{m}}
-\newcommand{\bestBidVolume}{\volume^{b}}
+\newcommand{\nthBestBidSize}[1][1]{\size^{b,{#1}}}
 ```
 
 Changing `\price` then moves every price symbol at once.
@@ -69,8 +69,12 @@ new block at the end; it does not scatter macros into the existing ones.
 
 Where a symbol already exists in the thesis, it is carried over **verbatim** so that the
 course and the thesis denote the same object the same way. The limit-order-book block is
-lifted from `tex/include/notation.tex:371-419` unchanged: `\price`, `\volume`,
-`\tickSizeOfLOB`, `\midPrice`, `\bestBidPrice`, `\bestAskPrice`, `\bidQueue`,
-`\askQueue`, `\volumeImbalance`, `\OFI`, and the arrival/departure families.
+lifted from `tex/include/notation.tex:371-419`: `\price`, `\tickSizeOfLOB`, `\midPrice`,
+`\bestBidPrice`, `\bestAskPrice`, `\bidQueue`, `\askQueue`, `\OFI`, and the
+arrival/departure families.
+
+One symbol diverges. The thesis writes `\volume`, $V$, for the quantity resting at a level;
+here that is `\size`, $S$, and `\volume` is the volume transacted. The queue-size family and
+`\queueImbalance` follow from it. Do not reinstate $V$ for a level's size.
 
 Check the thesis before inventing a name for something it already names.

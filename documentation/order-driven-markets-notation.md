@@ -1,0 +1,486 @@
+# Notation for order-driven markets
+
+Notation and the mechanics of order-driven markets.
+Lecture notes, slides, notebooks and package code should all denote the same objects in the same
+way, and have the same mechanics. 
+
+**Sources.** The symbols are defined once, as macros, in
+[`tex/include/notation.tex`](tex/include/notation.tex); the statements are developed in
+[`tex/notes/orderdriven/sections/order_driven_markets.tex`](tex/notes/orderdriven/sections/order_driven_markets.tex).
+This file restates them in one readable place and adds the Python identifier each symbol
+maps to. **If this file and the `.tex` ever disagree, the `.tex` wins** — fix this file.
+
+---
+
+## 1. The limit order
+
+A **limit order** is the fundamental action available to a participant in an order-driven
+market. It is the 4-tuple
+
+$$(t, q, p, d), \qquad q \ge 0, \quad p \ge 0, \quad d \in \{-1, +1\}.$$
+
+| component | meaning |
+| --- | --- |
+| $t$ | time of submission (the timestamp) |
+| $q$ | size, in number of shares |
+| $p$ | limit price |
+| $d$ | direction: $d = +1$ buy, $d = -1$ sell |
+
+A participant who *posts* $(t,q,p,d)$ commits at time $t$ to buy ($d=+1$) or sell ($d=-1$)
+the amount $q$ at price $p$, where $p$ is the **highest** price she will pay if $d=+1$ and
+the **lowest** price she will accept if $d=-1$. The single expression $pd$ turns both cases
+into one: an order is willing to trade at any $\pi$ with $\pi d \le p d$.
+
+By regulation $p$ is an integer multiple of a fixed **tick size** $\tau > 0$. A participant
+may also withdraw a commitment by **cancelling** a previously submitted order.
+
+A **trading epoch** $E$ is the collection of all limit orders submitted within a time
+interval. Orders cannot be submitted simultaneously, so an order is identified by its
+timestamp: formally, $E$ is the graph of a function from a subset of the positive half-line
+into $\{(q,p,d) : q \ge 0,\ p \ge 0,\ d = \pm 1\}$. Uniqueness of timestamps is exactly what
+makes the priority relation of §2 a *total* order.
+
+An order $(t,q,p,d) \in E$ is **active** (outstanding) at time $u$ if $t \le u$ and by time
+$u$ it has been neither executed nor cancelled.
+
+## 2. Matching and priority
+
+When $(t,q,p,d)$ arrives, the matching algorithm searches the active orders with timestamp
+$s < t$ and *opposite* direction $-d$. An active order $(s,\rho,\pi,-d)$ **matches** the
+incoming order if
+
+$$\pi d \le p d .$$
+
+On a match, $\rho \wedge q$ shares are transacted **at the resting order's price $\pi$**. 
+The two orders are replaced by
+
+$$(s, \tilde\rho, \pi, -d), \qquad (t, \tilde q, p, d), \qquad
+\tilde\rho = \rho - \rho \wedge q, \quad \tilde q = q - \rho \wedge q,$$
+
+and at least one of $\tilde\rho, \tilde q$ is zero. If $\tilde\rho = 0$ the resting order
+leaves its queue. If $\tilde q = 0$ the incoming order is fully executed and the search
+stops; if $\tilde q > 0$ the search continues.
+
+The search follows **price-time priority**: on the side $-d$,
+
+$$(s,\rho,\pi,-d) < (s',\rho',\pi',-d)
+\iff (d\pi < d\pi') \vee \big((\pi = \pi') \wedge (s < s')\big).$$
+
+Better price first — where "better" is *lower* for the ask side when a buy order comes in,
+*higher* for the bid side when a sell order comes in, which $d\pi < d\pi'$ expresses in one
+line — and, at equal price, earlier submission first. Because timestamps within an epoch are
+unique, this relation is a total order on each side (Lemma `lemma.orderingOfOrders`), which
+is what licenses speaking of "the queue" at all.
+
+## 3. Queues and the book configuration
+
+The **ask** and **bid order queues** at time $t$ are the sets of active orders on each side:
+
+$$A_t := \{(s,q,p,-1) \in E : \text{active at } t\}, \qquad
+B_t := \{(s,q,p,+1) \in E : \text{active at } t\}.$$
+
+A **limit order book** is a grid of equally spaced prices, spacing $\tau$, increasing left to
+right, with the outstanding orders queuing at each node. Buy offers sit on the left (the
+**bid side**), sell offers on the right (the **ask side**), and the two never overlap: a buy
+order at or above a resting sell order would have been matched on arrival rather than
+rested. This is a consequence of the matching rule, not an extra assumption — and it is the
+invariant to assert in code.
+
+The configuration at time $t$ is fully described by:
+
+| symbol | definition |
+| --- | --- |
+| $P^a_t$ | **best ask price** — lowest price with sell offers active at $t$ |
+| $P^b_t$ | **best bid price** — highest price with buy offers active at $t$ |
+| $P^{a,i}_t = P^a_t + (i-1)\tau$ | price of the $i$-th ask level, $i = 1, 2, \dots$ |
+| $P^{b,i}_t = P^b_t - (i-1)\tau$ | price of the $i$-th bid level, $i = 1, 2, \dots$ |
+| $S^{a,i}_t = \sum_{\{(s,q,P^{a,i}_t,-1) \in A_t \,:\, s \le t\}} q$ | **size** of the $i$-th ask level |
+| $S^{b,i}_t = \sum_{\{(s,q,P^{b,i}_t,+1) \in B_t \,:\, s \le t\}} q$ | **size** of the $i$-th bid level |
+
+so the state is $\big(P^a_t,\ P^b_t,\ \{(S^{a,i}_t, S^{b,i}_t) : i = 1,2,\dots\}\big)$.
+
+Conventions that matter for code:
+
+- **The "size" of a level is the sum of the quantities queuing at it**, measured in shares.
+  **Volume** is the number of shares transacted over an interval: a level has a size at every
+  instant, volume accumulates between two instants. Volume is not a change in size — a level
+  shrinks by cancellation as well as by execution, so no sequence of sizes determines the volume
+  traded. By §6 the volume over a window is $\sum q_M$ over the market orders in it. The word
+  *size* is used at two granularities, an order's and a level's, the second a sum of the first;
+  part of the literature calls the size of a level its volume.
+- Levels are **1-indexed** and indexed *relative to the best price on their own side*, so
+  level $i$ names a different absolute price as the best price moves. Intermediate levels may
+  be empty ($S^{a,i}_t = 0$ for some $i$ with $S^{a,j}_t > 0$, $j > i$); by convention
+  $S^{a,j}_t = S^{b,j}_t = 0$ for $j \le 0$ — not stated in the notes, but required to make
+  the shifted index in §5 well defined.
+- **This is the *grid* indexing, and it is not the one a market-data file uses.** LOBSTER
+  and its kind index by *occupied* level, skipping the empty positions this section admits.
+  The two coincide only on a book with no holes, and every quantity indexed by level —
+  $I^n$ above all — means something different under each.
+  [`grid-levels-and-lobster-levels.md`](grid-levels-and-lobster-levels.md) is the reference
+  for the difference and for the code that keeps the two apart, and
+  [`from-lobster-files-to-a-session.md`](from-lobster-files-to-a-session.md) for the file
+  format itself.
+
+## 4. Derived quantities
+
+| quantity | symbol | definition |
+| --- | --- | --- |
+| spread | $\phi_t$ | $\lvert P^a_t - P^b_t \rvert$ |
+| mid-price | $P^m_t$ | $(P^a_t + P^b_t)/2$ |
+| $n$-level queue imbalance | $I^n_t$ | $\dfrac{\sum_{i \le n} S^{b,i}_t - \sum_{i \le n} S^{a,i}_t}{\sum_{i \le n} S^{b,i}_t + \sum_{i \le n} S^{a,i}_t}$ |
+
+$I^n_t \in [-1, +1]$, **bid minus ask over the total** — bid-heavy is positive. Getting this
+sign backwards silently inverts every signal built on it.
+
+What it predicts is worth stating precisely. Inside a Markov-modulated model of the book,
+Cartea, Donnelly and Jaimungal (2018) show that volume imbalance predicts the sign of the
+next *market order*, and the price change that follows a market order arrival. The
+unconditional reading — a signal for the next mid-price move, whatever moves it — is a
+stronger claim and is not theirs.
+
+Three further statistics, developed in the notes under "Three statistics read off the book
+and the tape". The first is read off one configuration, as everything above is; the other
+two are read over a window, and that difference decides what a series of configurations can
+tell us.
+
+**Sweep cost.** The per-share cost, in ticks, of a market order for $Q$ shares in direction $d$,
+measured against the mid:
+
+$$\mathrm{sc}_t(Q, d) = \frac{d}{Q}\sum_i q_i (\pi_i - P^m_t)
+ = \frac{\phi_t}{2} + \frac{1}{Q}\sum_i q_i (k_i - 1)\tau,$$
+
+$q_i$ shares executing at the resting price $\pi_i$, $\sum_i q_i = Q$, and $k_i$ the **grid**
+level of $\pi_i$. Every share pays the half-spread; each additionally pays its own distance from
+the touch. That distance grows one tick per level only where the consumed side is occupied at
+every tick — it is a grid distance, not a count of queues, and
+[`grid-levels-and-lobster-levels.md`](grid-levels-and-lobster-levels.md) is why the difference
+matters. It is the $\tfrac{\phi_t}{2}\lvert V\rvert$ term of §7 generalised to an order that
+walks; $2\,\mathrm{sc}$ is the effective spread. Undefined when the price-eligible side holds
+fewer than $Q$ shares, and when the opposite side is empty, since the mid it is measured against
+does not then exist. Being a cost, $\mathrm{sc}_t \ge 0$ — a consequence of the book not
+crossing, not an extra assumption, so it is worth asserting.
+
+**Order flow imbalance** (Cont, Kukanov and Stoikov, 2014). $I^n$ is a stock; this is the
+corresponding flow. The contribution of the $n$-th event, $n$ counting events and not time, is
+
+$$e_n = \mathbf 1_{\{P^b_n \ge P^b_{n-1}\}} S^b_n - \mathbf 1_{\{P^b_n \le P^b_{n-1}\}} S^b_{n-1}
+ - \big[\mathbf 1_{\{P^a_n \le P^a_{n-1}\}} S^a_n - \mathbf 1_{\{P^a_n \ge P^a_{n-1}\}} S^a_{n-1}\big],$$
+
+and $\mathrm{OFI}_{t,w} = \sum e_n$ over the events in $(t-w,\,t]$. **The name belongs to the
+sum**; $e_n$ is a contribution. Both bid indicators fire when the best bid price is unchanged, so
+such an event contributes $S^b_n - S^b_{n-1}$, and one that moves the best bid contributes a whole
+queue. Positive under buy pressure, which is the orientation of $I^n$ — but not comparable in
+magnitude, $I^n$ lying in $[-1,1]$ and $\mathrm{OFI}$ being an unbounded share count. The
+mid-price change over the window is approximately $\mathrm{OFI}_{t,w}$ over twice the average
+size at the touch, so the sum is a prediction in ticks only after that normalisation. It reads
+the touch alone, so a market order that walks registers only the *old* best-ask size.
+
+**VWAP.** The value transacted over $(t-w,\,t]$ per share transacted:
+
+$$\mathrm{TV}_{t,w} = \sum_{n} \sum_i \pi_i q_i, \qquad
+V_{t,w} = \sum_{n} \sum_i q_i, \qquad
+\mathrm{VWAP}_{t,w} = \frac{\mathrm{TV}_{t,w}}{V_{t,w}},$$
+
+the inner sums running over the fills of the $n$-th event — the market-order component $q_M$ of
+§6 — each at the **resting** price and never at the price the incoming order named. Undefined on
+a window that traded nothing.
+
+By the size-versus-volume convention above, $V_{t,w}$ is not determined by the sizes however
+finely they are sampled, so **VWAP is not recoverable from a record of book configurations**,
+where sweep cost and OFI are. The asymmetry runs one way: size appearing at a price where none
+rested is unambiguously a limit order; size falling at the best bid is a cancellation or an
+execution, and the configuration does not say which. That is why trade-sign inference is a
+literature. A LOBSTER *message* file does carry executions, as types 4 and 5, so VWAP is
+recoverable from one of those.
+
+## 5. The update rule
+
+**Proposition (`prop.lobUpdate`).** Let a sell limit order $(t,q,p,-1)$ arrive at time $t$
+into the book $\big(P^a_{t-}, P^b_{t-}, \{(S^{a,i}_{t-}, S^{b,i}_{t-})\}\big)$. Put
+
+$$N_s := \inf\Big\{n \ge 0 : q < \sum_{i=1}^{n} S^{b,i}_{t-}\Big\}, \qquad
+N_p := \inf\{n \ge 1 : P^{b,n}_{t-} < p\}, \qquad
+N := \max\big(0,\ N_s \wedge N_p - 1\big),$$
+
+$$q^{i} := \max\Big(0,\ q - \sum_{k=1}^{i \wedge N_s \wedge (N_p-1)} S^{b,k}_{t-}\Big)
+        = \max\Big(0,\ q - \sum_{1 \le k \le i} S^{b,k}_{t-}\mathbf{1}_{\{P^{b,k}_{t-} \ge p\}}\Big),$$
+
+$q^i$ being the quantity still to be executed once the first $i$ levels have been consumed.
+$N_s$ is where the size runs out, $N_p$ is where the price constraint bites, and $N$ is the
+number of bid levels fully consumed.
+
+Both infima can be over an empty set, with $\inf\emptyset = +\infty$: $N_s = +\infty$ when $q$
+exceeds the price-eligible bid size, and $N_p = +\infty$ for a market order ($p = 0$), since
+prices are non-negative so $P^{b,n}_{t-} < 0$ never occurs. **The formulae below assume the
+incoming order does not exhaust the price-eligible side.** If it does, that side empties and
+$P^b_t$ is undefined — for a market order $N = +\infty$, and for a price-limited order the
+formula names an empty price: a sell of 500 at $p = 9.98$ on the book of §8 consumes the whole
+bid side (450) and yields $P^b_t = P^{b,4}_{t-} = 9.97$, where nothing rests. Code must branch
+on the exhausted-side case, and must not compute $N_s$ by a loop that assumes termination.
+Then
+
+$$
+\begin{aligned}
+P^b_t &= P^{b,1+N}_{t-}, \\
+S^{b,k}_t &= S^{b,k+N}_{t-} - \big(q^{k+N-1} - q^{k+N}\big), && k = 1,2,\dots \\
+P^a_t &= P^a_{t-} - \max\big(0,\ P^a_{t-} - p\big)\,\mathbf{1}_{\{q^{\infty} > 0\}}, \\
+S^{a,k}_t &= S^{a,\,k + \delta P^a_t/\tau}_{t-} + q^{\infty}\,\mathbf{1}_{\{p \,=\, P^a_t + (k-1)\tau\}}, && k = 1,2,\dots
+\end{aligned}
+$$
+
+where $\delta P^a_t = P^a_t - P^a_{t-} \le 0$ is the jump of the best ask. For a buy limit
+order $(t,q,p,+1)$ the rules are the same with the two sides interchanged and the
+inequalities reversed.
+
+Reading the four lines: the bid side is shifted up by $N$ consumed levels and the new best
+bid may be partially eaten (by $q^{N} - q^{N+1}$); the ask side is untouched unless something is left over
+($q^\infty > 0$), in which case the residual rests at $p$, improving the best ask when
+$p < P^a_{t-}$ and shifting every ask index by $-\delta P^a_t/\tau$ levels.
+
+## 6. Decomposition: every limit order is a market order plus a resting order
+
+**Proposition (`prop.decompositionOfLimitOrder`).** Given the book at $t-$, processing the
+sell limit order $(t,q,p,-1)$ is equivalent to processing the ordered pair
+
+$$\big[(t, q_M, 0, -1),\ (t, q - q_M, p, -1)\big], \qquad
+q_M := \min\Big(q,\ \sum_{i \ge 1} S^{b,i}_{t-}\mathbf{1}_{\{P^{b,i}_{t-} \ge p\}}\Big),$$
+
+the first having priority over the second. Symmetrically, the buy limit order $(t,q,p,+1)$
+is equivalent to
+
+$$\big[(t, q_M, \infty, +1),\ (t, q - q_M, p, +1)\big], \qquad
+q_M := \min\Big(q,\ \sum_{i \ge 1} S^{a,i}_{t-}\mathbf{1}_{\{P^{a,i}_{t-} \le p\}}\Big).$$
+
+The first component is the **market order**: $p = 0$ for a sell and $p = \infty$ for a buy
+are the price specifications that guarantee immediate execution, so none of $q_M$ is queued.
+The second component is exactly the part that rests. Note $q - q_M = q^{\infty}$ in the
+notation of §5.
+
+This decomposition is the single most useful structural fact for implementation: a matching
+engine needs **one** code path — consume, then rest the remainder — not a separate one for
+"marketable" and "passive" orders.
+
+A sell market order $(t,q_M,0,-1)$ **walks the book** if $q_M > S^{b,1}_{t-}$, which implies
+$N \ge 1$ in §5; likewise for a buy market order against $S^{a,1}_{t-}$. The converse fails:
+an order that exactly clears the best level ($q_M = S^{b,1}_{t-}$) gives $N = 1$, because the
+best price moves, yet the trade prints at a single price and nothing is walked.
+
+**Trades are market orders with $q_M > 0$.** Over a window $[0,T]$, the seller-initiated
+trades are $\{(t,q_M,0,-1) : q_M > 0\}$ and the buyer-initiated trades are
+$\{(t,q_M,\infty,+1) : q_M > 0\}$. Where a venue lets participants submit genuine market
+orders, we keep this convention: the executed fraction of an incoming order *is* the market
+order, whatever the venue calls it.
+
+## 7. Execution PnL
+
+Let $V$ be the **signed** volume we transact ($V > 0$ buy, $V < 0$ sell), $K$ the cash
+account, $H$ the inventory, $X = $ wealth. It is a volume and not the size $q$ of an order:
+on the limit-order route the executed quantity is the counterparty's, not ours.
+
+Executing via a **market order** at time $t$ pays the half-spread:
+
+$$\Delta K^{\text{market order}}_t = -P^m_t V \underbrace{-\frac{P^a_t - P^b_t}{2}\lvert V\rvert}_{\text{we pay the spread}} .$$
+
+Executing via a **limit order** earns it, but the cash change is booked at execution time $t$
+using the *stale* prices from the submission time, relabelled $t-1$:
+
+$$\Delta K^{\text{limit order}}_t = -P^m_{t-1} V \underbrace{+ \frac{P^a_{t-1} - P^b_{t-1}}{2}\lvert V\rvert}_{\text{we earn the spread}} .$$
+
+Adding the PnL on the position held and the mark-to-market of the position acquired:
+
+$$\Delta X^{\text{market order}}_t
+= \underbrace{H_{t-1}\,\Delta P^m_t}_{\text{held position}}
++ \underbrace{\Delta K^{\text{market order}}_t}_{}
++ \underbrace{P^m_t V}_{\text{mark-to-market}}
+= H_{t-1}\,\Delta P^m_t - \frac{\phi_t}{2}\lvert V\rvert,$$
+
+$$\Delta X^{\text{limit order}}_t
+= H_{t-1}\,\Delta P^m_t + \Delta K^{\text{limit order}}_t + P^m_t V
+= H_{t-1}\,\Delta P^m_t + V\,\Delta P^m_t + \frac{\phi_{t-1}}{2}\lvert V\rvert .$$
+
+The extra term $V \Delta P^m_t$ is **adverse selection**: our limit order is hit precisely
+when the mid has moved against us, by participants who are faster or better informed. We do
+not control *when* we are filled. Choosing between market and limit orders is therefore the
+question of whether the spread we earn compensates the adverse move we suffer while waiting.
+
+## 8. Worked example
+
+Tick $\tau = 0.01$. Book at $t-$:
+
+| side | level $i$ | price | size |
+| --- | --- | --- | --- |
+| ask | 2 | 10.03 | 180 |
+| ask | 1 | **10.02** $= P^a_{t-}$ | 120 |
+| bid | 1 | **10.00** $= P^b_{t-}$ | 100 |
+| bid | 2 | 9.99 | 200 |
+| bid | 3 | 9.98 | 150 |
+
+so $\phi_{t-} = 0.02$, $P^m_{t-} = 10.01$, $I^1_{t-} = (100-120)/220 = -0.0909$.
+
+**Case A — fully executed, no remainder.** Sell limit order $(t, 250, 9.99, -1)$.
+
+Decomposition: $q_M = \min(250,\ 100 + 200) = 250$, remainder $q - q_M = 0$. It consumes 100
+at 10.00 and 150 at 9.99.
+
+Update rule: $\sum_1 = 100$, $\sum_2 = 300 > 250$ so $N_s = 2$; $P^{b,3}_{t-} = 9.98 < 9.99$
+so $N_p = 3$; $N = 1$. Then $q^0 = 250$, $q^1 = 150$, $q^i = 0$ for $i \ge 2$, so
+$q^\infty = 0$ and the ask side is untouched.
+
+$$P^b_t = P^{b,2}_{t-} = 9.99, \quad
+S^{b,1}_t = 200 - (150 - 0) = 50, \quad
+S^{b,2}_t = 150 - 0 = 150, \quad
+P^a_t = 10.02 .$$
+
+Resulting state: bid $9.99 \times 50$, $9.98 \times 150$; ask $10.02 \times 120$,
+$10.03 \times 180$. Hence $\phi_t = 0.03$, $P^m_t = 10.005$,
+$I^1_t = (50-120)/170 = -0.4118$. Both routes agree.
+
+**Case B — walks the book and leaves a remainder.** Same book, sell limit order
+$(t, 400, 9.99, -1)$.
+
+Decomposition: $q_M = \min(400,\ 300) = 300$, remainder $(t, 100, 9.99, -1)$ rests on the ask
+side at 9.99 — inside the old spread.
+
+Update rule: $N_s = 3$ (since $400 < 450$), $N_p = 3$, $N = 2$; $q^0 = 400$, $q^1 = 300$,
+$q^i = 100$ for $i \ge 2$, so $q^\infty = 100 = q - q_M$.
+
+$$P^b_t = P^{b,3}_{t-} = 9.98, \quad S^{b,1}_t = 150, \quad
+P^a_t = 10.02 - \max(0,\ 10.02 - 9.99) = 9.99, \quad \delta P^a_t = -0.03 .$$
+
+Ask indices shift by $-\delta P^a_t/\tau = 3$: $S^{a,1}_t = 100$ at 9.99 (the remainder,
+using $S^{a,j}_{t-} = 0$ for $j \le 0$), $S^{a,2}_t = S^{a,3}_t = 0$ at 10.00 and 10.01, and
+$S^{a,4}_t = 120$ at 10.02. Hence $\phi_t = 0.01$, $P^m_t = 9.985$,
+$I^1_t = (150-100)/250 = +0.2$.
+
+Case B exercises everything that usually breaks: walking the book, a residual resting inside
+the spread, index shifting, and empty levels between the best price and the deeper ones. Use
+it as the canonical test fixture.
+
+## 9. Symbol table
+
+Every symbol below is defined in `tex/include/notation.tex`, blocks
+`%% LIMIT ORDER BOOKS %%` and `%% EXECUTION AND PnL %%`. The last column is the canonical
+Python identifier — use it, and nothing else, in `unito26/` and in the notebooks.
+
+| symbol | LaTeX macro | meaning | Python |
+| --- | --- | --- | --- |
+| $P$ | `\price` | generic price | `price` |
+| $S$ | `\size` | generic size resting at a level | `size` |
+| $V$ | `\volume` | transacted volume, $\sum q_M$ over a window; the signed executed quantity in §7 | `volume` |
+| $\tau$ | `\tickSizeOfLOB` | tick size of the book | `tick_size` |
+| $P^m$ | `\midPrice` (alias `\midprice`) | mid-price | `mid_price` |
+| $P^{\mu}$ | `\microPrice` | micro-price: the imbalance-weighted mid, $P^m + \tfrac{\phi}{2} I^1$ | `micro_price` |
+| $P^b$ | `\bestBidPrice` | best bid price | `best_bid_price` |
+| $P^a$ | `\bestAskPrice` | best ask price | `best_ask_price` |
+| $P^{b,i}$ | `\nthBestBidPrice[i]` | price of the $i$-th bid level | `bid_price(i)` |
+| $P^{a,i}$ | `\nthBestAskPrice[i]` | price of the $i$-th ask level | `ask_price(i)` |
+| $S^b$ | `\bestBidSize` | size at the best bid | `best_bid_size` |
+| $S^a$ | `\bestAskSize` | size at the best ask | `best_ask_size` |
+| $S^{b,i}$ | `\nthBestBidSize[i]` | size of the $i$-th bid level | `bid_size(i)` |
+| $S^{a,i}$ | `\nthBestAskSize[i]` | size of the $i$-th ask level | `ask_size(i)` |
+| $S^b_t(p)$ | `\bidSizePriceP` | bid size at absolute price $p$ | `bid_size_at(p)` |
+| $S^a_t(p)$ | `\askSizePriceP` | ask size at absolute price $p$ | `ask_size_at(p)` |
+| $\phi$ | `\LOBspread` | spread | `spread` |
+| $I$, $I^n$ | `\queueImbalance` (alias `\queueImb`) | queue imbalance, *volume imbalance* in the literature | `queue_imbalance(n)` |
+| $\mathrm{OFI}$ | `\OFI` (alias `\orderFlowImbalance`) | order flow imbalance — the **sum** of $e_n$ over a window | `order_flow_imbalance` |
+| $e_n$ | `\orderFlowContribution` | contribution of one event to $\mathrm{OFI}$ | `order_flow_contribution` |
+| $\mathrm{sc}$ | `\sweepCost` | sweep cost: per-share cost of a market order, in ticks | `sweep_cost` |
+| $\mathrm{TV}$ | `\tradedValue` | traded value, $\sum \pi_i q_i$, in tick-shares | `traded_value` |
+| $\mathrm{VWAP}$ | `\VWAP` | volume-weighted average price | `vwap` |
+| $A$ | `\askOrderQueue` | set of active sell orders | `ask_orders` |
+| $B$ | `\bidOrderQueue` | set of active buy orders | `bid_orders` |
+| $Q^b_t$, $Q^a_t$ | `\bidQueue`, `\askQueue` | size process at the touch, $Q^b_t = S^{b,1}_t$ | `bid_queue`, `ask_queue` |
+| $Q$ | `\queue` | generic size process of one queue | `queue` |
+| $A$, $D$ | `\arrivals`, `\departures` | generic arrival / departure counting processes; $D$ counts cancellations as well as executions, so departures are not volume | `arrivals`, `departures` |
+| $A^b_t$, $A^a_t$ | `\bidArrivals`, `\askArrivals` | arrivals to the bid / ask queue | `bid_arrivals`, `ask_arrivals` |
+| $D^b_t$, $D^a_t$ | `\bidDepartures`, `\askDepartures` | departures from the bid / ask queue | `bid_departures`, `ask_departures` |
+| $T^{b,A}_j$, $T^{a,A}_j$ | `\bidArrivalTimes`, `\askArrivalTimes` | arrival times | `bid_arrival_times`, `ask_arrival_times` |
+| $T^{b,D}_j$, $T^{a,D}_j$ | `\bidDepartureTimes`, `\askDepartureTimes` | departure times | `bid_departure_times`, `ask_departure_times` |
+| $Q$ | `\quantityToLiquidate` | quantity to liquidate | `quantity_to_liquidate` |
+| $Q_0$ | `\metaorderSize` | metaorder size | `metaorder_size` |
+| $\mathtt{imp}$ | `\impactProfile` | market impact profile (not characterised in the notes) | `impact_profile` |
+| $q_M$ | `\marketOrderSize` | market-order component of a limit order | `market_order_size` |
+| $K$ | `\cashAccount` | cash account | `cash` |
+| $H$ | `\inventory` | inventory (signed position) | `inventory` |
+| $X$ | `\wealth` | wealth / portfolio value | `wealth` |
+
+### The order flow
+
+The table above is the book's; the flow that drives it has none of its symbols. These are
+the ones the point-process chapter `chap.hawkes` develops and the ones the imbalance
+regressions are reported against; [`point-processes-and-hawkes.md`](point-processes-and-hawkes.md)
+is their code-facing half.
+
+| symbol | macro | meaning | Python |
+| --- | --- | --- | --- |
+| $d_E$ | `\numEventTypes` | the number of event types | `dimension` |
+| $N$ | `\multiCountingProc` | the counting process, one coordinate per event type | — |
+| $N_{\mathfrak g}$ | `\groundProc` | its ground process, $\sum_e N_e$ | — |
+| $E_n$ | `\event` | the type of the $n$-th event | `EventType` |
+| $\lambda(t)$ | `\intensity` | the conditional intensity **vector**, $\lambda = \mu + A\,S(t)$ | — |
+| $\bar\lambda(t)$ | `\totalIntensity` | its total, $\mathbf{1}^\top\lambda(t)$ — the scalar the exact scheme decomposes | `total_intensity` |
+| $\Lambda$ | `\compensator` | the compensator, $\mathrm{d}\Lambda = \lambda\,\mathrm{d}t$ | `compensators_at_events` |
+| $\kappa_{e,e'}$ | `\hawkesKernel\subscriptee` | the kernel: the influence of $e'$ on $e$ | — |
+| $\mu$, $\bar\mu$ | `\baseIntensity` | the baseline intensity vector and its total | `baseline` |
+| $A_{e,e'}$ | `\excitation` | excitation of type $e$ **by** type $e'$, and the matrix of them | `excitation` |
+| $\beta$ | `\decay` | the common exponential decay rate, in s$^{-1}$ | `decay` |
+| $S(t)$ | `\decayedCounts` | the decayed-count state, $S_e(t) = \sum_{T^e_j < t} e^{-\beta(t - T^e_j)}$ | `decayed_counts` |
+| $\Gamma$ | `\branchingMatrix` | the branching matrix $A/\beta$ | `branching_matrix` |
+| $\rho$ | `\branchingRatio` | its spectral radius — **not** the endogenous fraction, and $1/(1-\rho)$ **not** the cluster size | `branching_ratio` |
+| $\lambda^*$ | `\stationaryIntensity` | the stationary intensity vector $(I-\Gamma)^{-1}\mu$ | `stationary_intensity()` |
+| $\nu$ | `\totalRate` | its total $\mathbf{1}^\top\lambda^*$, a rate in events per second | — |
+| $p$ | `\pressure` | the pressure vector, $p_e \in \{-1, 0, +1\}$ | `EventType.pressure` |
+| $\lambda^\uparrow$, $\lambda^\downarrow$ | `\upIntensity`, `\downIntensity` | the up- and down-pushing intensities | — |
+| $\Delta\lambda$ | `\intensityContrast` | the intensity contrast $p^\top\lambda$ | — |
+| $w$, $h$ | — | the $\mathrm{OFI}$ lookback and the forecast horizon, both in seconds | `window`, `horizon` |
+
+**The second index excites.** $A_{e,e'}$ is the influence of $e'$ on $e$, so $\lambda = \mu + AS$
+is a plain matrix–vector product and the *column* sums of $\Gamma$ are the readable quantity.
+A matrix and its transpose share a spectral radius, so a transposed kernel passes every
+stability check; the convention is the only defence.
+
+$S$ collides with a level size and $\rho$ with the resting price of $(s, \rho, \pi, -d)$;
+both are disambiguated by context in prose and by distinct identifiers in code, as the
+collisions below are.
+
+Names carried by the implementation rather than by the notes, recorded here so they are
+not reinvented: `occupied_levels(direction, reported_depth)` for the LOBSTER indexing,
+`grid_span` for the number of grid positions a given set of reported levels covers,
+`empty_grid_positions` and `gap_count` for the holes between them, `side_statistics` for
+all of those read in one pass, `queue_imbalance_profile(imbalance_levels)` for $I^n$ at
+several $n$ from one walk of each side, `column_sliced_imbalance` for the expression that
+is *not* $I^n$, and the types `GridDepth` / `ReportedDepth` that keep the two counts from
+being swapped. See
+[`grid-levels-and-lobster-levels.md`](grid-levels-and-lobster-levels.md).
+
+Three further gap statistics say *where* the holes are, not only how many:
+`first_gap_distance` and `largest_gap_distance` for the distance in ticks from the touch to
+the nearest and to the longest run of empty positions, and `first_gap_size` for the length
+of the nearest one. **A distance is measured to the empty position**, so a gap opening at
+grid position $i$ lies $i - 1$ ticks from the touch; the largest-gap tie-break is toward the
+touch. Where a side has no gap there is no position to name, and zero would name the touch,
+which always carries size: a book answers `None`, a frame NaN. `first_gap_size` answers
+zero, as `largest_gap` does, because a length of zero is a true answer.
+
+The order tuple itself has no macros: $t$ is time, $q$ size, $p$ price, $d$ direction, and
+$(s, \rho, \pi, -d)$ is the resting counterpart of $(t, q, p, d)$. In code, keep the tuple
+order `(t, q, p, d)`.
+
+**Collisions to watch.** The `.tex` reuses letters across blocks: $A$ is both the ask order
+queue (`\askOrderQueue`) and the generic arrival process (`\arrivals`); $Q$ is both a queue
+size (`\queue`) and the quantity to liquidate (`\quantityToLiquidate`); $S$ is both a level
+size here and the price path (`\pricePath`, `\semimartingale`, $S^0$ for the riskless asset)
+in the option-pricing block; $V$ is a volume in both its uses, but signed and per-execution in
+§7 and unsigned and aggregated over a window elsewhere — the two meet at $V = d\,q_M$ when the
+execution is by market order. Context disambiguates them in prose, but Python names must not —
+hence the distinct identifiers above.
+
+Part of the literature writes $V$ for the size of a level. Here that is $S$, and $V$ is the
+volume transacted; the two are different words throughout, since a level shrinks by
+cancellation as well as by execution.
+
+$S$ carries one further use once the point-process chapter is in play: `\decayedCounts`, the
+vector of exponentially decayed event counts that makes the Hawkes intensity Markov. It is
+always subscripted by an event type, $S_e$, where a level size always carries a side and a
+level, $S^{a,i}$, so the two do not meet in an expression.

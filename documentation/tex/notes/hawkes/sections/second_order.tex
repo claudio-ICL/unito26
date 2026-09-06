@@ -1,0 +1,133 @@
+Section \ref{sec.stability} describes the process in the mean.
+The mean is not enough to design a measurement.
+If we intend to read the state from a window sum of recent events,
+what decides how long the window must be is not the size of the intensity
+but the size of its fluctuations:
+a window is long enough when its sum is dominated by the signal rather than by the noise of
+counting.
+This section computes the stationary second moments of the state,
+in closed form, for the exponential kernel.
+
+\subsection{The generator}
+
+By \eqref{eq.stateDynamics} the pair $(\multiCountingProc, \decayedCounts)$ is a
+piecewise-deterministic Markov process,
+and for $f$ continuously differentiable the process
+\begin{equation*}
+ f(\decayedCounts_t) - f(\decayedCounts_0)
+ - \int_{0}^{t} \left[
+ -\decay \, \decayedCounts_u \cdot \gradient f(\decayedCounts_u)
+ + \sum_{e} \intensity(u) \Big( f(\decayedCounts_u + e_e) - f(\decayedCounts_u) \Big)
+ \right] du
+\end{equation*}
+is a local martingale.
+Applying this with $f(s) = s$ and with $f(s) = s s^{\transpose}$,
+and exchanging expectation and derivative --- which is legitimate as soon as
+$\Expectation \vert \decayedCounts \vert^2 < \infty$,
+and we shall see that this holds exactly when $\branchingRatio<1$ ---
+gives the two equations of this section.
+
+\subsection{The mean state}
+
+With $f(s)=s$,
+\begin{equation*}
+ \frac{d}{dt}\Expectation[\decayedCounts_t]
+ = -\decay \Expectation[\decayedCounts_t] + \Expectation[\intensity[ ](t)]
+ = \baseIntensity + (\excitation - \decay I) \Expectation[\decayedCounts_t] ,
+\end{equation*}
+using \eqref{eq.intensityFromState}.
+At stationarity the left-hand side vanishes, so writing
+$m := \Expectation[\decayedCounts]$ we have
+$(\excitation - \decay I) m = -\baseIntensity$, and
+\begin{equation}\label{eq.meanState}
+ m = \frac{\stationaryIntensity}{\decay} .
+\end{equation}
+Indeed $\decay m = \baseIntensity + \excitation m$ is \eqref{eq.intensityFromState} in the mean,
+which is \eqref{eq.stationaryIntensity}.
+The identity
+\begin{equation}\label{eq.meanStateIdentity}
+ (\excitation - \decay I) \, \frac{\stationaryIntensity}{\decay} = -\baseIntensity
+\end{equation}
+is the one that does the work below.
+
+\subsection{The covariance}
+
+With $f(s) = ss^{\transpose}$ the jump term needs care.
+At an event of type $e$ the state gains the unit vector $e_e$,
+so $\decayedCounts \decayedCounts^{\transpose}$ gains
+$\decayedCounts e_e^{\transpose} + e_e \decayedCounts^{\transpose} + e_e e_e^{\transpose}$.
+Two facts about the jumps enter here and both are hypotheses, not conveniences:
+the jumps of $\decayedCounts$ are \emph{unit} vectors,
+which is what makes the last term $e_e e_e^{\transpose}$;
+and no two components jump together, by \eqref{eq.noCommonJumps},
+which is what keeps that term diagonal.
+Writing $M := \Expectation[\decayedCounts\decayedCounts^{\transpose}]$ and using
+$\Expectation[\decayedCounts \intensity[ ]^{\transpose}]
+= m\baseIntensity^{\transpose} + M\excitation^{\transpose}$,
+stationarity gives
+\begin{equation*}
+ 0 = (\excitation - \decay I) M + M (\excitation - \decay I)^{\transpose}
+ + \baseIntensity m^{\transpose} + m \baseIntensity^{\transpose}
+ + \diag(\stationaryIntensity).
+\end{equation*}
+Substituting $M = V + m m^{\transpose}$, where $V := \CoVariance(\decayedCounts)$,
+the cross terms cancel exactly, since by \eqref{eq.meanStateIdentity}
+\begin{equation*}
+ (\excitation - \decay I) m m^{\transpose} + m m^{\transpose}(\excitation - \decay I)^{\transpose}
+ = -\baseIntensity m^{\transpose} - m\baseIntensity^{\transpose} .
+\end{equation*}
+What remains is a Lyapunov equation.
+
+\begin{prop}\label{prop.lyapunov}
+ Let $\branchingRatio < 1$.
+ The stationary covariance $V$ of the state $\decayedCounts$ is the unique solution of
+ \begin{equation}\label{eq.lyapunov}
+  (\excitation - \decay I) V + V (\excitation - \decay I)^{\transpose}
+  + \diag(\stationaryIntensity) = 0 ,
+ \end{equation}
+ and the stationary covariance of the intensity is
+ $\CoVariance(\intensity[ ]) = \excitation V \excitation^{\transpose}$.
+\end{prop}
+
+The forcing term is the diagonal matrix of jump intensities:
+fluctuation is injected at the rate at which events occur,
+one unit of variance per event, and no covariance between types because no two fire together.
+The homogeneous part transports it,
+and the whole content of the equation is the balance between the two.
+
+Uniqueness is worth stating separately, because it is the cleanest statement of what
+subcriticality buys at second order.
+A Lyapunov equation $NV + VN^{\transpose} + Q = 0$ has a unique solution exactly when $N$ is
+Hurwitz, and $\excitation - \decay I$ is Hurwitz if and only if
+$\branchingRatio(\excitation) < \decay$, that is, if and only if $\branchingRatio < 1$.
+Subcriticality is not merely sufficient for bounded second moments: it is equivalent to them.
+
+\subsection{The scalar case, and when it may be used}
+
+Contracting \eqref{eq.lyapunov} with $\mathbf{1}^{\transpose}$ on the left and
+$\mathbf{1}$ on the right gives a scalar equation as soon as
+$\mathbf{1}^{\transpose}\excitation$ is proportional to $\mathbf{1}^{\transpose}$,
+that is, as soon as $\excitation$ has constant column sums.
+Those sums are then necessarily $\decay\branchingRatio$, and
+$\mathbf{1}^{\transpose}(\excitation - \decay I) = -\decay(1-\branchingRatio)\mathbf{1}^{\transpose}$,
+so that
+\begin{equation}\label{eq.scalarVariance}
+ \Variance \big( \mathbf{1}^{\transpose}\decayedCounts \big)
+ = \frac{\totalRate}{2\decay(1-\branchingRatio)} .
+\end{equation}
+In one dimension this is $\Variance(\decayedCounts) = \stationaryIntensity/(2\decay(1-\branchingRatio))$,
+and it is the formula usually quoted.
+
+Three cautions attach to it.
+It is a statement about $\mathbf{1}^{\transpose}\decayedCounts$,
+the total decayed count,
+and not about any single component;
+it is not a statement about the total intensity, which in the same special case has
+variance $\decay\branchingRatio^{2}\totalRate/(2(1-\branchingRatio))$;
+and it requires the constant column sums, which are not generic.
+On the parametrisation of these notes the column sums are not constant,
+and \eqref{eq.scalarVariance} understates $\mathbf{1}^{\transpose}V\mathbf{1}$ by $17.7\%$
+--- a discrepancy that does not depend on $\decay$, since both sides scale as $1/\decay$.
+How large it is depends entirely on how far from constant the column sums are, which is a
+property of the kernel and not something the formula can warn about.
+When the covariance is wanted, \eqref{eq.lyapunov} is a six-by-six linear solve.

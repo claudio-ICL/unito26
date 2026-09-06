@@ -1,0 +1,112 @@
+A Hawkes process is a counting process whose intensity is driven by its own past.
+Each event raises the intensity of future events by an amount that depends on the two types
+involved and decays with the time elapsed.
+
+\begin{defi}\label{def.hawkesprocess}
+ A $\numEventTypes$-dimensional counting process $\multiCountingProc$ is called a Hawkes process
+ if it admits an absolutely continuous compensator $\compensator$ with intensities
+ \begin{equation}\label{eq.intensity_ordHawkes}
+  \intensity(t) = \baseIntensity_e
+  + \sum_{\eone=1}^{\numEventTypes}\intzerot \hawkesKernel\subscriptee(t-s) \, d\countingProc[\eone](s),
+  \qquad e = 1,\dots,\numEventTypes,
+ \end{equation}
+ for some non-negative baselines $\baseIntensity_e \geq 0$,
+ and some non-negative locally integrable functions $\hawkesKernel\subscriptee \geq 0$
+ supported on the non-negative half line.
+\end{defi}
+
+The matrix-valued function
+$t\mapsto [\hawkesKernel\subscriptee(t)]_{e,\eone = 1, \dots, \numEventTypes}$
+is referred to as the kernel of the Hawkes process $\multiCountingProc$.
+If all the kernel functions are integrable, we write
+\begin{equation}\label{eq.branchingMatrix}
+ \branchingMatrix\subscriptee := \Vert \hawkesKernel\subscriptee \Vert_{\Lone}
+ = \int_{0}^{\infty} \hawkesKernel\subscriptee(t) \, dt
+\end{equation}
+for the matrix of $\Lone$ norms,
+and we call the spectral radius $\branchingRatio$ of $\branchingMatrix$ the branching ratio of
+the process;
+if some of the kernel functions are not integrable, the branching ratio is set to $+\infty$.
+Every statement of this chapter about stability is a statement about $\branchingRatio$,
+and Section \ref{sec.stability} is devoted to reading it.
+For the moment we record only that a $\numEventTypes$-dimensional Hawkes process admits a
+stationary version with finite mean intensity if and only if $\branchingRatio < 1$.
+
+\begin{remark}[the order of the indices]\label{remark.indexOrder}
+ In \eqref{eq.intensity_ordHawkes} the influence that an event of type $\eone$ exerts on the
+ intensity of type $e$ is written in the \emph{second} index:
+ the row is excited and the column excites.
+ The choice is not free of consequence.
+ With this order, the sum in \eqref{eq.intensity_ordHawkes} is a matrix acting on a column
+ vector, and so is every object we shall build from it;
+ with the opposite order, each of them acquires a transpose.
+ It also decides which marginal of $\branchingMatrix$ is the readable one.
+ The \emph{column} sum $\sum_{e}\branchingMatrix\subscriptee$
+ is the expected number of direct offspring of a single event of type $\eone$,
+ a dimensionless count that answers ``how much does one event of this type beget'';
+ the row sum answers no question anyone asks.
+
+ The opposite order is common in the literature,
+ and the two are hard to tell apart after the fact,
+ because $\branchingRatio(\branchingMatrix) = \branchingRatio(\branchingMatrix^{\transpose})$:
+ a transposed kernel passes every stability check,
+ produces a stationary path of the right total rate,
+ and is wrong only in which type excites which.
+ It is a bug that still runs, and the only defence is to fix the convention once and state it.
+\end{remark}
+
+\subsection{The cluster representation}
+\label{sec.clusterRepresentation}
+
+Definition \ref{def.hawkesprocess} describes the process through its intensity.
+There is a second description, due to \cite{HO74clu},
+which describes the same process through a branching construction,
+and which is the one that explains why the order flow carries information at all.
+
+\begin{prop}[\cite{HO74clu}]\label{prop.clusterRepresentation}
+ Assume $\hawkesKernel \geq 0$ and $\branchingRatio < 1$.
+ Construct a point process as follows.
+ \emph{i.} Immigrants of type $e$ arrive as a homogeneous Poisson process of rate
+ $\baseIntensity_e$, independently across $e$.
+ \emph{ii.} Every event of type $\eone$, immigrant or not,
+ independently generates its direct offspring of type $e$
+ as an inhomogeneous Poisson process on $(t,\infty)$ of intensity $\hawkesKernel\subscriptee(s-t)$,
+ so that the number of such offspring is Poisson with mean $\branchingMatrix\subscriptee$.
+ Then the superposition of all events so constructed is a stationary Hawkes process
+ with baselines $\baseIntensity$ and kernel $\hawkesKernel$,
+ and conversely every stationary Hawkes process with finite intensity admits this representation.
+\end{prop}
+
+The descendants of a single immigrant form a multitype Galton--Watson process
+whose mean offspring matrix is $\branchingMatrix$,
+and the population dies out almost surely, with finite expected total size,
+precisely when $\branchingRatio < 1$.
+The events of the process therefore partition into \emph{clusters},
+each consisting of one immigrant and all of its descendants.
+
+Two remarks on what a cluster is and is not.
+A cluster is a run of events with a common ancestor.
+It is not a run of events of the same type,
+and in a market model it is not a run of same-signed events:
+an offspring inherits its parent's type only to the extent that
+$\branchingMatrix$ has mass on its diagonal blocks,
+and in the parametrisations we use most of the mass is off them.
+The distinction is measurable, and Section \ref{sec.readingOrderFlow} measures it.
+
+The second remark concerns non-negativity.
+That $\hawkesKernel \geq 0$ is required in Definition \ref{def.hawkesprocess}
+is easy to read as a convenience, and it is not.
+A negative entry has no reading as an offspring intensity,
+so the branching construction of Proposition \ref{prop.clusterRepresentation}
+does not exist;
+the process one may still define by truncating the intensity at zero is no longer linear;
+and $\branchingMatrix$, the cluster sizes, the endogenous fraction and the stationary intensity
+of Section \ref{sec.stability} all lose their meaning together.
+Every result in this chapter assumes it.
+
+The cluster representation is also the answer to a question the rest of these notes will keep
+asking: why should a sum of recent order flow predict anything?
+Because a burst of events is, with high probability, a cluster in progress,
+and a cluster in progress has descendants still to come.
+A window sum is a crude estimator of ``a cluster is under way'',
+and its predictive content is exactly the expected size of what remains.
