@@ -510,3 +510,44 @@ complete, plausible answer, and most of them pass a test suite written from the 
 - [`.claude/plans/tick-array-book-performance.md`](../.claude/plans/tick-array-book-performance.md)
   — the plan for the third pass: the diagnosis, the five changes, the three rejections, and
   the conditions the correctness review attached to each.
+- [`documentation/point-processes-and-prediction.md`](../documentation/point-processes-and-prediction.md)
+  — the theory the imbalance regressions use, in the statement/code/test triple form: the
+  filtration, what subcriticality is and is not for, adaptedness versus predictability, the
+  cluster representation, and what `OFI` is an estimator of.
+- [`documentation/pre-registration-imbalance-regression.md`](../documentation/pre-registration-imbalance-regression.md)
+  — five confirmatory claims, frozen before the first confirmatory run, with the seed block
+  disjoint from the exploratory one.
+
+## From the imbalance study
+
+From `notebooks/regressing-the-mid-on-the-imbalances.ipynb`, twelve seeds of an hour each.
+
+- **The window adds information over the last event alone**, and the lattice-aware test says
+  so far more clearly than the coefficient does: incremental three-class log-score skill
+  +2.8e-3 at `t = 7.9` across seeds, against `t(b2) = 2.7` per seed for the OLS restriction.
+  `b2 = 0` forces the window onto an equally weighted boxcar, so it is the weaker test of the
+  alternative the theory actually predicts, and the four-bucket joint `F` sits between them.
+- **The book beats the flow, and beats the flow-only oracle.** `I^1` adds six times more over
+  `OFI` than `OFI` adds over `I^1`, and `sign(kappa)` built from the generator's own state
+  also loses to `I^1`. A Hawkes simulator does not make flow statistics optimal by
+  construction — the marks carry information the points do not.
+- **The `rho = 0` control lands on the finite-sample penalty, not on zero.** With no kernel
+  the incremental skill of `OFI` over `I^1` is −1.4e-3, which is what a richer model fitted
+  on noise should score. It is the check that the statistic is calibrated, and a version of
+  it that scored zero would have been the suspicious one.
+- **Concentration, non-emptiness and a moving mid are three corners of one trade.** With the
+  spread pinned at a tick the mid moves only by clearing a touch queue, which is also how a
+  side empties; only occupied depth *behind* the touch separates the two. Sharpening the mark
+  offset to put 58% of arrivals within three ticks produces 159-tick single-event moves.
+- **A rare-event property cannot be asserted from a block sized for a common one.** Six seeds
+  and 654,000 messages showed no empty side and were read as "never"; thirty seeds showed
+  twelve emptying. The gate is a rate with a tolerance, and the segment mask stays.
+- **`nu * w` is not the window's occupancy.** Rows are event-sampled, so the realised count is
+  the Palm count: 2.70 where `nu * w = 0.63`. The excess is one for the sampling event itself
+  plus the pair correlation; nothing is length-biased, so it is Palm sampling and not the
+  inspection paradox.
+- **The textbook scalar formulae are the constant-column-sum special case, and the column
+  sums here are not constant.** The endogenous fraction is 0.576 where `rho` is 0.6, the mean
+  cluster size 2.357 where `1/(1-rho)` is 2.5, and `Var(1'S)` misses by 5.1% — with the
+  discrepancy vanishing to machine precision when the column sums are forced equal, which is
+  what pins the cause.
