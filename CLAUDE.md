@@ -66,6 +66,10 @@ jupyter notebook                  # from inside the env: plotly renders server-s
   invoke the **`market-microstructure`** skill: it carries the notation, the mechanics
   and the invariants fixed in
   [`documentation/order-driven-markets-notation.md`](documentation/order-driven-markets-notation.md).
+- Before writing or reviewing code or prose on point processes, Hawkes self-excitation or
+  the synthetic order-flow generator, invoke the **`point-processes`** skill: it carries the
+  notation, the invariants and the statistical traps fixed in
+  [`documentation/point-processes-and-hawkes.md`](documentation/point-processes-and-hawkes.md).
 
 ### Python style
 
