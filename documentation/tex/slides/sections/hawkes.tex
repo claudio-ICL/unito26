@@ -206,3 +206,36 @@ At $\totalRate/\decay \ll 1$ the excitation has expired before the next event ar
 A study run there measures a process whose self-excitation is switched off,
 and correctly finds nothing.
 \end{frame}
+
+\subsection{Reading the order flow}
+
+\begin{frame}
+  \frametitle{What the laboratory leaves out}
+In a traded market some flow is \emph{informed}.
+A provider resting on the bid is short an option:
+he is filled exactly when someone wants to sell, which is disproportionately when selling
+is right.
+
+\pause
+
+His defence is to withdraw first.
+So a queue about to be picked off is one whose own side pulls away from it:
+\alert{depletion begets depletion}.
+That is what makes $\queueImbalance[1]$ informative --- a thin bid is thin \emph{because}
+its providers inferred something.
+
+\pause
+
+Our generator does the reverse, deliberately: depletion excites \emph{replenishment},
+19 to 1.
+The two cannot both be strong in one kernel, and a book that survives is the precondition
+for measuring anything.
+
+\pause
+
+So here $\queueImbalance[1]$ carries \alert{mechanical} information only ---
+a depleted queue is one market order from clearing.
+Read the comparison asymmetrically:
+$\OFI$ winning is not evidence it dominates in general;
+$\queueImbalance[1]$ winning would be the stronger finding.
+\end{frame}

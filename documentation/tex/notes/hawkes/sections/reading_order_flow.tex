@@ -103,9 +103,45 @@ The following are absent by construction.
 The intensities do not read the book: there is no queue-depletion feedback,
 so the arrival rates are indifferent to whether a queue is about to empty.
 The \emph{marks} do read it, and that is the mechanism behind the book's restoring force.
-There is no informed trading and no adverse selection,
-which is where the value of the queue imbalance $\queueImbalance[1]$ would otherwise live.
 There is no queue-position economics.
+
+There is no informed trading, and therefore no \emph{adverse selection}.
+The omission deserves more than a line, because it is the largest of them and because it
+bears directly on how the two statistics of this chapter should be compared.
+
+In a traded market some of the flow is informed: the trader knows something about where the
+price is going, and the liquidity providers do not.
+A provider resting size on the bid is short an option --- his order is filled precisely when
+someone wants to sell, which is disproportionately when selling is right ---
+and his defence is to withdraw before that happens.
+So a queue that is about to be picked off is a queue whose own side pulls away from it,
+and depletion begets further depletion.
+That is what makes the queue imbalance $\queueImbalance[1]$ informative in a real book:
+a thin bid is not merely mechanically closer to being cleared,
+it is thin \emph{because} the providers on that side inferred something,
+and the imbalance is reading their inference.
+
+The generator of these notes does the opposite, deliberately.
+Its kernel is built so that whatever depletes a side excites the limit orders that refill it
+far more than it excites further withdrawals from it,
+because that is the local mechanism which keeps a queue from emptying.
+An adverse-selection channel is precisely the reverse of that mechanism,
+and the two cannot both be strong in the same kernel.
+We chose the replenishing one, on the grounds that a book which survives is the
+precondition for measuring anything at all.
+
+The consequence is worth stating plainly, and it is a caveat on this chapter's own results
+rather than on the literature.
+Whatever forecasting power $\queueImbalance[1]$ retains here is \emph{mechanical} ---
+a depleted queue is one market order from clearing, and clearing moves the mid ---
+and none of it is informational.
+A comparison of $\queueImbalance[1]$ against $\OFI$ conducted in this laboratory
+therefore measures the imbalance at its weakest,
+and understates what the imbalance is worth in a market where the channel we removed is
+present.
+A result favourable to $\OFI$ here is not evidence that $\OFI$ dominates the imbalance in
+general; a result favourable to $\queueImbalance[1]$ here would be the stronger finding,
+since it would have been obtained with the imbalance's principal advantage switched off.
 There is a single excitation timescale, the kernel being one exponential,
 per Remark \ref{remark.stateSize}.
 There is no intraday non-stationarity, so a window tuned here is not tested against one.
