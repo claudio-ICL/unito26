@@ -184,14 +184,11 @@ For a homogeneous Poisson process it reduces to $e^{-\totalIntensity s}$,
 and the inter-arrival times are exponential.
 
 \begin{remark}\label{remark.internalHistory}
- Notice that the internal history is a hypothesis of
- Proposition \ref{prop.conditionalSurvival} and not a convenience.
- On a strictly larger history the intensity need not be a function of the past of
- $\multiCountingProc$ alone --- on a Cox process it is not ---
- the integrand in \eqref{eq.conditionalSurvival} is then not
- $\filtrationF_{\arrivalTimes[ ]_{n}}$-measurable,
- and what survives is the conditional expectation of the right-hand side rather than the
- right-hand side itself.
+ Notice that $\filtrationF$ is the \emph{internal} history.
+ On a larger one the intensity need not be a function of the past of $\multiCountingProc$
+ alone --- on a Cox process whose directing intensity is revealed progressively it is not ---
+ and the right-hand side of \eqref{eq.conditionalSurvival} is then no longer
+ $\filtrationF_{\arrivalTimes[ ]_{n}}$-measurable.
 \end{remark}
 
 Compensators are the ingredient of the following time-change result,
@@ -210,7 +207,7 @@ which we shall use in goodness-of-fit diagnostics.
  are mutually independent standard Poisson processes of unit rate.
  Equivalently, the time-changed inter-arrival times
  \begin{equation}\label{eq.time-changed_intertimes}
-  \tau_e^j := \compensator(\arrivalTimes_{j}) - \compensator(\arrivalTimes_{j-1})
+  \tau_e^j := \compensator_e(\arrivalTimes_{j}) - \compensator_e(\arrivalTimes_{j-1})
  \end{equation}
  are independent and exponentially distributed with unit mean,
  jointly over $j = 1, 2, \dots$ and $e = 1,\dots,\numEventTypes$.

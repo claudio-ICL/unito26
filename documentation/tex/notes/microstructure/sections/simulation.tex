@@ -21,6 +21,9 @@ equal to the ratio of the true rate to the dominating one.
 That $\totalIntensity$ is non-increasing between events is exactly the non-negativity of the
 kernel, $\excitation \geq 0$: excitation only ever decays until the next event adds to it.
 The bound is therefore free, and no separate majorant has to be constructed.
+The dominating value is the \emph{post-jump} one, $\totalIntensity(\arrivalTimes[]_{n-1}+)$:
+$\decayedCounts$ is left-continuous, so the pre-jump value is smaller by
+$(\mathbf{1}^{\transpose}\excitation)_{\event[n-1]}$ and does not dominate.
 
 We take $(\arrivalTimes[]_n,\event[n])$ as the sequence of arrival times and event labels
 of the ground process, and recall that computing $\totalIntensity(t)$ requires
@@ -34,12 +37,13 @@ Algorithm \ref{algo.ogata}.
  \label{algo.ogata}
  \begin{algorithmic}[5]
   \REQUIRE $(\arrivalTimes[]_i, \event[i])_{i=1,\dots,n-1}$
-  \STATE set $t:=\arrivalTimes[]_{n-1}$
+  \STATE set $t:=\arrivalTimes[]_{n-1}$ and
+         $\bar{\lambda} := \totalIntensity(\arrivalTimes[]_{n-1}+)$
   \STATE set $\xi:=0$
   \WHILE{$\xi=0$}
-  \STATE draw $U \sim \text{Exp}(\totalIntensity(t))$
-  \STATE set $\xi :=1$ with probability $\totalIntensity(t+U)/\totalIntensity(t)$
-  \STATE update $t\leftarrow t+U$
+  \STATE draw $U \sim \text{Exp}(\bar{\lambda})$
+  \STATE set $\xi :=1$ with probability $\totalIntensity(t+U)/\bar{\lambda}$
+  \STATE update $t\leftarrow t+U$ and $\bar{\lambda} \leftarrow \totalIntensity(t)$
   \ENDWHILE
   \STATE set $\arrivalTimes[]_n:=t$
   \STATE draw $\event[n]$ in $\lbrace 1,\dots,\numEventTypes\rbrace$ with probabilities proportional to $\lbrace \intensity[1](\arrivalTimes[]_n), \dots, \intensity[\numEventTypes](\arrivalTimes[]_n)\rbrace$
@@ -94,9 +98,12 @@ Non-negativity of $\excitation$ enters separately, and gives $D \geq 0$.
  Notice that \eqref{eq.totalIntensityBetweenEvents} uses only that $\decay$ is common to all
  pairs; constant column sums are not needed.
  With a decay $\decay\subscriptee$ depending on the pair, or even one depending only on the
- type of the exciting event, the components of $\decayedCounts$ decay at different rates,
+ type of the exciting event, the components of $\decayedCounts$ decay at different rates and
  $\totalIntensity$ is a sum of exponentials rather than one exponential,
- and \eqref{eq.dzSurvival} below --- with it the whole scheme of this subsection --- fails.
+ so that the two-factor form of \eqref{eq.dzSurvival} below fails,
+ and with it Theorem \ref{thm.dassiosZhao} as stated.
+ The survival function still factorises, over one clock per decay rate rather than two,
+ so the scheme generalises at the cost of carrying one clock more.
 \end{remark}
 
 Substituting \eqref{eq.totalIntensityBetweenEvents} into
@@ -204,8 +211,9 @@ Nothing in Algorithm \ref{algo.dassiosZhao} is approximate and nothing is reject
 \begin{remark}\label{remark.defectiveClock}
  Notice that $\tau_2 = +\infty$ is not a numerical edge case to be patched.
  The excited factor of \eqref{eq.dzSurvival} carries the finite total mass $D/\decay$,
- which by Remark \ref{remark.countsAgainstRates} is the expected number of \emph{direct}
- offspring the current state still owes;
+ which is the expected number of \emph{direct} offspring the current state still owes:
+ integrating $\mathbf{1}^{\transpose}\excitation\decayedCounts$ forward from
+ $\arrivalTimes[]_n$ gives $D/\decay$;
  with probability $e^{-D/\decay}$ it expires without firing,
  and the next event is an immigrant.
  An implementation that clips $\tau_2$ instead of returning $+\infty$ biases the immigrant
@@ -238,7 +246,8 @@ The three hypotheses are those of Theorem \ref{thm.meyer1971}:
 no two components jump simultaneously;
 the compensator is continuous;
 and it diverges.
-The second and third hold by construction for the model of this chapter.
+The second holds by construction for the model of this chapter,
+and the third whenever every type is reached --- when $\baseIntensity > 0$, for instance.
 The first holds for a simulated path, where the arrival times are almost surely distinct,
 and is precisely what fails for a recorded one.
 

@@ -22,7 +22,7 @@ which is what keeps that term diagonal.
 \begin{thm}\label{thm.lyapunov}
  Let $\excitation \geq 0$, $\decay > 0$, $\baseIntensity > 0$ and $\branchingRatio < 1$,
  and write $\hurwitzMatrix := \excitation - \decay I$.
- Then the state $\decayedCounts$ has a stationary distribution with finite second moments,
+ The stationary version of Proposition \ref{prop.stationarity} has finite second moments,
  its covariance $V := \CoVariance(\decayedCounts)$ is the unique solution of the Lyapunov
  equation
  \begin{equation}\label{eq.lyapunov}
@@ -56,6 +56,8 @@ which is what keeps that term diagonal.
  and the linear equation \eqref{eq.secondMomentODE} converges to its unique fixed point
  $\secondMoment$, which by Proposition \ref{prop.lyapunovUniqueness}~\emph{i.--ii.}
  exists and is unique.
+ A stationary version exists by Proposition \ref{prop.stationarity},
+ and its second moment is that fixed point, the limit being independent of the initial state.
  Writing $\secondMoment = V + m m^{\transpose}$ and using
  $\hurwitzMatrix m = -\baseIntensity$,
  \begin{equation*}
@@ -132,9 +134,8 @@ $\mathbf{1}$ on the right gives a scalar equation as soon as
 $\mathbf{1}^{\transpose}\excitation$ is proportional to $\mathbf{1}^{\transpose}$,
 that is, as soon as $\excitation$ has constant column sums.
 Those sums are then necessarily $\decay\branchingRatio$:
-$\mathbf{1}^{\transpose}$ is a positive left eigenvector,
-and by Lemma \ref{lemma.perronFrobenius} an eigenvalue of a non-negative matrix with a
-positive left eigenvector is its spectral radius.
+by Lemma \ref{lemma.perronFrobenius}~\emph{iii.} applied to $\branchingMatrix^{\transpose}$,
+constant column sums force $\branchingRatio$ to equal them.
 Hence
 $\mathbf{1}^{\transpose}\hurwitzMatrix
 = -\decay(1-\branchingRatio)\mathbf{1}^{\transpose}$, and
