@@ -6,24 +6,29 @@ $\branchingMatrix\subscriptee \geq 0$ for every pair of types,
 and neither $\excitation$ nor $\branchingMatrix$ is assumed symmetric,
 so no definiteness is asserted and none is used.
 
-\begin{lemma}\label{lemma.perronFrobenius}
+\begin{lemma}[Perron-Frobenius]\label{lemma.perronFrobenius}
  Let $\branchingMatrix \geq 0$ be a square matrix with spectral radius $\branchingRatio$.
  Then
  \emph{i.} $\branchingRatio$ is an eigenvalue of $\branchingMatrix$, and it is real
  and non-negative;
- \emph{ii.} $\branchingRatio$ lies between the smallest and the largest row sum of
+ \emph{ii.} there are non-negative, non-zero vectors $w$ and $v$ with
+ $\branchingMatrix w = \branchingRatio w$ and
+ $v^{\transpose}\branchingMatrix = \branchingRatio v^{\transpose}$,
+ which we call a \emph{right} and a \emph{left Perron vector} of $\branchingMatrix$;
+ \emph{iii.} $\branchingRatio$ lies between the smallest and the largest row sum of
  $\branchingMatrix$;
- \emph{iii.} if $\branchingRatio < 1$ then $I - \branchingMatrix$ is invertible and
+ \emph{iv.} if $\branchingRatio < 1$ then $I - \branchingMatrix$ is invertible and
  $(I-\branchingMatrix)^{-1} = \sum_{k\geq 0}\branchingMatrix^{k}$,
  a series with non-negative entries.
 \end{lemma}
-For a proof of \emph{i.} and \emph{ii.}, see \cite[Theorem 8.3.1 and Theorem 8.1.22]{HJ13mat}.
-Part \emph{iii.} is the Neumann series, and the entries are non-negative
-because every term is.
-Applying \emph{ii.} to $\branchingMatrix^{\transpose}$,
-whose spectral radius is again $\branchingRatio$,
-bounds $\branchingRatio$ between the smallest and the largest \emph{column} sum of
-$\branchingMatrix$;
+For a proof of \emph{i.}--\emph{iii.} see
+\cite[Theorem 8.3.1 and Theorem 8.1.22]{HJ13mat};
+the left Perron vector is the right Perron vector of $\branchingMatrix^{\transpose}$,
+whose spectral radius is again $\branchingRatio$.
+Under irreducibility $w$ and $v$ are strictly positive and $\branchingRatio$ is simple.
+Part \emph{iv.} is the Neumann series, its entries non-negative because every term is.
+Applying \emph{iii.} to $\branchingMatrix^{\transpose}$ bounds $\branchingRatio$ between the
+smallest and the largest \emph{column} sum of $\branchingMatrix$;
 in particular, constant column sums $c$ force $\branchingRatio = c$.
 
 By Proposition \ref{prop.clusterRepresentation},
@@ -33,6 +38,16 @@ The readable contraction is therefore the row vector
 $\mathbf{1}^{\transpose}\branchingMatrix$,
 whose $\eone$-th entry is the expected number of direct offspring of one event of type
 $\eone$.
+
+A stochastic process is \emph{stationary} when its law is invariant under time shift:
+for every $r$ and every $t_1 < \dots < t_r$,
+the joint law of $(X_{t_1+h}, \dots, X_{t_r+h})$ does not depend on $h$.
+For a point process the same is asked of the counts,
+the joint law of $\big(\multiCountingProc(A_1+h),\dots,\multiCountingProc(A_r+h)\big)$ being
+independent of $h$ for bounded Borel sets $A_1,\dots,A_r$;
+see \cite[Chapter 12]{DVJ08int} or \cite[Chapter VIII]{Bre81poi}.
+Shifting moves the origin,
+so stationarity is a property of a process defined on the whole line.
 
 \begin{defi}\label{def.stationaryHawkes}
  A Hawkes process is \emph{stationary} if it admits a stationary version,
@@ -58,27 +73,39 @@ $\eone$.
 \end{prop}
 For a proof, see \cite[Theorem 1]{BM96sta}.
 
-We record why \eqref{eq.stationaryIntensity} takes that form.
+The form of \eqref{eq.stationaryIntensity} follows from the definition.
 A stationary version is defined on the whole line,
 so \eqref{eq.intensity_ordHawkes} reads
 $\intensity(t) = \baseIntensity_e + \sum_{\eone}\int_{-\infty}^{t}
 \hawkesKernel\subscriptee(t-s)\,d\countingProc[\eone](s)$.
-The kernel is non-negative, so Tonelli's theorem licences the interchange of
+The kernel is non-negative, so Tonelli's theorem licenses the interchange of
 expectation and integral, and stationarity makes
 $\Expectation\big[d\countingProc[\eone](s)\big] = \stationaryIntensity[\eone]\,ds$,
 whence
 $\stationaryIntensity = \baseIntensity + \branchingMatrix\stationaryIntensity$.
-What $\branchingRatio < 1$ supplies is Lemma \ref{lemma.perronFrobenius}~\emph{iii.}:
+What $\branchingRatio < 1$ supplies is Lemma \ref{lemma.perronFrobenius}~\emph{iv.}:
 the Neumann series converges, so the solution exists and is non-negative.
 
-The hypothesis $\baseIntensity > 0$ is needed only for the implication
-\emph{i.} $\Rightarrow$ \emph{ii.}
-If $\branchingRatio \geq 1$ and $v$ is a left Perron vector of $\branchingMatrix$,
-then $v^{\transpose}\baseIntensity
-= (1-\branchingRatio)\,v^{\transpose}\stationaryIntensity \leq 0$,
-which is impossible for $\baseIntensity > 0$.
-Dropping it, $\branchingMatrix = \diag(2,0)$ with
-$\baseIntensity = (0,1)^{\transpose}$ has $\branchingRatio = 2$ and a stationary version.
+\begin{remark}\label{remark.strictBaseline}
+ Notice that $\baseIntensity > 0$ is what makes \emph{i.} imply \emph{ii.}
+ Let $v$ be a left Perron vector of $\branchingMatrix$,
+ non-negative and non-zero by Lemma \ref{lemma.perronFrobenius}~\emph{ii.}
+ If the process is stationary with finite mean intensity, then
+ $\stationaryIntensity = \baseIntensity + \branchingMatrix\stationaryIntensity$ ---
+ the fixed point, which is available whatever $\branchingRatio$ is,
+ where the inverse in \eqref{eq.stationaryIntensity} is not --- so that
+ \begin{equation*}
+  v^{\transpose}\baseIntensity
+  = (1-\branchingRatio)\, v^{\transpose}\stationaryIntensity .
+ \end{equation*}
+ At $\branchingRatio \geq 1$ the right-hand side is non-positive
+ and the left-hand side strictly positive.
+ Without strict positivity the implication fails:
+ $\branchingMatrix = \diag(2,0)$ with $\baseIntensity = (0,1)^{\transpose}$ has
+ $\branchingRatio = 2$ and is stationary,
+ because nothing reaches the first type --- it has neither immigrants nor an exciter ---
+ and the second is a Poisson process.
+\end{remark}
 
 We write
 \begin{equation*}
@@ -88,12 +115,9 @@ We write
 \end{equation*}
 for the total event rate and the total immigration rate.
 
-
-\subsubsection{The mean state}
-
 \begin{prop}\label{prop.meanState}
  Under the hypotheses of Proposition \ref{prop.stationarity},
- the stationary mean of the state is
+ the stationary mean of the decayed counts is
  \begin{equation}\label{eq.meanState}
   m := \Expectation[\decayedCounts] = \frac{\stationaryIntensity}{\decay},
  \end{equation}
@@ -113,47 +137,51 @@ for the total event rate and the total immigration rate.
  \eqref{eq.stationaryIntensity} divided by $\decay$.
 \end{proof}
 
-\subsubsection{Clusters}
-
 By Proposition \ref{prop.clusterRepresentation} the events partition into clusters,
-one per immigrant, each a realisation of the multitype Galton--Watson process of
-Definition \ref{def.galtonWatson} with mean offspring matrix $\branchingMatrix$.
+one per immigrant.
+What we measure next is the average size of a cluster,
+and with it the share of the flow that the flow itself produced.
+
+\begin{defi}\label{def.endogenousFraction}
+ The \emph{endogenous fraction} of a stationary Hawkes process is
+ \begin{equation}\label{eq.endogenousFraction}
+  1 - \frac{\bar{\baseIntensity}}{\totalRate},
+ \end{equation}
+ the long-run share of events that are offspring rather than immigrants.
+\end{defi}
 
 \begin{prop}\label{prop.clusterSize}
- Let $\hawkesKernel \geq 0$ be integrable and $\branchingRatio < 1$.
- The expected size $C_j$ of the cluster founded by an immigrant of type $j$,
+ Assume $\branchingRatio < 1$.
+ The expected size $C_{\eone}$ of the cluster founded by an immigrant of type $\eone$,
  counting the immigrant itself, is
  \begin{equation}\label{eq.clusterSize}
-  C_j = \mathbf{1}^{\transpose} (I - \branchingMatrix)^{-1} \unitVector_j ,
+  C_{\eone} = \mathbf{1}^{\transpose} (I - \branchingMatrix)^{-1} \unitVector_{\eone} ,
  \end{equation}
- and the expected number of its strict descendants is $C_j - 1$.
+ and the expected number of its strict descendants is $C_{\eone} - 1$.
+ If moreover $\bar{\baseIntensity} > 0$, the mean cluster size is
+ \begin{equation}\label{eq.meanClusterSize}
+  \bar{C} := \sum_{\eone} \frac{\baseIntensity_{\eone}}{\bar{\baseIntensity}} C_{\eone}
+  = \frac{\totalRate}{\bar{\baseIntensity}} ,
+ \end{equation}
+ and the endogenous fraction \eqref{eq.endogenousFraction} is $1 - 1/\bar C$.
 \end{prop}
 \begin{proof}
  The expected number of members of the $k$-th generation of the cluster, by type,
- is $\branchingMatrix^{k}\unitVector_j$: this holds for $k=0$, and each individual of type
- $\eone$ has on average $\branchingMatrix\subscriptee$ children of type $e$,
+ is $\branchingMatrix^{k}\unitVector_{\eone}$: this holds for $k=0$, and each individual of
+ type $\eone$ has on average $\branchingMatrix\subscriptee$ children of type $e$,
  independently of the rest, so the expectations propagate by one multiplication by
  $\branchingMatrix$ per generation.
  Summing over $k$ and contracting with $\mathbf{1}^{\transpose}$,
  all terms being non-negative so that the interchange is licit,
- gives $C_j = \mathbf{1}^{\transpose}\sum_{k\geq0}\branchingMatrix^{k}\unitVector_j$,
- which is \eqref{eq.clusterSize} by
- Lemma \ref{lemma.perronFrobenius}~\emph{iii.}
+ gives $C_{\eone} = \mathbf{1}^{\transpose}\sum_{k\geq0}\branchingMatrix^{k}
+ \unitVector_{\eone}$, which is \eqref{eq.clusterSize} by
+ Lemma \ref{lemma.perronFrobenius}~\emph{iv.}
  The term $k=0$ is the immigrant.
-\end{proof}
 
-\begin{prop}\label{prop.meanClusterSize}
- Under the same hypotheses, with $\bar{\baseIntensity} > 0$,
- the mean cluster size is
- \begin{equation}\label{eq.meanClusterSize}
-  \bar{C} := \sum_j \frac{\baseIntensity_j}{\bar{\baseIntensity}} C_j
-  = \frac{\totalRate}{\bar{\baseIntensity}} .
- \end{equation}
-\end{prop}
-\begin{proof}
- Immigrants of type $j$ arrive as a Poisson process of rate $\baseIntensity_j$,
- independently across $j$, so the type of a cluster's founder is distributed as
- $\baseIntensity_j/\bar{\baseIntensity}$.
+ For the second half, immigrants of type $\eone$ arrive as a Poisson process of rate
+ $\baseIntensity_{\eone}$, independently across $\eone$,
+ so the type of a cluster's founder is distributed as
+ $\baseIntensity_{\eone}/\bar{\baseIntensity}$.
  Then $\bar C = \mathbf{1}^{\transpose}(I-\branchingMatrix)^{-1}\baseIntensity /
  \bar{\baseIntensity}$, which is $\totalRate/\bar{\baseIntensity}$ by
  \eqref{eq.stationaryIntensity}.
@@ -168,35 +196,35 @@ Definition \ref{def.galtonWatson} with mean offspring matrix $\branchingMatrix$.
  \eqref{eq.stationaryIntensity} and \eqref{eq.clusterSize} is consistent.
 \end{remark}
 
-\begin{defi}\label{def.endogenousFraction}
- The \emph{endogenous fraction} of a stationary Hawkes process is
- \begin{equation}\label{eq.endogenousFraction}
-  1 - \frac{\bar{\baseIntensity}}{\totalRate},
- \end{equation}
- the long-run share of events that are offspring rather than immigrants.
-\end{defi}
-It is a ratio of rates, not a probability attached to any single event,
-and by \eqref{eq.meanClusterSize} it equals $1 - 1/\bar C$.
+\begin{corol}\label{corol.constantClusterSize}
+ Assume $\branchingRatio < 1$.
+ The following are equivalent:
+ \begin{enumerate}[label={\emph{\roman{*}}.}]
+  \item $C_{\eone} = 1/(1-\branchingRatio)$ for every $\eone$;
+  \item $\mathbf{1}^{\transpose}\branchingMatrix
+        = \branchingRatio\mathbf{1}^{\transpose}$.
+ \end{enumerate}
+\end{corol}
+\begin{proof}
+ Since $\branchingRatio < 1$, the matrix $I - \branchingMatrix$ is invertible and
+ $1 - \branchingRatio \neq 0$, so by \eqref{eq.clusterSize} the first statement says
+ $\mathbf{1}^{\transpose}(I-\branchingMatrix)^{-1}
+ = (1-\branchingRatio)^{-1}\mathbf{1}^{\transpose}$.
+ Multiplying on the right by $I - \branchingMatrix$,
+ this holds if and only if
+ $(1-\branchingRatio)\mathbf{1}^{\transpose}
+ = \mathbf{1}^{\transpose}(I - \branchingMatrix)$,
+ which is the second statement.
+\end{proof}
 
-\begin{remark}[what $\branchingRatio$ is, and what it is not]\label{remark.rhoIsNot}
- Notice that $\branchingRatio$ is in general neither the endogenous fraction nor the
- reciprocal $1 - 1/\bar C$ of the mean cluster size.
- The two readings are equivalent to each other by \eqref{eq.meanClusterSize},
- and both hold exactly when
- $\totalRate = \bar{\baseIntensity}/(1-\branchingRatio)$.
- That is the case in particular when
- $\mathbf{1}^{\transpose}\branchingMatrix = \branchingRatio \mathbf{1}^{\transpose}$,
- the column sums of $\branchingMatrix$ being constant,
- and in particular when $\branchingMatrix\baseIntensity = \branchingRatio\baseIntensity$,
- the baselines being proportional to a right Perron vector.
- Neither condition is generic.
- The reason is that $\branchingRatio$ is a spectral radius,
- while \eqref{eq.meanClusterSize} and \eqref{eq.endogenousFraction} are averages against
- $\baseIntensity$, and a spectral radius does not know about $\baseIntensity$.
- The sharp statement is that $C_j = 1/(1-\branchingRatio)$ for \emph{every} $j$
- if and only if $\mathbf{1}^{\transpose}\branchingMatrix
- = \branchingRatio\mathbf{1}^{\transpose}$.
-\end{remark}
+Notice that $\branchingRatio$ is in general neither the endogenous fraction nor
+$1-1/\bar C$.
+The two agree in particular when
+$\mathbf{1}^{\transpose}\branchingMatrix = \branchingRatio\mathbf{1}^{\transpose}$
+and when $\branchingMatrix\baseIntensity = \branchingRatio\baseIntensity$,
+neither of which is generic:
+$\branchingRatio$ does not depend on $\baseIntensity$, and
+\eqref{eq.meanClusterSize} does.
 
 \subsubsection{Timescales}
 
@@ -213,9 +241,10 @@ and by \eqref{eq.meanClusterSize} it equals $1 - 1/\bar C$.
   \mathbf{1}^{\transpose}R_j(t)
   = \mathbf{1}^{\transpose} e^{\hurwitzMatrix t}\unitVector_j ,
  \end{equation}
- a combination of exponentials at the rates $\decay(1 - \Real\gamma_i)$,
- $\gamma_i$ running over the eigenvalues of $\branchingMatrix$,
- of which the slowest is $\decay(1-\branchingRatio)$.
+ a combination of exponentials at the rates $\decay(1 - \Real\gamma_i)$ when
+ $\branchingMatrix$ is diagonalisable, $\gamma_i$ running over its eigenvalues,
+ of which the slowest rate is $\decay(1-\branchingRatio)$.
+ In general the modes carry polynomial factors as well.
  The corresponding response of the mean intensity is
  $\excitation e^{\hurwitzMatrix t}\unitVector_j$, and
  \begin{equation}\label{eq.responseIntegral}
@@ -297,10 +326,11 @@ and by \eqref{eq.meanClusterSize} it equals $1 - 1/\bar C$.
 \subsubsection{Sub- and supercriticality}
 
 Everything above assumes $\branchingRatio < 1$.
-It is worth being precise about what fails otherwise, because it is less than one expects.
+Less fails without it than one expects.
 
 For a linear Hawkes process and every finite horizon $\timeHorizon$,
-$\Expectation[\countingProc(\timeHorizon)^2] < \infty$,
+$\Expectation[\countingProc(\timeHorizon)^2] < \infty$
+by the generation bound of Remark \ref{remark.noSubcriticality},
 so on $[0,\timeHorizon]$ the process
 $\martingale := \multiCountingProc - \compensator$
 is a square-integrable martingale,
@@ -316,9 +346,24 @@ the second moments of the \emph{state} $(\decayedCounts, \intensity[ ])$ are bou
 in $\timeHorizon$, which is the subject of Section \ref{sec.secondOrder};
 and the process is ergodic, so that time averages along one path estimate the stationary
 quantities above.
-Each of these fails at $\branchingRatio \geq 1$, where the intensity grows without bound and
-the event count grows exponentially.
-Note that the martingale is not bounded in $L^2$ on $[0,\infty)$ even when
+Each of these fails at $\branchingRatio \geq 1$,
+provided $\baseIntensity > 0$ for the reason of Remark \ref{remark.strictBaseline}.
+Contracting $\dot m_t = (\excitation - \decay I) m_t + \baseIntensity$ with a left Perron
+vector $v$, and using $v^{\transpose}\excitation = \decay\branchingRatio\, v^{\transpose}$,
+\begin{equation*}
+ v^{\transpose} \Expectation \big[ \intensity[ ](t) \big]
+ = \begin{cases}
+   \big( v^{\transpose}\baseIntensity \big)\,(1 + \decay t),
+   & \branchingRatio = 1, \\[2pt]
+   v^{\transpose}\baseIntensity \,
+   \dfrac{\branchingRatio\, e^{\decay(\branchingRatio-1)t} - 1}{\branchingRatio - 1},
+   & \branchingRatio > 1,
+ \end{cases}
+\end{equation*}
+so the intensity grows exponentially at rate $\decay(\branchingRatio-1)$ above criticality,
+and at $\branchingRatio = 1$ linearly, with a quadratic event count,
+whenever $1$ is a semisimple eigenvalue of $\branchingMatrix$.
+Notice that the martingale is not bounded in $L^2$ on $[0,\infty)$ even when
 $\branchingRatio<1$:
 $\Expectation[\martingale_e(\timeHorizon)^2] = \Expectation[\compensator_e(\timeHorizon)]
 \sim \stationaryIntensity[e] \timeHorizon$ diverges.

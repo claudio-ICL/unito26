@@ -15,14 +15,10 @@ Forward, the first predicts reversal and the second continuation.
 The sign therefore belongs to the kernel and not to $\OFI$,
 and no statement of the form ``$\OFI$ predicts continuation'' is made in these notes
 without naming the regime it is made in.
-Every coefficient, every window and every goodness-of-fit figure is produced by
-\texttt{notebooks/regressing-the-mid-on-the-imbalances.ipynb},
-whose claims and seed blocks are fixed in advance in
-\texttt{documentation/pre-registration-imbalance-regression.md};
-none is reproduced here, so that none can go stale here.
+No coefficient, window or goodness-of-fit figure is reproduced here.
 
 The apparatus of Section \ref{sec.pointProcesses} generates order flow in a controlled setting,
-and a reader should not mistake a result obtained in it for a result about a traded market.
+so that a result obtained in it is a result about the generator and not about a traded market.
 The following are absent by construction.
 
 The intensities do not read the book: there is no queue-depletion feedback,
@@ -31,8 +27,7 @@ The \emph{marks} do read it, and that is the mechanism behind the book's restori
 There is no queue-position economics.
 
 There is no informed trading, and therefore no \emph{adverse selection}.
-There is a single excitation timescale, the kernel being one exponential,
-per Remark \ref{remark.stateSize}.
+There is a single excitation timescale, the kernel being one exponential.
 There is no intraday non-stationarity, so a window tuned here is not tested against one.
 There is no anchor for the price level, so the level wanders and the mean price change over
 a session is a property of the seed.
