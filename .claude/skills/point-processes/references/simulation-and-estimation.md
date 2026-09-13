@@ -1,6 +1,6 @@
 # Simulation and estimation
 
-The algorithms of `chap.hawkes` §6, and the statistical traps that the lattice-valued
+The algorithms of `sec.simulation`, and the statistical traps that the lattice-valued
 outcome sets. Load the chapter for the derivations; this file is what an implementation
 needs at hand.
 
@@ -11,13 +11,13 @@ Everything rests on it:
 $$\mathbb P(T_{n+1} - T_n > s \mid \mathcal F_{T_n})
  = \exp\Big(-\int_{T_n}^{T_n+s}\bar\lambda(u)\,du\Big),$$
 
-with $\bar\lambda$ evaluated on the event that no arrival occurs in the interval, which
+with $\lambda_{\mathfrak g}$ evaluated on the event that no arrival occurs in the interval, which
 makes the right-hand side $\mathcal F_{T_n}$-measurable and therefore invertible.
 
 ## Dassios–Zhao, exact
 
 With a common $\beta$, $\bar\lambda(t) = \bar\mu + D e^{-\beta(t-T_n)}$ between events,
-$D := \bar\lambda(T_n^+) - \bar\mu \ge 0$ by $A \ge 0$. So the survival function factorises
+$D := \bar\lambda(T_n^+) - \bar\mu \ge 0$ by $\mathcal{A} \ge 0$. So the survival function factorises
 and the wait is a minimum of two independent draws. For $U_1, U_2 \sim \mathrm{Unif}(0,1)$:
 
 $$\tau_1 = -\frac{\ln U_1}{\bar\mu},
@@ -40,7 +40,7 @@ $O(1)$ per event, exact, no rejection, no discretisation, no time grid.
 ## Ogata thinning, the control
 
 Kept because it applies to any kernel and because an independent route is what makes
-agreement meaningful. Its majorant is free: with $A \ge 0$ the total intensity is
+agreement meaningful. Its majorant is free: with $\mathcal{A} \ge 0$ the total intensity is
 non-increasing between events, so the value at the last event dominates it. Draw
 $U \sim \mathrm{Exp}(\bar\lambda(t))$, accept with probability
 $\bar\lambda(t+U)/\bar\lambda(t)$, else advance and repeat.

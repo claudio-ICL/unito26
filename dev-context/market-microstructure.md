@@ -483,7 +483,7 @@ complete, plausible answer, and most of them pass a test suite written from the 
 ## References
 
 - [`documentation/order-driven-markets-notation.md`](../documentation/order-driven-markets-notation.md)
-  — the notation and mechanics, as fixed in the notes (`documentation/tex/notes/orderdriven/`)
+  — the notation and mechanics, as fixed in the notes (`documentation/tex/notes/microstructure/`)
   and used by the `market-microstructure` skill.
 - [`documentation/order-flow-to-order-book.md`](../documentation/order-flow-to-order-book.md)
   — the mathematics of the implementation, each result tied to the code region carrying it

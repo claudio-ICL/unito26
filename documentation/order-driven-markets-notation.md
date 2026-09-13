@@ -6,7 +6,7 @@ way, and have the same mechanics.
 
 **Sources.** The symbols are defined once, as macros, in
 [`tex/include/notation.tex`](tex/include/notation.tex); the statements are developed in
-[`tex/notes/orderdriven/sections/order_driven_markets.tex`](tex/notes/orderdriven/sections/order_driven_markets.tex).
+[`tex/notes/microstructure/sections/order_driven_markets.tex`](tex/notes/microstructure/sections/order_driven_markets.tex).
 This file restates them in one readable place and adds the Python identifier each symbol
 maps to. **If this file and the `.tex` ever disagree, the `.tex` wins** — fix this file.
 
@@ -23,7 +23,7 @@ $$(t, q, p, d), \qquad q \ge 0, \quad p \ge 0, \quad d \in \{-1, +1\}.$$
 | --- | --- |
 | $t$ | time of submission (the timestamp) |
 | $q$ | size, in number of shares |
-| $p$ | limit price |
+| $\varpi$ | limit price |
 | $d$ | direction: $d = +1$ buy, $d = -1$ sell |
 
 A participant who *posts* $(t,q,p,d)$ commits at time $t$ to buy ($d=+1$) or sell ($d=-1$)
@@ -388,7 +388,7 @@ Python identifier — use it, and nothing else, in `unito26/` and in the noteboo
 | $\mathrm{sc}$ | `\sweepCost` | sweep cost: per-share cost of a market order, in ticks | `sweep_cost` |
 | $\mathrm{TV}$ | `\tradedValue` | traded value, $\sum \pi_i q_i$, in tick-shares | `traded_value` |
 | $\mathrm{VWAP}$ | `\VWAP` | volume-weighted average price | `vwap` |
-| $A$ | `\askOrderQueue` | set of active sell orders | `ask_orders` |
+| $\mathcal{A}$ | `\askOrderQueue` | set of active sell orders | `ask_orders` |
 | $B$ | `\bidOrderQueue` | set of active buy orders | `bid_orders` |
 | $Q^b_t$, $Q^a_t$ | `\bidQueue`, `\askQueue` | size process at the touch, $Q^b_t = S^{b,1}_t$ | `bid_queue`, `ask_queue` |
 | $Q$ | `\queue` | generic size process of one queue | `queue` |
@@ -408,7 +408,7 @@ Python identifier — use it, and nothing else, in `unito26/` and in the noteboo
 ### The order flow
 
 The table above is the book's; the flow that drives it has none of its symbols. These are
-the ones the point-process chapter `chap.hawkes` develops and the ones the imbalance
+the ones the point-process section `sec.pointProcesses` develops and the ones the imbalance
 regressions are reported against; [`point-processes-and-hawkes.md`](point-processes-and-hawkes.md)
 is their code-facing half.
 
@@ -418,31 +418,30 @@ is their code-facing half.
 | $N$ | `\multiCountingProc` | the counting process, one coordinate per event type | — |
 | $N_{\mathfrak g}$ | `\groundProc` | its ground process, $\sum_e N_e$ | — |
 | $E_n$ | `\event` | the type of the $n$-th event | `EventType` |
-| $\lambda(t)$ | `\intensity` | the conditional intensity **vector**, $\lambda = \mu + A\,S(t)$ | — |
-| $\bar\lambda(t)$ | `\totalIntensity` | its total, $\mathbf{1}^\top\lambda(t)$ — the scalar the exact scheme decomposes | `total_intensity` |
+| $\lambda(t)$ | `\intensity` | the conditional intensity **vector**, $\lambda = \mu + \mathcal{A}\,Z(t)$ | — |
+| $\lambda_{\mathfrak g}(t)$ | `\totalIntensity` | its total, $\mathbf{1}^\top\lambda(t)$ — the scalar the exact scheme decomposes | `total_intensity` |
 | $\Lambda$ | `\compensator` | the compensator, $\mathrm{d}\Lambda = \lambda\,\mathrm{d}t$ | `compensators_at_events` |
 | $\kappa_{e,e'}$ | `\hawkesKernel\subscriptee` | the kernel: the influence of $e'$ on $e$ | — |
 | $\mu$, $\bar\mu$ | `\baseIntensity` | the baseline intensity vector and its total | `baseline` |
 | $A_{e,e'}$ | `\excitation` | excitation of type $e$ **by** type $e'$, and the matrix of them | `excitation` |
 | $\beta$ | `\decay` | the common exponential decay rate, in s$^{-1}$ | `decay` |
-| $S(t)$ | `\decayedCounts` | the decayed-count state, $S_e(t) = \sum_{T^e_j < t} e^{-\beta(t - T^e_j)}$ | `decayed_counts` |
-| $\Gamma$ | `\branchingMatrix` | the branching matrix $A/\beta$ | `branching_matrix` |
+| $Z(t)$ | `\decayedCounts` | the decayed-count state, $Z_e(t) = \sum_{T^e_j < t} e^{-\beta(t - T^e_j)}$ | `decayed_counts` |
+| $\Gamma$ | `\branchingMatrix` | the branching matrix $\mathcal{A}/\beta$ | `branching_matrix` |
 | $\rho$ | `\branchingRatio` | its spectral radius — **not** the endogenous fraction, and $1/(1-\rho)$ **not** the cluster size | `branching_ratio` |
 | $\lambda^*$ | `\stationaryIntensity` | the stationary intensity vector $(I-\Gamma)^{-1}\mu$ | `stationary_intensity()` |
 | $\nu$ | `\totalRate` | its total $\mathbf{1}^\top\lambda^*$, a rate in events per second | — |
-| $p$ | `\pressure` | the pressure vector, $p_e \in \{-1, 0, +1\}$ | `EventType.pressure` |
+| $\varpi$ | `\pressure` | the pressure vector, $\varpi_e \in \{-1, 0, +1\}$ | `EventType.pressure` |
 | $\lambda^\uparrow$, $\lambda^\downarrow$ | `\upIntensity`, `\downIntensity` | the up- and down-pushing intensities | — |
-| $\Delta\lambda$ | `\intensityContrast` | the intensity contrast $p^\top\lambda$ | — |
+| $\Delta\lambda$ | `\intensityContrast` | the intensity contrast $\varpi^\top\lambda$ | — |
 | $w$, $h$ | — | the $\mathrm{OFI}$ lookback and the forecast horizon, both in seconds | `window`, `horizon` |
 
-**The second index excites.** $A_{e,e'}$ is the influence of $e'$ on $e$, so $\lambda = \mu + AS$
+**The second index excites.** $A_{e,e'}$ is the influence of $e'$ on $e$, so $\lambda = \mu + \mathcal{A}Z$
 is a plain matrix–vector product and the *column* sums of $\Gamma$ are the readable quantity.
 A matrix and its transpose share a spectral radius, so a transposed kernel passes every
 stability check; the convention is the only defence.
 
-$S$ collides with a level size and $\rho$ with the resting price of $(s, \rho, \pi, -d)$;
-both are disambiguated by context in prose and by distinct identifiers in code, as the
-collisions below are.
+$\rho$ collides with the resting price of $(s, \rho, \pi, -d)$; it is disambiguated by
+context in prose and by distinct identifiers in code, as the collisions below are.
 
 Names carried by the implementation rather than by the notes, recorded here so they are
 not reinvented: `occupied_levels(direction, reported_depth)` for the LOBSTER indexing,
@@ -467,20 +466,30 @@ The order tuple itself has no macros: $t$ is time, $q$ size, $p$ price, $d$ dire
 $(s, \rho, \pi, -d)$ is the resting counterpart of $(t, q, p, d)$. In code, keep the tuple
 order `(t, q, p, d)`.
 
-**Collisions to watch.** The `.tex` reuses letters across blocks: $A$ is both the ask order
-queue (`\askOrderQueue`) and the generic arrival process (`\arrivals`); $Q$ is both a queue
-size (`\queue`) and the quantity to liquidate (`\quantityToLiquidate`); $S$ is both a level
-size here and the price path (`\pricePath`, `\semimartingale`, $S^0$ for the riskless asset)
-in the option-pricing block; $V$ is a volume in both its uses, but signed and per-execution in
-§7 and unsigned and aggregated over a window elsewhere — the two meet at $V = d\,q_M$ when the
-execution is by market order. Context disambiguates them in prose, but Python names must not —
-hence the distinct identifiers above.
+**Collisions to watch.** Letters that still do two jobs, deliberately, because the two
+meanings never share a displayed formula: $\tau$ is the tick size (`\tickSizeOfLOB`) and the
+inter-arrival time of the point-process block; $N_s$, $N_p$ are level counts local to the proof
+of `prop.lobUpdate` while $N$ is the counting process; $\rho$ is the branching ratio and the
+resting size of $(s,\rho,\pi,-d)$; $Q$ is a queue size (`\queue`) and the quantity to
+liquidate (`\quantityToLiquidate`); $S$ is a level size here and the price path
+(`\pricePath`, `\semimartingale`, $S^0$ for the riskless asset) in the option-pricing block;
+$V$ is a volume in both its uses, but signed and per-execution in §7 and unsigned and
+aggregated over a window elsewhere — the two meet at $V = d\,q_M$ when the execution is by
+market order. Context disambiguates them in prose, but Python names must not — hence the
+distinct identifiers above.
+
+Letters that were split, so that they do **not** collide: the decayed counts are $Z$
+(`\decayedCounts`), not $S$, because $S^{a,i}$ is a level size; the excitation matrix is
+$\mathcal{A}$ (`\excitation`), not $A$, because $A_t$ is the ask order queue; the pressure
+vector is $\varpi$ (`\pressure`), not $p$, because $p$ is the price of $(t,q,p,d)$; the
+trading epoch is $\mathcal{E}$ (`\tradingEpoch`), not $E$, because $E_n$ is the event type;
+unit vectors are $\mathbf{e}_e$ (`\unitVector`), because $e$ is already the type index and
+the base of the exponential; the second moment of the state is $\Pi$ and the Hurwitz matrix
+of the Lyapunov equation is $K$, because $M$ is the martingale $N - \Lambda$. **None of these
+changed a Python identifier.**
 
 Part of the literature writes $V$ for the size of a level. Here that is $S$, and $V$ is the
 volume transacted; the two are different words throughout, since a level shrinks by
 cancellation as well as by execution.
 
-$S$ carries one further use once the point-process chapter is in play: `\decayedCounts`, the
-vector of exponentially decayed event counts that makes the Hawkes intensity Markov. It is
-always subscripted by an event type, $S_e$, where a level size always carries a side and a
-level, $S^{a,i}$, so the two do not meet in an expression.
+

@@ -25,7 +25,7 @@ $S^{b,i}_t = 0$ where nothing rests.
 
 So $n$ counts **grid positions**, spanning $n-1$ ticks from each touch.
 It is not a count of queues.
-The `.tex` in `documentation/tex/notes/orderdriven/` is the authority; `queue_imbalance(n)`
+The `.tex` in `documentation/tex/notes/microstructure/` is the authority; `queue_imbalance(n)`
 follows it, and its argument is typed `GridDepth` for that reason.
 
 **This is not the literature's convention.** Feed-derived empirical work almost always

@@ -14,7 +14,7 @@ Exploratory numbers are reported without p-values and without intervals framed a
 ## The lab
 
 Two regimes, at the same branching ratio and the same total rate, differing in whether
-excitation follows the pressure partition. `chap.hawkes` §7 develops the distinction and
+excitation follows the pressure partition. `sec.priceFormation` develops the distinction and
 [`point-processes-and-hawkes.md`](point-processes-and-hawkes.md) §2 tabulates it.
 
 | | resilient (`EXAMPLE_`) | trending (`TRENDING_`) |

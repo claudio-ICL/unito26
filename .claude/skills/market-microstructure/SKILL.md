@@ -6,7 +6,7 @@ description: The notation and mechanics of order-driven markets as this course d
 # Market microstructure and order books in `unito26`
 
 The apparatus is developed in the notes,
-`documentation/tex/notes/orderdriven/sections/order_driven_markets.tex`, and restated for
+`documentation/tex/notes/microstructure/sections/order_driven_markets.tex`, and restated for
 working use — with the mechanics and a worked example — in
 **`documentation/order-driven-markets-notation.md`**. Read that file before designing types
 or functions; the notes are the authority, this skill is the code-facing half.

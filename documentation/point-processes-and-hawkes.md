@@ -4,7 +4,7 @@ The apparatus that generates the order flow of this course, and the quantities o
 legitimately read off it.
 
 **Sources.** The theory is developed in
-[`tex/notes/hawkes/`](tex/notes/hawkes/), chapter `chap.hawkes`; the symbols are defined
+[`tex/notes/microstructure/`](tex/notes/microstructure/), section `sec.pointProcesses`; the symbols are defined
 once, as macros, in [`tex/include/notation.tex`](tex/include/notation.tex). This file is the
 code-facing half: it maps each section of the chapter onto the module and the test that
 carry it, and adds the facts that belong to this package rather than to the theory.
@@ -21,17 +21,17 @@ $\nu = 30.19$ events/s — unless another parametrization is named.
 | --- | --- | --- | --- |
 | §1 `sec.countingProcesses` | compensator, intensity, Meyer's time change | — | — |
 | §2 `sec.hawkesProcesses` | the definition, $\Gamma$, the cluster representation | `hawkes.HawkesParams` | `test_hawkes.py::TestParameterValidation` |
-| §3 `sec.exponentialKernel` | $\lambda = \mu + AS$, the $O(1)$ recursion, the compensator display | `hawkes.intensities_at_events`, `hawkes.compensators_at_events` | `test_hawkes.py::TestTheReplayedIntensity` |
+| §3 `sec.hawkesProcesses` | $\lambda = \mu + \mathcal{A}Z$, the $O(1)$ recursion, the compensator display | `hawkes.intensities_at_events`, `hawkes.compensators_at_events` | `test_hawkes.py::TestTheReplayedIntensity` |
 | §4 `sec.stability` | $\rho$, $\lambda^*$, cluster sizes, the endogenous fraction | `HawkesParams.branching_matrix`, `.branching_ratio`, `.stationary_intensity`, `.endogenous_fraction`, `.mean_cluster_size` | `test_hawkes.py::TestTheBranchingStructure` |
 | §5 `sec.secondOrder` | the Lyapunov equation | `scipy.linalg.solve_lyapunov`, used in the notebook | — |
 | §6 `sec.simulation` | Dassios–Zhao, Ogata thinning, the residual test | `hawkes.ExponentialHawkes`, `hawkes.OgataThinningHawkes` | `test_hawkes.py::TestExactSimulation`, `::TestAgreementAndClustering` |
-| §7 `sec.readingOrderFlow` | $p$, $\Delta\lambda$, the comparison with $\mathrm{OFI}$ | `HawkesParams.signed_endogenous_fraction`, `imbalance_regression` | `test_hawkes.py::TestTheSignedContrasts` |
+| §7 `sec.orderFlowModel` | $p$, $\Delta\lambda$, the comparison with $\mathrm{OFI}$ | `HawkesParams.signed_endogenous_fraction`, `imbalance_regression` | `test_hawkes.py::TestTheSignedContrasts` |
 
 Three invariants any implementation must respect, all of them load-bearing:
 
-- **$A \ge 0$ and a scalar $\beta$ are what make the exact scheme valid**, and they do
+- **$\mathcal{A} \ge 0$ and a scalar $\beta$ are what make the exact scheme valid**, and they do
   *different* jobs. The common $\beta$ is what makes the total intensity decay as a single
-  exponential between events; $A \ge 0$ is what makes the excess over $\bar\mu$
+  exponential between events; $\mathcal{A} \ge 0$ is what makes the excess over $\bar\mu$
   non-negative, so that both factors of the survival function are genuine. Neither
   substitutes for the other.
 - **$\rho < 1$ is checked in `__post_init__`**, and the error names the offending value.
@@ -79,7 +79,7 @@ forward mid change:
 | `EXAMPLE_` | $-0.024$ | $-0.035$ | $-0.054$ | $-0.071$ | $-0.094$ | $-0.105$ |
 
 **Contemporaneously both are positive** — $+0.358$ and $+0.408$ over the same 325 ms window.
-That is the mechanical accounting of `chap.orderDrivenMarkets` and it does not distinguish
+That is the mechanical accounting of `sec.orderDrivenMarkets` and it does not distinguish
 the regimes. Only the forward sign does.
 
 Two facts about the trending regime are constraints rather than choices, and both were
@@ -92,7 +92,7 @@ negative after, is impact giving way to resilience, and is a result rather than 
 
 | leg | where |
 | --- | --- |
-| statement | this entry, and `chap.hawkes` §7 |
+| statement | this entry, and `sec.priceFormation` |
 | code | `unito26.lob.config` — `example_order_flow_params`, `trending_order_flow_params`, `trending_mark_params` |
 | tests | `test_serialization.py::TestFrozenExamples::test_the_two_regimes_have_opposite_signed_endogeneity` |
 
@@ -191,7 +191,7 @@ So that a reader cannot take a result here for a result about markets.
 - **The intensities do not read the book** (entry 3). Arrival rates are indifferent to
   whether a queue is about to empty; only the marks see it.
 - **No informed trading and therefore no adverse selection.** This is the largest omission
-  and it is argued in full in `chap.hawkes` §7. In a traded book a provider is short an
+  and it is argued in full in `sec.priceFormation`. In a traded book a provider is short an
   option and withdraws before being picked off, so depletion begets depletion, and $I^n$ is
   informative because a thin bid is thin *because* its providers inferred something. Our
   kernel does the reverse by construction. **Whatever forecasting power $I^n$ retains here

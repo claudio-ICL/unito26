@@ -8,7 +8,7 @@ description: How TeX is written for this course. Load before creating or editing
 The house style is Claudio's thesis: `~/Documents/thesis/tex` (the book) and
 `~/Documents/thesis/viva/tex` (the beamer deck). Read from it when a case is not
 covered here. The worked example inside this repo is the limit-order-book chapter at
-`documentation/tex/notes/lob/`.
+`documentation/tex/notes/microstructure/`.
 
 ## The rules that matter most
 
