@@ -1,0 +1,445 @@
+\begin{frame}
+  \frametitle{Outline}
+% One \nocite per line -- a multi-key \nocite spanning lines breaks bibtex.
+\nocite{FPR13mar}
+\nocite{GPWMFH13lim}
+\nocite{CDJ18enh}
+Order-driven markets are trading venues organised around \emph{limit orders}:
+the participants themselves supply the prices,
+and the venue only matches them against one another.
+
+We describe the mechanism precisely:
+what a limit order is,
+how the matching algorithm clears it,
+what the resulting object --- the limit order book --- looks like,
+and what it costs to trade against it.
+\end{frame}
+
+\subsection{Introduction}
+
+\begin{frame}
+  \frametitle{Two market infrastructures}
+Market infrastructures fall in two categories:
+\emph{dealer markets} (also known as quote-driven markets)
+and
+\emph{limit order markets} (also known as order-driven markets).
+
+\pause
+
+EURONEXT, the Swiss, Helsinki, Canadian, Toronto, Australian, Hong Kong, Shenzhen and Tokyo
+exchanges operate as purely order-driven markets;
+NYSE, NASDAQ and LSE are order-driven with some legacy quote-driven mechanisms.
+
+\pause
+
+Order-driven markets are transparent:
+every participant observes in real time all the others' commitments to trade,
+organised in the so-called \emph{limit order book}.
+\end{frame}
+
+\subsection{Order-driven markets}
+
+\begin{frame}
+  \frametitle{The limit order}
+A limit order is the fundamental action a participant can perform.
+It is a 4-tuple
+\[
+(t,q,p,d),
+\]
+where $t$ is time, $q$ is size, $p$ is price,
+and $d=1$ (buy) or $d=-1$ (sell) is direction.
+
+\pause
+
+The price $p$ is the \emph{worst} price the sender accepts:
+the highest at which she buys, the lowest at which she sells.
+By regulation $p$ is an integer multiple of the tick size $\tickSizeOfLOB$.
+
+\pause
+
+A participant may also \emph{cancel} a previously submitted order,
+withdrawing her commitment to trade.
+\end{frame}
+
+\begin{frame}
+  \frametitle{Matching}
+The incoming order $(t,q,p,d)$ is matched against active orders
+with timestamp $s<t$ and opposite direction $-d$.
+
+\pause
+
+The active order $(s,\rho,\pi,-d)$ \emph{matches} it if $\pi d \leq p d$;
+then $\rho \wedge q$ shares transact at the price $\pi$,
+and the two orders are replaced by
+\[
+(s,\rho - \rho\wedge q, \pi, -d),
+\qquad
+(t,q - \rho\wedge q, p, d).
+\]
+
+\pause
+
+At least one of them has null size.
+If the incoming order still has size left, the search continues;
+whatever cannot be filled is recorded in the book and waits.
+\end{frame}
+
+\begin{frame}
+  \frametitle{Price-time priority}
+The search follows the ordering
+\[
+(s,\rho,\pi,-d)<(s\derivative,\rho\derivative,\pi\derivative,-d)
+\quad \text{ iff } \quad
+(d\pi<d\pi\derivative)\vee((\pi=\pi\derivative)\wedge(s<s\derivative)).
+\]
+Better price first; at equal price, earlier timestamp first.
+
+\pause
+
+This ordering is a \emph{total} order on each side of a trading epoch ---
+antisymmetry holds because no two orders share a timestamp.
+
+\pause
+
+So each side is a queue,
+and a position in it is an asset that cancelling forfeits.
+\end{frame}
+
+\begin{frame}
+  \frametitle{The order queues}
+\begin{defi}
+\label{slide.orderQueue}
+Let $\tradingEpoch$ be a trading epoch. The ask and bid order queues at time $t$ are
+\[
+\askOrderQueue_t := \lbrace (s,q,p,-1)\in \tradingEpoch : \text{active at time } t \rbrace,
+\]
+\[
+\bidOrderQueue_t := \lbrace (s,q,p,+1)\in \tradingEpoch : \text{active at time } t \rbrace.
+\]
+\end{defi}
+
+\pause
+
+An order is \emph{active} (or outstanding) at time $t$ if it was submitted by then
+and has been neither executed nor cancelled.
+\end{frame}
+
+\begin{frame}
+  \frametitle{The book is a price grid}
+A limit order book is a grid of equally spaced prices, of spacing $\tickSizeOfLOB$,
+at which the active orders sit.
+
+\pause
+
+Buy offers organise on the left (the \emph{bid side}),
+sell offers on the right (the \emph{ask side}) ---
+not by decree, but because any overlap would already have been matched away.
+
+\pause
+
+The whole configuration at time $t$ is
+\[
+\Big(\bestAskPrice_t, \; \bestBidPrice_t, \;
+\lbrace (\nthBestAskSize[i]_t, \nthBestBidSize[i]_t) : i=1,2,\dots \rbrace \Big),
+\]
+with $\nthBestAskPrice[i]_t = \bestAskPrice_t + (i-1)\tickSizeOfLOB$
+and $\nthBestBidPrice[i]_t = \bestBidPrice_t - (i-1)\tickSizeOfLOB$.
+
+\pause
+
+$\nthBestAskSize[i]_t$ is the \emph{size} of that level, the shares queuing there.
+\emph{Volume} is the shares transacted over an interval:
+a level has a size at every instant, volume accumulates between two.
+Volume is not a change in size --- a level also shrinks by cancellation.
+\end{frame}
+
+\begin{frame}
+  \frametitle{Spread, mid-price, imbalance}
+Three derived quantities assess an order book:
+\[
+\LOBspread_t = \abs{\bestAskPrice_t - \bestBidPrice_t},
+\qquad
+\midPrice_t = \frac{\bestAskPrice_t + \bestBidPrice_t}{2},
+\]
+
+\pause
+
+and the $n$-levels queue imbalance
+\[
+\queueImbalance[n]_t =
+\frac{\sum_{i\leq n}\nthBestBidSize[i]_t - \sum_{i\leq n}\nthBestAskSize[i]_t}{\sum_{i\leq n}\nthBestBidSize[i]_t + \sum_{i\leq n}\nthBestAskSize[i]_t}.
+\]
+
+\pause
+
+The queue imbalance, called volume imbalance in \citet{CDJ18enh},
+is widely accepted as a reliable signal for the next mid-price move:
+close to $-1$ the mid-price will likely decrease, close to $+1$ it will likely increase.
+\end{frame}
+
+\begin{frame}
+  \frametitle{Every limit order hides a market order}
+Processing the sell limit order $(t,q,p,-1)$ is \emph{equivalent} to processing the pair
+\[
+\big[\,(t,\marketOrderSize,0,-1)\,,\;(t,q-\marketOrderSize,p,-1)\,\big],
+\]
+where
+\[
+\marketOrderSize = \min\Big(q, \textstyle\sum_{i\geq 1} \nthBestBidSize[i]_{t-} \indicator{\nthBestBidPrice[i]_{t-}\geq p}\Big).
+\]
+
+\pause
+
+The first component has price $0$ --- immediate execution, nothing queued.
+That is the \emph{market order}.
+The second is exactly the part that rests in the book.
+
+\pause
+
+A market order \emph{walks the book} when $\marketOrderSize > \nthBestBidSize[1]_{t-}$:
+it eats past the best level, each unit worse than the last.
+Trades are market orders with $\marketOrderSize > 0$.
+\end{frame}
+
+
+\begin{frame}
+  \frametitle{Outline}
+% One \nocite per line -- a multi-key \nocite spanning lines breaks bibtex.
+\nocite{Haw71spe}
+\nocite{HO74clu}
+\nocite{DVJ08int}
+\nocite{DZ13exa}
+A Hawkes process is a counting process whose events raise the rate of future events.
+It is the simplest model of order flow in which a burst is not a coincidence.
+
+We set up the general apparatus --- intensity, compensator, time change ---
+fix the exponential kernel that makes it computable,
+and read off what the branching ratio does and does not tell us.
+\end{frame}
+
+\subsection{Counting processes}
+
+\begin{frame}
+  \frametitle{Intensity and compensator}
+A multivariate counting process $\multiCountingProc$ has $\filtrationF$-compensator
+$\compensator$ when $\multiCountingProc - \compensator$ is a local martingale
+and $\compensator$ is predictable, right-continuous and of finite variation.
+
+\pause
+
+When $\compensator(t) = \intzerot \intensity[ ](s)ds$
+we call $\intensity[ ]$ the \emph{intensity}, and
+\begin{equation*}
+ \Expectation\left[ \countingProc(t)-\countingProc(s) \vert \filtrationF_s \right]
+ = \Expectation\left[ \int_{s}^{t} \intensity(u) du \vert \filtrationF_s \right] .
+\end{equation*}
+
+\pause
+
+Predictability is the whole content: $\intensity(t)$ is a function of the \emph{strict} past.
+Every intensity we write is left-continuous for that reason.
+\end{frame}
+
+\begin{frame}
+  \frametitle{The time change}
+\begin{thm}[Meyer, 1971]
+ If no two components jump together, the compensator is continuous, and it diverges,
+ then rescaling each component's clock by its own compensator produces
+ \emph{mutually independent} unit-rate Poisson processes.
+\end{thm}
+
+\pause
+
+This is the goodness-of-fit test: rescaled inter-arrivals should be $\text{Exp}(1)$.
+
+\pause
+
+But comparing each margin against $\text{Exp}(1)$ tests only the margins.
+The theorem asserts two further independences --- serial, and across components ---
+and it is the no-common-jumps hypothesis that buys the second.
+\end{frame}
+
+\subsection{Hawkes processes}
+
+\begin{frame}
+  \frametitle{The definition}
+\begin{equation*}
+ \intensity(t) = \baseIntensity_e
+ + \sum_{\eone=1}^{\numEventTypes}\intzerot \hawkesKernel\subscriptee(t-s) \, d\countingProc[\eone](s)
+\end{equation*}
+with $\baseIntensity \geq 0$ and $\hawkesKernel \geq 0$.
+
+\pause
+
+$\branchingMatrix\subscriptee := \Vert \hawkesKernel\subscriptee \Vert_{\Lone}$,
+and $\branchingRatio$ its spectral radius: the \emph{branching ratio}.
+A stationary version with finite mean intensity exists iff $\branchingRatio<1$.
+
+\pause
+
+\alert{The second index excites.}
+$\branchingMatrix\subscriptee$ is the influence of $\eone$ on $e$,
+so $\intensity[ ] = \baseIntensity + \excitation\decayedCounts$ is a plain matrix--vector
+product and the \emph{column} sums are the readable quantity.
+The opposite convention is common, and
+$\branchingRatio(\branchingMatrix) = \branchingRatio(\branchingMatrix^{\transpose})$:
+a transposed kernel is a bug that still runs.
+\end{frame}
+
+\begin{frame}
+  \frametitle{Why order flow carries information}
+\begin{prop}[Hawkes and Oakes, 1974]
+ With $\hawkesKernel \geq 0$ and $\branchingRatio<1$:
+ immigrants arrive Poisson at rate $\baseIntensity_e$;
+ each event spawns offspring of type $e$ at intensity $\hawkesKernel\subscriptee(s-t)$.
+ The superposition is the stationary Hawkes process.
+\end{prop}
+
+\pause
+
+Events partition into \emph{clusters}: one immigrant and its descendants.
+
+\pause
+
+A burst is, with high probability, a cluster in progress ---
+and a cluster in progress has descendants still to come.
+That is the whole reason a window sum of recent flow predicts anything.
+
+\pause
+
+A cluster is a run with a \emph{common ancestor}.
+It is not a run of same-signed events.
+\end{frame}
+
+\subsection{The exponential kernel}
+
+\begin{frame}
+  \frametitle{One decay, and what it buys}
+$\hawkesKernel\subscriptee(t) = \excitation\subscriptee e^{-\decay t}$,
+with $\decay$ \emph{scalar}.
+With
+$\decayedCounts_e(t) := \sum_{j:\, \arrivalTimes_{j} < t} e^{-\decay(t-\arrivalTimes_{j})}$,
+\begin{equation*}
+ \intensity[ ](t) = \baseIntensity + \excitation \decayedCounts(t),
+ \qquad
+ d\decayedCounts = -\decay \decayedCounts \, dt + d\multiCountingProc .
+\end{equation*}
+
+\pause
+
+$(\multiCountingProc, \decayedCounts)$ is Markov: the past enters through $\numEventTypes$
+numbers. Updating costs $O(1)$ per event against $O(n^2)$.
+
+\pause
+
+Choosing the kernel is choosing the size of the state.
+A decay per pair needs a $\numEventTypes \times \numEventTypes$ state.
+The price of the single timescale is that the model cannot have two.
+\end{frame}
+
+\begin{frame}
+  \frametitle{Exact simulation}
+The decay is common, so the excited part of $\totalIntensity$ decays by one factor:
+\begin{equation*}
+ \Prob \left( \arrivalTimes[]_{n+1} - \arrivalTimes[]_{n} > s \, \vert \, \filtrationF \right)
+ = e^{-\bar{\baseIntensity}s} \cdot
+ \exp\left( -\tfrac{D}{\decay}\big(1 - e^{-\decay s}\big) \right) .
+\end{equation*}
+
+\pause
+
+A product of two survival functions, so the wait is $\tau_1 \wedge \tau_2$:
+one immigration draw, one excitation draw, both closed form.
+No thinning, no rejection \citep{DZ13exa}.
+
+\pause
+
+$\tau_2 = +\infty$ is not an edge case:
+the excited part carries finite mass $D/\decay$ and expires without firing with probability
+$e^{-D/\decay}$.
+
+\pause
+
+The \emph{type} is then drawn proportionally to $\intensity(\arrivalTimes[]_{n+1}-)$.
+The wait sees only column sums; the type draw is where $\excitation$ re-enters.
+\end{frame}
+
+\subsection{Reading the branching ratio}
+
+\begin{frame}
+  \frametitle{What $\branchingRatio$ is, and what it is not}
+$\stationaryIntensity = (I-\branchingMatrix)^{-1}\baseIntensity$,
+$\totalRate = \mathbf{1}^{\transpose}\stationaryIntensity$,
+$\bar{\baseIntensity} = \mathbf{1}^{\transpose}\baseIntensity$.
+
+\pause
+
+Cluster size $C_j = \mathbf{1}^{\transpose}(I-\branchingMatrix)^{-1}\unitVector_j$
+--- \alert{counting the ancestor} --- and
+$\bar{C} = \totalRate/\bar{\baseIntensity}$, so $\bar{\baseIntensity}\bar{C} = \totalRate$:
+every event lies in exactly one cluster.
+
+\pause
+
+Endogenous fraction $1 - \bar{\baseIntensity}/\totalRate$.
+
+\pause
+
+\alert{It is not $\branchingRatio$}, and $\bar C$ is not $1/(1-\branchingRatio)$,
+except when the column sums of $\branchingMatrix$ are constant
+(or $\baseIntensity$ is a right Perron vector).
+Here: $0.682$ against $\branchingRatio = 0.60$, and $\bar C = 3.15$ against $2.5$.
+A spectral radius does not know about $\baseIntensity$.
+\end{frame}
+
+\begin{frame}
+  \frametitle{Timescales, and how to switch a study off}
+Relaxation $1/(\decay(1-\branchingRatio))$ --- the \emph{slowest mode}, not a half-life.
+
+\pause
+
+Two dimensionless groups:
+\begin{itemize}
+ \item $\totalRate/\decay$: events per excitation timescale. Is clustering visible at all?
+ \item $\totalRate w$: events per observation window. Is a window sum a statistic?
+\end{itemize}
+
+\pause
+
+At $\totalRate/\decay \ll 1$ the excitation has expired before the next event arrives.
+A study run there measures a process whose self-excitation is switched off,
+and correctly finds nothing.
+\end{frame}
+
+\subsection{Reading the order flow}
+
+\begin{frame}
+  \frametitle{What the laboratory leaves out}
+In a traded market some flow is \emph{informed}.
+A provider resting on the bid is short an option:
+he is filled exactly when someone wants to sell, which is disproportionately when selling
+is right.
+
+\pause
+
+His defence is to withdraw first.
+So a queue about to be picked off is one whose own side pulls away from it:
+\alert{depletion begets depletion}.
+That is what makes $\queueImbalance[1]$ informative --- a thin bid is thin \emph{because}
+its providers inferred something.
+
+\pause
+
+Our generator does the reverse, deliberately: depletion excites \emph{replenishment},
+19 to 1.
+The two cannot both be strong in one kernel, and a book that survives is the precondition
+for measuring anything.
+
+\pause
+
+So here $\queueImbalance[1]$ carries \alert{mechanical} information only ---
+a depleted queue is one market order from clearing.
+Read the comparison asymmetrically:
+$\OFI$ winning is not evidence it dominates in general;
+$\queueImbalance[1]$ winning would be the stronger finding.
+\end{frame}

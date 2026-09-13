@@ -1,0 +1,87 @@
+We now specialise to the order flow of Section \ref{sec.orderDrivenMarkets}.
+The six event types are the market, limit and withdrawal orders on each side:
+\begin{center}
+ \begin{tabular}{lcccccc}
+  \toprule
+  $e$ & market buy & market sell & limit buy & limit sell & withdraw bid & withdraw ask \\
+  \midrule
+  $\pressure_e$ & $+1$ & $-1$ & $+1$ & $-1$ & $-1$ & $+1$ \\
+  \bottomrule
+ \end{tabular}
+\end{center}
+The vector $\pressure$ records the direction in which each type pushes the mid price:
+a market buy consumes the ask and a withdrawal from the bid removes support,
+so the first pushes up and the second down.
+
+\begin{defi}\label{def.intensityContrast}
+ Let $\pressure \in \lbrace -1, 0, +1\rbrace^{\numEventTypes}$, and set
+ \begin{equation*}
+  \upIntensity(t) := \sum_{e \, : \, \pressure_e = +1} \intensity(t),
+  \qquad
+  \downIntensity(t) := \sum_{e \, : \, \pressure_e = -1} \intensity(t) .
+ \end{equation*}
+ The intensity contrast is
+ \begin{equation}\label{eq.intensityContrast}
+  \intensityContrast(t) := \upIntensity(t) - \downIntensity(t)
+  = \pressure^{\transpose}\intensity[ ](t)
+  = \pressure^{\transpose}\baseIntensity
+  + \pressure^{\transpose}\excitation \decayedCounts(t) .
+ \end{equation}
+\end{defi}
+
+The restriction of $\pressure$ to $\lbrace -1,0,+1\rbrace$ is what makes the middle equality
+hold: for a general real vector $\pressure^{\transpose}\intensity[ ]$ is a weighted contrast
+and is not the difference of two sums, and $\upIntensity$, $\downIntensity$ have no meaning.
+
+The last term of \eqref{eq.intensityContrast} is the one that carries information,
+and the first is a constant.
+Under the symmetry
+\begin{equation}\label{eq.baselineSymmetry}
+ \pressure^{\transpose}\baseIntensity = 0,
+\end{equation}
+that is, when the up-pushing and down-pushing baselines balance,
+the contrast reduces to $\pressure^{\transpose}\excitation\decayedCounts$ exactly,
+and its sign is a statement about the state alone.
+Every parametrisation used in these notes satisfies \eqref{eq.baselineSymmetry},
+by construction: the baselines are equal in pairs.
+We state the assumption here, where it is used, rather than folding it into the definition,
+because it is not innocuous --- on an asymmetric parametrisation the contrast has a constant
+offset, and a rule that trades on its sign inherits that offset as a permanent bias.
+
+Note also that the $\eone$-th entry of $\pressure^{\transpose}\excitation$
+is the signed jump in $\intensityContrast$ caused by one event of type $\eone$,
+and that it scales with $\decay$ at fixed $\branchingRatio$,
+whereas $\pressure^{\transpose}\branchingMatrix$ does not.
+
+\subsubsection*{Specifying a kernel}
+
+By Proposition \ref{prop.clusterRepresentation},
+$\branchingMatrix\subscriptee$ is the expected number of direct offspring of type $e$
+born of one event of type $\eone$,
+so the column sums $\mathbf{1}^{\transpose}\branchingMatrix$ are readable one entry at a
+time, without any spectral computation,
+and they are what a kernel is specified by.
+By Remark \ref{remark.countsAgainstRates} the corresponding column sums of $\excitation$
+are $\decay$ times these, and are jumps in intensity rather than counts.
+
+The mechanism the kernel has to carry is replenishment.
+The two kinds of event that deplete a queue --- an aggression against it and a withdrawal
+from it --- must beget successors,
+and what they chiefly beget must be the limit orders that refill the side they emptied;
+a limit order that has already refilled should beget little.
+A kernel that does this has large column sums on the market-order and withdrawal types,
+a small one on the limit-order types,
+and its mass concentrated off the diagonal blocks that $\pressure$ separates.
+
+A parametrisation is specified in the direction opposite to
+\eqref{eq.stationaryIntensity}.
+We choose the excitation structure $\branchingMatrix$
+and the stationary intensity $\stationaryIntensity$ at which the flow is to run,
+and let
+\begin{equation}\label{eq.baselineFromTarget}
+ \baseIntensity = (I - \branchingMatrix)\stationaryIntensity
+\end{equation}
+follow.
+The requirement $\baseIntensity \geq 0$ is then a genuine restriction on the pair
+$(\branchingMatrix, \stationaryIntensity)$ and not a formality:
+it fails whenever the excitation structure is too far from the target rates.
