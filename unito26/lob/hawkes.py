@@ -554,9 +554,12 @@ def compensators_at_events(
     .. math::
 
         \\Lambda_i(T) = \\mu_i T
-            + \\sum_j \\frac{\\alpha_{ij}}{\\beta} \\big(N_j(T) - S_j(T)\\big),
+            + \\sum_j \\frac{\\alpha_{ij}}{\\beta} \\big(N_j(T-) - S_j(T)\\big),
 
-    because ``int_0^T S_j = (N_j(T) - S_j(T)) / beta``.  The same two summary
+    because ``int_0^T S_j = (N_j(T-) - S_j(T)) / beta``.  Both terms are read
+    pre-jump.  ``N`` is right-continuous and ``S`` left-continuous, so ``N - S``
+    jumps by one at every arrival and the two readings disagree exactly at arrival
+    times -- which is where the residual test evaluates this.  The same two summary
     statistics that drive the simulation also close the compensator in one line.
 
     Returns an ``(n, d)`` array whose row ``k`` is ``Lambda(times[k])``, using the

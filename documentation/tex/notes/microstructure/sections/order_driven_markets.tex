@@ -1,3 +1,59 @@
+Market infrastructures can be grouped in two categories:
+dealer markets (also known as quote-driven markets)
+and
+limit order markets (also known as order-driven markets)
+-- see \citealp[Chapter 1]{FPR13mar}.
+Several trading venues around the world have adopted infrastructures that fall in the latter category.
+\href{https://www.euronext.com/}{EURONEXT}\footnote{See
+\url{https://www.euronext.com/}.},
+the
+\href{https://www.six-group.com/}{Swiss stock exchange}\footnote{See
+\url{https://www.six-group.com/}.},
+\href{http://www.nasdaqomxnordic.com/}{Helsinki stock exchange}\footnote{See
+\url{http://www.nasdaqomxnordic.com/}.},
+the
+\href{https://www.thecse.com/}{Canadian stock exchange}\footnote{See
+\url{https://www.thecse.com/}.}
+and
+\href{https://www.tsx.com/}{Toronto stock exchange}\footnote{See
+\url{https://www.tsx.com/}.},
+the
+\href{https://www2.asx.com.au/}{Australian Securities Exchange}\footnote{See
+\url{https://www2.asx.com.au/}.},
+and the stock exchanges in
+\href{https://www.hkex.com.hk/}{Hong Kong}\footnote{See
+\url{https://www.hkex.com.hk/}.},
+\href{http://www.szse.cn/}{Shenzhen}\footnote{See
+\url{http://www.szse.cn/}.}
+and
+\href{https://www.jpx.co.jp/}{Tokyo}\footnote{See
+\url{https://www.jpx.co.jp/}.},
+all of them operate as purely order-driven markets;
+\href{https://www.nyse.com/}{NYSE}\footnote{See
+\url{https://www.nyse.com/}.},
+\href{https://www.nasdaq.com/}{NASDAQ}\footnote{See
+\url{https://www.nasdaq.com/}.}
+and
+\href{https://www.londonstockexchange.com/}{LSE}\footnote{See
+\url{https://www.londonstockexchange.com/}.}
+have order-driven market infrastructure
+with some legacy quote-driven mechanisms.
+
+Order-driven markets are transparent.
+Indeed,
+all agents participating in an order-driven market observe in real-time all other participants'
+commitments to trade,
+which are organised in the so-called \emph{limit order book}.
+
+Limit order books provide high-frequency financial data that are susceptible of various
+quantitative investigations.
+A survey of empirical and theoretical studies on limit order books is \cite{GPWMFH13lim}.
+
+From a stochastic modelling perspective, important features of these datasets include:
+\emph{i.} the continuous physical time of the events recorded;
+\emph{ii.} the complex relations that may emerge from the occurrence in time
+of one type of event and the time distribution of other types of events.
+
 Order-driven markets are trading venues organised around \emph{limit orders}.
 A limit order is the fundamental action that market participants in order-driven markets can perform.
 It is represented by a 4-tuple $(t,q,p,d)$,
@@ -75,27 +131,35 @@ is executed against $(s\derivative, \rho\derivative, \pi\derivative, -d)$.
 
 \begin{lemma}
 \label{lemma.orderingOfOrders}
-Let $E$ be a trading epoch in an order-driven market.
+Let $\tradingEpoch$ be a trading epoch in an order-driven market.
 Then, equation \eqref{eq.orderingOfLimitOrders} defines a total order in
-$E\cap \lbrace (s,\rho,\pi,-1): s\geq0, \rho\geq0,\pi\geq0\rbrace$,
+$\tradingEpoch\cap \lbrace (s,\rho,\pi,-1): s\geq0, \rho\geq0,\pi\geq0\rbrace$,
 and it defines a total order in
-$E\cap \lbrace (s,\rho,\pi,1): s\geq0, \rho\geq0,\pi\geq0\rbrace$.
+$\tradingEpoch\cap \lbrace (s,\rho,\pi,1): s\geq0, \rho\geq0,\pi\geq0\rbrace$.
 \end{lemma}
 \begin{proof}
- Antisymmetry follows from the fact that $E$ is a graph of a function defined on a subset of $\R$.
- Transitivity and connexity are clear.
+ Antisymmetry and transitivity follow from \eqref{eq.orderingOfLimitOrders} alone,
+ being those of the lexicographic order on the pair $(d\pi, s)$.
+ Connexity is where the trading epoch enters.
+ Let two distinct orders of the same side be given.
+ If their prices differ, then $d\pi < d\pi\derivative$ or $d\pi\derivative < d\pi$,
+ and \eqref{eq.orderingOfLimitOrders} decides between them.
+ If their prices agree, their timestamps must differ,
+ since $\tradingEpoch$ is the graph of a function defined on a subset of $\R$
+ and therefore contains no two orders with the same timestamp;
+ and \eqref{eq.orderingOfLimitOrders} then decides between them by $s$.
 \end{proof}
 Lemma \ref{lemma.orderingOfOrders} justifies the following definition.
 \begin{defi}
 \label{def.orderQueue}
- Let $E$ be a trading epoch in an order-driven market.
+ Let $\tradingEpoch$ be a trading epoch in an order-driven market.
  The ask order queue $\askOrderQueue_t$ at time $t$ is defined as
  \begin{equation*}
-  \askOrderQueue_t := \lbrace (s,q,p,-1)\in E : \, (s,q,p,-1) \text{ is active at time } t \rbrace.
+  \askOrderQueue_t := \lbrace (s,q,p,-1)\in \tradingEpoch : \, (s,q,p,-1) \text{ is active at time } t \rbrace.
  \end{equation*}
  Similarly, the bid order queue $\bidOrderQueue_t$ at time $t$ is defined as
  \begin{equation*}
-  \bidOrderQueue_t := \lbrace (s,q,p,+1) \in E : \, (s,q,p,+1) \text{ is active at time } t \rbrace.
+  \bidOrderQueue_t := \lbrace (s,q,p,+1) \in \tradingEpoch : \, (s,q,p,+1) \text{ is active at time } t \rbrace.
  \end{equation*}
 \end{defi}
 
@@ -146,6 +210,7 @@ Points \ref{item.bestAskPrice}-\ref{item.bidSize} above describe how the configu
 of the limit order book is reconstructed from the ask queue $\askOrderQueue_t$
 and the bid queue $\bidOrderQueue_t$.
 
+
 \begin{remark}
 \label{remark.sizeVersusVolume}
 In points \ref{item.askSize} and \ref{item.bidSize} the sum of the quantities queuing at a
@@ -159,55 +224,118 @@ so no sequence of sizes determines the volume traded;
 by Proposition \ref{prop.decompositionOfLimitOrder},
 the volume over a window is the sum of $\marketOrderSize$
 over the market orders submitted within it.
-The term 'size' is used at two granularities,
-that of a single order and that of a level,
-the second being the sum of the first.
-Part of the literature calls the size of a level its volume.
 \end{remark}
 
 The whole configuration of a limit order book at time $t$ is described by the variables
 $(\bestAskPrice_t, \bestBidPrice_t, \lbrace (\nthBestAskSize[i]_t, \nthBestBidSize[i]_t) : \, \, i=1,2,\dots\rbrace)$.
-Apart from these variables,
-other derived quantities are useful to assess the properties of an order book.
-These are the spread, the mid-price and the queue imbalance.
+Therefore,
+in this course
+limit order books will always mean aggregated order book.
+This means that we will not map the queue sizes to  the orders in the trading epoch. 
 
+
+We will use derived quantities from this configuration: 
+the bid-ask spread,
+the mid-price,
+the queue-imbalance,
+the micro-price,
+and the sweep cost.
+
+
+\begin{defi}
 The spread at time $t$ is the distance $\abs{\bestAskPrice_t - \bestBidPrice_t}$
 between best ask price and best bid price,
 which we denote by $\LOBspread_t$.
+\end{defi}
+Since the two sides never overlap and every price is an integer multiple of $\tickSizeOfLOB$,
+the spread satisfies $\LOBspread_t \geq \tickSizeOfLOB$ whenever both sides are non-empty.
+\begin{defi}
 The mid-price at time $t$ is the mid point in between $\bestBidPrice_t$ and $\bestAskPrice_{t}$,
 which we denote by $\midPrice_t$ and is given by
 $\midPrice_t = (\bestAskPrice_t + \bestBidPrice_{t})/{2}$.
-Finally, the $n$-levels queue imbalance at time $t$,
-denoted $\queueImbalance^{n}_t$,
+\end{defi}
+\begin{defi}
+The $n$-levels queue imbalance at time $t$,
+denoted $\queueImbalance[n]_t$,
 is the normalised excess of limit orders on the first $n$ levels of the bid side
 compared to the limit orders on the first $n$ levels of the ask side, namely
 \begin{equation}
 \label{eq.queueImbalance}
-\queueImbalance^{n}_t =
+\queueImbalance[n]_t =
 \frac{\sum_{i\leq n}\nthBestBidSize[i]_t - \sum_{i\leq n}\nthBestAskSize[i]_t}{\sum_{i\leq n}\nthBestBidSize[i]_t + \sum_{i\leq n}\nthBestAskSize[i]_t},
 \end{equation}
 where $\sum_{i\leq n}\nthBestBidSize[i]_t$
 (respectively, $\sum_{i\leq n}\nthBestAskSize[i]_t$)
 is the cumulative size on the first $n$ bid (ask) levels.
-The queue imbalance $\queueImbalance^n$, called volume imbalance in \cite{CDJ18enh},
-carries information about the direction the price takes next,
-and it is worth stating what was actually shown.
-Inside a Markov-modulated model of the book,
-\cite{CDJ18enh} establish that volume imbalance predicts the sign of the next market order,
-and the price change that follows a market order arrival.
-The unconditional reading --- that it predicts the next mid-price move, whatever moves it ---
-is a stronger claim, and it is not theirs.
-The sign convention matters in either reading:
-a book close to $+1$ is bid-heavy, so the pressure is upward.
+\end{defi}
+\begin{defi}
+The micro-price at time $t$ is
+\begin{equation}
+\label{eq.microPrice}
+\microPrice_t
+=
+\midPrice_t + \frac{\LOBspread_t}{2}\queueImbalance[1]_t .
+\end{equation}
+\end{defi}
+\begin{remark}
+Notice that \eqref{eq.microPrice} is the weighting of the two best prices
+in which each price carries the size resting on the \emph{opposite} side,
+\begin{equation*}
+\microPrice_t
+=
+\frac{\nthBestBidSize[1]_t\bestAskPrice_t + \nthBestAskSize[1]_t\bestBidPrice_t}
+{\nthBestBidSize[1]_t + \nthBestAskSize[1]_t} ,
+\end{equation*}
+so that $\microPrice_t$ lies in $[\bestBidPrice_t, \bestAskPrice_t]$
+and a bid-heavy book carries it towards the ask.\footnote{
+The name is also given, in \cite{Sto18mic}, to a different object:
+the martingale-adjusted limit of the mid-price conditional on the imbalance.
+The two are not the same, and the literature does not always keep them apart.}
+\end{remark}
+\begin{defi}
+Let the ask side hold at least $\quantityToLiquidate > 0$ shares at time $t$,
+and for $i=1,2,\dots$ let
+\begin{equation}
+\label{eq.fillAtLevel}
+q_i
+:=
+\Big( \quantityToLiquidate - \sum_{j<i} q_j \Big)_{+} \wedge \nthBestAskSize[i]_t
+\end{equation}
+be the quantity that a buy market order for $\quantityToLiquidate$ shares fills
+at the $i$-th ask level, so that $\sum_{i\geq1} q_i = \quantityToLiquidate$.
+The sweep cost is its per-share cost measured against the mid-price,
+\begin{equation}
+\label{eq.sweepCost}
+\sweepCost_t(\quantityToLiquidate)
+=
+\frac{1}{\quantityToLiquidate}\sum_{i\geq1} q_i \big(\nthBestAskPrice[i]_t - \midPrice_t\big)
+=
+\frac{\LOBspread_t}{2}
++
+\frac{1}{\quantityToLiquidate}\sum_{i\geq1} q_i (i - 1)\tickSizeOfLOB .
+\end{equation}
+For a sell market order the definition is mutatis mutandis the same,
+with the bid side and $\midPrice_t - \nthBestBidPrice[i]_t$ in place of
+$\nthBestAskPrice[i]_t - \midPrice_t$.
+\end{defi}
+The index $i$ in \eqref{eq.fillAtLevel} and \eqref{eq.sweepCost} runs over the levels of the
+price grid, not over the occupied ones,
+so that $\nthBestAskPrice[i]_t = \bestAskPrice_t + (i-1)\tickSizeOfLOB$
+and the second equality in \eqref{eq.sweepCost} follows from
+$\bestAskPrice_t - \midPrice_t = \LOBspread_t/2$.
 
-When a limit order comes to the market, it modifies the previous configuration of the order book.
+When a limit order comes to the market, 
+it modifies the previous configuration of the order book.
 Proposition \ref{prop.lobUpdate} gives the updating rule for the variables
 $(\bestAskPrice_t, \bestBidPrice_t, \lbrace (\nthBestAskSize[i]_t, \nthBestBidSize[i]_t) : \, \, i=1,2,\dots\rbrace)$.
 \begin{prop}
 \label{prop.lobUpdate}
  Let $(t,q,p,-1)$ be a sell limit order that arrives to the market at time $t$.
  Let $(\bestAskPrice_{t-}, \bestBidPrice_{t-},\lbrace (\nthBestAskSize[i]_{t-}, \nthBestBidSize[i]_{t-}) : \, \, i=1,2,\dots\rbrace )$
- represent the limit order book immediately before $t$.
+ represent the limit order book immediately before $t$,
+ and assume that $(t,q,p,-1)$ does not consume the whole of the price-eligible side,
+ that is, $q < \sum_{i\geq1}\nthBestBidSize[i]_{t-}\indicator{\nthBestBidPrice[i]_{t-}\geq p}$.
+ Adopt the convention $\nthBestAskSize[j]_{t-} = \nthBestBidSize[j]_{t-} = 0$ for $j \leq 0$.
  Then, prices and sizes are updated according to the following formulae:
  \begin{equation}
  \label{eq.lobUpdateSellOrder}
@@ -245,10 +373,33 @@ $(\bestAskPrice_t, \bestBidPrice_t, \lbrace (\nthBestAskSize[i]_t, \nthBestBidSi
  For a buy limit order $(t,q,p,+1)$, the updating rules are similar, with opposite side and direction.
 \end{prop}
 \begin{proof}
- The processing of the sell limit order $(t,q,p,-1)$ is equivalent to the processing of the stream
- $(t,\nthBestBidSize[1]_{t-},\nthBestBidPrice[1]_{t-},-1), \dots, (t,\nthBestBidSize[N]_{t-},\nthBestBidPrice[N]_{t-},-1), (t,q^{N}, p, -1)$,
- where the priority is from left to right.
- Hence, we are reduced to discuss the following three cases.
+ We first reduce the order to a stream of elementary ones.
+ By Lemma \ref{lemma.orderingOfOrders} the matching algorithm consumes the bid queue in the
+ order \eqref{eq.orderingOfLimitOrders},
+ and by the hypothesis it stops before exhausting the price-eligible side.
+ We claim that processing $(t,q,p,-1)$ is equivalent to processing the stream
+ \begin{equation}\label{eq.elementaryStream}
+  (t,\nthBestBidSize[1]_{t-},\nthBestBidPrice[1]_{t-},-1), \dots,
+  (t,\nthBestBidSize[N]_{t-},\nthBestBidPrice[N]_{t-},-1),
+  (t,q^{N}, p, -1),
+ \end{equation}
+ with priority from left to right.
+ The claim is proved by induction on the number of levels the order reaches.
+ If it reaches none, then $N=0$, the stream is the single order $(t,q,p,-1)$ itself
+ and there is nothing to prove.
+ If it reaches $j \geq 1$ levels, then by \eqref{eq.orderingOfLimitOrders} the first
+ $\nthBestBidSize[1]_{t-}$ shares are matched against the whole of the first bid level,
+ at the price $\nthBestBidPrice[1]_{t-}$,
+ before any other resting order is considered;
+ this is the effect of the first element of \eqref{eq.elementaryStream},
+ and what remains to be processed is the sell order
+ $(t, q - \nthBestBidSize[1]_{t-}, p, -1)$
+ against the book with its first bid level removed,
+ which reaches $j-1$ levels and to which the induction hypothesis applies.
+ Each element of \eqref{eq.elementaryStream} is therefore \emph{elementary}:
+ it either clears exactly one level or rests without matching.
+ It remains to check the update formulae on one such element,
+ which is what the following three cases do.
  \begin{enumerate}[label={\emph{\roman{*}}.}]
   \item No match with any buy order.
   This happens if $p>\bestBidPrice_{t-}$.
@@ -323,15 +474,15 @@ $[(t,\marketOrderSize,\infty,+1),(t,q-\marketOrderSize,p,+1) ]$, where
 \begin{proof}
  Let $(t,q,p,-1)$ be a sell limit order.
  Let $N_s$, $N_p$ and $q^i$ be as in Proposition \ref{prop.lobUpdate}.
- Let $N_s^M$, $N_p^M$ and $\marketOrderSize^{i}$ be the corresponding quantities
+ Let $N_s^M$, $N_p^M$ and $\marketOrderSize[i]$ be the corresponding quantities
  for the order $(t,\marketOrderSize,0,-1)$.
  Notice that $N_s^M = N_s^M \wedge N_p^M$.
  Processing $(t,\marketOrderSize,0,-1)$ does not affect the ask side
- because $\marketOrderSize^{\infty} = 0$;
+ because $\marketOrderSize[\infty] = 0$;
  moreover the effects on the bid side of processing $(t,\marketOrderSize,0,-1)$
  are the same as those of $(t,q,p,-1)$,
  because $\inf \lbrace n\geq 0 : \, \marketOrderSize < \sum_{i=1}^{n} \nthBestBidSize[i]_{t-} \rbrace = N_s \wedge N_p$
- and $q^{k+N-1} - q^{k+N} = \marketOrderSize^{k+N_s^M - 1} - \marketOrderSize^{k+N_s^M}$.
+ and $q^{k+N-1} - q^{k+N} = \marketOrderSize[k+N_s^M - 1] - \marketOrderSize[k+N_s^M]$.
  Therefore, after $(t,\marketOrderSize,0,-1)$ has been processed,
  the bid side is the same as the bid side after the processing of $(t,q,p,-1)$.
 
@@ -375,6 +526,8 @@ this implies $N\geq 1 $ in the notation of Proposition \ref{prop.lobUpdate},
 the converse failing when the order exactly clears the best level.
 Similarly, a buy market order $(t,\marketOrderSize,\infty,1)$ walks the book
 if $\marketOrderSize > \nthBestAskSize[1]_{t-}$.
+A market order walks the book if an only if 
+its sweep cost is larget than the bid-ask sprad.
 
 Given a time window $\timeWindow$,
 the evolution in time of the limit order book
@@ -398,257 +551,50 @@ referring to both these triggers as ``market orders''
 does not alter the evolution of the limit order book.
 }
 
-\subsection{PnL equations of trade execution}
-\label{sec.pnlOfTradeExecution}
+A market order does not in general execute at a single price.
+The quantities $q_i$ of \eqref{eq.fillAtLevel} are the sizes of its fills,
+level by level:
+a buy market order for $\quantityToLiquidate$ shares
+takes $q_i$ shares at the price $\nthBestAskPrice[i]_{t-}$,
+and $\sum_{i\geq1}q_i = \quantityToLiquidate$.
+For a sell market order the fills are mutatis mutandis the same, on the bid side.
 
-Assume that
-we want to transact the (signed) volume
-$\volume$
-at time $t$,
-positive for a purchase and negative for a sale.
-The quantity is a volume and not the size $q$ of an order:
-on the limit order route the executed quantity is the one the counterparty sends,
-not the one we do.
-We can send a market order to the order book,
-which guarantees immediate execution at the cost of paying the bid-ask spread.
-More precisely,
-we can transact $\volume$
-at time $t$
-via a market order,
-and this changes our cash account by
+Let $(\arrivalTimes[]_n, \marketOrderSize[n], d_n)$ be the stream of market orders
+of a trading epoch,
+written as in Proposition \ref{prop.decompositionOfLimitOrder},
+and let $q_{n,i}$ be the fills of the $n$-th of them.
+
+\begin{defi}
+The volume transacted over the window $(t-w, t]$ is
 \begin{equation}
-\label{eq.cashMarketOrder}
-	\Delta \cashAccount_t^{\text{market order}}
-	=
-	-\midPrice_{t} \volume
-	\underbrace{ -\frac{\bestAskPrice_t - \bestBidPrice_t}{2}\abs{\volume}}_{\text{we pay the spread}}
-	,
+\label{eq.transactedVolume}
+\volume_{t,w} := \sum_{n \, : \, t-w < \arrivalTimes[]_n \leq t} \marketOrderSize[n] ,
 \end{equation}
-where
-$\midPrice_t$,
-$\bestAskPrice_t$,
-$\bestBidPrice_t$
-are respectively the mid price, the ask price and the bid price at time $t$,
-and $\abs{\volume}$ is the unsigned volume transacted.
-The quantity $\bestAskPrice_t - \bestBidPrice_t$ is the spread at time $t$,
-which we denote $\LOBspread_t$.
-
-Instead,
-if we send a limit order at time $t$,
-the execution of our order will not be immediate,
-but it will happen at some time $u>t$.
-We re-label the time when the limit order is sent as $t-1$,
-and the time when the order is hit as $t$.
-In this way,
-the formula for the change in our cash account at execution time $t$ reads
-\begin{equation}
-\label{eq.cashLimitOrder}
-	\Delta \cashAccount_t^{\text{limit order}}
-	=
-	-\midPrice_{t-1}\volume
-+
-	\underbrace{\frac{\bestAskPrice_{t-1} - \bestBidPrice_{t-1}}{2}\abs{\volume}}_{\text{we earn the spread}}
-\end{equation}
-Notice that,
-whereas in the equation for the market order only the time $t$ appeared,
-in the case of limit orders
-the cash account is updated
-when the limit order is hit at time $t$,
-and it changes as a function of the bid and ask price as the (stale)
-time $t-1$ (when the order was sent).
-This is the source of the distinction between
-the change in portfolio value after execution of a market order
-and
-the change in portfolio value after execution of a limit order.
-The former reads
-\begin{equation}
-\label{eq.wealthMarketOrder}
-	\begin{split}
-		\Delta \wealth_t^{\text{market order}}
-		&=
-		\underbrace{
-			\inventory_{t-1}\Delta \midPrice_t}_{\text{PnL from position held at time} t-1}
-		\underbrace{
-			-\midPrice_{t}\volume
-		- \frac{\LOBspread_t}{2}\abs{\volume}
-	}_{\Delta \cashAccount_t^{\text{market order}}}
-		\underbrace{
-			+\midPrice_t \volume
-		}_{\text{mark-to-market of acquired position}}
-		\\
-		&=
-		\inventory_{t-1} \Delta \midPrice_t
-		- \frac{\LOBspread_t}{2}\abs{\volume}
-	\end{split}
-\end{equation}
-The latter reads
-\begin{equation}
-\label{eq.wealthLimitOrder}
-	\begin{split}
-		\Delta \wealth_t^{\text{limit order}}
-		&=
-		\underbrace{
-			\inventory_{t-1}\Delta \midPrice_t}_{\text{PnL from position held at time} t-1}
-		\underbrace{
-			-\midPrice_{t-1}\volume
-		+ \frac{\LOBspread_{t-1}}{2}\abs{\volume}
-	}_{\Delta \cashAccount_t^{\text{limit order}}}
-		\underbrace{
-			+\midPrice_t \volume
-		}_{\text{mark-to-market of acquired position}}
-		\\
-		&=
-		\inventory_{t-1} \Delta \midPrice_t
-		+\volume \Delta \midPrice_t
-		+ \frac{\LOBspread_{t-1}}{2}\abs{\volume}
-	\end{split}
-\end{equation}
-
-Hence,
-when deciding whether to execute via market orders or via limit orders,
-we need to assess
-the spread we earn relative to the risk
-of an adverse price move
-between the time at which we send our order
-and
-the time at which our order is hit.
-Notice that
-we do not have control on the latter;
-it will instead depend on other market participants,
-who might or might not have
-a) lower latency between order generation, submission and acknowledgement,
-b) superior information on intraday price swings.
-In other words,
-limit orders incur the risk of
-\emph{adverse selection}
-by faster or more informed market participants.
-The decision between market orders and limit orders
-rests
-on whether
-or not
-the bid-ask spread adequately compensates for this risk.
-
-\subsection{Three statistics read off the book and the tape}
-\label{sec.bookStatistics}
-
-The quantities of \eqref{eq.queueImbalance} and of Section \ref{sec.pnlOfTradeExecution}
-are read off a single configuration of the book.
-Two of the three statistics below are not:
-they are read over a window of time,
-and the distinction is worth making explicit
-because it decides what a series of book configurations can and cannot tell us.
-
-\subsubsection{Sweep cost}
-
-Equation \eqref{eq.wealthMarketOrder} charges a market order half the spread,
-$\LOBspread_t/2$ per share,
-whatever the size transacted.
-That is exact only while the order does not walk the book.
-The \emph{sweep cost} is the per-share cost of a market order for
-$\quantityToLiquidate$ shares in direction $d$,
-measured against the mid-price:
-\begin{equation}
-\label{eq.sweepCost}
-\sweepCost_t(\quantityToLiquidate, d)
-=
-\frac{d}{\quantityToLiquidate}\sum_{i} q_i (\pi_i - \midPrice_t)
-=
-\frac{\LOBspread_t}{2}
-+
-\frac{1}{\quantityToLiquidate}\sum_{i} q_i (k_i - 1)\tickSizeOfLOB,
-\end{equation}
-where $q_i$ shares execute at the resting price $\pi_i$,
-$\sum_i q_i = \quantityToLiquidate$,
-and $k_i$ is the level of $\pi_i$ on the price grid of Definition \ref{def.orderQueue}.
-The second form separates the two terms.
-Every share pays the half-spread;
-each additionally pays its own distance from the touch.
-Where the consumed side is occupied at every tick that distance grows one tick per level,
-but the levels of a real book are not contiguous,
-so the increment is a grid distance and not a count of queues.
-
-The quantity is undefined when the price-eligible side holds fewer than
-$\quantityToLiquidate$ shares,
-and when the opposite side is empty,
-since the mid-price it is measured against does not then exist.
-It is a cost, so $\sweepCost_t \geq 0$;
-this is a consequence of the book not crossing
-and not an additional assumption.
-
-\subsubsection{Order flow imbalance}
-
-The queue imbalance $\queueImbalance^n_t$ is a stock:
-it reads the sizes resting at one instant.
-The \emph{order flow imbalance} of \cite{CKS14pri} is the corresponding flow.
-Write $\orderFlowContribution$ for the contribution of the $n$-th event to it,
-\begin{equation}
-\label{eq.orderFlowContribution}
-\orderFlowContribution
-=
-\indicator{\bestBidPrice_n \geq \bestBidPrice_{n-1}}\bestBidSize_n
--
-\indicator{\bestBidPrice_n \leq \bestBidPrice_{n-1}}\bestBidSize_{n-1}
--
-\left[
-\indicator{\bestAskPrice_n \leq \bestAskPrice_{n-1}}\bestAskSize_n
--
-\indicator{\bestAskPrice_n \geq \bestAskPrice_{n-1}}\bestAskSize_{n-1}
-\right],
-\end{equation}
-the index $n$ counting events rather than time.
-Both bid indicators fire when the best bid price is unchanged,
-so an event that leaves the price alone contributes
-$\bestBidSize_n - \bestBidSize_{n-1}$,
-the change in the size resting at the touch;
-an event that moves the best bid contributes the whole of one queue.
-The order flow imbalance over the window $(t-w, t]$ is the sum
-\begin{equation}
-\label{eq.orderFlowImbalance}
-\OFI_{t,w} = \sum_{n \, : \, t-w < t_n \leq t} \orderFlowContribution .
-\end{equation}
-It is positive when buy pressure dominates,
-which is the orientation of $\queueImbalance^n$,
-but the two are not comparable in magnitude:
-$\queueImbalance^n$ lies in $[-1,1]$ and $\OFI$ is an unbounded number of shares.
-What \cite{CKS14pri} establish is that the mid-price change over the window
-is approximately $\OFI_{t,w}$ divided by twice the average size at the touch,
-so the sum becomes a prediction in ticks only after that normalisation.
-
-Both \eqref{eq.orderFlowContribution} and \eqref{eq.sweepCost}
-are functions of the configuration of the book alone.
-Neither requires knowing which of the orders that left the book were executed
-and which were cancelled.
-
-\subsubsection{Volume-weighted average price}
-
-The third statistic does require exactly that knowledge.
-Write $\tradedValue_{t,w}$ for the value transacted over the window $(t-w,t]$,
+and the value traded over the same window is
 \begin{equation}
 \label{eq.tradedValue}
-\tradedValue_{t,w} = \sum_{n \, : \, t-w < t_n \leq t} \, \sum_i \pi_i q_i ,
+\tradedValue_{t,w}
+:=
+\sum_{n \, : \, t-w < \arrivalTimes[]_n \leq t} \, \sum_{i \geq 1} q_{n,i} \, \pi_{n,i} ,
 \end{equation}
-the inner sum running over the fills of the $n$-th event,
-which by Proposition \ref{prop.decompositionOfLimitOrder}
-are the market-order component $\marketOrderSize$ of that event,
-each at the resting price $\pi_i$ of Section \ref{sec.orderDrivenMarkets}
-and never at the price the incoming order named.
-The \emph{volume-weighted average price} is that value per share transacted,
+where $\pi_{n,i}$ is the price of the $i$-th fill of the $n$-th market order.
+\end{defi}
+
+\begin{defi}
+The volume-weighted average price over the window $(t-w,t]$ is
 \begin{equation}
 \label{eq.vwap}
-\VWAP_{t,w} = \frac{\tradedValue_{t,w}}{\volume_{t,w}},
-\qquad
-\volume_{t,w} = \sum_{n \, : \, t-w < t_n \leq t} \, \sum_i q_i ,
+\vwap_{t,w} := \frac{\tradedValue_{t,w}}{\volume_{t,w}} ,
 \end{equation}
-undefined on a window in which nothing traded.
+defined whenever $\volume_{t,w} > 0$.
+\end{defi}
 
-By Remark \ref{remark.sizeVersusVolume} the volume $\volume_{t,w}$ is not determined by
-the sizes $\nthBestBidSize[i]_t$ and $\nthBestAskSize[i]_t$,
-however finely they are sampled:
-a level shrinks by cancellation as well as by execution,
-and no sequence of configurations separates the two.
-So $\VWAP$ is not recoverable from a record of book configurations,
-where $\sweepCost$ and $\OFI$ are.
-The asymmetry runs one way only.
-A size appearing at a price where none rested is unambiguously a limit order;
-a size falling at the best bid is a cancellation or an execution,
-and the configuration does not say which.
+\begin{remark}
+Notice that $\vwap_{t,w}$ is a statistic of the tape:
+it is a function of the transactions, and cannot be recovered
+from the sequence of configurations alone,
+since a level shrinks by cancellation as well as by execution.
+The sweep cost of \eqref{eq.sweepCost} is the opposite:
+it is a function of one configuration and is defined
+whether or not the order it prices is ever submitted.
+\end{remark}

@@ -1,0 +1,135 @@
+The order flow imbalance is introduced in \cite{CKS14pri} through a book in which the
+mechanism of Section \ref{sec.orderDrivenMarkets} is simplified until the mid-price becomes
+an explicit function of the flow.
+We state the simplification as an assumption, and the consequence as a proposition.
+
+\begin{assumption}\label{assumption.idealisedBook}
+ Over the window considered,
+ \begin{enumerate}[label={\emph{\roman{*}}.}]
+  \item every event occurs at the best quote of its side;
+  \item each side holds the same depth $D > 0$ at every price level of the grid;
+  \item the quote on each side moves by one tick for every $D$ shares of net flow on that
+        side, in either direction --- downward on the bid when it is consumed or withdrawn,
+        upward when a limit order improves it, and mutatis mutandis on the ask.
+ \end{enumerate}
+\end{assumption}
+
+Part \emph{iii.} is what makes the idealisation symmetric.
+Without its second half a queue could only be depleted,
+the bid could only fall and the ask only rise,
+and the spread would widen without bound.
+
+\begin{defi}[{\citealp{CKS14pri}}]\label{def.orderFlowImbalance}
+ Let $\arrivalTimes[]_n$ be the times of the events of a trading epoch,
+ and write $\nthBestBidSize[1]_{\arrivalTimes[]_n}$ for the size at the best bid
+ \emph{after} the $n$-th event, so that
+ $\nthBestBidSize[1]_{\arrivalTimes[]_{n-1}}
+ = \nthBestBidSize[1]_{\arrivalTimes[]_n -}$.
+ The contribution of the $n$-th event, for $n \geq 1$, is
+ \begin{equation}
+ \label{eq.orderFlowContribution}
+ \begin{split}
+  \orderFlowContribution
+  =\;&
+  \indicator{\bestBidPrice_{\arrivalTimes[]_n} \geq \bestBidPrice_{\arrivalTimes[]_{n-1}}}
+  \nthBestBidSize[1]_{\arrivalTimes[]_n}
+  -
+  \indicator{\bestBidPrice_{\arrivalTimes[]_n} \leq \bestBidPrice_{\arrivalTimes[]_{n-1}}}
+  \nthBestBidSize[1]_{\arrivalTimes[]_{n-1}}
+  \\
+  &-
+  \indicator{\bestAskPrice_{\arrivalTimes[]_n} \leq \bestAskPrice_{\arrivalTimes[]_{n-1}}}
+  \nthBestAskSize[1]_{\arrivalTimes[]_n}
+  +
+  \indicator{\bestAskPrice_{\arrivalTimes[]_n} \geq \bestAskPrice_{\arrivalTimes[]_{n-1}}}
+  \nthBestAskSize[1]_{\arrivalTimes[]_{n-1}} ,
+ \end{split}
+ \end{equation}
+ and the \emph{order flow imbalance} over the window $(t-w, t]$ is
+ \begin{equation}
+ \label{eq.orderFlowImbalance}
+  \OFI_{t,w} = \sum_{n \, : \, t-w < \arrivalTimes[]_n \leq t} \orderFlowContribution .
+ \end{equation}
+\end{defi}
+
+The index of every quantity in \eqref{eq.orderFlowContribution} is a physical time
+$\arrivalTimes[]_n$ and not the counting index $n$,
+which matters as soon as the arrival times are themselves modelled,
+as they are in Section \ref{sec.pointProcesses}.
+
+\begin{prop}\label{prop.idealisedUpdate}
+ Under Assumption \ref{assumption.idealisedBook},
+ the mid-price change over the window $(t-w,t]$ satisfies
+ \begin{equation}\label{eq.idealisedUpdate}
+  \Delta \midPrice_{t,w}
+  = \frac{\tickSizeOfLOB}{2D} \, \OFI_{t,w} \; + \; R_{t,w},
+  \qquad
+  \vert R_{t,w} \vert \leq \tickSizeOfLOB ,
+ \end{equation}
+ where $R_{t,w}$ depends only on the sizes resting at the two touches at the endpoints of
+ the window.
+ In particular \eqref{eq.idealisedUpdate} is exact whenever those four sizes are equal to
+ $D$.
+\end{prop}
+\begin{proof}
+ By Assumption \ref{assumption.idealisedBook}~\emph{i.} every event changes the
+ configuration only at the touch, so the update of Proposition \ref{prop.lobUpdate}
+ is its restriction to the first level.
+ Measure the position of the bid in shares by
+ $\mathcal{Q}^{b}_{s} := \nthBestBidSize[1]_{s}
+ + D\,(\bestBidPrice_{s} - \bestBidPrice_{t-w})/\tickSizeOfLOB$,
+ one tick being worth $D$ shares by \emph{ii.} and \emph{iii.}
+ Each event changes $\mathcal{Q}^{b}$ by exactly its own signed bid-side flow,
+ whether it moves the quote or not,
+ and the first two terms of \eqref{eq.orderFlowContribution} are that flow.
+ Summing over the window,
+ \begin{equation*}
+  \frac{\bestBidPrice_{t} - \bestBidPrice_{t-w}}{\tickSizeOfLOB}
+  = \frac{1}{D}\sum_{n} \Big(
+  \text{bid terms of } \orderFlowContribution \Big)
+  - \frac{\nthBestBidSize[1]_{t} - \nthBestBidSize[1]_{t-w}}{D} ,
+ \end{equation*}
+ and mutatis mutandis for the ask, with the opposite sign.
+ Halving the sum of the two gives \eqref{eq.idealisedUpdate}, with
+ $R_{t,w} = -\frac{\tickSizeOfLOB}{2D}\big[
+ (\nthBestBidSize[1]_{t} - \nthBestBidSize[1]_{t-w})
+ - (\nthBestAskSize[1]_{t} - \nthBestAskSize[1]_{t-w})\big]$.
+ Each of the four sizes lies in $[0,D]$ by \emph{ii.}, whence the bound.
+\end{proof}
+
+\begin{remark}\label{remark.ofiUnits}
+ Notice that $\OFI_{t,w}/(2D)$ is a number of shares over a number of shares,
+ so \eqref{eq.idealisedUpdate} reads as a tick count on the left when $\tickSizeOfLOB$ is
+ dropped, and as a price otherwise.
+ Prices are carried as integer tick counts throughout these notes and throughout the code,
+ and the conversion happens once, at the boundary.
+\end{remark}
+
+\begin{remark}\label{remark.identityNotForecast}
+ Notice that \eqref{eq.idealisedUpdate} is an identity about a window that has already
+ elapsed, and not a forecast.
+ Whether $\OFI_{t,w}$ says anything about the \emph{next} window is a different question,
+ and Section \ref{sec.syntheticEvidence} shows that its answer is not a property of $\OFI$
+ at all but of the kernel that generated the flow.
+\end{remark}
+
+\subsubsection*{The contrast and the imbalance}
+
+The intensity contrast $\intensityContrast$ of Definition \ref{def.intensityContrast} and
+the order flow imbalance are statistics of different things,
+and neither is a coarse version of the other.
+
+By \eqref{eq.intensityContrast}, $\intensityContrast$ is a function of the state
+$\decayedCounts$ and of the parameters.
+It is available only to an observer who knows $\excitation$ and $\decay$,
+and under \eqref{eq.baselineSymmetry} it is blind to $\baseIntensity$,
+so it says nothing about the immigrants that are about to arrive.
+
+The imbalance is model free.
+It counts events as they occurred, immigrants and offspring alike,
+and it reads the book: the contribution \eqref{eq.orderFlowContribution} carries the size of
+the order and the state of the queue it arrived at,
+neither of which appears anywhere in $\hawkesKernel$.
+The kernel governs when events happen and of which type;
+the sizes govern how far they move the price.
+No function of $\decayedCounts$ recovers a size.

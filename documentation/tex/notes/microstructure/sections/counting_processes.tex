@@ -10,12 +10,6 @@ and assume that
  \arrivalTimes_{j} \neq \arrivalTimes[\eone]_{j\derivative}
  \qquad \text{whenever } (e,j) \neq (\eone, j\derivative).
 \end{equation}
-No two events ever occur at the same instant.
-This is a modelling assumption and not a triviality:
-it will be needed again for the second-order structure of Section \ref{sec.secondOrder}
-and for the goodness-of-fit test of Section \ref{sec.simulation},
-and it is the hypothesis that fails first when a model is fitted to recorded data,
-where a single aggressive order is reported as several fills sharing a timestamp.
 
 Under \eqref{eq.noCommonJumps},
 \begin{equation*}
@@ -65,10 +59,6 @@ for all $t>0$ and all $e = 1,\dots, \numEventTypes$.
 We can interpret this construction by saying that the index $e$ labels $\numEventTypes$ types
 of events that occur in time,
 and that $\countingProc(t)$ counts the number of events of type $e$ that have occurred by time $t$.
-The two representations are the two we shall use throughout:
-$\multiCountingProc$ when we compute,
-and $(\arrivalTimes[ ]_{n}, \event[n])$ when we simulate,
-since a simulator produces one time and one label at a time.
 
 \begin{example}[``Poisson process'']
  Let $\tau_e^j$, $j = 1,2,\dots$, $e = 1,\dots, \numEventTypes$, be independent random variables
@@ -89,7 +79,7 @@ since a simulator produces one time and one label at a time.
   G_{e,j}(t) := \sum_{k\geq j} \frac{(\intensity t)^k}{k!}e^{-\intensity t},
  \end{equation*}
  we also have that $\frac{d}{dt} G_{e,j}(t) = f_{e,j}(t)$, by telescopic sum.
- Since $G_{e,j}(0) = \Prob (\countingProc(t)\geq 0)$,
+ Since $G_{e,j}(0) = \Prob (\countingProc(0)\geq j)$,
  we deduce that $\Prob(\countingProc(t) \geq j) = G_{e,j}(t)$, and that
  \begin{equation*}
   \Prob\left( \countingProc(t) = j\right) =
@@ -106,9 +96,6 @@ The minimal filtration to which a multivariate counting process $\multiCountingP
 is called the internal history of $\multiCountingProc$.
 Any other filtration to which $\multiCountingProc$ is adapted is called a history of
 $\multiCountingProc$, and it must be a superset of the internal history.
-The distinction will matter in Section \ref{sec.readingOrderFlow}:
-an observer who sees less than the internal history has a different compensator for the same
-process, and the quantity he can estimate is not the one the model specifies.
 
 \begin{defi}\label{def.compensator}
  Let $\stochasticBase$ be a filtered probability space where the multivariate counting process
@@ -153,9 +140,6 @@ If $\compensator$ is absolutely continuous, we write
 for some $\filtrationF$-predictable process
 $\intensity[ ] = (\intensity[1],\dots,\intensity[\numEventTypes])$,
 which is called the intensity of the counting process $\multiCountingProc$.
-Predictability is not a technical afterthought:
-it is what makes $\intensity(t)$ a function of the strict past,
-and every intensity we write down in this chapter will be left-continuous for that reason.
 Combining this with equation \eqref{eq.compensators_and_predict_projections},
 one obtains the formula
 \begin{equation*}
@@ -170,13 +154,14 @@ jump at time $t$ in the $e$-th component of $\multiCountingProc$.
 Notice that this ``risk'' evolves in time,
 and that it varies depending on the information available up to time $s$.
 
-We record one consequence separately, because both simulation algorithms of
-Section \ref{sec.simulation} rest on it and on nothing else.
+Both simulation algorithms of Section \ref{sec.simulation} rest on the following
+consequence, which we therefore record separately.
 Write $\totalIntensity(t) := \intensity[1](t) + \dots + \intensity[\numEventTypes](t)$
 for the intensity of the ground process.
 
 \begin{prop}\label{prop.conditionalSurvival}
- Let $\multiCountingProc$ admit the $\filtrationF$-intensity $\intensity[ ]$,
+ Let $\multiCountingProc$ admit an intensity $\intensity[ ]$ with respect to its own
+ internal history $\filtrationF$,
  and let $\arrivalTimes[ ]_{n}$ be the $n$-th arrival of the ground process.
  Then
  \begin{equation}\label{eq.conditionalSurvival}
@@ -190,18 +175,27 @@ for the intensity of the ground process.
  where $\totalIntensity$ is evaluated on the event that no arrival occurs in the interval.
 \end{prop}
 
-On that event the integrand is a deterministic function of the history up to
-$\arrivalTimes[ ]_{n}$,
+For a proof, see \cite[Chapter II]{Bre81poi}.
+On the event that no arrival occurs, the integrand is a deterministic function of the history
+up to $\arrivalTimes[ ]_{n}$,
 so the right-hand side is $\filtrationF_{\arrivalTimes[ ]_{n}}$-measurable
-and \eqref{eq.conditionalSurvival} is a genuine survival function that we can invert.
+and \eqref{eq.conditionalSurvival} is a genuine survival function, which we can invert.
 For a homogeneous Poisson process it reduces to $e^{-\totalIntensity s}$,
-and the inter-arrival times are exponential;
-in general the whole difficulty of simulating a point process is that
-$\int \totalIntensity$ has no closed form,
-and the whole point of the kernel we choose in Section \ref{sec.exponentialKernel} is that it does.
+and the inter-arrival times are exponential.
 
-Compensators are also the ingredient of the following time-change result,
-which we shall use to test whether a simulated path is a path of the model we intended.
+\begin{remark}\label{remark.internalHistory}
+ Notice that the internal history is a hypothesis of
+ Proposition \ref{prop.conditionalSurvival} and not a convenience.
+ On a strictly larger history the intensity need not be a function of the past of
+ $\multiCountingProc$ alone --- on a Cox process it is not ---
+ the integrand in \eqref{eq.conditionalSurvival} is then not
+ $\filtrationF_{\arrivalTimes[ ]_{n}}$-measurable,
+ and what survives is the conditional expectation of the right-hand side rather than the
+ right-hand side itself.
+\end{remark}
+
+Compensators are the ingredient of the following time-change result,
+which we shall use in goodness-of-fit diagnostics.
 
 \begin{thm}[{\cite{Mey71dem}}]\label{thm.meyer1971}
  Let $\multiCountingProc$ be a $\numEventTypes$-dimensional counting process with arrival times
@@ -227,8 +221,3 @@ process as the special case $\compensator(t) = t$.
 Hypothesis \emph{i.} is the one that buys the \emph{joint} independence across components:
 the univariate statement, that each $\tilde{\countingProc}$ is separately unit-rate Poisson,
 holds without it \citep{Pap72int}.
-This distinction is worth keeping in view,
-because a goodness-of-fit test that compares each margin against $\text{Exp}(1)$
-leaves both of the independences in Theorem \ref{thm.meyer1971} untested
--- the serial independence within a component and the joint independence across components --
-and it is exactly a violation of \emph{i.} that such a test cannot see.

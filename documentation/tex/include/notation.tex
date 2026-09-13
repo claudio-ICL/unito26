@@ -30,6 +30,10 @@
 
 %% DERIVATIVES %%
 \newcommand{\gradient}{\nabla}
+% The generator of a Markov process, and the unit vectors of the state space:
+% \unitVector is bold because plain e is the type index and the exponential base.
+\newcommand{\generatorL}{\mathsf{L}}
+\newcommand{\unitVector}{\mathbf{e}}
 \newcommand{\gradx}{\nabla_{x}}
 \newcommand{\Hessianx}{\nabla^{2}_{xx}}
 \newcommand{\partialij}{\partial^{2}_{i,j}}
@@ -48,6 +52,7 @@
 \newcommand{\Expectation}{\mathbb{E}}
 \newcommand{\Variance}{\mathrm{Var}}
 \newcommand{\CoVariance}{\mathrm{Cov}}
+\newcommand{\Real}{\mathrm{Re}\,}
 \newcommand{\correlation}{\mathrm{corr}}
 \newcommand{\probabilityLaw}{\text{Law}}
 \newcommand{\probabilityDensity}{p}
@@ -108,7 +113,7 @@
 \newcommand{\bidSizePriceP}[1][t]{\size^{b}_{{#1}}(p)}
 \newcommand{\askSizePriceP}[1][t]{\size^{a}_{{#1}}(p)}
 \newcommand{\LOBspread}{\phi}
-\newcommand{\queueImbalance}{I}
+\newcommand{\queueImbalance}[1][n]{I^{#1}}
 \newcommand{\queueImb}{\queueImbalance}
 \newcommand{\OFI}{\text{OFI}}
 \newcommand{\orderFlowImbalance}{\OFI}
@@ -117,6 +122,7 @@
 \newcommand{\VWAP}{\text{VWAP}}
 \newcommand{\tradedValue}{\text{TV}}
 \newcommand{\sweepCost}{\text{sc}}
+\newcommand{\vwap}{\text{VWAP}}
 \newcommand{\arrivals}[1][ ]{A_{{#1}}}
 \newcommand{\departures}[1][ ]{D_{{#1}}}
 \newcommand{\queue}[1][ ]{Q_{{#1}}}
@@ -140,7 +146,7 @@
 \newcommand{\cashAccount}{K}
 \newcommand{\inventory}{H}
 \newcommand{\wealth}{X}
-\newcommand{\marketOrderSize}{q_{M}}
+\newcommand{\marketOrderSize}[1][]{q_{M}^{#1}}
 
 %% POINT PROCESSES AND HAWKES %%
 % The index order is fixed once: \excitation\subscriptee is the influence that
@@ -154,19 +160,25 @@
 \newcommand{\subscriptee}{_{e,\, \eone}}
 \newcommand{\groundProc}{N_{\mathfrak{g}}}
 \newcommand{\event}[1][n]{E_{#1}}
+% The trading epoch is a set of orders; E_n is the type of the n-th event.
+\newcommand{\tradingEpoch}{\mathcal{E}}
+% M is the martingale N - Lambda; the second moment of the state needs its own letter,
+% and so does the Hurwitz matrix A - beta I of the Lyapunov equation.
+\newcommand{\secondMoment}{\Pi}
+\newcommand{\hurwitzMatrix}{K}
 \newcommand{\Lone}{L^{1}}
 \newcommand{\baseIntensity}{\mu}
 \newcommand{\hawkesKernel}{\kappa}
-\newcommand{\excitation}{A}
+\newcommand{\excitation}{\mathcal{A}}
 \newcommand{\decay}{\beta}
 \newcommand{\branchingMatrix}{\Gamma}
 \newcommand{\branchingRatio}{\rho}
 % The decayed event counts: the state that makes the exponential kernel Markov.
-\newcommand{\decayedCounts}{S}
+\newcommand{\decayedCounts}{Z}
 \newcommand{\stationaryIntensity}[1][ ]{\intensity[#1]^{*}}
 \newcommand{\totalRate}{\nu}
-\newcommand{\totalIntensity}{\bar{\intensity[ ]}}
-\newcommand{\pressure}{p}
+\newcommand{\totalIntensity}{\intensity[\mathfrak{g}]}
+\newcommand{\pressure}{\varpi}
 \newcommand{\upIntensity}{\intensity[ ]^{\uparrow}}
 \newcommand{\downIntensity}{\intensity[ ]^{\downarrow}}
 \newcommand{\intensityContrast}{\Delta\intensity[ ]}
