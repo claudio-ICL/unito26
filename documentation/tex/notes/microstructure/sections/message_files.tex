@@ -7,22 +7,28 @@ and about why a participant computes them rather than receiving them.
 A matching engine produces one thing: a stream of events.
 It publishes that stream in two forms.
 
-The first is \emph{order by order}, also called market by order or level three:
+The first is the \emph{message stream}:
 one message per submission, cancellation, deletion and execution,
 carrying the identity of the order it concerns.
 It is the tape of the orders themselves,
 and the trading epoch of Definition \ref{def.orderQueue} is exactly what it transmits.
 
-The second is \emph{aggregated}, also called market by price, depth of book or level two:
+The second is the \emph{aggregated book}:
 the prices and the sizes resting at each of the first $L$ levels of each side,
 republished as they change.
 It is the configuration
 $(\bestAskPrice_t, \bestBidPrice_t, \lbrace(\nthBestAskSize[i]_t, \nthBestBidSize[i]_t)\rbrace)$
 of Section \ref{sec.orderDrivenMarkets}, truncated at depth $L$.\footnote{
-The two are shipped as separate products on every major venue.
-Nasdaq disseminates the order-by-order stream as TotalView-ITCH and aggregated depth through
-a managed consolidated feed;
-on CME's MDP 3.0 the same event appears in a market-by-order and in a market-by-price book.
+Both are shipped as separate products on every major venue.
+Eurex publishes the message stream as the Enhanced Order Book Interface,
+and the aggregated book twice over:
+as the Enhanced Market Data Interface, un-netted,
+and as the Market Data Interface, whose updates are netted at regular intervals
+\cite{DBG24eob, DBG24emd}.
+On CME's MDP 3.0 the same event appears in a market-by-order and in a market-by-price book
+\cite{CMEmdp}, and Nasdaq publishes the message stream as TotalView-ITCH \cite{NAS23itc}.
+Venues and vendors call the first of the two market by order, order by order or level three,
+and the second market by price, depth of book or level two.
 The nomenclature is not standardised; the distinction is.}
 
 The second is a function of the first.
@@ -43,24 +49,29 @@ which is to say that it runs the fold of the next subsection before publishing t
 \end{remark}
 
 \begin{remark}\label{remark.derivedAndDelayed}
- The aggregated feed, however, is derived, and a participant who subscribes to it observes
- that cross-section only once the exchange has computed and published it.
- It is also truncated at depth $L$, and on some venues conflated,
- so that intermediate configurations are not merely delayed but absent.
- In practice the order-by-order feed is the faster of the two despite carrying the greater
- number of messages, its protocol being the more heavily optimised.
- A participant who folds the message stream himself therefore holds the aggregated book
- sooner, and to a depth the feed does not publish.\footnote{
- In United States equities a further tape exists for a regulatory rather than a technical
- reason: Rule 603(c) of Regulation NMS obliges a broker-dealer displaying quotations to
- display consolidated data, which the securities information processors provide.
- Consolidation costs latency that a participant reading each venue's own feed does not pay.}
+ Notice that the aggregated book is derived:
+ a participant who subscribes to it observes that cross-section only once the exchange has
+ computed and published it.
+ It is also truncated at depth $L$, and where the feed is netted its updates are sent at
+ regular intervals, so that intermediate configurations are not merely delayed but absent.
+ The aggregation is left out of the message stream by design,
+ price levels and their aggregation being derivable by the recipient from the individual
+ orders, and the stream being published
+ ``in order to send public market data as fast as possible''
+ \cite[Section 3.1]{DBG24eob}.
+ A participant who folds the stream herself therefore holds the aggregated book sooner,
+ and to a depth the feed does not publish.
 \end{remark}
 
-Reconstruction is therefore an ordinary part of a trading system rather than a
-data-preparation chore,
-and it is why this course writes the fold out in full:
-the object it builds is the one every later section is a statement about.
+A second tape exists in United States equities for a regulatory rather than a technical
+reason.
+Rule 603(c) of Regulation NMS obliges anyone who displays quotations,
+where a trading decision can be implemented,
+to display consolidated data alongside them \cite{SEC05reg}.
+Consolidation is performed by a party other than the venue on which the quotation arose,
+and costs a latency that a participant reading each venue's own feed does not pay.
+
+Reconstruction is an ordinary part of a trading system.
 
 \subsection{The book as a fold}
 
@@ -80,19 +91,57 @@ every incoming order is processed as its market part followed by its resting par
 so there is no separate branch for a marketable order,
 and an implementation that writes one has two code paths where the mathematics has one.
 
+A message is a submission, carrying an order $(t,q,p,d)$,
+or a cancellation, withdrawing a size $q$ from the queue at $p$ on the side $d$;
+a deletion is the cancellation of all of it.
+An execution is not a third kind:
+by Remark \ref{remark.passiveDirection} it is the record of the market part of somebody
+else's submission, read on the passive side.
+Algorithm \ref{algo.bookFold} is $F$.
+
+\begin{algorithm}[h!]
+ \caption{{The fold of the message stream into the aggregated book}}
+ \label{algo.bookFold}
+ \begin{algorithmic}[5]
+  \REQUIRE $\mathcal{B}_{k-1}$ as two maps from price to size, and the message $m_k$
+  \IF{$m_k$ is a cancellation of $q$ at $p$ on the side $d$}
+  \STATE subtract $q$ from the size at $p$ on the side $d$, and remove $p$ if it reaches zero
+  \ELSE
+  \STATE let $(t,q,p,d)$ be the submitted order and set
+         $\marketOrderSize$ as in Proposition \ref{prop.decompositionOfLimitOrder}
+  \STATE set $r := \marketOrderSize$
+  \WHILE{$r > 0$}
+  \STATE let $\pi$ be the best price-eligible price on the side $-d$
+  \STATE match $r \wedge \nthBestAskSize[1]$ shares at $\pi$ if $d=+1$, and
+         $r \wedge \nthBestBidSize[1]$ if $d=-1$
+  \STATE subtract them at $\pi$, remove $\pi$ if it reaches zero,
+         and decrease $r$ by the same amount
+  \ENDWHILE
+  \STATE add $q - \marketOrderSize$ to the size at $p$ on the side $d$
+  \ENDIF
+  \RETURN $\mathcal{B}_{k}$
+ \end{algorithmic}
+\end{algorithm}
+
+The loop is the reduction of Proposition \ref{prop.lobUpdate} to its elementary pieces,
+and it terminates because each pass empties one price.
+We implement it more than once,
+and compare the implementations on the time and the memory they take.
+
 \begin{remark}\label{remark.gridAgainstOccupied}
  The index $i$ of $\nthBestAskSize[i]$ counts levels of the price grid,
- as fixed after \eqref{eq.sweepCost},
  whereas an aggregated feed reports the first $L$ \emph{occupied} prices of each side.
  The two agree only when the occupied prices are contiguous on the grid,
- and differ whenever a side has a gap.
- In particular the queue imbalance \eqref{eq.queueImbalance} is recoverable from a
- truncated aggregated book only for those $n$ within which no gap falls.
+ so the queue imbalance \eqref{eq.queueImbalance} is recoverable from a truncated aggregated
+ book only for those $n$ within which no gap falls.
 \end{remark}
 
-\subsection{A recorded instance}
+\subsection{LOBSTER}
 
-LOBSTER distributes, for each ticker and each trading day,
+LOBSTER \cite{HP11lob} reconstructs the limit order book of a Nasdaq-traded stock from
+Nasdaq's historical TotalView-ITCH files and publishes the result at
+\url{https://lobsterdata.com}.
+It distributes, for each ticker and each trading day,
 a \emph{message} file and an \emph{orderbook} file:
 the historical, file-based form of the same pair of feeds.
 The message file carries the time, the event type, an order identifier, a size, a price and a
@@ -126,7 +175,3 @@ file, and the orderbook file carries no timestamp and no key of its own.
 Since the first file determines the second through \eqref{eq.bookFold},
 the pair is what lets an implementation of the fold be checked against the exchange's own,
 state by state.
-That check is the subject of
-\texttt{notebooks/a-session-from-lobster-files.ipynb},
-and the format is documented in
-\texttt{documentation/from-lobster-files-to-a-session.md}.
