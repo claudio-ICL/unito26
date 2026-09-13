@@ -38,9 +38,9 @@ never becomes a third chapter.
 
 1. `sec.orderDrivenMarkets` — orders, matching, the limit order book, the derived quantities
 2. `sec.messageFiles` — what an exchange disseminates, and the book as a fold of the message stream
-3. `sec.pointProcesses` — counting processes, Hawkes processes, stability, second order, simulation
+3. `sec.pointProcesses` — counting processes, Hawkes processes, exponential kernels, stability, second order, simulation
 4. `sec.priceFormation` — the order flow imbalance. **This is what the chapter is for**; everything before it is background for it.
-5. `sec.lobsterEmpirics` — the LOBSTER dataset
+5. `sec.lobsterEmpirics` — evidence from recorded data
 
 **Chapter 2 — Option pricing**: Black–Scholes, the fundamental theorem of derivative trading,
 SABR.

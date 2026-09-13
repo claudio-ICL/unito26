@@ -59,6 +59,29 @@ or reordering a lecture renames nothing and breaks no cross-reference.
 person plural. `\emph{}` for emphasis and for the first use of a defined term — never
 `\textit` or `\textbf`.
 
+**8. The notes reference nothing outside themselves.** No notebook, no markdown document, no
+module, no file path. The notes are self-contained and independent: it is the notebooks and the
+documentation that cite the notes, not the other way round. A fact worth having in the notes is
+worth writing in the notes.
+
+**9. Constructions that do not belong.** The register is the classroom: state the thing, and do
+not rate the sentence beside it. Before reporting any `.tex` work done, run
+
+```bash
+cd documentation/tex
+grep -rniE "worth (stating|noting|restating|having|being|a (line|comment))|deserves? comment|\
+and nothing else|not an afterthought|it is tempting|an honest statement|\
+matters more than it looks|turns out that|the key (insight|point|idea)|\
+this section (says|tells|shows|will)|as we (shall|will) see|\
+(importantly|crucially|interestingly|remarkably|strikingly|notably)|\
+a reader should|the reader should|one should be careful|note that " --include=*.tex .
+```
+
+and expect nothing. `Note that` is on the list because the house word is `Notice that`. No
+exclamation marks and no rhetorical questions. An environment that exists to answer a question
+someone asked in a conversation does not belong: write for a stranger meeting the file in a
+year.
+
 Full details, with the remaining conventions on equations, theorems, figures, code,
 algorithms and citations, are in `references/style.md`.
 

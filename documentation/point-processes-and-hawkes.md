@@ -21,7 +21,7 @@ $\nu = 30.19$ events/s — unless another parametrization is named.
 | --- | --- | --- | --- |
 | §1 `sec.countingProcesses` | compensator, intensity, Meyer's time change | — | — |
 | §2 `sec.hawkesProcesses` | the definition, $\Gamma$, the cluster representation | `hawkes.HawkesParams` | `test_hawkes.py::TestParameterValidation` |
-| §3 `sec.hawkesProcesses` | $\lambda = \mu + \mathcal{A}Z$, the $O(1)$ recursion, the compensator display | `hawkes.intensities_at_events`, `hawkes.compensators_at_events` | `test_hawkes.py::TestTheReplayedIntensity` |
+| §3 `sec.exponentialKernels` | $\lambda = \mu + \mathcal{A}Z$, the $O(1)$ recursion, the compensator display | `hawkes.intensities_at_events`, `hawkes.compensators_at_events` | `test_hawkes.py::TestTheReplayedIntensity` |
 | §4 `sec.stability` | $\rho$, $\lambda^*$, cluster sizes, the endogenous fraction | `HawkesParams.branching_matrix`, `.branching_ratio`, `.stationary_intensity`, `.endogenous_fraction`, `.mean_cluster_size` | `test_hawkes.py::TestTheBranchingStructure` |
 | §5 `sec.secondOrder` | the Lyapunov equation | `scipy.linalg.solve_lyapunov`, used in the notebook | — |
 | §6 `sec.simulation` | Dassios–Zhao, Ogata thinning, the residual test | `hawkes.ExponentialHawkes`, `hawkes.OgataThinningHawkes` | `test_hawkes.py::TestExactSimulation`, `::TestAgreementAndClustering` |
@@ -200,7 +200,7 @@ So that a reader cannot take a result here for a result about markets.
   be the stronger finding.
 - **No queue-position economics.**
 - **One excitation timescale**, the kernel being a single exponential. What that costs, and
-  what a per-pair $\beta$ would cost instead, is `remark.stateSize`.
+  what a per-pair $\beta$ would cost instead, is `exercise.eventDependentDecays`.
 - **No intraday non-stationarity**, so a tuned window is not validated against one.
 - **No anchor for the price level**, so the level wanders freely and the mean price change
   over a session is a per-seed random drift the size of the effects being measured. This is

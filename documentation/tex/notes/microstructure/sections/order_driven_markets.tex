@@ -231,10 +231,10 @@ $(\bestAskPrice_t, \bestBidPrice_t, \lbrace (\nthBestAskSize[i]_t, \nthBestBidSi
 Therefore,
 in this course
 limit order books will always mean aggregated order book.
-This means that we will not map the queue sizes to  the orders in the trading epoch. 
+This means that we will not map the queue sizes to  the orders in the trading epoch.
 
 
-We will use derived quantities from this configuration: 
+We will use derived quantities from this configuration:
 the bid-ask spread,
 the mid-price,
 the queue-imbalance,
@@ -324,7 +324,7 @@ so that $\nthBestAskPrice[i]_t = \bestAskPrice_t + (i-1)\tickSizeOfLOB$
 and the second equality in \eqref{eq.sweepCost} follows from
 $\bestAskPrice_t - \midPrice_t = \LOBspread_t/2$.
 
-When a limit order comes to the market, 
+When a limit order comes to the market,
 it modifies the previous configuration of the order book.
 Proposition \ref{prop.lobUpdate} gives the updating rule for the variables
 $(\bestAskPrice_t, \bestBidPrice_t, \lbrace (\nthBestAskSize[i]_t, \nthBestBidSize[i]_t) : \, \, i=1,2,\dots\rbrace)$.
@@ -526,7 +526,7 @@ this implies $N\geq 1 $ in the notation of Proposition \ref{prop.lobUpdate},
 the converse failing when the order exactly clears the best level.
 Similarly, a buy market order $(t,\marketOrderSize,\infty,1)$ walks the book
 if $\marketOrderSize > \nthBestAskSize[1]_{t-}$.
-A market order walks the book if an only if 
+A market order walks the book if an only if
 its sweep cost is larget than the bid-ask sprad.
 
 Given a time window $\timeWindow$,
@@ -594,7 +594,6 @@ Notice that $\vwap_{t,w}$ is a statistic of the tape:
 it is a function of the transactions, and cannot be recovered
 from the sequence of configurations alone,
 since a level shrinks by cancellation as well as by execution.
-The sweep cost of \eqref{eq.sweepCost} is the opposite:
-it is a function of one configuration and is defined
-whether or not the order it prices is ever submitted.
+The sweep cost of \eqref{eq.sweepCost}, by contrast, is a function of one configuration,
+and is defined whether or not the order it prices is ever submitted.
 \end{remark}

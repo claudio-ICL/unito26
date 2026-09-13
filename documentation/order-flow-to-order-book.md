@@ -573,9 +573,9 @@ the example parameters fix the shape by hand and rescale to $\rho(\Gamma) = 0.6$
 
 ### What $\rho$ tells us
 
-The branching matrix, the stationary intensity, the endogenous fraction, the cluster
-sizes, the relaxation time and the dimensionless groups are developed in
-`sec.hawkesProcesses`, and mapped onto this package in
+The branching matrix is defined in `sec.hawkesProcesses`; the stationary intensity, the
+endogenous fraction, the cluster sizes, the relaxation time and the dimensionless groups are
+developed in `sec.stability`, and mapped onto this package in
 [`point-processes-and-hawkes.md`](point-processes-and-hawkes.md). They are not restated
 here.
 

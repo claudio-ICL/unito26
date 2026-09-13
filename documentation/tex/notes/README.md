@@ -17,26 +17,31 @@ as a section.
 | From message files to the aggregated order book | `sec.messageFiles` | `message_files.tex` |
 | Point processes and self-excitation | `sec.pointProcesses` | `point_processes.tex` |
 | Price formation | `sec.priceFormation` | `price_formation.tex` |
-| The LOBSTER dataset | `sec.lobsterEmpirics` | `lobster_empirics.tex` |
+| Evidence from recorded data | `sec.lobsterEmpirics` | `lobster_empirics.tex` |
 
 `point_processes.tex` and `price_formation.tex` are themselves indexes, holding
 `\subsection`/`\label`/`\input` triples:
 
-- point processes: `counting_processes`, `hawkes_processes`, `stability`, `second_order`,
-  `simulation`
+- point processes: `counting_processes`, `hawkes_processes`, `exponential_kernels`,
+  `stability`, `second_order`, `simulation`
 - price formation: `order_flow_model`, `order_flow_imbalance`, `synthetic_evidence`
 
-Price formation is the end of the chapter and the reason for the rest of it.
+Price formation is what the chapter is for; the last section puts its statements to
+recorded data.
 
 **No measured figure appears in the notes.** Coefficients, windows and goodness-of-fit numbers
 live in `notebooks/`, which is where they can be re-derived; the notes carry the mechanism and
 the signs.
 
+**The notes reference nothing outside themselves** — no notebook, no markdown document, no
+module. They are self-contained: it is the notebooks and the documentation that cite the notes,
+not the other way round.
+
 ## Building
 
 ```bash
 cd documentation/tex/notes    # or documentation/tex/slides
-latexmk -pdf -interaction=nonstopmode -halt-on-error main.tex
-grep -icE 'undefined (control sequence|reference|citation)' main.log   # must be 0
-grep -c 'multiply defined' main.log                                    # must be 0
+latexmk -C && latexmk -f -pdf -interaction=nonstopmode main.tex
+grep -icE 'Undefined control sequence|LaTeX Warning: (Reference|Citation)|multiply defined' \
+     main.log   # must be 0
 ```
