@@ -29,6 +29,26 @@ Recorded here as context, not as working instructions:
 
 See `dev-context/` for the per-topic development notes.
 
+## Course structure
+
+The course is **two chapters and only two**. A new topic joins one of them as a section; it
+never becomes a third chapter.
+
+**Chapter 1 — Market microstructure** (`chap.microstructure`), in this order:
+
+1. `sec.orderDrivenMarkets` — orders, matching, the limit order book, the derived quantities
+2. `sec.messageFiles` — what an exchange disseminates, and the book as a fold of the message stream
+3. `sec.pointProcesses` — counting processes, Hawkes processes, stability, second order, simulation
+4. `sec.priceFormation` — the order flow imbalance. **This is what the chapter is for**; everything before it is background for it.
+5. `sec.lobsterEmpirics` — the LOBSTER dataset
+
+**Chapter 2 — Option pricing**: Black–Scholes, the fundamental theorem of derivative trading,
+SABR.
+
+The notes live in `documentation/tex/notes/microstructure/`, one file per section under
+`sections/`, with the sectioning in `microstructure.tex`. See
+[`documentation/tex/notes/README.md`](documentation/tex/notes/README.md).
+
 ## Repo layout
 
 ```
