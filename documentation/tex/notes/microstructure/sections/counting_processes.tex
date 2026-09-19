@@ -38,19 +38,23 @@ $(\arrivalTimes_{j})_j$, $e = 1, \dots, \numEventTypes$.
 Let $\groundProc(t) := \countingProc[1](t) + \dots + \countingProc[\numEventTypes](t)$
 be the ground process of $\multiCountingProc$,
 and let
-\begin{equation*}
+\begin{equation}
+ \label{eq.arrivalTimesOfGroundProcess}
  \arrivalTimes[ ]_{n} := \inf \left\lbrace t>0: \, \groundProc(t) \geq n\right\rbrace,
  \qquad n = 1, 2, \dots,
-\end{equation*}
+\end{equation}
 be the ordered sequence of random times stemming from the union
 $\lbrace \arrivalTimes_{j}: \, j = 1,2,\dots; \,\, e = 1,\dots,\numEventTypes\rbrace$.
-By defining, for $n = 1, 2, \dots$,
-\begin{equation*}
+
+Define the $n$-th event label
+\begin{equation}
+ \label{eq.eventLabels}
  \event := \sum_{e=1}^{\numEventTypes} e \,
  \indicator{\delta \groundProc(\arrivalTimes[ ]_{n}) = \delta\countingProc(\arrivalTimes[ ]_{n})},
-\end{equation*}
-we have that the pair $(\arrivalTimes[ ]_{n}, \event[n])$ equivalently characterises the
-multivariate counting process, because
+ \qquad n = 1, 2, \dots
+\end{equation}
+The pair $(\arrivalTimes[ ]_{n}, \event[n])$ characterises $\multiCountingProc$ equivalently,
+because
 \begin{equation}\label{eq.NTE_counting_proc}
  \countingProc(t) = \sum_{n} \indicator{\arrivalTimes[ ]_{n}\leq t, \, \event[n] = e},
 \end{equation}
@@ -191,8 +195,6 @@ and the inter-arrival times are exponential.
  $\filtrationF_{\arrivalTimes[ ]_{n}}$-measurable.
 \end{remark}
 
-Compensators are the ingredient of the following time-change result,
-which we shall use in goodness-of-fit diagnostics.
 
 \begin{thm}[{\cite{Mey71dem}}]\label{thm.meyer1971}
  Let $\multiCountingProc$ be a $\numEventTypes$-dimensional counting process with arrival times

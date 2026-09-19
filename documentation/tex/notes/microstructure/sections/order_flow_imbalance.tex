@@ -1,3 +1,9 @@
+The update of Proposition \ref{prop.lobUpdate} is exact, and it is too fine for what we want.
+It tracks the whole aggregated book, and to run it we need the whole tape of orders.
+We look for something simpler:
+a statistic computed from the observed aggregated book alone,
+whose only job is to track the mid-price.
+
 The order flow imbalance is introduced in \cite{CKS14pri} through a book in which the
 mechanism of Section \ref{sec.orderDrivenMarkets} is simplified until the mid-price becomes
 an explicit function of the flow.
@@ -6,16 +12,23 @@ We state the simplification as an assumption, and the consequence as a propositi
 \begin{assumption}\label{assumption.idealisedBook}
  Over the window considered,
  \begin{enumerate}[label={\emph{\roman{*}}.}]
-  \item every event occurs at the best quote of its side;
-  \item each side holds the same depth $D > 0$ at every price level of the grid;
-  \item the quote on each side moves by one tick for every $D$ shares of net flow on that
-        side, in either direction --- downward on the bid when it is consumed or withdrawn,
+  \item every event occurs at the best quote of its side,
+        and no market order is larger than the size resting there;
+  \item the size resting at a touch lies in $[0, \uniformDepth]$, for a
+        $\uniformDepth > 0$ fixed over the window;
+  \item a quote moves one tick at a time,
+        and the level it leaves or arrives at holds $\uniformDepth$ ---
+        downward on the bid when it is consumed or withdrawn,
         upward when a limit order improves it, and mutatis mutandis on the ask.
  \end{enumerate}
 \end{assumption}
 
-Part \emph{iii.} is what makes the idealisation symmetric.
-Without its second half a queue could only be depleted,
+Part \emph{i.} confines every event to the first level, so that the book moves one queue at a
+time.
+Parts \emph{ii.} and \emph{iii.} fix the exchange rate between shares and ticks:
+one tick of quote movement costs or reveals $\uniformDepth$ shares.
+Part \emph{iii.} is symmetric in its two halves.
+Without the second of them a queue could only be depleted,
 the bid could only fall and the ask only rise,
 and the spread would widen without bound.
 
@@ -45,31 +58,44 @@ and the spread would widen without bound.
   \nthBestAskSize[1]_{\arrivalTimes[]_{n-1}} ,
  \end{split}
  \end{equation}
- and the \emph{order flow imbalance} over the window $(t-w, t]$ is
+ and the \emph{order flow imbalance} over the window $(t-\ofiWindow, t]$ is
  \begin{equation}
  \label{eq.orderFlowImbalance}
-  \OFI_{t,w} = \sum_{n \, : \, t-w < \arrivalTimes[]_n \leq t} \orderFlowContribution .
+  \OFI_{t,\ofiWindow}
+  = \sum_{n \, : \, t-\ofiWindow < \arrivalTimes[]_n \leq t} \orderFlowContribution .
  \end{equation}
 \end{defi}
 
+Both bid indicators fire when the best bid does not move,
+so an event that leaves it in place contributes the change in the size resting there.
+An event that moves it contributes a whole queue.
 The index of every quantity in \eqref{eq.orderFlowContribution} is a physical time
 $\arrivalTimes[]_n$ and not the counting index $n$,
 which matters as soon as the arrival times are themselves modelled,
-as they are in Section \ref{sec.pointProcesses}.
+as they are in Section \ref{sec.orderFlowModel}.
 
 \begin{prop}\label{prop.idealisedUpdate}
  Under Assumption \ref{assumption.idealisedBook},
- the mid-price change over the window $(t-w,t]$ satisfies
+ the mid-price change over the window $(t-\ofiWindow,t]$ satisfies
  \begin{equation}\label{eq.idealisedUpdate}
-  \Delta \midPrice_{t,w}
-  = \frac{\tickSizeOfLOB}{2D} \, \OFI_{t,w} \; + \; R_{t,w},
+  \Delta \midPrice_{t,\ofiWindow}
+  = \midPrice_{t} - \midPrice_{t-\ofiWindow}
+  = \frac{\tickSizeOfLOB}{2\uniformDepth} \, \OFI_{t,\ofiWindow}
+  \; + \; \residual_{t,\ofiWindow},
   \qquad
-  \vert R_{t,w} \vert \leq \tickSizeOfLOB ,
+  \vert \residual_{t,\ofiWindow} \vert \leq \tickSizeOfLOB ,
  \end{equation}
- where $R_{t,w}$ depends only on the sizes resting at the two touches at the endpoints of
- the window.
- In particular \eqref{eq.idealisedUpdate} is exact whenever those four sizes are equal to
- $D$.
+ where
+ \begin{equation}\label{eq.idealisedResidual}
+  \residual_{t,\ofiWindow}
+  = -\frac{\tickSizeOfLOB}{2\uniformDepth}\Big[
+  \big( \nthBestBidSize[1]_{t} - \nthBestBidSize[1]_{t-\ofiWindow} \big)
+  - \big( \nthBestAskSize[1]_{t} - \nthBestAskSize[1]_{t-\ofiWindow} \big) \Big]
+ \end{equation}
+ depends only on the sizes resting at the two touches at the endpoints of the window.
+ In particular \eqref{eq.idealisedUpdate} is exact whenever the bid and the ask touches
+ change by the same amount over the window, and so whenever all four sizes equal
+ $\uniformDepth$.
 \end{prop}
 \begin{proof}
  By Assumption \ref{assumption.idealisedBook}~\emph{i.} every event changes the
@@ -77,59 +103,49 @@ as they are in Section \ref{sec.pointProcesses}.
  is its restriction to the first level.
  Measure the position of the bid in shares by
  $\mathcal{Q}^{b}_{s} := \nthBestBidSize[1]_{s}
- + D\,(\bestBidPrice_{s} - \bestBidPrice_{t-w})/\tickSizeOfLOB$,
- one tick being worth $D$ shares by \emph{ii.} and \emph{iii.}
+ + \uniformDepth\,(\bestBidPrice_{s} - \bestBidPrice_{t-\ofiWindow})/\tickSizeOfLOB$,
+ one tick being worth $\uniformDepth$ shares by \emph{ii.} and \emph{iii.}
  Each event changes $\mathcal{Q}^{b}$ by exactly its own signed bid-side flow,
- whether it moves the quote or not,
  and the first two terms of \eqref{eq.orderFlowContribution} are that flow.
+ When the bid does not move this is the change in the size resting there.
+ When it moves, it moves by one tick and the level it leaves or arrives at holds
+ $\uniformDepth$, by \emph{iii.},
+ so the $\uniformDepth$ carried by the price term is exactly the queue that
+ \eqref{eq.orderFlowContribution} records.
  Summing over the window,
  \begin{equation*}
-  \frac{\bestBidPrice_{t} - \bestBidPrice_{t-w}}{\tickSizeOfLOB}
-  = \frac{1}{D}\sum_{n} \Big(
+  \frac{\bestBidPrice_{t} - \bestBidPrice_{t-\ofiWindow}}{\tickSizeOfLOB}
+  = \frac{1}{\uniformDepth}\sum_{n} \Big(
   \text{bid terms of } \orderFlowContribution \Big)
-  - \frac{\nthBestBidSize[1]_{t} - \nthBestBidSize[1]_{t-w}}{D} ,
+  - \frac{\nthBestBidSize[1]_{t} - \nthBestBidSize[1]_{t-\ofiWindow}}{\uniformDepth} ,
  \end{equation*}
  and mutatis mutandis for the ask, with the opposite sign.
- Halving the sum of the two gives \eqref{eq.idealisedUpdate}, with
- $R_{t,w} = -\frac{\tickSizeOfLOB}{2D}\big[
- (\nthBestBidSize[1]_{t} - \nthBestBidSize[1]_{t-w})
- - (\nthBestAskSize[1]_{t} - \nthBestAskSize[1]_{t-w})\big]$.
- Each of the four sizes lies in $[0,D]$ by \emph{ii.}, whence the bound.
+ Halving the sum of the two gives \eqref{eq.idealisedUpdate} with
+ \eqref{eq.idealisedResidual}.
+ Each of the four sizes lies in $[0,\uniformDepth]$ by \emph{ii.}, whence the bound.
 \end{proof}
 
 \begin{remark}\label{remark.ofiUnits}
- Notice that $\OFI_{t,w}/(2D)$ is a number of shares over a number of shares,
- so \eqref{eq.idealisedUpdate} reads as a tick count on the left when $\tickSizeOfLOB$ is
- dropped, and as a price otherwise.
- Prices are carried as integer tick counts throughout these notes and throughout the code,
+ Notice that $\OFI_{t,\ofiWindow}/(2\uniformDepth)$ is a number of shares over a number of
+ shares, so \eqref{eq.idealisedUpdate} reads as a tick count on the left when
+ $\tickSizeOfLOB$ is dropped, and as a price otherwise.
+ Prices are carried as integer tick counts throughout these notes,
  and the conversion happens once, at the boundary.
 \end{remark}
 
-\begin{remark}\label{remark.identityNotForecast}
- Notice that \eqref{eq.idealisedUpdate} is an identity about a window that has already
- elapsed, and not a forecast.
- Whether $\OFI_{t,w}$ says anything about the \emph{next} window is a different question,
- and Section \ref{sec.syntheticEvidence} shows that its answer is not a property of $\OFI$
- at all but of the kernel that generated the flow.
+\begin{remark}\label{remark.residualIsQueueFlow}
+ The residual is not an independent nuisance.
+ On a window over which neither quote moves,
+ $\Delta\midPrice_{t,\ofiWindow} = 0$ while
+ $\OFI_{t,\ofiWindow}
+ = \big(\nthBestBidSize[1]_{t} - \nthBestBidSize[1]_{t-\ofiWindow}\big)
+ - \big(\nthBestAskSize[1]_{t} - \nthBestAskSize[1]_{t-\ofiWindow}\big)$,
+ so \eqref{eq.idealisedResidual} gives
+ $\residual_{t,\ofiWindow}
+ = -\tickSizeOfLOB\,\OFI_{t,\ofiWindow}/(2\uniformDepth)$
+ and the two terms of \eqref{eq.idealisedUpdate} cancel.
+ The residual is the part of the flow that went into the queues rather than into the quotes.
+ It is bounded by one tick and does not grow with $\ofiWindow$,
+ which is what makes \eqref{eq.idealisedUpdate} useful over windows
+ whose flow term is larger than that.
 \end{remark}
-
-\subsubsection*{The contrast and the imbalance}
-
-The intensity contrast $\intensityContrast$ of Definition \ref{def.intensityContrast} and
-the order flow imbalance are statistics of different things,
-and neither is a coarse version of the other.
-
-By \eqref{eq.intensityContrast}, $\intensityContrast$ is a function of the state
-$\decayedCounts$ and of the parameters.
-It is available only to an observer who knows $\excitation$ and $\decay$,
-and under \eqref{eq.baselineSymmetry} it is blind to $\baseIntensity$,
-so it says nothing about the immigrants that are about to arrive.
-
-The imbalance is model free.
-It counts events as they occurred, immigrants and offspring alike,
-and it reads the book: the contribution \eqref{eq.orderFlowContribution} carries the size of
-the order and the state of the queue it arrived at,
-neither of which appears anywhere in $\hawkesKernel$.
-The kernel governs when events happen and of which type;
-the sizes govern how far they move the price.
-No function of $\decayedCounts$ recovers a size.

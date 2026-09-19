@@ -16,11 +16,11 @@
  the decayed counts.
 \end{defi}
 
-From \eqref{eq.branchingMatrix},
+In an exponential-kernel Hawkes process, the branching matrix is 
 \begin{equation}\label{eq.GammaIsAOverBeta}
- \branchingMatrix = \frac{\excitation}{\decay},
+ \branchingMatrix = \frac{\excitation}{\decay}.
 \end{equation}
-so the branching matrix is dimensionless while the excitation matrix is a rate.
+Observe that the branching matrix is dimensionless while the excitation matrix is a rate.
 
 \begin{remark}\label{remark.countsAgainstRates}
  Notice that $\sum_e \branchingMatrix\subscriptee$ and $\sum_e \excitation\subscriptee$
@@ -83,33 +83,51 @@ with no numerical integration.
  The map
  $\timeHorizon \mapsto \countingProc[\eone](\timeHorizon-) -
  \decayedCounts_{\eone}(\timeHorizon)$
- is continuous, as it must be for Theorem \ref{thm.meyer1971} to apply:
- at an arrival of type $\eone$ both terms gain one.
+ is continuous.
+ Indeed, on the one hand,
+ $\timeHorizon \mapsto \countingProc[\eone](\timeHorizon -)$
+ and $\timeHorizon \mapsto \decayedCounts_{\eone}(\timeHorizon)$
+ are both left-continuous by construction.
+ On the other hand, at every arrival time $\arrivalTimes[\eone]_{j}$,
+ \begin{equation*}
+  \countingProc[\eone](\arrivalTimes[\eone]_{j})
+  - \countingProc[\eone](\arrivalTimes[\eone]_{j} - )
+  = \decayedCounts_{\eone}(\arrivalTimes[\eone]_{j} + )
+  - \decayedCounts_{\eone}(\arrivalTimes[\eone]_{j} ),
+ \end{equation*}
+ so the two jumps cancel.
+ Theorem \ref{thm.meyer1971} requires that continuity.
+
  The post-jump reading
  $\countingProc[\eone](\timeHorizon) - \decayedCounts_{\eone}(\timeHorizon)$
  is not the compensator:
  it overstates \eqref{eq.compensatorClosedForm} by $\excitation\subscriptee/\decay$ at each
- arrival of type $\eone$, and agrees with it everywhere else.
- With $\decay = 1$, a single arrival at $t = 1/2$ and $\timeHorizon = 1/2$,
- the integral is $0$ while the post-jump reading gives $1$;
- and arrival times are precisely where Section \ref{sec.simulation} evaluates the compensator.
- It is also why we compute the compensator independently of the simulator rather than
- accumulating it along the path.
+ arrival of type $\eone$, and Section \ref{sec.simulation} evaluates the compensator at
+ exactly those times.
 \end{remark}
 
-The state moves deterministically between two arrivals, by $\varphi_t(z) = e^{-\decay t}z$,
-and jumps at each of them.
+Hawkes processes with arbitrary kernels
+might have complicated dependence on their history.
+Exponential kernels instead have the remarkable property that
+the dependence of the intensity on the history is
+summarised in the decayed count.
+In other words,
+the decayed count at time $t$ is sufficient
+to characterise the law of the process after $t$.
+Between arrivals the state decays deterministically,
+along the flow $\varphi_t(z) = e^{-\decay t}z$,
+and at each arrival it gains a unit vector.
 
-\begin{thm}\label{thm.markovState}
- Let $\excitation \geq 0$, $\decay > 0$ and $\baseIntensity \geq 0$.
+\begin{thm}[Markovianity of exponential-kernel Hawkes processes]\label{thm.markovState}
+ Let $\multiCountingProc$ be an exponential-kernel Hawkes process.
  Then $\decayedCounts$ is a piecewise-deterministic Markov process on
  $\R_{+}^{\numEventTypes}$,
- with flow $\varphi_t(z) = e^{-\decay t}z$,
+ with flow $\varphi_t$,
  jump rate $\totalIntensity(z) = \mathbf{1}^{\transpose}(\baseIntensity + \excitation z)$
  and jump kernel
  $\sum_{e} \frac{\intensity(z)}{\totalIntensity(z)} \delta_{z + \unitVector_e}$,
  arbitrary where the rate vanishes.
-  The extended generator of $\decayedCounts$ is
+ The extended generator of $\decayedCounts$ is
  \begin{equation}\label{eq.generatorOfDecayedCount}
   \generatorL f(z)
   = -\decay \, z \cdot \gradient f(z)
@@ -159,15 +177,14 @@ the Markov property of the exponential-kernel case is due to \cite{Oak75mar}.
  so $\sum_{k \geq 1}\int_{0}^{\timeHorizon}\hawkesKernel^{*k}$ converges at every
  $\branchingRatio$, and with it $\Expectation[\multiCountingProc(\timeHorizon)]$ and
  $\Expectation[\lvert\decayedCounts(\timeHorizon)\rvert^{2}]$.
- What subcriticality buys is stated in Section \ref{sec.stability}.
 \end{remark}
 
 \begin{exercise}\label{exercise.eventDependentDecays}
- A single $\decay$ shared by all pairs buys a state of dimension $\numEventTypes$.
+ We work with exponential kernels that share a single $\decay$ across all components,
+ so that the decayed count is $\numEventTypes$-dimensional.
  A decay $\decay\subscriptee$ per pair would require one decayed count per pair,
  a state of dimension $\numEventTypes^2$,
- and every expression of Sections \ref{sec.stability} and \ref{sec.secondOrder} would have to
- be rewritten on it.
+ and every expression of Section \ref{sec.stability} would have to be rewritten on it.
  Rewrite them.
 \end{exercise}
 

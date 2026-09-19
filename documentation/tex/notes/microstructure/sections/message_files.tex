@@ -29,7 +29,7 @@ On CME's MDP 3.0 the same event appears in a market-by-order and in a market-by-
 \cite{CMEmdp}, and Nasdaq publishes the message stream as TotalView-ITCH \cite{NAS23itc}.
 Venues and vendors call the first of the two market by order, order by order or level three,
 and the second market by price, depth of book or level two.
-The nomenclature is not standardised; the distinction is.}
+The nomenclature is not standardised.}
 
 The second is a function of the first.
 The exchange computes it by applying the matching rules of
@@ -53,7 +53,7 @@ which is to say that it runs the fold of the next subsection before publishing t
  a participant who subscribes to it observes that cross-section only once the exchange has
  computed and published it.
  It is also truncated at depth $L$, and where the feed is netted its updates are sent at
- regular intervals, so that intermediate configurations are not merely delayed but absent.
+ regular intervals, so that intermediate configurations are absent rather than delayed.
  The aggregation is left out of the message stream by design,
  price levels and their aggregation being derivable by the recipient from the individual
  orders, and the stream being published
@@ -70,8 +70,6 @@ where a trading decision can be implemented,
 to display consolidated data alongside them \cite{SEC05reg}.
 Consolidation is performed by a party other than the venue on which the quotation arose,
 and costs a latency that a participant reading each venue's own feed does not pay.
-
-Reconstruction is an ordinary part of a trading system.
 
 \subsection{The book as a fold}
 

@@ -12,9 +12,14 @@ boundedness.
 We recall the algorithm, since it applies to any kernel and is the control against which the
 exact scheme below is checked.
 
+Recall the arrival times $\arrivalTimes[ ]_n$ of the ground process
+from \eqref{eq.arrivalTimesOfGroundProcess},
+and the event labels from \eqref{eq.eventLabels}.
 The idea is Proposition \ref{prop.conditionalSurvival} run backwards.
-If $\totalIntensity$ were constant, the next inter-arrival would be exponential of that rate.
-It is not constant, but if it is non-increasing between events then its value at the last event
+If $\totalIntensity$ were constant, 
+the next inter-arrival would be exponential of that rate.
+It is not constant,
+but if it is non-increasing between events then its value at the last event
 dominates it,
 so one may draw an exponential at the dominating rate and keep the candidate with probability
 equal to the ratio of the true rate to the dominating one.
@@ -26,11 +31,11 @@ $\decayedCounts$ is left-continuous, so the pre-jump value is smaller by
 $(\mathbf{1}^{\transpose}\excitation)_{\event[n-1]}$ and does not dominate.
 
 We take $(\arrivalTimes[]_n,\event[n])$ as the sequence of arrival times and event labels
-of the ground process, and recall that computing $\totalIntensity(t)$ requires
-$\lbrace(\arrivalTimes[]_n,\event[n]): \, \arrivalTimes[]_n <t\rbrace$.
-
-The algorithm is detailed in 
-Algorithm \ref{algo.ogata}.
+of the ground process.
+For a general kernel, computing $\totalIntensity(t)$ requires
+$\lbrace(\arrivalTimes[]_n,\event[n]): \, \arrivalTimes[]_n <t\rbrace$,
+the whole history up to $t$.
+The algorithm is detailed in Algorithm \ref{algo.ogata}.
 
 \begin{algorithm}[h!]
  \caption{{Ogata's thinning algorithm \citep{Oga81lew}}}
@@ -46,13 +51,23 @@ Algorithm \ref{algo.ogata}.
   \STATE update $t\leftarrow t+U$ and $\bar{\lambda} \leftarrow \totalIntensity(t)$
   \ENDWHILE
   \STATE set $\arrivalTimes[]_n:=t$
-  \STATE draw $\event[n]$ in $\lbrace 1,\dots,\numEventTypes\rbrace$ with probabilities proportional to $\lbrace \intensity[1](\arrivalTimes[]_n), \dots, \intensity[\numEventTypes](\arrivalTimes[]_n)\rbrace$
+  \STATE draw $\event[n]$ in $\lbrace 1,\dots,\numEventTypes\rbrace$ with probabilities
+         proportional to
+         $\lbrace \intensity[1](\arrivalTimes[]_n), \dots,
+         \intensity[\numEventTypes](\arrivalTimes[]_n)\rbrace$
   \RETURN $(\arrivalTimes[]_n,\event[n])$
  \end{algorithmic}
 \end{algorithm}
 
+Algorithm \ref{algo.ogata} evaluates $\totalIntensity$ three times:
+twice in the loop, and once more to draw $\event[n]$.
+For a general kernel each of the three reads the history.
+For an exponential kernel each reads $\decayedCounts$ instead:
+by Theorem \ref{thm.markovState} the pair $(\multiCountingProc,\decayedCounts)$ is Markov, so
+$\totalIntensity(t) = \mathbf{1}^{\transpose}(\baseIntensity + \excitation\decayedCounts(t))$,
+and the algorithm holds $\numEventTypes$ numbers in place of a list that grows with the path.
 The state is carried from event to event by a recursion, not recomputed.
-Between $\arrivalTimes[ ]_{n}$ and $\arrivalTimes[ ]_{n+1}$ the state merely decays,
+Between $\arrivalTimes[ ]_{n}$ and $\arrivalTimes[ ]_{n+1}$ it merely decays,
 so from \eqref{eq.decayedCounts},
 \begin{equation}\label{eq.update_of_exponential_intensity}
  \decayedCounts(\arrivalTimes[ ]_{n+1}-)
@@ -94,17 +109,6 @@ hence so does the excited part of $\totalIntensity$, and
 \end{equation}
 Non-negativity of $\excitation$ enters separately, and gives $D \geq 0$.
 
-\begin{remark}\label{remark.commonDecay}
- Notice that \eqref{eq.totalIntensityBetweenEvents} uses only that $\decay$ is common to all
- pairs; constant column sums are not needed.
- With a decay $\decay\subscriptee$ depending on the pair, or even one depending only on the
- type of the exciting event, the components of $\decayedCounts$ decay at different rates and
- $\totalIntensity$ is a sum of exponentials rather than one exponential,
- so that the two-factor form of \eqref{eq.dzSurvival} below fails,
- and with it Theorem \ref{thm.dassiosZhao} as stated.
- The survival function still factorises, over one clock per decay rate rather than two,
- so the scheme generalises at the cost of carrying one clock more.
-\end{remark}
 
 Substituting \eqref{eq.totalIntensityBetweenEvents} into
 Proposition \ref{prop.conditionalSurvival} and integrating,
@@ -114,35 +118,28 @@ Proposition \ref{prop.conditionalSurvival} and integrating,
  = e^{-\bar{\baseIntensity}s} \cdot
  \exp\left( -\frac{D}{\decay}\big(1 - e^{-\decay s}\big) \right).
 \end{equation}
-The right-hand side is a product of two factors,
-and the following lemma says what that means.
+The right-hand side is a product of two factors, so, as \cite{DZ13exa} observed,
+the inter-arrival time of the ground process is the minimum of two independent waiting times,
+one for the immigration and one for the excitation.
+The waiting time of the immigration is exponential of parameter $\bar{\baseIntensity}$.
+The waiting time for the excitation is \emph{defective}:
+with probability $e^{-D/\decay} > 0$ no excitation occurs at all.
 
-\begin{lemma}\label{lemma.minimumOfIndependent}
- For $i=1,2$ let $G_i : [0,\infty) \to [0,1]$ be non-increasing and right-continuous with
- $G_i(0)=1$, and let $\tau_i$ be independent random variables with values in
- $(0,+\infty]$ and $\Prob(\tau_i > s) = G_i(s)$.
- Then
- \begin{equation*}
-  \Prob(\tau_1 \wedge \tau_2 > s) = G_1(s)G_2(s),
-  \qquad
-  \Prob(\tau_1 \wedge \tau_2 = +\infty) = G_1(\infty)G_2(\infty) .
- \end{equation*}
-\end{lemma}
-\begin{proof}
- $\lbrace \tau_1 \wedge \tau_2 > s \rbrace
- = \lbrace \tau_1 > s\rbrace \cap \lbrace \tau_2 > s\rbrace$,
- and the two events are independent.
- Letting $s \to \infty$ gives the second identity.
-\end{proof}
 
-The two factors of \eqref{eq.dzSurvival} are therefore the survival functions of two
-independent waiting times, one for the immigration and one for the excitation,
-and the inter-arrival time is their minimum.
-Neither factor need be that of a finite random variable:
-the first is $\mathrm{Exp}(\bar{\baseIntensity})$,
-while the second tends to $e^{-D/\decay} > 0$, so the excitation clock is
-\emph{defective} and fails to ring at all with that probability.
-This is the observation of \cite{DZ13exa}.
+\begin{remark}\label{remark.commonDecay}
+ Notice that \eqref{eq.totalIntensityBetweenEvents} 
+	uses crucially that $\decay$ is common to all
+ pairs.
+ With a decay $\decay\subscriptee$ depending on the pair, or even one depending only on the
+ type of the exciting event, 
+ the components of $\decayedCounts$ decay at different rates and
+ $\totalIntensity$ is a sum of exponentials rather than one exponential,
+ so that the two-factor form of \eqref{eq.dzSurvival} fails,
+ and with it Theorem \ref{thm.dassiosZhao} as stated.
+ The survival function still factorises, over one clock per decay rate rather than two,
+ so the scheme generalises at the cost of carrying one clock more.
+\end{remark}
+
 
 \begin{thm}[{\citealp{DZ13exa}}]\label{thm.dassiosZhao}
  Let $\bar{\baseIntensity} > 0$, let
@@ -175,8 +172,8 @@ This is the observation of \cite{DZ13exa}.
  $\exp\big(-\frac{D}{\decay}(1-e^{-\decay s})\big)$,
  which is the second factor of \eqref{eq.dzSurvival};
  and $\tau_2 = +\infty$ exactly when $\mathcal{X} \geq D/\decay$.
- The two are independent, so Lemma \ref{lemma.minimumOfIndependent} gives
- \eqref{eq.dzSurvival}.
+ The two are independent, so the survival function of $\tau_1 \wedge \tau_2$ is the
+ product of the two, which is \eqref{eq.dzSurvival}.
  Equation \eqref{eq.dzType} is the definition of the intensity of the $e$-th component
  relative to that of the ground process.
 \end{proof}

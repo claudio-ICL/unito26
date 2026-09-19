@@ -23,11 +23,18 @@ as a section.
 `\subsection`/`\label`/`\input` triples:
 
 - point processes: `counting_processes`, `hawkes_processes`, `exponential_kernels`,
-  `stability`, `second_order`, `simulation`
-- price formation: `order_flow_model`, `order_flow_imbalance`, `synthetic_evidence`
+  `stability`, `simulation`
+- price formation: `order_flow_imbalance`, `order_flow_model`, `reading_the_intensity`,
+  `forecasting_the_mid`
 
-Price formation is what the chapter is for; the last section puts its statements to
-recorded data.
+`stability.tex` carries four `\subsubsection`s of its own — second-order structure, the
+scalar case, timescales, sub- and supercriticality — and `sec.secondOrder` labels the first
+of them. It is the one leaf file with nested sectioning; everything else opens straight into
+prose.
+
+Price formation is what the chapter is for. It runs from the order flow imbalance, through
+the marked point process that generates it, to a forecast of the mid-price; the last section
+puts that forecast to recorded data.
 
 **No measured figure appears in the notes.** Coefficients, windows and goodness-of-fit numbers
 live in `notebooks/`, which is where they can be re-derived; the notes carry the mechanism and
@@ -42,6 +49,8 @@ not the other way round.
 ```bash
 cd documentation/tex/notes    # or documentation/tex/slides
 latexmk -C && latexmk -f -pdf -interaction=nonstopmode main.tex
-grep -icE 'Undefined control sequence|LaTeX Warning: (Reference|Citation)|multiply defined' \
+grep -icE '^! |Undefined control sequence|LaTeX Warning: (Reference|Citation)|multiply defined' \
      main.log   # must be 0
+
+# both documents share include/notation.tex, so both must be built
 ```

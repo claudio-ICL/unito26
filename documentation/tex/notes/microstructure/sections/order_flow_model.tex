@@ -1,5 +1,19 @@
-We now specialise to the order flow of Section \ref{sec.orderDrivenMarkets}.
-The six event types are the market, limit and withdrawal orders on each side:
+We now specialise the apparatus of Section \ref{sec.pointProcesses} to the order flow of
+Section \ref{sec.orderDrivenMarkets}.
+
+\begin{defi}\label{def.orderFlowProcess}
+ The \emph{order flow} is a marked point process $(\arrivalTimes[]_n, \event[n], \orderSize_n)$
+ in which
+ \begin{enumerate}[label={\emph{\roman{*}}.}]
+  \item $(\arrivalTimes[]_n, \event[n])$ is an exponential-kernel Hawkes process of dimension
+        $\numEventTypes = 6$, whose types are the market, limit and withdrawal orders on each
+        side, in the order of the table below;
+  \item the marks $\orderSize_n$ are the sizes of the orders, independent and identically
+        distributed with mean $\meanSize$, independent of the arrival times and of the types.
+ \end{enumerate}
+\end{defi}
+
+The six types and the direction in which each pushes the mid-price are
 \begin{center}
  \begin{tabular}{lcccccc}
   \toprule
@@ -9,49 +23,91 @@ The six event types are the market, limit and withdrawal orders on each side:
   \bottomrule
  \end{tabular}
 \end{center}
-The vector $\pressure$ records the direction in which each type pushes the mid price:
+The vector $\pressure$ records that direction:
 a market buy consumes the ask and a withdrawal from the bid removes support,
 so the first pushes up and the second down.
+It is an intention rather than an effect.
+A limit order resting ten ticks behind the touch has pressure $+1$ and moves nothing,
+and Assumption \ref{assumption.idealisedBook}~\emph{i.} is what excludes it.
 
-\begin{defi}\label{def.intensityContrast}
- Let $\pressure \in \lbrace -1, 0, +1\rbrace^{\numEventTypes}$, and set
- \begin{equation*}
-  \upIntensity(t) := \sum_{e \, : \, \pressure_e = +1} \intensity(t),
+\begin{prop}\label{prop.signedSizeContribution}
+ Under Assumption \ref{assumption.idealisedBook}~\emph{i.},
+ the contribution \eqref{eq.orderFlowContribution} of the $n$-th event is
+ \begin{equation}\label{eq.signedSizeContribution}
+  \orderFlowContribution = \pressure_{\event[n]} \, \orderSize_n ,
+ \end{equation}
+ so that
+ $\OFI_{t,\ofiWindow}
+ = \sum_{n \, : \, t - \ofiWindow < \arrivalTimes[]_n \leq t}
+ \pressure_{\event[n]} \orderSize_n$.
+\end{prop}
+\begin{proof}
+ The first two terms of \eqref{eq.orderFlowContribution} are the signed flow on the bid side
+ and the last two are minus the signed flow on the ask side,
+ as in the proof of Proposition \ref{prop.idealisedUpdate}.
+ A limit buy adds $\orderSize_n$ to the bid and a withdrawal from the bid removes it,
+ giving $\pm\orderSize_n$ with no ask term;
+ a market buy removes $\orderSize_n$ from the ask, giving $+\orderSize_n$ through the ask
+ terms, and mutatis mutandis for the three sell-side types.
+ In each case the sign is $\pressure_{\event[n]}$.
+\end{proof}
+
+\begin{remark}\label{remark.walkingOrder}
+ Notice where \emph{i.} is used.
+ A market buy larger than the size resting at the ask consumes that queue and rests or
+ continues against the next,
+ and \eqref{eq.orderFlowContribution} then records only the queue it cleared:
+ the contribution understates $\orderSize_n$ by the remainder.
+ The statistic reads the touch, and an order that reaches past the touch is the case it does
+ not see.
+\end{remark}
+
+\subsubsection*{Direction symmetry}
+
+A specification of the flow is a triple $(\baseIntensity, \excitation, \decay)$.
+We restrict it by a symmetry, which every parametrisation used in these notes satisfies.
+
+\begin{defi}\label{def.directionSymmetry}
+ Let $\swapMatrix$ be the permutation matrix exchanging the two members of each pair of
+ types, so that $\swapMatrix\pressure = -\pressure$.
+ A specification is \emph{direction-symmetric} if
+ \begin{equation}\label{eq.directionSymmetry}
+  \swapMatrix \excitation \swapMatrix = \excitation ,
   \qquad
-  \downIntensity(t) := \sum_{e \, : \, \pressure_e = -1} \intensity(t) .
- \end{equation*}
- The intensity contrast is
- \begin{equation}\label{eq.intensityContrast}
-  \intensityContrast(t) := \upIntensity(t) - \downIntensity(t)
-  = \pressure^{\transpose}\intensity[ ](t)
-  = \pressure^{\transpose}\baseIntensity
-  + \pressure^{\transpose}\excitation \decayedCounts(t) .
+  \swapMatrix \baseIntensity = \baseIntensity .
  \end{equation}
 \end{defi}
 
-The restriction of $\pressure$ to $\lbrace -1,0,+1\rbrace$ is what makes the middle equality
-hold: for a general real vector $\pressure^{\transpose}\intensity[ ]$ is a weighted contrast
-and is not the difference of two sums, and $\upIntensity$, $\downIntensity$ have no meaning.
+\begin{prop}\label{prop.directionSymmetry}
+ Let the specification be direction-symmetric.
+ Then $\pressure^{\transpose} M v = 0$
+ for every matrix $M$ with $\swapMatrix M \swapMatrix = M$
+ and every vector $v$ with $\swapMatrix v = v$.
+ In particular
+ \begin{equation}\label{eq.baselineSymmetry}
+  \pressure^{\transpose}\baseIntensity = 0 ,
+ \end{equation}
+ and if moreover $\branchingRatio < 1$ then
+ $\pressure^{\transpose}\stationaryIntensity = 0$.
+\end{prop}
+\begin{proof}
+ $\pressure^{\transpose} M v
+ = (\swapMatrix\pressure)^{\transpose}(\swapMatrix M \swapMatrix)(\swapMatrix v)
+ \cdot (-1)
+ = -\pressure^{\transpose} M v$,
+ since $\swapMatrix$ is a symmetric involution and $\swapMatrix\pressure = -\pressure$.
+ Taking $M = I$ and $v = \baseIntensity$ gives \eqref{eq.baselineSymmetry}.
+ At $\branchingRatio < 1$ the matrix $I - \branchingMatrix$ is invertible and
+ $\swapMatrix(I-\branchingMatrix)^{-1}\swapMatrix = (I-\branchingMatrix)^{-1}$,
+ so \eqref{eq.stationaryIntensity} gives
+ $\pressure^{\transpose}\stationaryIntensity = 0$.
+\end{proof}
 
-The last term of \eqref{eq.intensityContrast} is the one that carries information,
-and the first is a constant.
-Under the symmetry
-\begin{equation}\label{eq.baselineSymmetry}
- \pressure^{\transpose}\baseIntensity = 0,
-\end{equation}
-that is, when the up-pushing and down-pushing baselines balance,
-the contrast reduces to $\pressure^{\transpose}\excitation\decayedCounts$ exactly,
-and its sign is a statement about the state alone.
-Every parametrisation used in these notes satisfies \eqref{eq.baselineSymmetry},
-by construction: the baselines are equal in pairs.
-We state the assumption here, where it is used, rather than folding it into the definition,
-because it is not innocuous --- on an asymmetric parametrisation the contrast has a constant
-offset, and a rule that trades on its sign inherits that offset as a permanent bias.
-
-Note also that the $\eone$-th entry of $\pressure^{\transpose}\excitation$
-is the signed jump in $\intensityContrast$ caused by one event of type $\eone$,
-and that it scales with $\decay$ at fixed $\branchingRatio$,
-whereas $\pressure^{\transpose}\branchingMatrix$ does not.
+The matrices invariant under $M \mapsto \swapMatrix M \swapMatrix$ form an algebra,
+and it contains $\excitation$, $\hurwitzMatrix$, $e^{\hurwitzMatrix \forecastHorizon}$,
+$\meanResponseIntegral(\forecastHorizon)$ and $(I - \branchingMatrix)^{-1}$.
+Every expression of Section \ref{sec.forecastingTheMid} built from these and contracted with
+$\pressure$ therefore loses its baseline term.
 
 \subsubsection*{Specifying a kernel}
 
@@ -61,10 +117,8 @@ born of one event of type $\eone$,
 so the column sums $\mathbf{1}^{\transpose}\branchingMatrix$ are readable one entry at a
 time, without any spectral computation,
 and they are what a kernel is specified by.
-By Remark \ref{remark.countsAgainstRates} the corresponding column sums of $\excitation$
-are $\decay$ times these, and are jumps in intensity rather than counts.
 
-The mechanism the kernel has to carry is replenishment.
+The kernel carries the mechanism of replenishment.
 The two kinds of event that deplete a queue --- an aggression against it and a withdrawal
 from it --- must beget successors,
 and what they chiefly beget must be the limit orders that refill the side they emptied;
@@ -82,6 +136,5 @@ and let
  \baseIntensity = (I - \branchingMatrix)\stationaryIntensity
 \end{equation}
 follow.
-The requirement $\baseIntensity \geq 0$ is then a genuine restriction on the pair
-$(\branchingMatrix, \stationaryIntensity)$ and not a formality:
-it fails whenever the excitation structure is too far from the target rates.
+The pair $(\branchingMatrix, \stationaryIntensity)$ should be chosen so that the
+$\baseIntensity$ given by \eqref{eq.baselineFromTarget} has non-negative components.

@@ -32,7 +32,7 @@
 \newcommand{\gradient}{\nabla}
 % The generator of a Markov process, and the unit vectors of the state space:
 % \unitVector is bold because plain e is the type index and the exponential base.
-\newcommand{\generatorL}{\mathsf{L}}
+\newcommand{\generatorL}{\mathcal{L}}
 \newcommand{\unitVector}{\mathbf{e}}
 \newcommand{\gradx}{\nabla_{x}}
 \newcommand{\Hessianx}{\nabla^{2}_{xx}}
@@ -45,6 +45,10 @@
 \newcommand{\partition}{\pi}
 \newcommand{\intzerot}{\int_{0}^{t}}
 \newcommand{\intZeroTimeHorizon}{\int_{0}^{\timeHorizon}}
+% The two windows of the price-formation section: \ofiWindow looks back from t,
+% \forecastHorizon forward. The right Perron vector is u, leaving w free for the window.
+\newcommand{\ofiWindow}{w}
+\newcommand{\forecastHorizon}{h}
 
 %% PROBABILITY %%
 \newcommand{\Prob}{\mathbb{P}}
@@ -119,6 +123,11 @@
 \newcommand{\orderFlowImbalance}{\OFI}
 % The per-event contribution to \OFI, which is the sum of these over a window.
 \newcommand{\orderFlowContribution}[1][n]{e_{{#1}}}
+% The depth held at every level behind the touch in the idealised book, and the residual
+% of the mid-price update there. \uniformDepth is a mean size, so it wears the bar of
+% \size: D is already \departures, and R is already the mean response of the kernel.
+\newcommand{\uniformDepth}{\bar{\size}}
+\newcommand{\residual}{\varepsilon}
 \newcommand{\VWAP}{\text{VWAP}}
 \newcommand{\tradedValue}{\text{TV}}
 \newcommand{\sweepCost}{\text{sc}}
@@ -169,16 +178,32 @@
 \newcommand{\Lone}{L^{1}}
 \newcommand{\baseIntensity}{\mu}
 \newcommand{\hawkesKernel}{\kappa}
-\newcommand{\excitation}{\mathcal{A}}
+\newcommand{\excitation}{A}
 \newcommand{\decay}{\beta}
+% The branching matrix: the matrix of \Lone norms of the kernels, which is the mean
+% offspring matrix of the cluster representation. Its spectral radius is the branching ratio.
 \newcommand{\branchingMatrix}{\Gamma}
 \newcommand{\branchingRatio}{\rho}
 % The decayed event counts: the state that makes the exponential kernel Markov.
 \newcommand{\decayedCounts}{Z}
 \newcommand{\stationaryIntensity}[1][ ]{\intensity[#1]^{*}}
-\newcommand{\totalRate}{\nu}
+% The stationary total rate. \intensity defaults its subscript to e, so the bar must go
+% on \intensity[ ] or the total prints a type index.
+\newcommand{\totalRate}{\bar{\intensity[ ]}}
 \newcommand{\totalIntensity}{\intensity[\mathfrak{g}]}
 \newcommand{\pressure}{\varpi}
 \newcommand{\upIntensity}{\intensity[ ]^{\uparrow}}
 \newcommand{\downIntensity}{\intensity[ ]^{\downarrow}}
 \newcommand{\intensityContrast}{\Delta\intensity[ ]}
+% The marks of the order flow: the size an order carries, and its mean.
+\newcommand{\orderSize}{q}
+\newcommand{\meanSize}{\bar{\orderSize}}
+% The swap of the two members of each buy/sell pair, under which \swapMatrix\pressure
+% = -\pressure. A specification invariant under it has \pressure^T\baseIntensity = 0.
+\newcommand{\swapMatrix}{\Sigma}
+% The integral of the mean response over a forecast horizon. Not G, which is the Poisson
+% tail of the counting-process section.
+\newcommand{\meanResponseIntegral}{\Phi}
+% The signed excitation strength of a type: (\pressure^T\excitation)_e / \pressure_e,
+% positive when a type begets its own pressure.
+\newcommand{\signedExcitation}{\theta}
