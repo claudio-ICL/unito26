@@ -139,8 +139,7 @@ next *market order*, and the price change that follows a market order arrival. T
 unconditional reading — a signal for the next mid-price move, whatever moves it — is a
 stronger claim and is not theirs.
 
-Three further statistics, developed in the notes under "Three statistics read off the book
-and the tape". The first is read off one configuration, as everything above is; the other
+Three further statistics. The first is read off one configuration, as everything above is; the other
 two are read over a window, and that difference decides what a series of configurations can
 tell us.
 
@@ -175,6 +174,13 @@ magnitude, $I^n$ lying in $[-1,1]$ and $\mathrm{OFI}$ being an unbounded share c
 mid-price change over the window is approximately $\mathrm{OFI}_{t,w}$ over twice the average
 size at the touch, so the sum is a prediction in ticks only after that normalisation. It reads
 the touch alone, so a market order that walks registers only the *old* best-ask size.
+
+Under the idealised book of `assumption.idealisedBook` — every event at the touch and no
+larger than it — the contribution collapses to the pressure-signed order size,
+$e_n = \varpi_{E_n} q_n$ (`prop.signedSizeContribution`). That is what turns $\mathrm{OFI}$
+from a book statistic into a functional of the marked point process, and it is the hinge the
+forecast of `sec.forecastingTheMid` hangs on. A market order that walks the book is exactly
+the case it excludes.
 
 **VWAP.** The value transacted over $(t-w,\,t]$ per share transacted:
 
@@ -388,8 +394,8 @@ Python identifier — use it, and nothing else, in `unito26/` and in the noteboo
 | $\mathrm{sc}$ | `\sweepCost` | sweep cost: per-share cost of a market order, in ticks | `sweep_cost` |
 | $\mathrm{TV}$ | `\tradedValue` | traded value, $\sum \pi_i q_i$, in tick-shares | `traded_value` |
 | $\mathrm{VWAP}$ | `\VWAP` | volume-weighted average price | `vwap` |
-| $\mathcal{A}$ | `\askOrderQueue` | set of active sell orders | `ask_orders` |
-| $B$ | `\bidOrderQueue` | set of active buy orders | `bid_orders` |
+| $A_t$ | `\askOrderQueue` | set of active sell orders | `ask_orders` |
+| $B_t$ | `\bidOrderQueue` | set of active buy orders | `bid_orders` |
 | $Q^b_t$, $Q^a_t$ | `\bidQueue`, `\askQueue` | size process at the touch, $Q^b_t = S^{b,1}_t$ | `bid_queue`, `ask_queue` |
 | $Q$ | `\queue` | generic size process of one queue | `queue` |
 | $A$, $D$ | `\arrivals`, `\departures` | generic arrival / departure counting processes; $D$ counts cancellations as well as executions, so departures are not volume | `arrivals`, `departures` |
@@ -418,7 +424,7 @@ is their code-facing half.
 | $N$ | `\multiCountingProc` | the counting process, one coordinate per event type | — |
 | $N_{\mathfrak g}$ | `\groundProc` | its ground process, $\sum_e N_e$ | — |
 | $E_n$ | `\event` | the type of the $n$-th event | `EventType` |
-| $\lambda(t)$ | `\intensity` | the conditional intensity **vector**, $\lambda = \mu + \mathcal{A}\,Z(t)$ | — |
+| $\lambda(t)$ | `\intensity` | the conditional intensity **vector**, $\lambda = \mu + A\,Z(t)$ | — |
 | $\lambda_{\mathfrak g}(t)$ | `\totalIntensity` | its total, $\mathbf{1}^\top\lambda(t)$ — the scalar the exact scheme decomposes | `total_intensity` |
 | $\Lambda$ | `\compensator` | the compensator, $\mathrm{d}\Lambda = \lambda\,\mathrm{d}t$ | `compensators_at_events` |
 | $\kappa_{e,e'}$ | `\hawkesKernel\subscriptee` | the kernel: the influence of $e'$ on $e$ | — |
@@ -426,16 +432,22 @@ is their code-facing half.
 | $A_{e,e'}$ | `\excitation` | excitation of type $e$ **by** type $e'$, and the matrix of them | `excitation` |
 | $\beta$ | `\decay` | the common exponential decay rate, in s$^{-1}$ | `decay` |
 | $Z(t)$ | `\decayedCounts` | the decayed-count state, $Z_e(t) = \sum_{T^e_j < t} e^{-\beta(t - T^e_j)}$ | `decayed_counts` |
-| $\Gamma$ | `\branchingMatrix` | the branching matrix $\mathcal{A}/\beta$ | `branching_matrix` |
+| $\Gamma$ | `\branchingMatrix` | the branching matrix $A/\beta$ | `branching_matrix` |
 | $\rho$ | `\branchingRatio` | its spectral radius — **not** the endogenous fraction, and $1/(1-\rho)$ **not** the cluster size | `branching_ratio` |
 | $\lambda^*$ | `\stationaryIntensity` | the stationary intensity vector $(I-\Gamma)^{-1}\mu$ | `stationary_intensity()` |
-| $\nu$ | `\totalRate` | its total $\mathbf{1}^\top\lambda^*$, a rate in events per second | — |
+| $\bar\lambda$ | `\totalRate` | its total $\mathbf{1}^\top\lambda^*$, a rate in events per second | — |
 | $\varpi$ | `\pressure` | the pressure vector, $\varpi_e \in \{-1, 0, +1\}$ | `EventType.pressure` |
 | $\lambda^\uparrow$, $\lambda^\downarrow$ | `\upIntensity`, `\downIntensity` | the up- and down-pushing intensities | — |
 | $\Delta\lambda$ | `\intensityContrast` | the intensity contrast $\varpi^\top\lambda$ | — |
-| $w$, $h$ | — | the $\mathrm{OFI}$ lookback and the forecast horizon, both in seconds | `window`, `horizon` |
+| $\theta$ | `\signedExcitation` | signed excitation strength, $(\varpi^\top A)_e/\varpi_e$; constant on pairs under direction symmetry | — |
+| $\Sigma$ | `\swapMatrix` | the buy/sell swap, $\Sigma\varpi = -\varpi$ | — |
+| $\Phi(h)$ | `\meanResponseIntegral` | $\int_0^h e^{Ks}\,\mathrm{d}s$, the integrated mean response | — |
+| $q_n$, $\bar q$ | `\orderSize`, `\meanSize` | the size an order carries, and its mean | — |
+| $\bar S$ | `\uniformDepth` | the depth of the idealised book. **Not $D$**: $D$ is `\departures` and the excited rate of the exact scheme | — |
+| $\varepsilon_{t,w}$ | `\residual` | the residual of the idealised mid-price update. **Not $R$**: $R_{e'}(t)$ is the mean response | — |
+| $w$, $h$ | `\ofiWindow`, `\forecastHorizon` | the $\mathrm{OFI}$ lookback and the forecast horizon, both in seconds | `window`, `horizon` |
 
-**The second index excites.** $A_{e,e'}$ is the influence of $e'$ on $e$, so $\lambda = \mu + \mathcal{A}Z$
+**The second index excites.** $A_{e,e'}$ is the influence of $e'$ on $e$, so $\lambda = \mu + AZ$
 is a plain matrix–vector product and the *column* sums of $\Gamma$ are the readable quantity.
 A matrix and its transpose share a spectral radius, so a transposed kernel passes every
 stability check; the convention is the only defence.
@@ -479,13 +491,15 @@ market order. Context disambiguates them in prose, but Python names must not —
 distinct identifiers above.
 
 Letters that were split, so that they do **not** collide: the decayed counts are $Z$
-(`\decayedCounts`), not $S$, because $S^{a,i}$ is a level size; the excitation matrix is
-$\mathcal{A}$ (`\excitation`), not $A$, because $A_t$ is the ask order queue; the pressure
+(`\decayedCounts`), not $S$, because $S^{a,i}$ is a level size; the excitation matrix and the order queues share the letter $A$, and are told apart by
+their decoration: the queues are $A_t$, $B_t$ and always carry the time; the excitation
+matrix never does. The pressure
 vector is $\varpi$ (`\pressure`), not $p$, because $p$ is the price of $(t,q,p,d)$; the
 trading epoch is $\mathcal{E}$ (`\tradingEpoch`), not $E$, because $E_n$ is the event type;
 unit vectors are $\mathbf{e}_e$ (`\unitVector`), because $e$ is already the type index and
 the base of the exponential; the second moment of the state is $\Pi$ and the Hurwitz matrix
-of the Lyapunov equation is $K$, because $M$ is the martingale $N - \Lambda$. **None of these
+of the Lyapunov equation is $K$, because $M$ is the martingale $N - \Lambda$; the right
+Perron vector is $u$, not $w$, because $w$ is the $\mathrm{OFI}$ window. **None of these
 changed a Python identifier.**
 
 Part of the literature writes $V$ for the size of a level. Here that is $S$, and $V$ is the

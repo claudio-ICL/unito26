@@ -9,15 +9,15 @@ needs at hand.
 Everything rests on it:
 
 $$\mathbb P(T_{n+1} - T_n > s \mid \mathcal F_{T_n})
- = \exp\Big(-\int_{T_n}^{T_n+s}\bar\lambda(u)\,du\Big),$$
+ = \exp\Big(-\int_{T_n}^{T_n+s}\lambda_{\mathfrak g}(u)\,du\Big),$$
 
 with $\lambda_{\mathfrak g}$ evaluated on the event that no arrival occurs in the interval, which
 makes the right-hand side $\mathcal F_{T_n}$-measurable and therefore invertible.
 
 ## Dassios–Zhao, exact
 
-With a common $\beta$, $\bar\lambda(t) = \bar\mu + D e^{-\beta(t-T_n)}$ between events,
-$D := \bar\lambda(T_n^+) - \bar\mu \ge 0$ by $\mathcal{A} \ge 0$. So the survival function factorises
+With a common $\beta$, $\lambda_{\mathfrak g}(t) = \bar\mu + D e^{-\beta(t-T_n)}$ between events,
+$D := \lambda_{\mathfrak g}(T_n^+) - \bar\mu \ge 0$ by $A \ge 0$. So the survival function factorises
 and the wait is a minimum of two independent draws. For $U_1, U_2 \sim \mathrm{Unif}(0,1)$:
 
 $$\tau_1 = -\frac{\ln U_1}{\bar\mu},
@@ -31,7 +31,7 @@ with probability $e^{-D/\beta}$; clipping instead of returning infinity biases t
 share.
 
 Then draw the type on the **pre-jump** intensities,
-$\mathbb P(E_{n+1} = e) = \lambda_e(T_{n+1}-)/\bar\lambda(T_{n+1}-)$. This step is where the
+$\mathbb P(E_{n+1} = e) = \lambda_e(T_{n+1}-)/\lambda_{\mathfrak g}(T_{n+1}-)$. This step is where the
 full matrix $A$ re-enters — the wait saw only its column sums — and the scheme is not
 defined without it.
 
@@ -40,10 +40,10 @@ $O(1)$ per event, exact, no rejection, no discretisation, no time grid.
 ## Ogata thinning, the control
 
 Kept because it applies to any kernel and because an independent route is what makes
-agreement meaningful. Its majorant is free: with $\mathcal{A} \ge 0$ the total intensity is
+agreement meaningful. Its majorant is free: with $A \ge 0$ the total intensity is
 non-increasing between events, so the value at the last event dominates it. Draw
-$U \sim \mathrm{Exp}(\bar\lambda(t))$, accept with probability
-$\bar\lambda(t+U)/\bar\lambda(t)$, else advance and repeat.
+$U \sim \mathrm{Exp}(\lambda_{\mathfrak g}(t))$, accept with probability
+$\lambda_{\mathfrak g}(t+U)/\lambda_{\mathfrak g}(t)$, else advance and repeat.
 
 ## Goodness of fit
 
@@ -108,7 +108,7 @@ non-zero under no predictive relation at all.
 
 ## Sample size
 
-At $\nu = 30.19$/s a 3600 s session gives about 108,700 rows and
+At $\bar\lambda = 30.19$/s a 3600 s session gives about 108,700 rows and
 $\hat H(\mathrm{class}) \approx 0.30$ nats. Plug-in MI bias is
 $(m_x-1)(m_y-1)/2n_{\text{eff}}$: about $4.6\times10^{-5}$ at $n_{\text{eff}} = N$, but the
 relaxation $1/(\beta(1-\rho)) = 0.625$ s spans roughly nineteen events, so the realistic

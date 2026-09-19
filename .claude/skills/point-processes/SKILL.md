@@ -5,8 +5,8 @@ description: The theory and notation of point processes and Hawkes processes as 
 
 # Point processes and Hawkes flow in `unito26`
 
-The theory is developed in the notes, `documentation/tex/notes/microstructure/`, chapter
-`sec.pointProcesses`, and restated for working use — with the module and test that carry each
+The theory is developed in the notes, `documentation/tex/notes/microstructure/`, in section
+`sec.pointProcesses` of chapter 1 and in `sec.priceFormation`, and restated for working use — with the module and test that carry each
 section — in **`documentation/point-processes-and-hawkes.md`**. Read that file before
 designing types or functions; the notes are the authority, this skill is the code-facing
 half.
@@ -21,13 +21,13 @@ already name, and never rename a concept on the way into Python.
 | $d_E$ | `\numEventTypes` | `dimension` |
 | $\mu$ | `\baseIntensity` | `baseline` |
 | $\kappa_{e,e'}$ | `\hawkesKernel\subscriptee` | the kernel; exponential here |
-| $\mathcal{A}$ | `\excitation` | `excitation` |
+| $A$ | `\excitation` | `excitation` |
 | $\beta$ | `\decay` | `decay` |
-| $\Gamma = \mathcal{A}/\beta$ | `\branchingMatrix` | `branching_matrix` |
+| $\Gamma = A/\beta$ | `\branchingMatrix` | `branching_matrix` |
 | $\rho$ | `\branchingRatio` | `branching_ratio` |
 | $Z(t)$ | `\decayedCounts` | `decayed_counts` |
 | $\lambda^*$ | `\stationaryIntensity` | `stationary_intensity()` |
-| $\nu = \mathbf 1^\top\lambda^*$ | `\totalRate` | `stationary_intensity().sum()` |
+| $\bar\lambda = \mathbf 1^\top\lambda^*$ | `\totalRate` | `stationary_intensity().sum()` |
 | $\lambda_{\mathfrak g}$ | `\totalIntensity` | `total_intensity` |
 | $\Lambda$ | `\compensator` | `compensators_at_events` |
 | $\varpi$ | `\pressure` | `EventType.pressure` |
@@ -39,16 +39,29 @@ already name, and never rename a concept on the way into Python.
 ## Invariants any implementation must respect
 
 - **$A_{e,e'}$ is the influence of $e'$ on $e$** — row excited, column exciting. This makes
-  $\lambda = \mu + \mathcal{A}Z$ and $\lambda^* = (I-\Gamma)^{-1}\mu$ plain products on column
+  $\lambda = \mu + AZ$ and $\lambda^* = (I-\Gamma)^{-1}\mu$ plain products on column
   vectors, and makes the **column** sums of $\Gamma$ the readable quantity. Because
   $\rho(\Gamma) = \rho(\Gamma^\top)$, a transposed kernel passes every stability check and
   produces a stationary path of the right rate. It is a bug that still runs, and the
   convention is the only defence.
-- **$\mathcal{A} \ge 0$ and a scalar $\beta$ do different jobs.** The common $\beta$ is what makes
-  $\lambda_{\mathfrak g}$ decay as a single exponential *between events*; $\mathcal{A} \ge 0$ is what makes the
+- **$A \ge 0$ and a scalar $\beta$ do different jobs.** The common $\beta$ is what makes
+  $\lambda_{\mathfrak g}$ decay as a single exponential *between events*; $A \ge 0$ is what makes the
   excess over $\bar\mu$ non-negative. The exact scheme needs both, for different reasons,
   and $\lambda_{\mathfrak g}$ is **not** an autonomous one-dimensional process — its jump size depends
   on the type, so the full state is carried and the type draw is part of the algorithm.
+- **Direction symmetry is a hypothesis, $\varpi^\top\mu = 0$ is its consequence.** A
+  specification is direction-symmetric when $\Sigma A \Sigma = A$ and $\Sigma\mu = \mu$,
+  $\Sigma$ swapping the two members of each buy/sell pair. From it follow
+  $\varpi^\top\mu = 0$, $\varpi^\top\lambda^* = 0$ (this one needs $\rho<1$), and
+  $\theta_{e'} = (\varpi^\top A)_{e'}/\varpi_{e'}$ constant on pairs. Do **not** state
+  $\varpi^\top\mu = 0$ as the assumption: it does not give the zero stationary drift, and
+  the forecast of `sec.forecastingTheMid` needs the full symmetry to kill every baseline
+  term. Asserted by `test_serialization.py::TestFrozenExamples::test_both_regimes_are_direction_symmetric`;
+  nothing else enforces it.
+- **$\Delta\lambda = \varpi^\top A Z$ and $\Delta\lambda = \varpi^\top\lambda$ agree
+  only under direction symmetry.** The two differ by $\varpi^\top\mu$. `hawkes.py`'s
+  `intensities_at_events` docstring writes the first form; the symbol table writes the
+  second. Both are right, and only together with the hypothesis.
 - **$\rho < 1$ is checked in `__post_init__`.** Nothing downstream re-checks it.
 - **$Z$ is left-continuous**, $S_e(t) = \sum_{T^e_j < t}e^{-\beta(t-T^e_j)}$, with a strict
   inequality, because Definition `def.compensator` requires a predictable intensity. Name
@@ -67,9 +80,9 @@ already name, and never rename a concept on the way into Python.
    when* $\mu$ is a right Perron vector — neither is generic. Write "in particular when",
    never "only when". Here: $\rho = 0.6$ against $0.682$ and $3.149$.
 2. **$\mathbf 1^\top(I-\Gamma)^{-1}e_j$ counts the ancestor.** It is a cluster size, not a
-   descendant count. The $\mu$-weighted average is $\bar C = \nu/\bar\mu$, and
-   $\bar\mu\,\bar C = \nu$ is the certificate that every event lies in exactly one cluster.
-3. **Column sums of $\Gamma$ count offspring; column sums of $\mathcal{A}$ are jumps in intensity.**
+   descendant count. The $\mu$-weighted average is $\bar C = \bar\lambda/\bar\mu$, and
+   $\bar\mu\,\bar C = \bar\lambda$ is the certificate that every event lies in exactly one cluster.
+3. **Column sums of $\Gamma$ count offspring; column sums of $A$ are jumps in intensity.**
    They differ by $\beta$. Never quote them as one number.
 4. **$N - \Lambda$ is a square-integrable martingale at every $\rho$**, on any finite
    horizon. Subcriticality buys a stationary version, second moments of the *state* bounded
@@ -78,7 +91,7 @@ already name, and never rename a concept on the way into Python.
 
 ## The two regimes, and the sign
 
-The package ships two flow parametrizations at the same $\rho$ and the same $\nu$. Pressure
+The package ships two flow parametrizations at the same $\rho$ and the same $\bar\lambda$. Pressure
 partitions the six event types; `EXAMPLE_ORDER_FLOW_PARAMS` excites **across** the partition
 (what depletes a side calls forth what refills it) and `TRENDING_ORDER_FLOW_PARAMS` excites
 **within** it. Signed endogenous fraction $-0.351$ against $+0.554$.

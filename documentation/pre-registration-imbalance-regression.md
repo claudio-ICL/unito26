@@ -142,6 +142,12 @@ deliberate: a contrast can be large because one regime is extreme, and the claim
 with all 20 tuning seeds negative in the resilient regime and all 20 positive in the trending
 one.
 
+*What the notes now say about it.* `corol.regimeSign` derives the sign from the kernel:
+the forecast moves by $2\bar q\,\theta_a(h)$ per unit of pressure-signed state, so opposite
+signs of $\theta$ give opposite forecasts. This pre-registration is unchanged by that — it
+tests whether the derived sign survives the marks, the box window and the book, which the
+derivation does not settle.
+
 *What it may be read as.* That the sign belongs to the **kernel** and not to `OFI`. No
 statement anywhere in this study about `OFI` predicting continuation or reversal is
 admissible without naming the regime.

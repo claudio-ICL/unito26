@@ -242,6 +242,24 @@ class TestFrozenExamples:
             trending.stationary_intensity().sum()
         )
 
+    def test_both_regimes_are_direction_symmetric(self):
+        """Swapping buy for sell leaves the specification alone.
+
+        The forecast of section 1.4 of the notes drops every baseline term because of this,
+        and nothing else in the package enforces it: a parametrization that broke it would
+        still load, still be subcritical, and silently give the mid-price a constant drift.
+        """
+        swap = np.zeros((len(EventType), len(EventType)))
+        for i in range(0, len(EventType), 2):
+            swap[i, i + 1] = swap[i + 1, i] = 1.0
+        pressure = np.array([event.pressure for event in EventType], dtype=float)
+        assert np.array_equal(swap @ pressure, -pressure)
+        for params in (config.example_order_flow_params(), config.trending_order_flow_params()):
+            assert np.allclose(swap @ params.excitation @ swap, params.excitation)
+            assert np.allclose(swap @ params.baseline, params.baseline)
+            assert pressure @ params.baseline == pytest.approx(0.0, abs=1e-12)
+            assert pressure @ params.stationary_intensity() == pytest.approx(0.0, abs=1e-12)
+
     def test_the_trending_flow_round_trips(self):
         assert config.trending_order_flow_params().to_records() == (
             config.TRENDING_ORDER_FLOW_PARAMS

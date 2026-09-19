@@ -573,3 +573,36 @@ From `notebooks/regressing-the-mid-on-the-imbalances.ipynb`, twelve seeds of an 
   cluster size 2.357 where `1/(1-rho)` is 2.5, and `Var(1'S)` misses by 4.9% — with the
   discrepancy vanishing to machine precision when the column sums are forced equal, which is
   what pins the cause.
+
+### 2026-09-19 — price formation rewritten around a forecast
+
+Section 1.4 of the notes previously defined the order flow imbalance and the intensity
+contrast and stopped. It now runs: the imbalance as a book statistic; the flow as a marked
+six-type Hawkes process; the intensity read off it; and a forecast.
+
+The hinge is `prop.signedSizeContribution`: under the idealised book the per-event
+contribution is the pressure-signed order size, $e_n = \varpi_{E_n} q_n$, so `OFI` is a
+functional of the marked point process. From that and `prop.forwardMean` (new, in
+`sec.stability`),
+
+    E[OFI over (t, t+h] | F_t] = qbar * p' A Phi(h) Z(t+),   Phi(h) = int_0^h exp(Ks) ds
+
+exactly, every baseline term dying because both shipped specifications are
+**direction-symmetric** ($\Sigma A \Sigma = A$, $\Sigma\mu = \mu$). The price statement is
+a corollary carrying the residual, and not an equality: on a window with no quote move the
+residual cancels the flow term exactly, and at realistic depth it exceeds it. That is why the
+empirical question is about the sign and not the magnitude.
+
+The two regimes are now derived rather than measured: the sign of
+$\theta_{e'} = (\varpi^\top A)_{e'}/\varpi_{e'}$ decides continuation against reversal,
+and it is constant on buy/sell pairs. `corol.regimeSign`.
+
+Notation decisions taken with it: `\excitation` stays $A$ and shares the glyph with the ask
+queue, told apart by decoration ($A_t$ is the queue); `\totalRate` is $\bar\lambda$ and the
+total intensity *process* is $\lambda_{\mathfrak g}$ everywhere; the idealised depth is
+$\bar S$ and not $D$, the residual $\varepsilon$ and not $R$, the response integral $\Phi$
+and not $G$, the right Perron vector $u$ and not $w$.
+
+`second_order.tex` is gone, merged into `stability.tex` as a subsubsection; `sec.secondOrder`
+still labels it. `synthetic_evidence.tex` is gone, its omissions moved into
+`lobster_empirics.tex`.

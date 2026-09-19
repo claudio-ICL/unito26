@@ -64,23 +64,57 @@ module, no file path. The notes are self-contained and independent: it is the no
 documentation that cite the notes, not the other way round. A fact worth having in the notes is
 worth writing in the notes.
 
-**9. Constructions that do not belong.** The register is the classroom: state the thing, and do
-not rate the sentence beside it. Before reporting any `.tex` work done, run
+**9. Every paragraph earns its place.** A free-standing paragraph must introduce a symbol,
+state a hypothesis, or draw a consequence. One that does none of the three exists only to
+comment on the paragraph beside it, and is deleted.
+
+This is the rule that drifts, and a blocklist of phrases does not hold it: the offence is a
+role, not a vocabulary. `The half-open interval of integration is what makes $\intensity$
+predictable` is the same construction as `Reconstruction is an ordinary part of a trading
+system`, and only the second is the offence. So the trigger is structural. Run
+
+```bash
+python3 .claude/skills/writing-in-tex/scripts/loose_paragraphs.py documentation/tex/notes
+```
+
+which lists free-standing paragraphs carrying no `$`, no `\ref`/`\eqref`, no `\cite` and no
+`\emph`. It is a list to **justify**, not a list to forbid: most hits are lead-ins to a
+display, and its false positives cost nothing. Read it before reporting `.tex` work done.
+
+The phrase gate is kept, cut to the arms that do not fire on correct mathematics, and it
+skips comment lines so that it does not flag the author's own notes to you:
 
 ```bash
 cd documentation/tex
-grep -rniE "worth (stating|noting|restating|having|being|a (line|comment))|deserves? comment|\
+grep -rnE "worth (stating|noting|restating|having|being|a (line|comment))|deserves? comment|\
 and nothing else|not an afterthought|it is tempting|an honest statement|\
 matters more than it looks|turns out that|the key (insight|point|idea)|\
 this section (says|tells|shows|will)|as we (shall|will) see|\
-(importantly|crucially|interestingly|remarkably|strikingly|notably)|\
-a reader should|the reader should|one should be careful|note that " --include=*.tex .
+(^|[.;] )(Importantly|Crucially|Interestingly|Remarkably|Strikingly|Notably)|\
+a reader should|the reader should|one should be careful|[Nn]ote that |\
+rather than (a |an )?(convenience|formality|nicety)|is not innocuous|\
+than one (expects|might|would)|\bnot merely\b|is a statement about|\
+\bwe (state|write|place|put) (it|this|the [a-z]+) here\b" --include=*.tex . \
+  | grep -v ':[0-9]*:%'
 ```
 
-and expect nothing. `Note that` is on the list because the house word is `Notice that`. No
-exclamation marks and no rhetorical questions. An environment that exists to answer a question
-someone asked in a conversation does not belong: write for a stranger meeting the file in a
-year.
+`Note that` is on the list because the house word is `Notice that`. No exclamation marks and
+no rhetorical questions. An environment that exists to answer a question someone asked in a
+conversation does not belong: write for a stranger meeting the file in a year.
+
+**How to say it instead.** Two shapes recur, and neither is catchable by pattern. The
+*reversed cleft* — `What $\branchingRatio<1$ supplies is Lemma iv.`, `A single $\decay$ buys
+a state of dimension $\numEventTypes$`, `The mechanism the kernel has to carry is
+replenishment` — is written forwards: `The kernel carries the mechanism of replenishment`.
+The *defensive negative* — `a genuine restriction and not a formality`, `hypotheses rather
+than conveniences`, `constant column sums are not needed` — states the condition and stops:
+`$(\branchingMatrix,\stationaryIntensity)$ should be chosen so that $\baseIntensity$ has
+non-negative components`.
+
+Sentences whose only job is to rate another sentence go without replacement: `and its sign is
+a statement about the state alone`, `We state the assumption here, where it is used, because
+it is not innocuous`, `Less fails without it than one expects`, `The right-hand side is a
+product of two factors, and the following lemma says what that means`.
 
 Full details, with the remaining conventions on equations, theorems, figures, code,
 algorithms and citations, are in `references/style.md`.

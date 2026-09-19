@@ -11,7 +11,7 @@ carry it, and adds the facts that belong to this package rather than to the theo
 **If this file and the `.tex` ever disagree, the `.tex` wins** — fix this file.
 
 Numbers are at `config.example_order_flow_params()` — $\rho = 0.6$, $\beta = 4\ \mathrm{s}^{-1}$,
-$\nu = 30.19$ events/s — unless another parametrization is named.
+$\bar\lambda = 30.19$ events/s — unless another parametrization is named.
 
 ---
 
@@ -21,17 +21,16 @@ $\nu = 30.19$ events/s — unless another parametrization is named.
 | --- | --- | --- | --- |
 | §1 `sec.countingProcesses` | compensator, intensity, Meyer's time change | — | — |
 | §2 `sec.hawkesProcesses` | the definition, $\Gamma$, the cluster representation | `hawkes.HawkesParams` | `test_hawkes.py::TestParameterValidation` |
-| §3 `sec.exponentialKernels` | $\lambda = \mu + \mathcal{A}Z$, the $O(1)$ recursion, the compensator display | `hawkes.intensities_at_events`, `hawkes.compensators_at_events` | `test_hawkes.py::TestTheReplayedIntensity` |
-| §4 `sec.stability` | $\rho$, $\lambda^*$, cluster sizes, the endogenous fraction | `HawkesParams.branching_matrix`, `.branching_ratio`, `.stationary_intensity`, `.endogenous_fraction`, `.mean_cluster_size` | `test_hawkes.py::TestTheBranchingStructure` |
-| §5 `sec.secondOrder` | the Lyapunov equation | `scipy.linalg.solve_lyapunov`, used in the notebook | — |
-| §6 `sec.simulation` | Dassios–Zhao, Ogata thinning, the residual test | `hawkes.ExponentialHawkes`, `hawkes.OgataThinningHawkes` | `test_hawkes.py::TestExactSimulation`, `::TestAgreementAndClustering` |
-| §7 `sec.orderFlowModel` | $p$, $\Delta\lambda$, the comparison with $\mathrm{OFI}$ | `HawkesParams.signed_endogenous_fraction`, `imbalance_regression` | `test_hawkes.py::TestTheSignedContrasts` |
+| §3 `sec.exponentialKernels` | $\lambda = \mu + AZ$, the $O(1)$ recursion, the compensator display | `hawkes.intensities_at_events`, `hawkes.compensators_at_events` | `test_hawkes.py::TestTheReplayedIntensity` |
+| §4 `sec.stability` | $\rho$, $\lambda^*$, cluster sizes, the endogenous fraction, the Lyapunov equation, the forward mean | `HawkesParams.branching_matrix`, `.branching_ratio`, `.stationary_intensity`, `.endogenous_fraction`, `.mean_cluster_size` | `test_hawkes.py::TestTheBranchingStructure` |
+| §5 `sec.simulation` | Dassios–Zhao, Ogata thinning, the residual test | `hawkes.ExponentialHawkes`, `hawkes.OgataThinningHawkes` | `test_hawkes.py::TestExactSimulation`, `::TestAgreementAndClustering` |
+| `sec.orderFlowModel`, `sec.readingTheIntensity`, `sec.forecastingTheMid` (all under `sec.priceFormation`) | $\varpi$, $\Delta\lambda$, $\theta$, the forecast and the comparison with $\mathrm{OFI}$ | `HawkesParams.signed_endogenous_fraction`, `imbalance_regression` | `test_hawkes.py::TestTheSignedContrasts` |
 
 Three invariants any implementation must respect, all of them load-bearing:
 
-- **$\mathcal{A} \ge 0$ and a scalar $\beta$ are what make the exact scheme valid**, and they do
+- **$A \ge 0$ and a scalar $\beta$ are what make the exact scheme valid**, and they do
   *different* jobs. The common $\beta$ is what makes the total intensity decay as a single
-  exponential between events; $\mathcal{A} \ge 0$ is what makes the excess over $\bar\mu$
+  exponential between events; $A \ge 0$ is what makes the excess over $\bar\mu$
   non-negative, so that both factors of the survival function are genuine. Neither
   substitutes for the other.
 - **$\rho < 1$ is checked in `__post_init__`**, and the error names the offending value.
@@ -50,12 +49,12 @@ the time-change theorem into a test. That is what
 
 ## 2. The two regimes
 
-The package ships two flow parametrizations. They hold $\rho = 0.6$ and $\nu = 30.19$ in
+The package ships two flow parametrizations. They hold $\rho = 0.6$ and $\bar\lambda = 30.19$ in
 common --- and only those two, since a different shape gives a different $\Gamma$ and hence
 a different $(I-\Gamma)^{-1}$ --- and differ in one structural property, which is the property that decides what
 $\mathrm{OFI}$ predicts.
 
-Pressure partitions the six event types: $p = +1$ on
+Pressure partitions the six event types: $\varpi = +1$ on
 $\{$market buy, limit buy, withdraw ask$\}$ and $-1$ on the mirror. `EXAMPLE_ORDER_FLOW_PARAMS`
 excites **across** that partition — what depletes a side calls forth what refills it —
 so an offspring tends to carry the opposite pressure to its parent.
@@ -64,6 +63,7 @@ so an offspring tends to carry the opposite pressure to its parent.
 | | `EXAMPLE_` | `TRENDING_` |
 | --- | --- | --- |
 | signed endogenous fraction | $-0.351$ | $+0.554$ |
+| $\theta = (\varpi^\top A)_e/\varpi_e$ | $(-1.90,\,0,\,-3.11)$ per pair | $(2.66,\,1.77,\,2.66)$ per pair |
 | unsigned endogenous fraction | $0.682$ | $0.574$ |
 | $\Gamma$ column sums | $(1.42, 1.42, 0.20, 0.20, 1.04, 1.04)$ | $(0.69, 0.69, 0.46, 0.46, 0.69, 0.69)$ |
 | marks | `EXAMPLE_MARK_PARAMS`, `DepthDecay` 0.08 | `TRENDING_MARK_PARAMS`, `DepthDecay` 0.15 |
@@ -77,6 +77,13 @@ forward mid change:
 | --- | --- | --- | --- | --- | --- | --- |
 | `TRENDING_` | $+0.025$ | $+0.033$ | $+0.044$ | $+0.024$ | $-0.015$ | $-0.039$ |
 | `EXAMPLE_` | $-0.024$ | $-0.035$ | $-0.054$ | $-0.071$ | $-0.094$ | $-0.105$ |
+
+The sign of $\theta$ is the regime, and the notes derive it rather than measure it:
+`corol.regimeSign` in `sec.forecastingTheMid` says the forecast of the mid-price moves by
+$2\bar q\,\theta_a(h)$ per unit of pressure-signed state, so two specifications whose
+$\theta$ have opposite signs forecast in opposite directions at every horizon at which the
+signs persist. What is measured here is how much of that survives the marks and the
+box window.
 
 **Contemporaneously both are positive** — $+0.358$ and $+0.408$ over the same 325 ms window.
 That is the mechanical accounting of `sec.orderDrivenMarkets` and it does not distinguish
@@ -141,27 +148,27 @@ The laboratory is specified by four numbers, and every result is reported agains
 | --- | --- | --- |
 | $\rho$ | $0.6$ | how much of the flow is endogenous, and how long a cluster lasts |
 | signed endogenous fraction | $-0.351$ / $+0.554$ | whether that endogeneity carries the parent's pressure — the regime |
-| $\nu/\beta$ | $7.55$ | clustering: how many events fall within one kernel timescale |
-| $\nu w$ | $9.8$ at $w = 325$ ms | aggregation: how many events a window is expected to hold |
+| $\bar\lambda/\beta$ | $7.55$ | clustering: how many events fall within one kernel timescale |
+| $\bar\lambda w$ | $9.8$ at $w = 325$ ms | aggregation: how many events a window is expected to hold |
 
 Keep the rate symbols apart. $\lambda(t)$ is the intensity **vector**;
-$\bar\lambda(t) = \mathbf 1^\top\lambda(t)$ its total, the scalar the exact scheme decomposes;
+$\lambda_{\mathfrak g}(t) = \mathbf 1^\top\lambda(t)$ its total, the scalar the exact scheme decomposes;
 $\lambda^* = (I-\Gamma)^{-1}\mu$ the **stationary** vector, which the $\rho$ ladder holds
-fixed; and $\nu = \mathbf 1^\top\lambda^*$ its total, a rate in events per second.
+fixed; and $\bar\lambda = \mathbf 1^\top\lambda^*$ its total, a rate in events per second.
 $\Lambda$ is the compensator and nothing else.
 
-**$\nu w$ is a stationary-rate count, and the window's realised occupancy is not it.** Rows
+**$\bar\lambda w$ is a stationary-rate count, and the window's realised occupancy is not it.** Rows
 are sampled at events, so what a window holds is the *Palm* count. The decomposition is one
-— the sampling event itself, present for a Poisson process too — plus $\nu w$ from the rate,
+— the sampling event itself, present for a Poisson process too — plus $\bar\lambda w$ from the rate,
 plus the rest from the pair correlation; only the last is clustering, and nothing is
 length-biased, so this is Palm sampling with a positive pair-correlation function and not the
 inspection paradox. The excess shrinks with $\rho$; the distinction does not.
 
-**Why $\beta = 60$ was the wrong laboratory.** At the old decay, $\nu/\beta = 0.50$: an
+**Why $\beta = 60$ was the wrong laboratory.** At the old decay, $\bar\lambda/\beta = 0.50$: an
 event's excitation had fallen to 13.7% before the next event arrived, and the tuned window
 held 0.9 events. A study run there measures a process whose self-excitation is switched off
 between observations, and correctly finds very little. At $\beta = 4$ the same window holds
-about ten. The lesson generalises and is worth stating to students: **check $\nu/\beta$
+about ten. The lesson generalises and is worth stating to students: **check $\bar\lambda/\beta$
 before believing a null result about clustering.**
 
 ---

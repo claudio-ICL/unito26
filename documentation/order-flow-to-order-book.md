@@ -561,7 +561,7 @@ reached from a completely different direction.
 
 ### Stability
 
-With branching matrix $\Gamma = \mathcal{A}/\beta$,
+With branching matrix $\Gamma = A/\beta$,
 $\Gamma_{ij}$ is the expected number of type-$i$ events directly triggered by one type-$j$ event.
 Stationarity requires $\rho(\Gamma) < 1$, and then
 
@@ -575,7 +575,8 @@ the example parameters fix the shape by hand and rescale to $\rho(\Gamma) = 0.6$
 
 The branching matrix is defined in `sec.hawkesProcesses`; the stationary intensity, the
 endogenous fraction, the cluster sizes, the relaxation time and the dimensionless groups are
-developed in `sec.stability`, and mapped onto this package in
+developed in `sec.stability` (which now also carries the second-order structure and the
+forward mean), and mapped onto this package in
 [`point-processes-and-hawkes.md`](point-processes-and-hawkes.md). They are not restated
 here.
 
@@ -600,7 +601,7 @@ inter-arrival law depends on the state only through the current total intensity.
 therefore certified numerically, by the compensator entry, rather than asserted.
 
 **Ogata's thinning is kept alongside** as the control, and as the route that survives when
-the kernel is not common-$\beta$. Its upper bound is free: with $\mathcal{A} \ge 0$ the total
+the kernel is not common-$\beta$. Its upper bound is free: with $A \ge 0$ the total
 intensity is non-increasing between events.
 
 | leg | where |
