@@ -2,31 +2,32 @@ Proposition \ref{prop.idealisedUpdate} is an identity about a window that has el
 This subsection asks the forward question:
 given everything observed up to $t$, where does the flow take the mid-price over
 $(t, t+\forecastHorizon]$.
-The flow half of the answer is exact, and it is the one we state first.
 
-Throughout, the specification is direction-symmetric,
-Assumption \ref{assumption.idealisedBook} holds over the window,
-and $\sigmaAlgebra_t$ is the history of the order flow up to and including $t$.
-We write $\decayedCounts(t+)$ for the state read after the event at $t$, if there is one.
+Throughout, $\sigmaAlgebra_t$ is the history of the order flow up to and including $t$,
+and $\decayedCounts(t+)$ is the state read after the event at $t$, if there is one.
 
 \begin{prop}\label{prop.shortHorizonForecast}
- For every $\forecastHorizon \geq 0$,
+ Let the order flow be as in Definition \ref{def.orderFlowProcess},
+ with a direction-symmetric specification,
+ and write
+ $\meanResponseIntegral(\forecastHorizon)
+ := \int_{0}^{\forecastHorizon} e^{\hurwitzMatrix s} \, ds$
+ for $\hurwitzMatrix = \excitation - \decay I$.
+ Then for every $\forecastHorizon \geq 0$
  \begin{equation}\label{eq.shortHorizonForecast}
-  \Expectation \big[ \OFI_{t, \forecastHorizon} \,\big|\, \sigmaAlgebra_t \big]
+  \Expectation \Big[ \sum_{n \, : \, t < \arrivalTimes[]_n \leq t+\forecastHorizon}
+  \pressure_{\event[n]} \orderSize_n \,\Big|\, \sigmaAlgebra_t \Big]
   = \meanSize \; \pressure^{\transpose} \excitation \,
-  \meanResponseIntegral(\forecastHorizon) \, \decayedCounts(t+) ,
+  \meanResponseIntegral(\forecastHorizon) \, \decayedCounts(t+) .
  \end{equation}
- where $\OFI_{t,\forecastHorizon}$ is the imbalance accumulated over
- $(t, t+\forecastHorizon]$ and
- $\meanResponseIntegral$ is as in Proposition \ref{prop.forwardMean}.
+ Under Assumption \ref{assumption.idealisedBook} the sum on the left is
+ $\OFI_{t+\forecastHorizon, \forecastHorizon}$,
+ by Proposition \ref{prop.signedSizeContribution}.
 \end{prop}
 \begin{proof}
- By Proposition \ref{prop.signedSizeContribution} the imbalance over the horizon is
- $\sum \pressure_{\event[n]}\orderSize_n$ over the events in $(t, t+\forecastHorizon]$.
  The marks are independent of the arrival times and of the types, with mean $\meanSize$,
- so conditioning on those,
- $\Expectation[\OFI_{t,\forecastHorizon} \mid \sigmaAlgebra_t]
- = \meanSize \, \pressure^{\transpose}
+ so the left-hand side is
+ $\meanSize \, \pressure^{\transpose}
  \Expectation[\multiCountingProc(t+\forecastHorizon) - \multiCountingProc(t)
  \mid \sigmaAlgebra_t]$,
  the sum being absolutely summable because the expected count is finite.
@@ -43,33 +44,36 @@ We write $\decayedCounts(t+)$ for the state read after the event at $t$, if ther
 \end{proof}
 
 \begin{corol}\label{corol.priceForecast}
- Under the same hypotheses,
+ Under the hypotheses of Proposition \ref{prop.shortHorizonForecast},
+ and with Assumption \ref{assumption.idealisedBook} in force,
+ the time-$t$ expectation of the mid-price change over $(t, t+\forecastHorizon]$ is
  \begin{equation}\label{eq.priceForecast}
   \Expectation \big[ \midPrice_{t+\forecastHorizon} - \midPrice_{t}
   \,\big|\, \sigmaAlgebra_t \big]
   = \frac{\tickSizeOfLOB \meanSize}{2\uniformDepth} \;
   \pressure^{\transpose} \excitation \, \meanResponseIntegral(\forecastHorizon) \,
   \decayedCounts(t+)
-  + \Expectation \big[ \residual_{t,\forecastHorizon} \,\big|\, \sigmaAlgebra_t \big] ,
+  + \Expectation \big[ \residual_{t+\forecastHorizon, \forecastHorizon}
+  \,\big|\, \sigmaAlgebra_t \big] ,
  \end{equation}
- with $\vert \residual_{t,\forecastHorizon} \vert \leq \tickSizeOfLOB$.
+ with $\vert \residual_{t+\forecastHorizon, \forecastHorizon} \vert
+ \leq \tickSizeOfLOB$.
 \end{corol}
 \begin{proof}
- Take conditional expectations in \eqref{eq.idealisedUpdate} over
+ Take conditional expectations in \eqref{eq.idealisedUpdate} over the window
  $(t, t+\forecastHorizon]$ and apply \eqref{eq.shortHorizonForecast}.
 \end{proof}
 
 \begin{remark}\label{remark.residualAgainstForecast}
  The residual is carried rather than absorbed, for two reasons.
  By Remark \ref{remark.residualIsQueueFlow} it is not independent of the first term:
- over a window on which neither quote moves it cancels that term exactly.
+ along a path on which neither quote moves the two cancel exactly.
  And it does not shrink as the forecast grows:
  $\meanResponseIntegral(\forecastHorizon) \to -\hurwitzMatrix^{-1}$ as
  $\forecastHorizon \to \infty$ when $\branchingRatio < 1$,
  so the first term of \eqref{eq.priceForecast} is bounded in $\forecastHorizon$,
  while the residual is bounded by one tick at every horizon.
- A long horizon therefore does not buy a forecast that exceeds the residual.
- What does is a large state:
+ A long horizon therefore does not buy a forecast that exceeds the residual:
  \eqref{eq.priceForecast} carries information about the mid-price only where
  $\meanSize \,\vert \pressure^{\transpose}\branchingMatrix (I - \branchingMatrix)^{-1}
  \decayedCounts(t+) \vert$ is itself of the order of $\uniformDepth$.
@@ -78,12 +82,15 @@ We write $\decayedCounts(t+)$ for the state read after the event at $t$, if ther
 \end{remark}
 
 \begin{corol}\label{corol.contrastAsDrift}
- As $\forecastHorizon \to 0$,
+ Under the hypotheses of Proposition \ref{prop.shortHorizonForecast},
+ and with Assumption \ref{assumption.idealisedBook} in force,
  \begin{equation}\label{eq.contrastAsDrift}
-  \Expectation \big[ \OFI_{t,\forecastHorizon} \,\big|\, \sigmaAlgebra_t \big]
+  \Expectation \big[ \OFI_{t+\forecastHorizon, \forecastHorizon}
+  \,\big|\, \sigmaAlgebra_t \big]
   = \meanSize \, \intensityContrast(t+) \, \forecastHorizon
-  + O(\forecastHorizon^{2}) .
+  + O(\forecastHorizon^{2})
  \end{equation}
+ as $\forecastHorizon \to 0$.
 \end{corol}
 \begin{proof}
  $\meanResponseIntegral(\forecastHorizon)
@@ -93,25 +100,35 @@ We write $\decayedCounts(t+)$ for the state read after the event at $t$, if ther
  \eqref{eq.contrastFromState}.
 \end{proof}
 
-The intensity contrast is therefore the drift of the order flow imbalance.
-That is what the contrast is for, and it is a statement to leading order in the horizon and
-about the flow, the price inheriting it only through \eqref{eq.priceForecast}.
+Up to the mean size, the intensity contrast is therefore the drift of the order flow
+imbalance, to leading order in the horizon and about the flow,
+the price inheriting it only through \eqref{eq.priceForecast}.
 
 \begin{remark}\label{remark.totalResponse}
- At the other end, if $\branchingRatio < 1$ then
+ At the other end, if $\branchingRatio < 1$ then $\hurwitzMatrix$ is Hurwitz by
+ Proposition \ref{prop.hurwitzCriterion} and
  $\excitation \meanResponseIntegral(\infty)
  = -\excitation\hurwitzMatrix^{-1}
  = \branchingMatrix (I - \branchingMatrix)^{-1}$,
  which is the whole expected progeny of the present state:
  direct offspring composed with all descendants.
- Hurwitz-ness is Proposition \ref{prop.hurwitzCriterion}, and uses $\excitation \geq 0$.
- By Definition \ref{def.relaxationTime} the state-dependent part of
- \eqref{eq.shortHorizonForecast} is still moving at horizons short against
- $1/(\decay(1-\branchingRatio))$, and has finished at horizons long against it.
+ The state-dependent part of \eqref{eq.shortHorizonForecast} has therefore finished at
+ horizons long against the relaxation time \eqref{eq.relaxationTime}.
+
+ It finishes strictly sooner.
+ Let $\branchingMatrix$ be irreducible, with right Perron vector $u$.
+ Then \eqref{eq.directionSymmetry} makes $\swapMatrix u$ a Perron vector as well,
+ and simplicity together with $u > 0$ forces $\swapMatrix u = u$, so that
+ $\pressure^{\transpose}\excitation u
+ = \decay\branchingRatio\,\pressure^{\transpose}u = 0$
+ by Proposition \ref{prop.directionSymmetry}.
+ The slowest mode is absent from \eqref{eq.shortHorizonForecast} at every horizon,
+ and the timescale is that of the slowest mode that survives the contraction with
+ $\pressure^{\transpose}$.
 \end{remark}
 
 \begin{corol}\label{corol.regimeSign}
- Let $\branchingRatio < 1$ and set
+ Under the hypotheses of Proposition \ref{prop.shortHorizonForecast}, set
  \begin{equation}\label{eq.signedExcitationAtHorizon}
   \signedExcitation_{\eone}(\forecastHorizon)
   := \frac{\big( \pressure^{\transpose}\excitation
@@ -127,22 +144,29 @@ about the flow, the price inheriting it only through \eqref{eq.priceForecast}.
 \end{corol}
 \begin{proof}
  $\excitation\meanResponseIntegral(\forecastHorizon)$ is $\swapMatrix$-invariant,
- so the argument of Proposition \ref{prop.signedExcitation} applies verbatim;
- the displacement is
- $\pressure^{\transpose}\excitation\meanResponseIntegral(\forecastHorizon)
+ so the argument of Proposition \ref{prop.signedExcitation} applies verbatim.
+ The displacement of \eqref{eq.shortHorizonForecast} is
+ $\meanSize\,\pressure^{\transpose}\excitation\meanResponseIntegral(\forecastHorizon)
  (\unitVector_a - \unitVector_{\swapMatrix(a)})
- = \pressure_a \signedExcitation_a - \pressure_{\swapMatrix(a)}
- \signedExcitation_{\swapMatrix(a)}$ at horizon $\forecastHorizon$,
- which is $2\signedExcitation_a(\forecastHorizon)$.
+ = \meanSize \big( \pressure_a \signedExcitation_a(\forecastHorizon)
+ - \pressure_{\swapMatrix(a)} \signedExcitation_{\swapMatrix(a)}(\forecastHorizon) \big)
+ = 2\meanSize\,\pressure_a\signedExcitation_a(\forecastHorizon)$,
+ which is $2\meanSize\signedExcitation_a(\forecastHorizon)$ at $\pressure_a = +1$.
+ The last claim is $\meanResponseIntegral(\forecastHorizon)
+ = \forecastHorizon I + O(\forecastHorizon^{2})$.
 \end{proof}
 
-The sign of $\signedExcitation(\forecastHorizon)$ therefore decides whether the flow is
-forecast to continue in the direction it has been pushing or to reverse,
-and that sign belongs to the kernel.
+The sign of $\signedExcitation_{a}(\forecastHorizon)$ therefore decides whether an excess of
+type $a$ over its mirror is forecast to push the flow further in its own direction or to
+reverse it, and that sign belongs to the kernel.
 Two specifications with the same branching ratio and the same stationary intensity can carry
-$\signedExcitation$ of opposite sign, and then they forecast in opposite directions at every
-horizon at which the signs persist,
+$\signedExcitation$ of opposite sign, and then they forecast opposite displacements from
+such a state at every horizon at which the signs persist,
 while Proposition \ref{prop.idealisedUpdate} holds identically in both.
+At a general state the forecast is
+$\meanSize\sum_{\eone}\pressure_{\eone}\signedExcitation_{\eone}(\forecastHorizon)
+\decayedCounts_{\eone}(t+)$,
+and two specifications of opposite sign need not disagree on it.
 No statement of the form ``the order flow imbalance predicts continuation'' is made in these
 notes without naming the specification it is made in.
 
@@ -155,16 +179,17 @@ notes without naming the specification it is made in.
  weights them by age and ignores their sizes;
  and $\OFI_{t,\ofiWindow}$ weights them equally and by their sizes.
  The forecast \eqref{eq.shortHorizonForecast} is driven by none of the three,
- but by $\pressure^{\transpose}\excitation\decayedCounts(t+)$,
- which weights them by age and by $\signedExcitation$.
+ but by $\pressure^{\transpose}\excitation
+ \meanResponseIntegral(\forecastHorizon)\decayedCounts(t+)$,
+ which weights them by age and by $\signedExcitation(\forecastHorizon)$.
 
  The gap in the weighting closes exactly when $\signedExcitation$ is constant across the six
  types, that is when $\pressure$ is a left eigenvector of $\excitation$:
  then $\pressure^{\transpose}\excitation\meanResponseIntegral(\forecastHorizon)$ is a
  multiple of $\pressure^{\transpose}$ at every horizon,
  and the forecast is a multiple of $\pressure^{\transpose}\decayedCounts(t+)$.
- The gap in the marks does not close at all, by the last sentence of
- Section \ref{sec.readingTheIntensity}.
+ The gap in the marks does not close at all,
+ since no function of $\decayedCounts$ recovers a size.
  So $\OFI$ is a statistic of the flow that needs no parameters and estimates the forecast
  only up to those two gaps, and how much is lost to each is a question about a particular
  specification.

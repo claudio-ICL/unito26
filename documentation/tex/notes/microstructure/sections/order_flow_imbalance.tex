@@ -10,27 +10,29 @@ an explicit function of the flow.
 We state the simplification as an assumption, and the consequence as a proposition.
 
 \begin{assumption}\label{assumption.idealisedBook}
- Over the window considered,
+ Let $\uniformDepth > 0$ be fixed over the trading epoch, and assume that
  \begin{enumerate}[label={\emph{\roman{*}}.}]
-  \item every event occurs at the best quote of its side,
-        and no market order is larger than the size resting there;
-  \item the size resting at a touch lies in $[0, \uniformDepth]$, for a
-        $\uniformDepth > 0$ fixed over the window;
-  \item a quote moves one tick at a time,
-        and the level it leaves or arrives at holds $\uniformDepth$ ---
-        downward on the bid when it is consumed or withdrawn,
-        upward when a limit order improves it, and mutatis mutandis on the ask.
+  \item no event occurs behind the best quote of its side;
+  \item no order reaches past the quote it acts on;
+  \item every queue holds at most $\uniformDepth$,
+        and every queue behind the best bid and the best ask holds exactly
+        $\uniformDepth$;
+  \item once the size at the best bid (ask, resp.) reaches $\uniformDepth$,
+        the next bid (ask, resp.) limit order arrives one tick above (below, resp.)
+        the best quote.
  \end{enumerate}
 \end{assumption}
 
-Part \emph{i.} confines every event to the first level, so that the book moves one queue at a
-time.
-Parts \emph{ii.} and \emph{iii.} fix the exchange rate between shares and ticks:
-one tick of quote movement costs or reveals $\uniformDepth$ shares.
-Part \emph{iii.} is symmetric in its two halves.
-Without the second of them a queue could only be depleted,
-the bid could only fall and the ask only rise,
-and the spread would widen without bound.
+Parts \emph{i.}, \emph{iii.} and \emph{iv.} are the stylised book of \cite{CKS14pri}.
+Part \emph{ii.} is not.
+There the flows are totalled at whichever quote is best when each order arrives,
+so an order reaching past the touch is split across the levels it crosses;
+we ask instead that the contribution of an event be the size of that event,
+which is Proposition \ref{prop.signedSizeContribution},
+and part \emph{ii.} is what that costs.
+The cap in \emph{iii.} is what \emph{iv.} intends,
+and \eqref{eq.idealisedResidual} names a residual that the reference carries as the
+truncation of a floor.
 
 \begin{defi}[{\citealp{CKS14pri}}]\label{def.orderFlowImbalance}
  Let $\arrivalTimes[]_n$ be the times of the events of a trading epoch,
@@ -69,10 +71,6 @@ and the spread would widen without bound.
 Both bid indicators fire when the best bid does not move,
 so an event that leaves it in place contributes the change in the size resting there.
 An event that moves it contributes a whole queue.
-The index of every quantity in \eqref{eq.orderFlowContribution} is a physical time
-$\arrivalTimes[]_n$ and not the counting index $n$,
-which matters as soon as the arrival times are themselves modelled,
-as they are in Section \ref{sec.orderFlowModel}.
 
 \begin{prop}\label{prop.idealisedUpdate}
  Under Assumption \ref{assumption.idealisedBook},
@@ -83,58 +81,36 @@ as they are in Section \ref{sec.orderFlowModel}.
   = \frac{\tickSizeOfLOB}{2\uniformDepth} \, \OFI_{t,\ofiWindow}
   \; + \; \residual_{t,\ofiWindow},
   \qquad
-  \vert \residual_{t,\ofiWindow} \vert \leq \tickSizeOfLOB ,
+  \vert \residual_{t,\ofiWindow} \vert \leq \tickSizeOfLOB .
  \end{equation}
- where
+ The residual has the explicit expression
  \begin{equation}\label{eq.idealisedResidual}
   \residual_{t,\ofiWindow}
   = -\frac{\tickSizeOfLOB}{2\uniformDepth}\Big[
   \big( \nthBestBidSize[1]_{t} - \nthBestBidSize[1]_{t-\ofiWindow} \big)
-  - \big( \nthBestAskSize[1]_{t} - \nthBestAskSize[1]_{t-\ofiWindow} \big) \Big]
+  - \big( \nthBestAskSize[1]_{t} - \nthBestAskSize[1]_{t-\ofiWindow} \big) \Big],
  \end{equation}
- depends only on the sizes resting at the two touches at the endpoints of the window.
- In particular \eqref{eq.idealisedUpdate} is exact whenever the bid and the ask touches
+ and depends only on the sizes resting at the two touches at the endpoints of the window.
+ In particular, \eqref{eq.idealisedUpdate} is exact whenever the bid and the ask touches
  change by the same amount over the window, and so whenever all four sizes equal
  $\uniformDepth$.
 \end{prop}
 \begin{proof}
- By Assumption \ref{assumption.idealisedBook}~\emph{i.} every event changes the
- configuration only at the touch, so the update of Proposition \ref{prop.lobUpdate}
- is its restriction to the first level.
- Measure the position of the bid in shares by
- $\mathcal{Q}^{b}_{s} := \nthBestBidSize[1]_{s}
- + \uniformDepth\,(\bestBidPrice_{s} - \bestBidPrice_{t-\ofiWindow})/\tickSizeOfLOB$,
- one tick being worth $\uniformDepth$ shares by \emph{ii.} and \emph{iii.}
- Each event changes $\mathcal{Q}^{b}$ by exactly its own signed bid-side flow,
- and the first two terms of \eqref{eq.orderFlowContribution} are that flow.
- When the bid does not move this is the change in the size resting there.
- When it moves, it moves by one tick and the level it leaves or arrives at holds
- $\uniformDepth$, by \emph{iii.},
- so the $\uniformDepth$ carried by the price term is exactly the queue that
- \eqref{eq.orderFlowContribution} records.
- Summing over the window,
- \begin{equation*}
-  \frac{\bestBidPrice_{t} - \bestBidPrice_{t-\ofiWindow}}{\tickSizeOfLOB}
-  = \frac{1}{\uniformDepth}\sum_{n} \Big(
-  \text{bid terms of } \orderFlowContribution \Big)
-  - \frac{\nthBestBidSize[1]_{t} - \nthBestBidSize[1]_{t-\ofiWindow}}{\uniformDepth} ,
- \end{equation*}
- and mutatis mutandis for the ask, with the opposite sign.
- Halving the sum of the two gives \eqref{eq.idealisedUpdate} with
- \eqref{eq.idealisedResidual}.
- Each of the four sizes lies in $[0,\uniformDepth]$ by \emph{ii.}, whence the bound.
+ Proposition \ref{prop.lobUpdate} specialised to
+ Assumption \ref{assumption.idealisedBook}; Exercise \ref{exercise.idealisedUpdate}.
 \end{proof}
 
-\begin{remark}\label{remark.ofiUnits}
- Notice that $\OFI_{t,\ofiWindow}/(2\uniformDepth)$ is a number of shares over a number of
- shares, so \eqref{eq.idealisedUpdate} reads as a tick count on the left when
- $\tickSizeOfLOB$ is dropped, and as a price otherwise.
- Prices are carried as integer tick counts throughout these notes,
- and the conversion happens once, at the boundary.
-\end{remark}
+\begin{exercise}\label{exercise.idealisedUpdate}
+ Prove Proposition \ref{prop.idealisedUpdate}.
+ Measure the position of the bid in shares by
+ $\nthBestBidSize[1]_{s}
+ + \uniformDepth\,(\bestBidPrice_{s} - \bestBidPrice_{t-\ofiWindow})/\tickSizeOfLOB$,
+ show that each event moves it by its own signed bid-side flow,
+ and sum over the window.
+ Say where each part of Assumption \ref{assumption.idealisedBook} is used.
+\end{exercise}
 
 \begin{remark}\label{remark.residualIsQueueFlow}
- The residual is not an independent nuisance.
  On a window over which neither quote moves,
  $\Delta\midPrice_{t,\ofiWindow} = 0$ while
  $\OFI_{t,\ofiWindow}
