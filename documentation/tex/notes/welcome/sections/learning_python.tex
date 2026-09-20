@@ -1,4 +1,4 @@
-The stack is the one a quantitative desk uses:
+The stack consists of
 \codehl{numpy} and \codehl{scipy} for the numerics,
 \codehl{pandas} and \codehl{pyarrow} for tabular data,
 \codehl{pandera} for the schemas that say what a table is,
@@ -7,21 +7,29 @@ and \codehl{matplotlib} and \codehl{plotly} for the figures.
 
 Four habits are taught alongside them.
 
-A type owns its own serialisation:
-the schema that validates it,
-the pair of functions that write it to a table and read it back,
-and a test that the round trip is the identity.
+We reason about what an implementation must satisfy before we write it:
+the invariants it preserves,
+the quantities it leaves monotone,
+the round trips it closes,
+and the alternative routes through a computation that must reach the same value.
+These are properties of the model, stated in its notation.
 
-A parametrisation is a frozen object and never a computed default.
-A default invites a reader to skip the choice,
+Those properties are then written as tests,
+and written before the implementation they specify.
+A test states in code what the theory requires,
+and it is re-run on every change,
+so the code and the model stay together.
+
+What defines an object is written down with the object.
+A type carries the schema that validates it,
+and the pair of functions that write it to a table and read it back.
+A model carries its parametrisation as a frozen object and never as a computed default:
+a default invites a reader to skip the choice,
 and in a model the choice is usually the subject.
 
 The clear implementation comes first and is understood before anything faster is written.
 An optimisation is then a second implementation shown to beat the first,
 and the comparison is part of the material.
-
-A claim about what code does is written as a test,
-so that it is re-run whenever the code changes.
 
 Work is kept under version control,
 and reaches the course repository through branches and pull requests,

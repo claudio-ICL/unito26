@@ -65,7 +65,7 @@ documentation that cite the notes, not the other way round. A fact worth having 
 worth writing in the notes.
 
 An external address is not such a reference. The notes name the exchanges of `sec.orderDrivenMarkets`,
-LOBSTER in `sec.messageFiles` and the course repository in `sec.assignments`, each as a `\url`.
+LOBSTER in `sec.messageFiles` and the course repository in `sec.theCourse`, each as a `\url`.
 What the rule forbids is a path *into this repository*.
 
 **9. Every paragraph earns its place.** A free-standing paragraph must introduce a symbol,

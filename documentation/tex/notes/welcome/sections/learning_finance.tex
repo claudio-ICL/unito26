@@ -1,19 +1,18 @@
-Chapter \ref{chap.microstructure} builds the market from its mechanism.
-An order-driven market matches orders by price and then by time,
-and the limit order book is the state that rule leaves behind;
-the best quotes, the spread, the mid-price and the queue imbalance are all read off it.
-An exchange disseminates a stream of messages rather than a book,
-so the book is recovered as a fold of that stream.
-The stream is then modelled as a self-exciting point process,
-whose intensity rises when an event of a related type has just occurred,
-and Section \ref{sec.priceFormation} is what the chapter is for:
-the order flow imbalance,
-the statistic of that flow which both accounts for the mid-price and forecasts it.
+Chapter \ref{chap.microstructure} describes order-driven markets.
+Firstly,
+we fold the stream of orders into an aggregated order book;
+we examine several implementations of that fold,
+and we compare their performance.
+Secondly,
+we implement Hawkes processes
+as a statistical model for the arrival of orders at a trading venue,
+and we study what the parametrisation of such a process says
+about the statistical properties of a trading epoch.
+Thirdly,
+we study the order flow imbalance and price formation.
 
-Chapter \ref{chap.options} prices the contingent claim.
-The Black--Scholes model and the replication argument behind it;
-the fundamental theorem of derivative trading,
-which says what a hedger earns
-when the volatility hedged at differs from the one realised;
-and the SABR model, which is what an option desk quotes a smile with.
-Volatility is then traded in its own right, rather than as a view on direction.
+Chapter \ref{chap.options} implements pricers
+for European-style call and put options,
+under the Black--Scholes model and then under SABR.
+We then quantify the profit and loss of trading strategies
+built to capture a volatility signal.
