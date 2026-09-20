@@ -54,13 +54,13 @@ python -m pytest tests/             # sanity check: tests should pass
    checklist.
 
 7. **CI runs automatically.** The `CI` workflow runs `python -m pytest tests/` on your PR.
-   **It must be green** before the PR is merged.
+   It must be green: a red `pytest` blocks the merge.
 
-8. **Review.** The lecturer is auto-requested as reviewer (via `CODEOWNERS`). **Only the
-   lecturer approves** PRs.
+8. **Review.** The lecturer is auto-requested as reviewer (via `CODEOWNERS`) and is the only
+   one whose approval counts.
 
-9. **Merge.** Once approved and green, the PR is **squash-merged** and the branch is deleted
-   automatically. Then update your local copy:
+9. **Merge.** The lecturer merges — `main` accepts no other author. The PR is
+   **squash-merged** and the branch is deleted automatically. Then update your local copy:
    ```bash
    git checkout main
    git pull
@@ -89,14 +89,17 @@ Two things specific to an assignment:
 - **Data is not tracked:** files under `data/` are git-ignored — don't commit datasets.
 - **Keep PRs small and focused** — easier to review, easier to merge.
 
-## A note on enforcement
+## What is enforced
 
-Today the repository is **private on the free GitHub plan**, so the rules above are
-**advisory**: GitHub does not yet *block* direct pushes to `main`, *require* the lecturer's
-approval, or *require* CI to be green. They become **enforced** once branch protection is
-enabled (GitHub Pro on a private repo, or making the repo public). **Please follow the
-workflow either way** — it is how the repository is meant to be used, and enforcement will
-be switched on before students are given write access.
+The rules above are not advice: a ruleset on `main` enforces them, with the lecturer as the
+only actor who may bypass it. On a pull request into `main`,
+
+- the `pytest` check must be green;
+- an approving review from a code owner — the lecturer — is required, and is dismissed if
+  you push again afterwards;
+- the merge is the lecturer's: `main` accepts no update from anyone else, by push or by
+  merge, so the button is disabled for you even on a green, approved pull request;
+- `main` cannot be force-pushed or deleted, and merges into it are squashes.
 
 ## Quick reference
 
