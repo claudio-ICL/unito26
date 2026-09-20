@@ -1,0 +1,193 @@
+\begin{defi}[Exponential-kernel Hawkes process]\label{def.exponentialHawkes}
+ A $\numEventTypes$-dimensional Hawkes process $\multiCountingProc$ is called an
+ \emph{exponential-kernel Hawkes process} if its kernels are
+ \begin{equation}\label{eq.exponentialKernel}
+  \hawkesKernel\subscriptee(t) = \excitation\subscriptee \, e^{-\decay t},
+  \qquad t \geq 0,
+ \end{equation}
+ with $\excitation\subscriptee \geq 0$ and a single decay rate $\decay > 0$
+ shared by every pair of types.
+ We call $\excitation$ the excitation matrix and $\decay$ the decay.
+ For each type $e$ we call
+ \begin{equation}\label{eq.decayedCounts}
+  \decayedCounts_e(t) := \sum_{j \, : \, \arrivalTimes_{j} < t}
+  e^{-\decay (t - \arrivalTimes_{j})}
+ \end{equation}
+ the decayed counts.
+\end{defi}
+
+In an exponential-kernel Hawkes process, the branching matrix is 
+\begin{equation}\label{eq.GammaIsAOverBeta}
+ \branchingMatrix = \frac{\excitation}{\decay}.
+\end{equation}
+Observe that the branching matrix is dimensionless while the excitation matrix is a rate.
+
+\begin{remark}\label{remark.countsAgainstRates}
+ Notice that $\sum_e \branchingMatrix\subscriptee$ and $\sum_e \excitation\subscriptee$
+ are different quantities, differing by $\decay$:
+ the first is the expected number of direct offspring of one event of type $\eone$,
+ the second is the jump in the total intensity that the same event produces,
+ measured per unit of time.
+\end{remark}
+
+
+The intensity of an exponential-kernel Hawkes process can be written as
+\begin{equation}\label{eq.intensityFromState}
+ \intensity[ ](t) = \baseIntensity + \excitation \decayedCounts(t).
+\end{equation}
+Notice that it is the strict inequality in the sum of \eqref{eq.decayedCounts} that makes
+$\decayedCounts$ left-continuous, and therefore makes \eqref{eq.intensityFromState}
+predictable, as Definition \ref{def.compensator} requires of an intensity.
+
+Between events $\decayedCounts$ solves $d\decayedCounts = -\decay \decayedCounts \, dt$,
+and at an event of type $e$ it gains the unit vector $\unitVector_e$, so that
+\begin{equation}\label{eq.stateDynamics}
+ d\decayedCounts(t) = -\decay \decayedCounts(t) \, dt + d\multiCountingProc(t).
+\end{equation}
+
+\begin{prop}\label{prop.compensatorClosedForm}
+ Let $\multiCountingProc$ be an exponential-kernel Hawkes process started at
+ $\multiCountingProc(0) = 0$.
+ Then for every $\timeHorizon > 0$ and every type $e$,
+ \begin{equation}\label{eq.compensatorClosedForm}
+  \compensator_e(\timeHorizon)
+  = \baseIntensity_e \timeHorizon
+  + \sum_{\eone=1}^{\numEventTypes} \frac{\excitation\subscriptee}{\decay}
+  \Big( \countingProc[\eone](\timeHorizon-) - \decayedCounts_{\eone}(\timeHorizon) \Big).
+ \end{equation}
+\end{prop}
+\begin{proof}
+ By \eqref{eq.intensityFromState} it suffices to compute
+ $\int_{0}^{\timeHorizon}\decayedCounts_{\eone}$.
+ The summands of \eqref{eq.decayedCounts} are non-negative,
+ so Tonelli's theorem licenses the interchange, and
+ \begin{equation*}
+  \int_{0}^{\timeHorizon} \decayedCounts_{\eone}(u) \, du
+  = \sum_{j \, : \, \arrivalTimes[\eone]_{j} < \timeHorizon}
+    \int_{\arrivalTimes[\eone]_{j}}^{\timeHorizon} e^{-\decay(u - \arrivalTimes[\eone]_{j})} du
+  = \sum_{j \, : \, \arrivalTimes[\eone]_{j} < \timeHorizon}
+    \frac{1 - e^{-\decay(\timeHorizon - \arrivalTimes[\eone]_{j})}}{\decay} .
+ \end{equation*}
+ The sum runs over the arrivals of type $\eone$ \emph{strictly} before $\timeHorizon$,
+ by the strict inequality of \eqref{eq.decayedCounts};
+ there are $\countingProc[\eone](\timeHorizon-)$ of them,
+ and their exponentials sum to $\decayedCounts_{\eone}(\timeHorizon)$.
+\end{proof}
+
+The compensator is thus available exactly, at any time, from the state and the counts,
+with no numerical integration.
+
+\begin{remark}\label{remark.readPreJump}
+ Notice that the count in \eqref{eq.compensatorClosedForm} is read \emph{before}
+ $\timeHorizon$ and the state \emph{at} it.
+ The map
+ $\timeHorizon \mapsto \countingProc[\eone](\timeHorizon-) -
+ \decayedCounts_{\eone}(\timeHorizon)$
+ is continuous.
+ Indeed, on the one hand,
+ $\timeHorizon \mapsto \countingProc[\eone](\timeHorizon -)$
+ and $\timeHorizon \mapsto \decayedCounts_{\eone}(\timeHorizon)$
+ are both left-continuous by construction.
+ On the other hand, at every arrival time $\arrivalTimes[\eone]_{j}$,
+ \begin{equation*}
+  \countingProc[\eone](\arrivalTimes[\eone]_{j})
+  - \countingProc[\eone](\arrivalTimes[\eone]_{j} - )
+  = \decayedCounts_{\eone}(\arrivalTimes[\eone]_{j} + )
+  - \decayedCounts_{\eone}(\arrivalTimes[\eone]_{j} ),
+ \end{equation*}
+ so the two jumps cancel.
+ Theorem \ref{thm.meyer1971} requires that continuity.
+
+ The post-jump reading
+ $\countingProc[\eone](\timeHorizon) - \decayedCounts_{\eone}(\timeHorizon)$
+ is not the compensator:
+ it overstates \eqref{eq.compensatorClosedForm} by $\excitation\subscriptee/\decay$ at each
+ arrival of type $\eone$, and Section \ref{sec.simulation} evaluates the compensator at
+ exactly those times.
+\end{remark}
+
+Hawkes processes with arbitrary kernels
+might have complicated dependence on their history.
+Exponential kernels instead have the remarkable property that
+the dependence of the intensity on the history is
+summarised in the decayed count.
+In other words,
+the decayed count at time $t$ is sufficient
+to characterise the law of the process after $t$.
+Between arrivals the state decays deterministically,
+along the flow $\varphi_t(z) = e^{-\decay t}z$,
+and at each arrival it gains a unit vector.
+
+\begin{thm}[Markovianity of exponential-kernel Hawkes processes]\label{thm.markovState}
+ Let $\multiCountingProc$ be an exponential-kernel Hawkes process.
+ Then $\decayedCounts$ is a piecewise-deterministic Markov process on
+ $\R_{+}^{\numEventTypes}$,
+ with flow $\varphi_t$,
+ jump rate $\totalIntensity(z) = \mathbf{1}^{\transpose}(\baseIntensity + \excitation z)$
+ and jump kernel
+ $\sum_{e} \frac{\intensity(z)}{\totalIntensity(z)} \delta_{z + \unitVector_e}$,
+ arbitrary where the rate vanishes.
+ The extended generator of $\decayedCounts$ is
+ \begin{equation}\label{eq.generatorOfDecayedCount}
+  \generatorL f(z)
+  = -\decay \, z \cdot \gradient f(z)
+  + \sum_{e=1}^{\numEventTypes} \intensity(z)\big( f(z + \unitVector_e) - f(z) \big),
+  \qquad \intensity(z) = \baseIntensity_e + (\excitation z)_e ,
+ \end{equation}
+ on every $f \in C^{1}(\R^{\numEventTypes})$ such that
+ $\Expectation \int_{0}^{t} \sum_{e} \intensity(\decayedCounts(s))
+ \lvert f(\decayedCounts(s) + \unitVector_e) - f(\decayedCounts(s)) \rvert \, ds < \infty$
+ for every $t > 0$.
+ Furthermore,
+ the pair $(\multiCountingProc, \decayedCounts)$ is Markov,
+ with generator
+ \begin{equation}\label{eq.generatorOfHawkesProcess}
+ \generatorL f(n,z) = -\decay \, z \cdot \gradient_{z} f(n,z)
+ + \sum_{e} \intensity(z)\big( f(n + \unitVector_e, z + \unitVector_e) - f(n,z) \big) .
+ \end{equation}
+\end{thm}
+\begin{proof}
+ The intensity \eqref{eq.intensityFromState}, the jump rate and the jump kernel are functions
+ of $\decayedCounts$ alone, so $\decayedCounts$ is Markov and $\multiCountingProc$ counts its
+ jumps by type.
+ Between arrivals $f(\decayedCounts)$ moves by the chain rule along the flow,
+ at the rate $-\decay \, z \cdot \gradient f(z)$,
+ which is the first term of \eqref{eq.generatorOfDecayedCount}.
+ At an arrival of type $e$ it gains
+ $f(\decayedCounts + \unitVector_e) - f(\decayedCounts)$,
+ and by Definition \ref{def.compensator} such arrivals occur at the rate
+ $\intensity(\decayedCounts)$,
+ so the accumulated jumps minus the integral of the second term of
+ \eqref{eq.generatorOfDecayedCount} is a local martingale.
+ Adding the two gives \eqref{eq.generatorOfDecayedCount} up to localisation,
+ which the stated integrability removes.
+ The pair differs only in that $n$ does not flow,
+ which is \eqref{eq.generatorOfHawkesProcess}.
+\end{proof}
+For the general statement on piecewise-deterministic Markov processes and for the domain of
+the extended generator, see \cite[Theorem 5.5]{Dav84pie};
+the Markov property of the exponential-kernel case is due to \cite{Oak75mar}.
+
+\begin{remark}\label{remark.noSubcriticality}
+ Notice that Theorem \ref{thm.markovState} assumes nothing about $\branchingRatio$.
+ The integrability it requires holds on every finite horizon at every $\branchingRatio$,
+ both for $f(z) = z$ and for $f(z) = z z^{\transpose}$.
+ What supplies it is that for the exponential kernel the $k$-th convolution power
+ $\hawkesKernel^{*k}$ carries $t^{k-1}/(k-1)!$,
+ so $\sum_{k \geq 1}\int_{0}^{\timeHorizon}\hawkesKernel^{*k}$ converges at every
+ $\branchingRatio$, and with it $\Expectation[\multiCountingProc(\timeHorizon)]$ and
+ $\Expectation[\lvert\decayedCounts(\timeHorizon)\rvert^{2}]$.
+\end{remark}
+
+\begin{exercise}\label{exercise.eventDependentDecays}
+ We work with exponential kernels that share a single $\decay$ across all components,
+ so that the decayed count is $\numEventTypes$-dimensional.
+ A decay $\decay\subscriptee$ per pair would require one decayed count per pair,
+ a state of dimension $\numEventTypes^2$,
+ and every expression of Section \ref{sec.stability} would have to be rewritten on it.
+ Rewrite them.
+\end{exercise}
+
+From now on, unless otherwise stated,
+every Hawkes process is an exponential-kernel Hawkes process.
+

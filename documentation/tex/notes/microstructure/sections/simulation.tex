@@ -1,0 +1,259 @@
+We need two things from a simulator: that it produce paths of the process we specified,
+and that we be able to tell whether it did.
+This section gives one general algorithm, one exact algorithm for the exponential kernel,
+and the test.
+
+\subsubsection{Thinning}
+
+\cite{LS79sim} first described an algorithm for the simulation of non-homogeneous Poisson
+processes based on thinning.
+\cite{Oga81lew} generalised it, replacing the requirement of bounded intensities by local
+boundedness.
+We recall the algorithm, since it applies to any kernel and is the control against which the
+exact scheme below is checked.
+
+Recall the arrival times $\arrivalTimes[ ]_n$ of the ground process
+from \eqref{eq.arrivalTimesOfGroundProcess},
+and the event labels from \eqref{eq.eventLabels}.
+The idea is Proposition \ref{prop.conditionalSurvival} run backwards.
+If $\totalIntensity$ were constant, 
+the next inter-arrival would be exponential of that rate.
+It is not constant,
+but if it is non-increasing between events then its value at the last event
+dominates it,
+so one may draw an exponential at the dominating rate and keep the candidate with probability
+equal to the ratio of the true rate to the dominating one.
+That $\totalIntensity$ is non-increasing between events is exactly the non-negativity of the
+kernel, $\excitation \geq 0$: excitation only ever decays until the next event adds to it.
+The bound is therefore free, and no separate majorant has to be constructed.
+The dominating value is the \emph{post-jump} one, $\totalIntensity(\arrivalTimes[]_{n-1}+)$:
+$\decayedCounts$ is left-continuous, so the pre-jump value is smaller by
+$(\mathbf{1}^{\transpose}\excitation)_{\event[n-1]}$ and does not dominate.
+
+We take $(\arrivalTimes[]_n,\event[n])$ as the sequence of arrival times and event labels
+of the ground process.
+For a general kernel, computing $\totalIntensity(t)$ requires
+$\lbrace(\arrivalTimes[]_n,\event[n]): \, \arrivalTimes[]_n <t\rbrace$,
+the whole history up to $t$.
+The algorithm is detailed in Algorithm \ref{algo.ogata}.
+
+\begin{algorithm}[h!]
+ \caption{{Ogata's thinning algorithm \citep{Oga81lew}}}
+ \label{algo.ogata}
+ \begin{algorithmic}[5]
+  \REQUIRE $(\arrivalTimes[]_i, \event[i])_{i=1,\dots,n-1}$
+  \STATE set $t:=\arrivalTimes[]_{n-1}$ and
+         $\bar{\lambda} := \totalIntensity(\arrivalTimes[]_{n-1}+)$
+  \STATE set $\xi:=0$
+  \WHILE{$\xi=0$}
+  \STATE draw $U \sim \text{Exp}(\bar{\lambda})$
+  \STATE set $\xi :=1$ with probability $\totalIntensity(t+U)/\bar{\lambda}$
+  \STATE update $t\leftarrow t+U$ and $\bar{\lambda} \leftarrow \totalIntensity(t)$
+  \ENDWHILE
+  \STATE set $\arrivalTimes[]_n:=t$
+  \STATE draw $\event[n]$ in $\lbrace 1,\dots,\numEventTypes\rbrace$ with probabilities
+         proportional to
+         $\lbrace \intensity[1](\arrivalTimes[]_n), \dots,
+         \intensity[\numEventTypes](\arrivalTimes[]_n)\rbrace$
+  \RETURN $(\arrivalTimes[]_n,\event[n])$
+ \end{algorithmic}
+\end{algorithm}
+
+Algorithm \ref{algo.ogata} evaluates $\totalIntensity$ three times:
+twice in the loop, and once more to draw $\event[n]$.
+For a general kernel each of the three reads the history.
+For an exponential kernel each reads $\decayedCounts$ instead:
+by Theorem \ref{thm.markovState} the pair $(\multiCountingProc,\decayedCounts)$ is Markov, so
+$\totalIntensity(t) = \mathbf{1}^{\transpose}(\baseIntensity + \excitation\decayedCounts(t))$,
+and the algorithm holds $\numEventTypes$ numbers in place of a list that grows with the path.
+The state is carried from event to event by a recursion, not recomputed.
+Between $\arrivalTimes[ ]_{n}$ and $\arrivalTimes[ ]_{n+1}$ it merely decays,
+so from \eqref{eq.decayedCounts},
+\begin{equation}\label{eq.update_of_exponential_intensity}
+ \decayedCounts(\arrivalTimes[ ]_{n+1}-)
+ = \Big( \decayedCounts(\arrivalTimes[ ]_{n}-) + \unitVector_{\event[n]} \Big)
+ \, e^{-\decay (\arrivalTimes[ ]_{n+1} - \arrivalTimes[ ]_{n})} .
+\end{equation}
+Evaluating \eqref{eq.decayedCounts} directly at each of $n$ arrival times costs $O(n^2)$,
+where \eqref{eq.update_of_exponential_intensity} costs $O(1)$ per event.
+
+\begin{remark}\label{remark.prePostJump}
+ The two values in \eqref{eq.update_of_exponential_intensity} are different objects and both
+ are needed.
+ The pre-jump value $\decayedCounts(\arrivalTimes[ ]_{n+1}-)$ is the one that enters the
+ intensity, by predictability;
+ the post-jump value
+ $\decayedCounts(\arrivalTimes[ ]_{n+1}-) + \unitVector_{\event[n+1]}$
+ is the one carried forward as the state.
+ Confusing them shifts every intensity by one event,
+ and produces a path that is plausible and wrong.
+\end{remark}
+
+The algorithm is exact but wasteful: the rejected candidates are work done and discarded,
+and the rejection rate grows with the branching ratio.
+For the kernel of Definition \ref{def.exponentialHawkes} it can be avoided entirely.
+
+\subsubsection{An exact scheme for the exponential kernel}
+
+Write $\totalIntensity = \mathbf{1}^{\transpose}\intensity[ ]
+= \bar{\baseIntensity} + (\mathbf{1}^{\transpose}\excitation) \decayedCounts$.
+Between events every component of $\decayedCounts$ decays by the same factor,
+because the decay $\decay$ is common to all pairs;
+hence so does the excited part of $\totalIntensity$, and
+\begin{equation}\label{eq.totalIntensityBetweenEvents}
+ \totalIntensity(t) = \bar{\baseIntensity}
+ + D \, e^{-\decay(t - \arrivalTimes[]_n)},
+ \qquad
+ D := \totalIntensity(\arrivalTimes[]_n +) - \bar{\baseIntensity},
+ \qquad t \in (\arrivalTimes[]_n, \arrivalTimes[]_{n+1}].
+\end{equation}
+Non-negativity of $\excitation$ enters separately, and gives $D \geq 0$.
+
+
+Substituting \eqref{eq.totalIntensityBetweenEvents} into
+Proposition \ref{prop.conditionalSurvival} and integrating,
+\begin{equation}\label{eq.dzSurvival}
+ \Prob \left( \arrivalTimes[]_{n+1} - \arrivalTimes[]_{n} > s \, \vert \,
+ \filtrationF_{\arrivalTimes[]_{n}} \right)
+ = e^{-\bar{\baseIntensity}s} \cdot
+ \exp\left( -\frac{D}{\decay}\big(1 - e^{-\decay s}\big) \right).
+\end{equation}
+The right-hand side is a product of two factors, so, as \cite{DZ13exa} observed,
+the inter-arrival time of the ground process is the minimum of two independent waiting times,
+one for the immigration and one for the excitation.
+The waiting time of the immigration is exponential of parameter $\bar{\baseIntensity}$.
+The waiting time for the excitation is \emph{defective}:
+with probability $e^{-D/\decay} > 0$ no excitation occurs at all.
+
+
+\begin{remark}\label{remark.commonDecay}
+ Notice that \eqref{eq.totalIntensityBetweenEvents} 
+	uses crucially that $\decay$ is common to all
+ pairs.
+ With a decay $\decay\subscriptee$ depending on the pair, or even one depending only on the
+ type of the exciting event, 
+ the components of $\decayedCounts$ decay at different rates and
+ $\totalIntensity$ is a sum of exponentials rather than one exponential,
+ so that the two-factor form of \eqref{eq.dzSurvival} fails,
+ and with it Theorem \ref{thm.dassiosZhao} as stated.
+ The survival function still factorises, over one clock per decay rate rather than two,
+ so the scheme generalises at the cost of carrying one clock more.
+\end{remark}
+
+
+\begin{thm}[{\citealp{DZ13exa}}]\label{thm.dassiosZhao}
+ Let $\bar{\baseIntensity} > 0$, let
+ $D = \totalIntensity(\arrivalTimes[]_n +) - \bar{\baseIntensity}$
+ as in \eqref{eq.totalIntensityBetweenEvents},
+ and let $U_1, U_2$ be independent and uniform on $(0,1)$.
+ Set
+ \begin{equation}\label{eq.dzDraws}
+  \tau_1 := -\frac{\log U_1}{\bar{\baseIntensity}},
+  \qquad
+  \tau_2 := -\frac{1}{\decay}
+  \log\left( 1 + \frac{\decay \log U_2}{D} \right),
+ \end{equation}
+ with $\tau_2 := +\infty$ when $D = 0$ or $1 + \decay \log U_2 / D \leq 0$.
+ Then, conditionally on $\filtrationF_{\arrivalTimes[]_{n}}$,
+ the inter-arrival time $\arrivalTimes[]_{n+1} - \arrivalTimes[]_{n}$ is distributed as
+ $\tau_1 \wedge \tau_2$, and its law is \eqref{eq.dzSurvival}.
+ The type is drawn at the arrival time, before the jump:
+ \begin{equation}\label{eq.dzType}
+  \Prob \big( \event[n+1] = e \, \vert \, \filtrationF_{\arrivalTimes[]_{n+1}-} \big)
+  = \frac{\intensity(\arrivalTimes[]_{n+1}-)}{\totalIntensity(\arrivalTimes[]_{n+1}-)} .
+ \end{equation}
+\end{thm}
+\begin{proof}
+ $\tau_1$ is exponential of rate $\bar{\baseIntensity}$ by inversion.
+ For $\tau_2$, write $\mathcal{X} := -\log U_2 \sim \mathrm{Exp}(1)$;
+ then $\tau_2 > s$ if and only if
+ $\mathcal{X} > \frac{D}{\decay}\big(1 - e^{-\decay s}\big)$,
+ an event of probability
+ $\exp\big(-\frac{D}{\decay}(1-e^{-\decay s})\big)$,
+ which is the second factor of \eqref{eq.dzSurvival};
+ and $\tau_2 = +\infty$ exactly when $\mathcal{X} \geq D/\decay$.
+ The two are independent, so the survival function of $\tau_1 \wedge \tau_2$ is the
+ product of the two, which is \eqref{eq.dzSurvival}.
+ Equation \eqref{eq.dzType} is the definition of the intensity of the $e$-th component
+ relative to that of the ground process.
+\end{proof}
+
+\begin{algorithm}[h!]
+ \caption{{The exact scheme for the exponential kernel \citep{DZ13exa}}}
+ \label{algo.dassiosZhao}
+ \begin{algorithmic}[5]
+  \REQUIRE $\arrivalTimes[]_{n}$ and the post-jump state $\decayedCounts(\arrivalTimes[]_n+)$
+  \STATE set $D := \mathbf{1}^{\transpose}\excitation \decayedCounts(\arrivalTimes[]_n +)$
+  \STATE draw $U_1, U_2$ independent and uniform on $(0,1)$
+  \STATE set $\tau_1 := -\log U_1 / \bar{\baseIntensity}$
+  \IF{$D > 0$ and $1 + \decay \log U_2 / D > 0$}
+  \STATE set $\tau_2 := -\decay^{-1}\log\left(1 + \decay \log U_2 / D\right)$
+  \ELSE
+  \STATE set $\tau_2 := +\infty$
+  \ENDIF
+  \STATE set $\arrivalTimes[]_{n+1} := \arrivalTimes[]_{n} + \tau_1 \wedge \tau_2$
+  \STATE set $\decayedCounts(\arrivalTimes[]_{n+1}-) :=
+         \decayedCounts(\arrivalTimes[]_{n}+) \,
+         e^{-\decay(\arrivalTimes[]_{n+1}-\arrivalTimes[]_{n})}$
+  \STATE draw $\event[n+1]$ in $\lbrace 1,\dots,\numEventTypes\rbrace$ with probabilities
+         \eqref{eq.dzType}
+  \STATE set $\decayedCounts(\arrivalTimes[]_{n+1}+) :=
+         \decayedCounts(\arrivalTimes[]_{n+1}-) + \unitVector_{\event[n+1]}$
+  \RETURN $(\arrivalTimes[]_{n+1}, \event[n+1])$
+ \end{algorithmic}
+\end{algorithm}
+
+Nothing in Algorithm \ref{algo.dassiosZhao} is approximate and nothing is rejected.
+
+\begin{remark}\label{remark.defectiveClock}
+ Notice that $\tau_2 = +\infty$ is not a numerical edge case to be patched.
+ The excited factor of \eqref{eq.dzSurvival} carries the finite total mass $D/\decay$,
+ which is the expected number of \emph{direct} offspring the current state still owes:
+ integrating $\mathbf{1}^{\transpose}\excitation\decayedCounts$ forward from
+ $\arrivalTimes[]_n$ gives $D/\decay$;
+ with probability $e^{-D/\decay}$ it expires without firing,
+ and the next event is an immigrant.
+ An implementation that clips $\tau_2$ instead of returning $+\infty$ biases the immigrant
+ share.
+\end{remark}
+
+\begin{remark}\label{remark.typeDraw}
+ The waiting time \eqref{eq.dzDraws} sees $\excitation$ only through
+ $\mathbf{1}^{\transpose}\excitation$,
+ so it is \eqref{eq.dzType} that makes the scheme multivariate,
+ and it is there that the full matrix re-enters.
+ For the same reason $\totalIntensity$ is not itself a one-dimensional Hawkes process:
+ it is exponential between events, but the size of its jump depends on the type that fires,
+ so the full state $\decayedCounts$ must be carried.
+\end{remark}
+
+\subsubsection{Goodness of fit}
+
+Theorem \ref{thm.meyer1971} turns the compensator into a test.
+If the path is a path of the model, then rescaling each component's clock by its own
+compensator turns it into a unit-rate Poisson process,
+and the rescaled inter-arrival times \eqref{eq.time-changed_intertimes} are independent
+$\text{Exp}(1)$ variables.
+Both ingredients are available in closed form:
+the compensator by \eqref{eq.compensatorClosedForm},
+and the arrival times by construction.
+The test is due to \cite{Oga88sta}, who introduced it for earthquake catalogues.
+
+The three hypotheses are those of Theorem \ref{thm.meyer1971}:
+no two components jump simultaneously;
+the compensator is continuous;
+and it diverges.
+The second holds by construction for the model of this chapter,
+and the third whenever every type is reached --- when $\baseIntensity > 0$, for instance.
+The first holds for a simulated path, where the arrival times are almost surely distinct,
+and is precisely what fails for a recorded one.
+
+\begin{remark}\label{remark.marginsOnly}
+ Comparing each component's rescaled inter-arrival times against $\text{Exp}(1)$ ---
+ by a Kolmogorov--Smirnov statistic, say --- tests the \emph{marginal} law.
+ Theorem \ref{thm.meyer1971} asserts two independences beyond that law:
+ serial independence within a component, and joint independence across components.
+ Neither is tested by a comparison of margins,
+ and the second is what a violation of the no-common-jumps hypothesis breaks.
+ A suite of $\numEventTypes$ passing such tests has established $\numEventTypes$ margins.
+\end{remark}

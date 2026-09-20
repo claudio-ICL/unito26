@@ -1,0 +1,81 @@
+The apparatus of Sections \ref{sec.pointProcesses} and \ref{sec.priceFormation} is developed
+on flow that we generate, and a result obtained on generated flow is a result about the
+generator.
+This section turns to recorded data.
+
+Four things are absent from the generated setting by construction, and each of them bounds
+what can be asked of it.
+
+The intensities do not read the book.
+There is no queue-depletion feedback, so the arrival rates are indifferent to whether a queue
+is about to empty; only the marks see the book, and that is the mechanism behind its
+restoring force.
+There is in particular no informed trading and therefore no \emph{adverse selection}.
+In a traded market part of the flow is informed, and a resting limit order is then short an
+option: it is filled when someone wishes to trade against it, which is disproportionately
+when trading against it is right, and the defence available to whoever posted it is to
+withdraw before that happens.
+A queue about to be picked off is therefore a queue whose own side pulls away from it, and
+depletion begets further depletion.
+That is what makes $\queueImbalance[1]$ informative in a traded book:
+a thin bid is thin because those posting on that side inferred something.
+A kernel built for replenishment, as in Section \ref{sec.orderFlowModel}, does the reverse,
+and the two cannot both be strong in one specification.
+
+The marks are independent of the flow.
+Definition \ref{def.orderFlowProcess} asks the sizes to be independent of the arrival times
+and of the types, and Proposition \ref{prop.shortHorizonForecast} uses that.
+A generator whose withdrawals draw against the size actually resting, or which drops a
+withdrawal on an empty side, emits a thinned process rather than the Hawkes process it
+started from, and the hypothesis fails first on the withdrawal types.
+
+There is a single excitation timescale, the kernel being one exponential;
+there is no intraday non-stationarity, so a window tuned in one regime is not tested against
+another;
+and there is no anchor for the price level, so the level wanders and the mean price change
+over a session is a property of the seed.
+
+\begin{remark}\label{remark.asymmetricReading}
+ Any comparison of $\queueImbalance[1]$ with $\OFI$ conducted in the generated setting is
+ therefore read asymmetrically.
+ Whatever forecasting power $\queueImbalance[1]$ retains there is mechanical ---
+ a depleted queue is one market order from clearing, and clearing moves the mid ---
+ and none of it is informational.
+ A result favourable to $\OFI$ is not evidence that $\OFI$ dominates $\queueImbalance[1]$ in
+ a traded market; a result favourable to $\queueImbalance[1]$ is the stronger finding.
+\end{remark}
+
+Recorded data is what settles the questions the generated setting cannot:
+whether $\signedExcitation$ of \eqref{eq.signedExcitation} carries either sign
+in a traded market,
+and over what window and what horizon
+the sign of \eqref{eq.priceForecast} can be read from $\OFI$ at all.
+
+\begin{assignment}\label{assignment.orderFlowImbalance}
+ Take one ticker over one trading day,
+ and carry the following through on its recorded messages.
+ \begin{enumerate}[label={\emph{\roman{*}}.}]
+  \item Build the session from the message and orderbook files of
+        Section \ref{sec.messageFiles}.
+  \item Compute $\OFI_{t,\ofiWindow}$ by Definition \ref{def.orderFlowImbalance} and
+        $\queueImbalance[1]_{t}$ by \eqref{eq.queueImbalance},
+        and say on which rows either is undefined.
+  \item Regress $\Delta \midPrice_{t,\ofiWindow}$ on $\OFI_{t,\ofiWindow}$,
+        and compare the slope with the $\tickSizeOfLOB/(2\uniformDepth)$
+        of \eqref{eq.idealisedUpdate}:
+        report the depth it implies,
+        and how much of the difference \eqref{eq.idealisedResidual} accounts for.
+  \item Over a grid of windows $\ofiWindow$ and horizons $\forecastHorizon$,
+        report the sign and the strength of the relation between $\OFI_{t,\ofiWindow}$
+        and $\midPrice_{t+\forecastHorizon} - \midPrice_{t}$,
+        and say at which $(\ofiWindow, \forecastHorizon)$ it can be read at all.
+  \item Repeat \emph{iv.} with $\queueImbalance[1]_{t}$ in place of
+        $\OFI_{t,\ofiWindow}$.
+        Remark \ref{remark.asymmetricReading} does not bind here, the flow being traded,
+        so the comparison is symmetric;
+        say what that changes.
+ \end{enumerate}
+ Report the sign against the session it was measured on and not of $\OFI$ as such.
+ The assignment is marked out of 25, as Section \ref{sec.examination} describes,
+ and submitted as Section \ref{sec.assignments} describes.
+\end{assignment}

@@ -1,0 +1,31 @@
+In Sections \ref{sec.orderDrivenMarkets} and \ref{sec.messageFiles}
+we described the market microstructure of order-driven markets.
+In Section \ref{sec.pointProcesses}
+we developed a mathematical apparatus to model
+the arrival in time of orders at the trading venue.
+The question that remains is the one this chapter exists to answer:
+which features of the order flow reverberate into the movements of the mid-price,
+and how our mathematical apparatus captures these features.
+
+Of the statistics read off the book in Section \ref{sec.orderDrivenMarkets},
+the mid-price is the one we track.
+Proposition \ref{prop.lobUpdate} already says how an order moves it,
+exactly and event by event,
+and Section \ref{sec.messageFiles} says how to compute that from a recorded session.
+Both need the whole message stream and the whole book.
+We look instead for a coarser description:
+a single number, read off the aggregated book, that tracks the mid-price;
+a model of the flow that produces it;
+and a forecast of where that flow takes the mid-price next.
+
+\subsection{The order flow imbalance}
+\label{sec.orderFlowImbalance}
+\input{order_flow_imbalance}
+
+\subsection{Modelling the order flow}
+\label{sec.orderFlowModel}
+\input{order_flow_model}
+
+\subsection{Forecasting the mid-price}
+\label{sec.forecastingTheMid}
+\input{forecasting_the_mid}

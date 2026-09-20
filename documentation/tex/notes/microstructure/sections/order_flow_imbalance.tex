@@ -1,0 +1,127 @@
+The update of Proposition \ref{prop.lobUpdate} is exact, and it is too fine for what we want.
+It tracks the whole aggregated book, and to run it we need the whole tape of orders.
+We look for something simpler:
+a statistic computed from the observed aggregated book alone,
+whose only job is to track the mid-price.
+
+The order flow imbalance is introduced in \cite{CKS14pri} through a book in which the
+mechanism of Section \ref{sec.orderDrivenMarkets} is simplified until the mid-price becomes
+an explicit function of the flow.
+We state the simplification as an assumption, and the consequence as a proposition.
+
+\begin{assumption}\label{assumption.idealisedBook}
+ Let $\uniformDepth > 0$ be fixed over the trading epoch, and assume that
+ \begin{enumerate}[label={\emph{\roman{*}}.}]
+  \item no event occurs behind the best quote of its side;
+  \item no order reaches past the quote it acts on;
+  \item every queue holds at most $\uniformDepth$,
+        and every queue behind the best bid and the best ask holds exactly
+        $\uniformDepth$;
+  \item once the size at the best bid (ask, resp.) reaches $\uniformDepth$,
+        the next bid (ask, resp.) limit order arrives one tick above (below, resp.)
+        the best quote.
+ \end{enumerate}
+\end{assumption}
+
+Parts \emph{i.}, \emph{iii.} and \emph{iv.} are the stylised book of \cite{CKS14pri}.
+Part \emph{ii.} is not.
+There the flows are totalled at whichever quote is best when each order arrives,
+so an order reaching past the touch is split across the levels it crosses;
+we ask instead that the contribution of an event be the size of that event,
+which is Proposition \ref{prop.signedSizeContribution},
+and part \emph{ii.} is what that costs.
+The cap in \emph{iii.} is what \emph{iv.} intends,
+and \eqref{eq.idealisedResidual} names a residual that the reference carries as the
+truncation of a floor.
+
+\begin{defi}[{\citealp{CKS14pri}}]\label{def.orderFlowImbalance}
+ Let $\arrivalTimes[]_n$ be the times of the events of a trading epoch,
+ and write $\nthBestBidSize[1]_{\arrivalTimes[]_n}$ for the size at the best bid
+ \emph{after} the $n$-th event, so that
+ $\nthBestBidSize[1]_{\arrivalTimes[]_{n-1}}
+ = \nthBestBidSize[1]_{\arrivalTimes[]_n -}$.
+ The contribution of the $n$-th event, for $n \geq 1$, is
+ \begin{equation}
+ \label{eq.orderFlowContribution}
+ \begin{split}
+  \orderFlowContribution
+  =\;&
+  \indicator{\bestBidPrice_{\arrivalTimes[]_n} \geq \bestBidPrice_{\arrivalTimes[]_{n-1}}}
+  \nthBestBidSize[1]_{\arrivalTimes[]_n}
+  -
+  \indicator{\bestBidPrice_{\arrivalTimes[]_n} \leq \bestBidPrice_{\arrivalTimes[]_{n-1}}}
+  \nthBestBidSize[1]_{\arrivalTimes[]_{n-1}}
+  \\
+  &-
+  \indicator{\bestAskPrice_{\arrivalTimes[]_n} \leq \bestAskPrice_{\arrivalTimes[]_{n-1}}}
+  \nthBestAskSize[1]_{\arrivalTimes[]_n}
+  +
+  \indicator{\bestAskPrice_{\arrivalTimes[]_n} \geq \bestAskPrice_{\arrivalTimes[]_{n-1}}}
+  \nthBestAskSize[1]_{\arrivalTimes[]_{n-1}} ,
+ \end{split}
+ \end{equation}
+ and the \emph{order flow imbalance} over the window $(t-\ofiWindow, t]$ is
+ \begin{equation}
+ \label{eq.orderFlowImbalance}
+  \OFI_{t,\ofiWindow}
+  = \sum_{n \, : \, t-\ofiWindow < \arrivalTimes[]_n \leq t} \orderFlowContribution .
+ \end{equation}
+\end{defi}
+
+Both bid indicators fire when the best bid does not move,
+so an event that leaves it in place contributes the change in the size resting there.
+An event that moves it contributes a whole queue.
+
+\begin{prop}\label{prop.idealisedUpdate}
+ Under Assumption \ref{assumption.idealisedBook},
+ the mid-price change over the window $(t-\ofiWindow,t]$ satisfies
+ \begin{equation}\label{eq.idealisedUpdate}
+  \Delta \midPrice_{t,\ofiWindow}
+  = \midPrice_{t} - \midPrice_{t-\ofiWindow}
+  = \frac{\tickSizeOfLOB}{2\uniformDepth} \, \OFI_{t,\ofiWindow}
+  \; + \; \residual_{t,\ofiWindow},
+  \qquad
+  \vert \residual_{t,\ofiWindow} \vert \leq \tickSizeOfLOB .
+ \end{equation}
+ The residual has the explicit expression
+ \begin{equation}\label{eq.idealisedResidual}
+  \residual_{t,\ofiWindow}
+  = -\frac{\tickSizeOfLOB}{2\uniformDepth}\Big[
+  \big( \nthBestBidSize[1]_{t} - \nthBestBidSize[1]_{t-\ofiWindow} \big)
+  - \big( \nthBestAskSize[1]_{t} - \nthBestAskSize[1]_{t-\ofiWindow} \big) \Big],
+ \end{equation}
+ and depends only on the sizes resting at the two touches at the endpoints of the window.
+ In particular, \eqref{eq.idealisedUpdate} is exact whenever the bid and the ask touches
+ change by the same amount over the window, and so whenever all four sizes equal
+ $\uniformDepth$.
+\end{prop}
+\begin{proof}
+ Proposition \ref{prop.lobUpdate} specialised to
+ Assumption \ref{assumption.idealisedBook}; Exercise \ref{exercise.idealisedUpdate}.
+\end{proof}
+
+\begin{exercise}\label{exercise.idealisedUpdate}
+ Prove Proposition \ref{prop.idealisedUpdate}.
+ Measure the position of the bid in shares by
+ $\nthBestBidSize[1]_{s}
+ + \uniformDepth\,(\bestBidPrice_{s} - \bestBidPrice_{t-\ofiWindow})/\tickSizeOfLOB$,
+ show that each event moves it by its own signed bid-side flow,
+ and sum over the window.
+ Say where each part of Assumption \ref{assumption.idealisedBook} is used.
+\end{exercise}
+
+\begin{remark}\label{remark.residualIsQueueFlow}
+ On a window over which neither quote moves,
+ $\Delta\midPrice_{t,\ofiWindow} = 0$ while
+ $\OFI_{t,\ofiWindow}
+ = \big(\nthBestBidSize[1]_{t} - \nthBestBidSize[1]_{t-\ofiWindow}\big)
+ - \big(\nthBestAskSize[1]_{t} - \nthBestAskSize[1]_{t-\ofiWindow}\big)$,
+ so \eqref{eq.idealisedResidual} gives
+ $\residual_{t,\ofiWindow}
+ = -\tickSizeOfLOB\,\OFI_{t,\ofiWindow}/(2\uniformDepth)$
+ and the two terms of \eqref{eq.idealisedUpdate} cancel.
+ The residual is the part of the flow that went into the queues rather than into the quotes.
+ It is bounded by one tick and does not grow with $\ofiWindow$,
+ which is what makes \eqref{eq.idealisedUpdate} useful over windows
+ whose flow term is larger than that.
+\end{remark}

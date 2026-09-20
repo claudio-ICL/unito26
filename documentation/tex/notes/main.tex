@@ -1,12 +1,12 @@
 \documentclass{unito26notes}
-\include{mypagestyle}
-\include{snippets_stylerendering}
-\include{notation}
-\include{sethyperref}
+\input{mypagestyle}
+\input{snippets_stylerendering}
+\input{notation}
+\input{sethyperref}
 
 \title{Python for Finance}
 \author{Claudio Bellani}
-\date{University of Turin --- Fall 2026}
+\date{University of Turin --- Fall 2026\\[1ex] This version: \compilationDate}
 
 \begin{document}
 \pagestyle{empty}
@@ -19,7 +19,13 @@
 % One line per chapter.
 % The order of these lines is the order of the course:
 % chapters are named after their subject, never after their position.
-\include{lob/lob}
+% The welcome chapter is front matter and is numbered zero, so that market
+% microstructure stays chapter one: every equation number and every
+% cross-reference in the book is written against that.
+\setcounter{chapter}{-1}
+\include{welcome/welcome}
+\include{microstructure/microstructure}
+\include{options/options}
 
 \clearpage\newpage
 \addcontentsline{toc}{chapter}{Bibliography}

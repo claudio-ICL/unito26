@@ -1,0 +1,211 @@
+We now specialise the apparatus of Section \ref{sec.pointProcesses} to the order flow of
+Section \ref{sec.orderDrivenMarkets}.
+
+\begin{defi}\label{def.orderFlowProcess}
+ The \emph{order flow} is a marked point process $(\arrivalTimes[]_n, \event[n], \orderSize_n)$
+ in which
+ \begin{enumerate}[label={\emph{\roman{*}}.}]
+  \item $(\arrivalTimes[]_n, \event[n])$ is an exponential-kernel Hawkes process of dimension
+        $\numEventTypes = 6$, whose types are the market, limit and withdrawal orders on each
+        side, in the order of the table below;
+  \item the marks $\orderSize_n$ are the sizes of the orders, independent and identically
+        distributed with mean $\meanSize$, independent of the arrival times and of the types.
+ \end{enumerate}
+\end{defi}
+
+The six types are
+\begin{center}
+ \begin{tabular}{lcccccc}
+  \toprule
+  $e$ & market buy & market sell & limit buy & limit sell & withdraw bid & withdraw ask \\
+  \midrule
+  $\pressure_e$ & $+1$ & $-1$ & $+1$ & $-1$ & $-1$ & $+1$ \\
+  \bottomrule
+ \end{tabular}
+\end{center}
+The vector $\pressure$ records the buy/sell pressure exerted on the mid-price:
+a market buy consumes the ask and a withdrawal from the bid removes support,
+so the first pushes up and the second down.
+
+\begin{defi}\label{def.orderFlowSpecification}
+ A \emph{specification} of the order flow is a triple
+ $(\baseIntensity, \excitation, \decay)$ of baselines, excitation matrix and decay rate
+ for the Hawkes process of Definition \ref{def.orderFlowProcess}.
+\end{defi}
+
+\begin{prop}\label{prop.signedSizeContribution}
+ Under Assumption \ref{assumption.idealisedBook},
+ the contribution \eqref{eq.orderFlowContribution} of the $n$-th event is
+ \begin{equation}\label{eq.signedSizeContribution}
+  \orderFlowContribution = \pressure_{\event[n]} \, \orderSize_n ,
+ \end{equation}
+ so that
+ $\OFI_{t,\ofiWindow}
+ = \sum_{n \, : \, t - \ofiWindow < \arrivalTimes[]_n \leq t}
+ \pressure_{\event[n]} \orderSize_n$.
+\end{prop}
+\begin{proof}
+ The first two terms of \eqref{eq.orderFlowContribution} are the signed flow on the bid side
+ and the last two are minus the signed flow on the ask side.
+ By Assumption \ref{assumption.idealisedBook}~\emph{ii.} no order reaches past the quote it
+ acts on, so each event changes one queue by its own size.
+ A limit buy adds $\orderSize_n$ to the bid and a withdrawal from the bid removes it,
+ giving $\pm\orderSize_n$ with no ask term;
+ a market buy removes $\orderSize_n$ from the ask, giving $+\orderSize_n$ through the ask
+ terms, and mutatis mutandis for the three sell-side types.
+ In each case the sign is $\pressure_{\event[n]}$.
+\end{proof}
+
+\begin{defi}\label{def.directionSymmetry}
+ Let $\swapMatrix$ be the permutation matrix exchanging the two members of each pair of
+ types, so that $\swapMatrix\pressure = -\pressure$.
+ A specification is \emph{direction-symmetric} if
+ \begin{equation}\label{eq.directionSymmetry}
+  \swapMatrix \excitation \swapMatrix = \excitation ,
+  \qquad
+  \swapMatrix \baseIntensity = \baseIntensity .
+ \end{equation}
+\end{defi}
+
+\begin{prop}\label{prop.directionSymmetry}
+ Let the specification be direction-symmetric.
+ Then $\pressure^{\transpose} M v = 0$
+ for every matrix $M$ with $\swapMatrix M \swapMatrix = M$
+ and every vector $v$ with $\swapMatrix v = v$.
+ In particular,
+ \begin{equation}\label{eq.baselineSymmetry}
+  \pressure^{\transpose}\baseIntensity = 0.
+ \end{equation}
+ Moreover, if $\branchingRatio < 1$ then
+ $\pressure^{\transpose}\stationaryIntensity = 0$.
+\end{prop}
+\begin{proof}
+ $\pressure^{\transpose} M v
+ = (\swapMatrix\pressure)^{\transpose}(\swapMatrix M \swapMatrix)(\swapMatrix v)
+ \cdot (-1)
+ = -\pressure^{\transpose} M v$,
+ since $\swapMatrix$ is a symmetric involution and $\swapMatrix\pressure = -\pressure$.
+ Taking $M = I$ and $v = \baseIntensity$ gives \eqref{eq.baselineSymmetry}.
+ At $\branchingRatio < 1$ the matrix $I - \branchingMatrix$ is invertible and
+ $\swapMatrix(I-\branchingMatrix)^{-1}\swapMatrix = (I-\branchingMatrix)^{-1}$,
+ so \eqref{eq.stationaryIntensity} gives
+ $\pressure^{\transpose}\stationaryIntensity = 0$.
+\end{proof}
+
+For a direction-symmetric specification with $\branchingRatio < 1$,
+the matrices fixed by $M \mapsto \swapMatrix M \swapMatrix$ are the kernel of a linear map,
+hence a closed subspace, and they are closed under products,
+so they contain $\excitation$ and $\hurwitzMatrix$ together with the limits and integrals
+of their polynomials, among them $e^{\hurwitzMatrix \forecastHorizon}$,
+$\meanResponseIntegral(\forecastHorizon)$ and $(I - \branchingMatrix)^{-1}$.
+Every expression of Section \ref{sec.forecastingTheMid} built from these and contracted with
+$\pressure$ therefore loses its baseline term.
+
+By Proposition \ref{prop.clusterRepresentation},
+$\branchingMatrix\subscriptee$ is the expected number of direct offspring of type $e$
+born of one event of type $\eone$,
+so the column sums $\mathbf{1}^{\transpose}\branchingMatrix$ are readable one entry at a
+time.
+
+The kernel carries the mechanism of replenishment.
+The two kinds of event that deplete a queue --- an aggression against it and a withdrawal
+from it --- must beget successors,
+and what they chiefly beget must be the limit orders that refill the side they emptied;
+a limit order that has already refilled should beget little.
+A kernel that does this has large column sums on the market-order and withdrawal types,
+a small one on the limit-order types,
+and its mass concentrated off the diagonal blocks that $\pressure$ separates.
+
+When specifying a parametrisation we choose the excitation structure $\branchingMatrix$
+and the stationary intensity $\stationaryIntensity$ at which the flow is to run,
+and let
+\begin{equation}\label{eq.baselineFromTarget}
+ \baseIntensity = (I - \branchingMatrix)\stationaryIntensity
+\end{equation}
+follow.
+The pair $(\branchingMatrix, \stationaryIntensity)$ should be chosen with
+$\branchingRatio < 1$ and so that the $\baseIntensity$ given by
+\eqref{eq.baselineFromTarget} is strictly positive,
+these being the hypotheses of Theorem \ref{thm.stationarity}.
+
+Once a parametrisation for the order flow of Definition \ref{def.orderFlowProcess} is chosen,
+the intensity informs us of two aspects of the trading epoch:
+the direction in which the flow is currently leaning,
+and how that direction is assembled from the events that produced it.
+
+\begin{defi}\label{def.intensityContrast}
+ Let
+ \begin{equation*}
+  \upIntensity(t) := \sum_{e \, : \, \pressure_e = +1} \intensity(t),
+  \qquad
+  \downIntensity(t) := \sum_{e \, : \, \pressure_e = -1} \intensity(t) .
+ \end{equation*}
+ The \emph{intensity contrast} is
+ \begin{equation}\label{eq.intensityContrast}
+  \intensityContrast(t) := \upIntensity(t) - \downIntensity(t)
+  = \pressure^{\transpose}\intensity[ ](t)
+  = \pressure^{\transpose}\baseIntensity
+  + \pressure^{\transpose}\excitation \decayedCounts(t) .
+ \end{equation}
+\end{defi}
+
+Under direction symmetry the first term of \eqref{eq.intensityContrast} vanishes, by
+\eqref{eq.baselineSymmetry}, and
+\begin{equation}\label{eq.contrastFromState}
+ \intensityContrast(t) = \pressure^{\transpose}\excitation \decayedCounts(t) .
+\end{equation}
+The contrast is then a function of the state alone.
+
+\begin{prop}\label{prop.signedExcitation}
+ Let the specification be direction-symmetric, and set
+ \begin{equation}\label{eq.signedExcitation}
+  \signedExcitation_{\eone}
+  := \frac{\big( \pressure^{\transpose}\excitation \big)_{\eone}}{\pressure_{\eone}} ,
+  \qquad \eone = 1, \dots, \numEventTypes .
+ \end{equation}
+ Then $\signedExcitation$ takes the same value on the two members of each pair, and
+ \begin{equation}\label{eq.contrastFromSignedExcitation}
+  \intensityContrast(t)
+  = \sum_{\eone} \pressure_{\eone} \signedExcitation_{\eone}
+  \decayedCounts_{\eone}(t) .
+ \end{equation}
+\end{prop}
+\begin{proof}
+ Write $u := \excitation^{\transpose}\pressure$.
+ Then $\swapMatrix u
+ = \big( \swapMatrix \excitation^{\transpose} \swapMatrix \big) \swapMatrix \pressure
+ = -u$ by \eqref{eq.directionSymmetry},
+ so $u_{\swapMatrix(\eone)} = -u_{\eone}$;
+ and $\pressure_{\swapMatrix(\eone)} = -\pressure_{\eone}$,
+ so the ratio \eqref{eq.signedExcitation} is unchanged by the swap.
+ Equation \eqref{eq.contrastFromSignedExcitation} is
+ \eqref{eq.contrastFromState} written entry by entry.
+\end{proof}
+
+We read $\signedExcitation_{\eone}$ as the signed excitation strength of the type $\eone$:
+one event of type $\eone$ raises the intensity of the types that push its own way, relative
+to those that push the other way, by $\signedExcitation_{\eone}$.
+A type with $\signedExcitation_{\eone} > 0$ begets its own pressure,
+one with $\signedExcitation_{\eone} < 0$ begets the opposite,
+and one with $\signedExcitation_{\eone} = 0$ begets neither.
+The sign is a property of the kernel and not of the type:
+the same six types carry either sign under different specifications.
+
+The intensity contrast and the order flow imbalance are statistics of the same past events,
+weighted differently.
+
+By \eqref{eq.contrastFromState} the contrast is a function of the state $\decayedCounts$ and
+of the excitation matrix.
+It is available only to an observer who knows $\excitation$ and $\decay$,
+and under direction symmetry it is blind to $\baseIntensity$,
+so it says nothing about the immigrants that are about to arrive.
+It reads the types of the past events and weights them by how long ago they occurred.
+
+The imbalance is model free.
+By Proposition \ref{prop.signedSizeContribution} it reads the same past events,
+but weights them by their sizes and by nothing else:
+every event in the window counts its own $\orderSize_n$, whatever its age,
+and every event outside the window counts zero.
+The kernel governs when events happen and of which type;
+the marks govern how far they move the price.
+No function of $\decayedCounts$ recovers a size.

@@ -23,7 +23,7 @@
 \usepackage{graphicx}
 \graphicspath{
     {./figures/}
-    {../notes/lob/figures/}
+    {../notes/microstructure/figures/}
 }
 \usepackage{booktabs}
 \usepackage{makecell}

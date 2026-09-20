@@ -1,0 +1,80 @@
+A Hawkes process is a counting process whose intensity is driven by its own past.
+Each event raises the intensity of future events by an amount that depends on the two types
+involved and decays with the time elapsed.
+
+\begin{defi}\label{def.hawkesprocess}
+ A $\numEventTypes$-dimensional counting process $\multiCountingProc$ is called a Hawkes process
+ if it admits an absolutely continuous compensator $\compensator$ with intensities
+ \begin{equation}\label{eq.intensity_ordHawkes}
+  \intensity(t) = \baseIntensity_e
+  + \sum_{\eone=1}^{\numEventTypes}\int_{[0,t)} \hawkesKernel\subscriptee(t-s) \, d\countingProc[\eone](s),
+  \qquad e = 1,\dots,\numEventTypes,
+ \end{equation}
+ for some non-negative baselines $\baseIntensity_e \geq 0$,
+ and some non-negative locally integrable functions $\hawkesKernel\subscriptee \geq 0$
+ supported on the non-negative half line.
+\end{defi}
+The half-open interval of integration is what makes $\intensity$ predictable.
+
+The matrix-valued function
+$t\mapsto [\hawkesKernel\subscriptee(t)]_{e,\eone = 1, \dots, \numEventTypes}$
+is referred to as the kernel of the Hawkes process $\multiCountingProc$.
+If all the kernel functions are integrable, we write
+\begin{equation}\label{eq.branchingMatrix}
+ \branchingMatrix\subscriptee := \Vert \hawkesKernel\subscriptee \Vert_{\Lone}
+ = \int_{0}^{\infty} \hawkesKernel\subscriptee(t) \, dt
+\end{equation}
+for the matrix of $\Lone$ norms,
+the \emph{branching matrix} of $\multiCountingProc$.
+
+The spectral radius $\branchingRatio$ of $\branchingMatrix$
+is referred to as the \emph{branching ratio} of the process.
+If some of the kernel functions are not integrable,
+the branching ratio is set to $+\infty$ by convention.
+
+\begin{remark}[The order of the indices]\label{remark.indexOrder}
+ In \eqref{eq.intensity_ordHawkes},
+ $\hawkesKernel\subscriptee$ is the influence that an event of type $\eone$
+ exerts on an event of type $e$:
+ the row is excited and the column excites.
+ Consequently the \emph{column} sum $\sum_{e}\branchingMatrix\subscriptee$
+ is the expected number of direct offspring of a single event of type $\eone$.
+ Since a matrix and its transpose share a spectral radius,
+ a kernel transposed by mistake passes every stability test of
+ Section \ref{sec.stability} and produces a path of the right total rate;
+ the convention is the only defence against it.
+\end{remark}
+
+\subsubsection{The cluster representation}
+\label{sec.clusterRepresentation}
+
+Definition \ref{def.hawkesprocess} describes the process through its intensity.
+There is a second description, due to \cite{HO74clu},
+which describes the same process as a family tree.
+Some events arrive on their own account, at the rate $\baseIntensity$,
+and we call them \emph{immigrants};
+every event, immigrant or not, then produces offspring at the rate its kernel prescribes,
+and so do they.
+
+\begin{prop}[\cite{HO74clu}]\label{prop.clusterRepresentation}
+ Assume $\hawkesKernel \geq 0$ and $\branchingRatio < 1$.
+ Construct a point process as follows.
+ \emph{i.} Immigrants of type $e$ arrive as a homogeneous Poisson process of rate
+ $\baseIntensity_e$, independently across $e$.
+ \emph{ii.} Every event of type $\eone$, immigrant or not,
+ independently generates its direct offspring of type $e$
+ as an inhomogeneous Poisson process on $(t,\infty)$ of intensity $\hawkesKernel\subscriptee(s-t)$,
+ so that the number of such offspring is Poisson with mean $\branchingMatrix\subscriptee$.
+ Then the superposition of all events so constructed is a stationary Hawkes process
+ with baselines $\baseIntensity$ and kernel $\hawkesKernel$,
+ and conversely every stationary Hawkes process with finite intensity admits this representation.
+\end{prop}
+
+Counted by generation, the descendants of a single immigrant form a
+\emph{multitype Galton--Watson process} with mean offspring matrix $\branchingMatrix$
+--- with the index convention of Remark \ref{remark.indexOrder},
+so that part of the literature writes its transpose ---
+and the population dies out almost surely, with finite expected total size,
+precisely when $\branchingRatio < 1$.
+The events of the process therefore partition into \emph{clusters},
+each consisting of one immigrant and all of its descendants.

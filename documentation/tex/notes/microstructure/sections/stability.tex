@@ -1,0 +1,632 @@
+Throughout this section, $\excitation \geq 0$, $\baseIntensity \geq 0$ and
+$\baseIntensity \neq 0$,
+and $\branchingMatrix = \excitation/\decay$ as in \eqref{eq.GammaIsAOverBeta}.
+
+Non-negativity here is entrywise: $\branchingMatrix \geq 0$ means
+$\branchingMatrix\subscriptee \geq 0$ for every pair of types.
+Neither $\excitation$ nor $\branchingMatrix$ is assumed symmetric.
+
+\begin{lemma}[Perron-Frobenius]\label{lemma.perronFrobenius}
+ Let $\branchingMatrix \geq 0$ be a square matrix with spectral radius $\branchingRatio$.
+ Then
+ \begin{enumerate}[label={\emph{\roman{*}}.}]
+  \item $\branchingRatio$ is an eigenvalue of $\branchingMatrix$, and it is real
+        and non-negative;
+  \item there are non-negative, non-zero vectors $u$ and $v$ with
+        $\branchingMatrix u = \branchingRatio u$ and
+        $v^{\transpose}\branchingMatrix = \branchingRatio v^{\transpose}$,
+        which we call a \emph{right} and a \emph{left Perron vector} of $\branchingMatrix$;
+  \item $\branchingRatio$ lies between the smallest and the largest row sum of
+        $\branchingMatrix$;
+  \item if $\branchingRatio < 1$ then $I - \branchingMatrix$ is invertible and
+        $(I-\branchingMatrix)^{-1} = \sum_{k\geq 0}\branchingMatrix^{k}$,
+        a series with non-negative entries.
+ \end{enumerate}
+\end{lemma}
+For a proof of \emph{i.}--\emph{iii.} see
+\cite[Theorem 8.3.1 and Theorem 8.1.22]{HJ13mat};
+the left Perron vector is the right Perron vector of $\branchingMatrix^{\transpose}$,
+whose spectral radius is again $\branchingRatio$.
+Under irreducibility $u$ and $v$ are strictly positive and $\branchingRatio$ is simple.
+Part \emph{iv.} is the Neumann series, its entries non-negative because every term is.
+Applying \emph{iii.} to $\branchingMatrix^{\transpose}$ bounds $\branchingRatio$ between the
+smallest and the largest \emph{column} sum of $\branchingMatrix$;
+in particular, constant column sums $c$ force $\branchingRatio = c$.
+
+By Proposition \ref{prop.clusterRepresentation},
+$\branchingMatrix\subscriptee$ is the expected number of direct offspring of type $e$
+born of one event of type $\eone$.
+The readable contraction is therefore the row vector
+$\mathbf{1}^{\transpose}\branchingMatrix$,
+whose $\eone$-th entry is the expected number of direct offspring of one event of type
+$\eone$.
+
+Recall that
+a stochastic process $X$ 
+is called 
+\emph{stationary} 
+when its law is invariant under time shift:
+for every $r$ and every $t_1 < \dots < t_r$,
+the joint law of $(X_{t_1+h}, \dots, X_{t_r+h})$ does not depend on $h$.
+
+\begin{defi}\label{def.stationaryHawkes}
+ A Hawkes process is \emph{stationary} if it admits a stationary version,
+ that is, if there is a Hawkes process with the same baselines and kernel,
+ defined on the whole line,
+ whose law is invariant under time shifts.
+\end{defi}
+
+\begin{thm}[{\citealp{BM96sta}}]\label{thm.stationarity}
+ Let $\multiCountingProc$ be a Hawkes process with integrable kernel
+ $\hawkesKernel \geq 0$ and baselines $\baseIntensity > 0$ entrywise.
+ Then the following are equivalent:
+ \begin{enumerate}[label={\emph{\roman{*}}.}]
+  \item $\multiCountingProc$ is stationary in the sense of
+        Definition \ref{def.stationaryHawkes};
+  \item $\branchingRatio < 1$.
+ \end{enumerate}
+ In that case the mean intensity is constant in time and
+ \begin{equation}\label{eq.stationaryIntensity}
+  \stationaryIntensity := \Expectation \big[ \intensity[ ](t) \big]
+  = (I - \branchingMatrix)^{-1} \baseIntensity .
+ \end{equation}
+\end{thm}
+For a proof, see \cite[Theorem 1]{BM96sta}.
+
+The form of \eqref{eq.stationaryIntensity} follows from the definition.
+A stationary version is defined on the whole line,
+so \eqref{eq.intensity_ordHawkes} reads
+$\intensity(t) = \baseIntensity_e + \sum_{\eone}\int_{-\infty}^{t}
+\hawkesKernel\subscriptee(t-s)\,d\countingProc[\eone](s)$.
+The kernel is non-negative, so Tonelli's theorem licenses the interchange of
+expectation and integral, and stationarity makes
+$\Expectation\big[d\countingProc[\eone](s)\big] = \stationaryIntensity[\eone]\,ds$,
+whence
+$\stationaryIntensity = \baseIntensity + \branchingMatrix\stationaryIntensity$.
+By Lemma \ref{lemma.perronFrobenius}~\emph{iv.}, $\branchingRatio < 1$ makes
+$I - \branchingMatrix$ invertible, so that equation has the unique solution
+\eqref{eq.stationaryIntensity}, and the entries of the Neumann series are non-negative,
+so $\stationaryIntensity \geq 0$.
+
+\begin{remark}\label{remark.strictBaseline}
+ Notice that $\baseIntensity > 0$ is what makes \emph{i.} imply \emph{ii.}
+ Let $v$ be a left Perron vector of $\branchingMatrix$,
+ non-negative and non-zero by Lemma \ref{lemma.perronFrobenius}~\emph{ii.}
+ If the process is stationary with finite mean intensity, then
+ $\stationaryIntensity = \baseIntensity + \branchingMatrix\stationaryIntensity$ ---
+ the fixed point, which is available whatever $\branchingRatio$ is,
+ where the inverse in \eqref{eq.stationaryIntensity} is not --- so that
+ \begin{equation*}
+  v^{\transpose}\baseIntensity
+  = (1-\branchingRatio)\, v^{\transpose}\stationaryIntensity .
+ \end{equation*}
+ At $\branchingRatio \geq 1$ the right-hand side is non-positive
+ and the left-hand side strictly positive, which is the contradiction.
+ Without strict positivity the implication fails:
+ $\branchingMatrix = \diag(2,0)$ with $\baseIntensity = (0,1)^{\transpose}$ has
+ $\branchingRatio = 2$ and is stationary,
+ because nothing reaches the first event type --- it has neither immigrants nor an exciter ---
+ whereas
+ the second component is a Poisson process.
+\end{remark}
+
+We write
+\begin{equation*}
+ \totalRate := \mathbf{1}^{\transpose} \stationaryIntensity,
+ \qquad
+ \bar{\baseIntensity} := \mathbf{1}^{\transpose} \baseIntensity
+\end{equation*}
+for the total event rate and the total immigration rate.
+
+\begin{prop}\label{prop.meanState}
+ Under the hypotheses of Theorem \ref{thm.stationarity},
+ the stationary mean of the decayed counts is
+ \begin{equation}\label{eq.meanState}
+  m := \Expectation[\decayedCounts] = \frac{\stationaryIntensity}{\decay},
+ \end{equation}
+ and it holds
+ \begin{equation}\label{eq.meanStateIdentity}
+	 (  \decay I - \excitation) \, m = \baseIntensity .
+ \end{equation}
+\end{prop}
+\begin{proof}
+ Theorem \ref{thm.markovState} with $f(z) = z$ and \eqref{eq.intensityFromState} give
+ $\frac{d}{dt}\Expectation[\decayedCounts(t)]
+ = -\decay\Expectation[\decayedCounts(t)] + \Expectation[\intensity[ ](t)]
+ = \baseIntensity + (\excitation - \decay I)\Expectation[\decayedCounts(t)]$.
+ At stationarity the left-hand side vanishes, which is \eqref{eq.meanStateIdentity}.
+\end{proof}
+
+By Proposition \ref{prop.clusterRepresentation} the events partition into clusters,
+one per immigrant.
+What we measure next is the average size of a cluster,
+and with it the share of the flow that the flow itself produced.
+
+\begin{defi}\label{def.endogenousFraction}
+ The \emph{endogenous fraction} of a stationary Hawkes process is
+ \begin{equation}\label{eq.endogenousFraction}
+  1 - \frac{\bar{\baseIntensity}}{\totalRate},
+ \end{equation}
+ the long-run share of events that are offspring rather than immigrants.
+\end{defi}
+
+\begin{prop}\label{prop.clusterSize}
+ Assume $\branchingRatio < 1$.
+ The expected size of the cluster founded by an immigrant of type $\eone$,
+ counting the immigrant itself, is the $\eone$-th entry $C_{\eone}$ of
+ \begin{equation}\label{eq.clusterSize}
+  C = \mathbf{1}^{\transpose} (I - \branchingMatrix)^{-1} .
+ \end{equation}
+ The expected number of its strict descendants is $C_{\eone} - 1$.
+ If moreover $\bar{\baseIntensity} > 0$, the mean cluster size is
+ \begin{equation}\label{eq.meanClusterSize}
+  \bar{C} := \sum_{\eone} \frac{\baseIntensity_{\eone}}{\bar{\baseIntensity}} C_{\eone}
+  = \frac{\totalRate}{\bar{\baseIntensity}} ,
+ \end{equation}
+ and the endogenous fraction \eqref{eq.endogenousFraction} is $1 - 1/\bar C$.
+\end{prop}
+\begin{proof}
+ The expected number of members of the $k$-th generation of the cluster, by type,
+ is $\branchingMatrix^{k}\unitVector_{\eone}$: this holds for $k=0$, and each individual of
+ type $\eone$ has on average $\branchingMatrix\subscriptee$ children of type $e$,
+ independently of the rest, so the expectations propagate by one multiplication by
+ $\branchingMatrix$ per generation.
+ Summing over $k$ and contracting with $\mathbf{1}^{\transpose}$,
+ all terms being non-negative so that the interchange is licit,
+ gives $C_{\eone} = \mathbf{1}^{\transpose}\sum_{k\geq0}\branchingMatrix^{k}
+ \unitVector_{\eone}$, which is \eqref{eq.clusterSize} by
+ Lemma \ref{lemma.perronFrobenius}~\emph{iv.}
+ The term $k=0$ is the immigrant.
+
+ For the second half, immigrants of type $\eone$ arrive as a Poisson process of rate
+ $\baseIntensity_{\eone}$, independently across $\eone$,
+ so the type of a cluster's founder is distributed as
+ $\baseIntensity_{\eone}/\bar{\baseIntensity}$.
+ Then $\bar C = \mathbf{1}^{\transpose}(I-\branchingMatrix)^{-1}\baseIntensity /
+ \bar{\baseIntensity}$, which is $\totalRate/\bar{\baseIntensity}$ by
+ \eqref{eq.stationaryIntensity}.
+\end{proof}
+
+\begin{remark}\label{remark.clusterBudget}
+ Notice that $\bar{\baseIntensity}\,\bar{C} = \totalRate$:
+ immigrants arrive at rate $\bar{\baseIntensity}$,
+ each founds a cluster of $\bar C$ events on average,
+ and every event belongs to exactly one cluster.
+ It is the cheapest available check that an implementation of
+ \eqref{eq.stationaryIntensity} and \eqref{eq.clusterSize} is consistent.
+\end{remark}
+
+\begin{corol}\label{corol.constantClusterSize}
+ Assume $\branchingRatio < 1$.
+ The following are equivalent:
+ \begin{enumerate}[label={\emph{\roman{*}}.}]
+  \item $C_{\eone} = 1/(1-\branchingRatio)$ for every $\eone$;
+  \item $\mathbf{1}^{\transpose}\branchingMatrix
+        = \branchingRatio\mathbf{1}^{\transpose}$.
+ \end{enumerate}
+\end{corol}
+\begin{proof}
+ Since $\branchingRatio < 1$, the matrix $I - \branchingMatrix$ is invertible and
+ $1 - \branchingRatio \neq 0$, so by \eqref{eq.clusterSize} the first statement says
+ $\mathbf{1}^{\transpose}(I-\branchingMatrix)^{-1}
+ = (1-\branchingRatio)^{-1}\mathbf{1}^{\transpose}$.
+ Multiplying on the right by $I - \branchingMatrix$,
+ this holds if and only if
+ $(1-\branchingRatio)\mathbf{1}^{\transpose}
+ = \mathbf{1}^{\transpose}(I - \branchingMatrix)$,
+ which is the second statement.
+\end{proof}
+
+In general the branching ratio $\branchingRatio$
+is neither the endogenous fraction nor $1-1/\bar C$.
+Two conditions are sufficient for $\branchingRatio = 1 - 1/\bar C$, and neither is generic.
+The first is $\mathbf{1}^{\transpose}\branchingMatrix
+= \branchingRatio \mathbf{1}^{\transpose}$,
+which by Corollary \ref{corol.constantClusterSize} also makes $C_{\eone}$ constant in
+$\eone$.
+The second is $\branchingMatrix\baseIntensity = \branchingRatio\baseIntensity$:
+then $(I-\branchingMatrix)^{-1}\baseIntensity
+= \baseIntensity/(1-\branchingRatio)$, so \eqref{eq.meanClusterSize} gives
+$\bar C = 1/(1-\branchingRatio)$ with no condition on the column sums.
+Notice that the second does not follow from the corollary,
+and that it leaves $C_{\eone}$ free to vary with $\eone$.
+
+\subsubsection{Second-order structure}
+\label{sec.secondOrder}
+
+What precedes describes the process in the mean.
+We now compute its stationary second moments,
+in closed form, for the exponential kernel.
+Throughout, $\branchingRatio < 1$ and $\baseIntensity > 0$,
+so that Theorem \ref{thm.stationarity} applies
+and the process is taken in its stationary version.
+The statements below are about that version;
+the proofs reach it from $\decayedCounts(0) = 0$.
+
+Under stationarity the covariance of $\decayedCounts(t)$ does not depend on $t$, and we write
+\begin{equation}\label{eq.stationaryCovariance}
+ V := \CoVariance\big(\decayedCounts(t)\big)
+ = \Expectation\big[\decayedCounts(t)\decayedCounts^{\transpose}(t)\big]
+ - m m^{\transpose},
+\end{equation}
+where $m$ is the mean decayed count of Proposition \ref{prop.meanState}.
+
+Theorem \ref{thm.markovState} is applied with $f(z) = z z^{\transpose}$.
+At an arrival of type $e$ the state gains the unit vector $\unitVector_e$, so that
+\begin{equation}\label{eq.stateProductJump}
+ \decayedCounts(\arrivalTimes_{j}+)\decayedCounts^{\transpose}(\arrivalTimes_{j}+)
+ - \decayedCounts(\arrivalTimes_{j})\decayedCounts^{\transpose}(\arrivalTimes_{j})
+ = \decayedCounts(\arrivalTimes_{j}) \unitVector_e^{\transpose}
+ + \unitVector_e \decayedCounts^{\transpose}(\arrivalTimes_{j})
+ + \unitVector_e \unitVector_e^{\transpose} .
+\end{equation}
+The jumps of $\decayedCounts$ are \emph{unit} vectors, which gives the last term
+$\unitVector_e \unitVector_e^{\transpose}$;
+and no two components jump together, by \eqref{eq.noCommonJumps},
+which keeps that term diagonal.
+
+\begin{defi}[Hurwitz matrix]\label{def.hurwitzMatrix}
+ A real square matrix is \emph{Hurwitz} if all of its eigenvalues have strictly negative
+ real part.
+\end{defi}
+
+\begin{prop}\label{prop.hurwitzCriterion}
+ Let $\excitation \geq 0$ and $\decay > 0$.
+ Then $\hurwitzMatrix := \excitation - \decay I$ is Hurwitz if and only if
+ $\branchingRatio < 1$.
+\end{prop}
+\begin{proof}
+ The eigenvalues of $\hurwitzMatrix$ are $\decay(\gamma_i - 1)$ over the eigenvalues
+ $\gamma_i$ of $\branchingMatrix$,
+ so $\hurwitzMatrix$ is Hurwitz if and only if $\Real \gamma_i < 1$ for every $i$.
+ If $\branchingRatio < 1$, then
+ $\Real \gamma_i \leq \lvert \gamma_i \rvert \leq \branchingRatio < 1$ for every $i$.
+ Conversely $\branchingMatrix \geq 0$, so by
+ Lemma \ref{lemma.perronFrobenius}~\emph{i.} the spectral radius $\branchingRatio$ is
+ itself an eigenvalue of $\branchingMatrix$ and is real, whence $\branchingRatio < 1$.
+\end{proof}
+
+\begin{remark}\label{remark.hurwitzNeedsNonNegativity}
+ Notice that $\excitation \geq 0$ is needed for the converse.
+ Without it the implication runs one way only:
+ $\branchingMatrix$ with eigenvalues $\pm 2i$ has $\branchingRatio = 2$
+ while $\Real\gamma_i = 0 < 1$.
+\end{remark}
+
+\begin{thm}\label{thm.lyapunov}
+ Let $\excitation \geq 0$, $\decay > 0$, $\baseIntensity > 0$ and $\branchingRatio < 1$,
+ and write $\hurwitzMatrix := \excitation - \decay I$.
+ Then the stationary version of the exponential-kernel Hawkes process has finite second
+ moments, and its covariance $V$ of \eqref{eq.stationaryCovariance} is the unique solution
+ of the Lyapunov equation
+ \begin{equation}\label{eq.lyapunov}
+  \hurwitzMatrix V + V \hurwitzMatrix^{\transpose} + \diag(\stationaryIntensity) = 0 .
+ \end{equation}
+ Moreover $V$ is positive definite and given by
+ \begin{equation}\label{eq.explicitFormulaeOfStationaryCovariance}
+  V = \int_{0}^{\infty} e^{\hurwitzMatrix s} \diag(\stationaryIntensity)
+  e^{\hurwitzMatrix^{\transpose} s} \, ds .
+ \end{equation}
+ Finally, the stationary covariance of the intensity is
+ $\CoVariance(\intensity[ ]) = \excitation V \excitation^{\transpose}$.
+\end{thm}
+\begin{proof}
+ Start the process at $\decayedCounts(0) = \multiCountingProc(0) = 0$ and write
+ $m_t := \Expectation[\decayedCounts(t)]$ and
+ $\secondMoment_t := \Expectation[\decayedCounts(t)\decayedCounts(t)^{\transpose}]$,
+ both finite for every $t$ by Remark \ref{remark.noSubcriticality}.
+ Theorem \ref{thm.markovState} with $f(z)=z$ and \eqref{eq.intensityFromState} give
+ $\dot m_t = \hurwitzMatrix m_t + \baseIntensity$,
+ and with $f(z) = zz^{\transpose}$, using
+ $\Expectation[\decayedCounts \intensity[ ]^{\transpose}]
+ = m_t\baseIntensity^{\transpose} + \secondMoment_t\excitation^{\transpose}$,
+ \begin{equation}\label{eq.secondMomentODE}
+  \dot{\secondMoment}_t
+  = \hurwitzMatrix \secondMoment_t + \secondMoment_t \hurwitzMatrix^{\transpose}
+  + \baseIntensity m_t^{\transpose} + m_t \baseIntensity^{\transpose}
+  + \diag\big( \baseIntensity + \excitation m_t \big) .
+ \end{equation}
+ By Proposition \ref{prop.hurwitzCriterion}, $\branchingRatio<1$ makes $\hurwitzMatrix$
+ Hurwitz, so $m_t \to m = -\hurwitzMatrix^{-1}\baseIntensity
+ = \stationaryIntensity/\decay$.
+ Equation \eqref{eq.secondMomentODE} is then linear in $\secondMoment_t$ with an
+ inhomogeneity that converges, and its homogeneous part
+ $\secondMoment \mapsto \hurwitzMatrix\secondMoment
+ + \secondMoment\hurwitzMatrix^{\transpose}$ is stable because $\hurwitzMatrix$ is
+ Hurwitz, so $\secondMoment_t$ converges to the unique fixed point of the limiting
+ equation, which exists and is unique by
+ Lemma \ref{lemma.lyapunovUniqueness}~\emph{i.--ii.}
+ A stationary version exists by Theorem \ref{thm.stationarity},
+ and its second moment is that fixed point, the limit being independent of the initial state.
+ Writing $\secondMoment = V + m m^{\transpose}$ and using
+ $\hurwitzMatrix m = -\baseIntensity$,
+ \begin{equation*}
+  \hurwitzMatrix m m^{\transpose} + m m^{\transpose}\hurwitzMatrix^{\transpose}
+  = -\baseIntensity m^{\transpose} - m\baseIntensity^{\transpose} ,
+ \end{equation*}
+ so the two cross terms of \eqref{eq.secondMomentODE} cancel and what remains is
+ \eqref{eq.lyapunov}, with $\diag(\baseIntensity + \excitation m)
+ = \diag(\stationaryIntensity)$ by \eqref{eq.intensityFromState}.
+ The integral formula and positive definiteness are
+ Lemma \ref{lemma.lyapunovUniqueness}~\emph{ii.},
+ the forcing term being diagonal with strictly positive entries.
+ Finally $\intensity[ ] = \baseIntensity + \excitation\decayedCounts$ with
+ $\baseIntensity$ constant, so
+ $\CoVariance(\intensity[ ]) = \excitation V \excitation^{\transpose}$.
+\end{proof}
+
+\begin{remark}
+ Notice that the forcing term of \eqref{eq.lyapunov} is the diagonal matrix of stationary
+ intensities:
+ fluctuation is injected at the rate at which events occur,
+ one unit of variance per event,
+ and with no covariance between types because no two of them fire together.
+ The homogeneous part transports it,
+ and the equation is the balance between the two.
+\end{remark}
+
+\begin{lemma}\label{lemma.lyapunovUniqueness}
+ Let $\hurwitzMatrix$ be a real $d \times d$ matrix.
+ Then
+ \begin{enumerate}[label={\emph{\roman{*}}.}]
+  \item the map $V \mapsto \hurwitzMatrix V + V\hurwitzMatrix^{\transpose}$ is a bijection
+        on symmetric matrices if and only if no two eigenvalues of $\hurwitzMatrix$ sum to
+        zero. A Hurwitz $\hurwitzMatrix$ satisfies that criterion, every such sum
+        having strictly negative real part;
+  \item if $\hurwitzMatrix$ is Hurwitz then, for every symmetric $Q$, the equation
+        $\hurwitzMatrix V + V\hurwitzMatrix^{\transpose} + Q = 0$ has the unique solution
+        $V = \int_{0}^{\infty} e^{\hurwitzMatrix s} Q e^{\hurwitzMatrix^{\transpose} s}
+        \, ds$, and $Q \succ 0$ implies $V \succ 0$.
+ \end{enumerate}
+\end{lemma}
+\begin{proof}
+ The eigenvalues of the map in \emph{i.} are the sums $\zeta_i + \zeta_j$ of the
+ eigenvalues of $\hurwitzMatrix$, which gives the stated criterion;
+ see \cite[Theorem 2.4.4.1]{HJ13mat}.
+ For \emph{ii.}, the integral converges because $\hurwitzMatrix$ is Hurwitz,
+ and differentiating $e^{\hurwitzMatrix s}Qe^{\hurwitzMatrix^{\transpose}s}$ and
+ integrating over $[0,\infty)$ gives $-Q$ on the left-hand side of the equation.
+\end{proof}
+
+\subsubsection{The scalar case}
+
+Contracting \eqref{eq.lyapunov} with $\mathbf{1}^{\transpose}$ on the left and
+$\mathbf{1}$ on the right gives a scalar equation as soon as
+$\mathbf{1}^{\transpose}\excitation$ is proportional to $\mathbf{1}^{\transpose}$,
+that is, as soon as $\excitation$ has constant column sums.
+Those sums are then necessarily $\decay\branchingRatio$:
+by Lemma \ref{lemma.perronFrobenius}~\emph{iii.} applied to $\branchingMatrix^{\transpose}$,
+constant column sums force $\branchingRatio$ to equal them.
+Hence
+$\mathbf{1}^{\transpose}\hurwitzMatrix
+= -\decay(1-\branchingRatio)\mathbf{1}^{\transpose}$, and
+\begin{equation}\label{eq.scalarVariance}
+ \Variance \big( \mathbf{1}^{\transpose}\decayedCounts \big)
+ = \frac{\totalRate}{2\decay(1-\branchingRatio)} .
+\end{equation}
+In one dimension this is
+$\Variance(\decayedCounts) = \stationaryIntensity/(2\decay(1-\branchingRatio))$,
+and it is the formula usually quoted.
+
+\begin{remark}\label{remark.scalarVariance}
+ Notice the scope of \eqref{eq.scalarVariance}.
+ It concerns $\mathbf{1}^{\transpose}\decayedCounts$, the total decayed count,
+ and not any single component;
+ it is not a statement about the total intensity,
+ which in the same special case has variance
+ $\decay\branchingRatio^{2}\totalRate/(2(1-\branchingRatio))$;
+ and it requires constant column sums, which are not generic.
+ Neither parametrisation of Section \ref{sec.orderFlowModel} has them,
+ and on the two of them \eqref{eq.scalarVariance} errs in \emph{opposite} directions:
+ it understates $\mathbf{1}^{\transpose}V\mathbf{1}$ on the one whose column sums are
+ further from constant, and overstates it on the one whose column sums are nearer.
+ Neither the size of the discrepancy nor its sign can therefore be read off the column
+ sums; both depend on the whole eigenstructure of $\excitation$ and on
+ $\stationaryIntensity$.
+ The discrepancy does not depend on $\decay$, since both sides scale as $1/\decay$.
+\end{remark}
+
+When the covariance is wanted, \eqref{eq.lyapunov} is a linear system in the
+$\numEventTypes(\numEventTypes+1)/2$ distinct entries of $V$,
+solved once.
+
+\subsubsection{Timescales}
+
+Everything so far has been stationary.
+This subsection asks instead how the process moves towards stationarity:
+what the mean of the state at a future time is, given the state now,
+and how long it takes the memory of that state to decay.
+Section \ref{sec.priceFormation} reads the price off the first of these.
+
+\begin{prop}\label{prop.forwardMean}
+ Let $\multiCountingProc$ be an exponential-kernel Hawkes process,
+ and write $m_{t}(z) := \Expectation_{z}\big[\decayedCounts(t)\big]$
+ for the mean state at time $t$ of the process started from $\decayedCounts(0+) = z$
+ and $\multiCountingProc(0) = 0$.
+ Then
+ \begin{equation}\label{eq.forwardMeanState}
+  m_{t}(z) = e^{\hurwitzMatrix t} z
+  + \Big( \int_{0}^{t} e^{\hurwitzMatrix s} \, ds \Big) \baseIntensity ,
+ \end{equation}
+ and, writing $\meanResponseIntegral(\forecastHorizon)
+ := \int_{0}^{\forecastHorizon} e^{\hurwitzMatrix s} \, ds$,
+ \begin{equation}\label{eq.forwardMeanCounts}
+  \Expectation_{z}\big[ \multiCountingProc(\forecastHorizon) \big]
+  = \forecastHorizon \, \baseIntensity
+  + \excitation \, \meanResponseIntegral(\forecastHorizon) \, z
+  + \excitation \Big( \int_{0}^{\forecastHorizon} \meanResponseIntegral(s) \, ds \Big)
+  \baseIntensity .
+ \end{equation}
+ If $\branchingRatio < 1$, then
+ $\meanResponseIntegral(\forecastHorizon)
+ = \hurwitzMatrix^{-1}\big( e^{\hurwitzMatrix \forecastHorizon} - I \big)$.
+\end{prop}
+\begin{proof}
+ Both means are finite at every $\branchingRatio$ and every finite horizon, by
+ Remark \ref{remark.noSubcriticality}.
+ Theorem \ref{thm.markovState} with $f(z) = z$, together with
+ \eqref{eq.intensityFromState}, gives
+ $\dot m_{t} = \hurwitzMatrix m_{t} + \baseIntensity$ with $m_{0+} = z$,
+ and variation of constants gives \eqref{eq.forwardMeanState}.
+ The compensator of $\multiCountingProc$ integrates the intensity, so
+ $\Expectation_{z}[\multiCountingProc(\forecastHorizon)]
+ = \int_{0}^{\forecastHorizon}
+ \big( \baseIntensity + \excitation m_{s}(z) \big) \, ds$,
+ which is \eqref{eq.forwardMeanCounts}.
+ The closed form of $\meanResponseIntegral$ needs $\hurwitzMatrix$ invertible,
+ which Proposition \ref{prop.hurwitzCriterion} supplies.
+\end{proof}
+
+\begin{remark}\label{remark.transientAgainstStationary}
+ Notice that $m_{t}(z)$ is the \emph{transient} mean and is not the stationary mean $m$ of
+ Proposition \ref{prop.meanState}, which does not depend on $t$.
+ The two meet at the fixed point of the same equation:
+ $\dot m_{t} = 0$ exactly at
+ $m = -\hurwitzMatrix^{-1}\baseIntensity = \stationaryIntensity/\decay$,
+ and when $\branchingRatio < 1$ the matrix $\hurwitzMatrix$ is Hurwitz, so $m_t(z)$
+ converges to $m$ from every $z$.
+\end{remark}
+
+\begin{corol}\label{corol.meanResponse}
+ Let $\branchingRatio < 1$.
+ Consider two copies of the process differing at time $0$ only in that the state of the
+ second carries one extra event of type $\eone$, and write
+ $R_{\eone}(t)$ for the difference of their mean states at time $t$.
+ Then
+ \begin{equation}\label{eq.meanResponse}
+  R_{\eone}(t) = e^{\hurwitzMatrix t}\unitVector_{\eone} ,
+  \qquad
+  \mathbf{1}^{\transpose}R_{\eone}(t)
+  = \mathbf{1}^{\transpose} e^{\hurwitzMatrix t}\unitVector_{\eone} ,
+ \end{equation}
+ a combination of exponentials at the rates $\decay(1 - \Real\gamma_i)$ when
+ $\branchingMatrix$ is diagonalisable, $\gamma_i$ running over its eigenvalues,
+ of which the slowest rate is $\decay(1-\branchingRatio)$.
+ In general the modes carry polynomial factors as well.
+ The corresponding response of the mean intensity is
+ $\excitation e^{\hurwitzMatrix t}\unitVector_{\eone}$, and
+ \begin{equation}\label{eq.responseIntegral}
+  \int_{0}^{\infty} \mathbf{1}^{\transpose}\excitation e^{\hurwitzMatrix t}
+  \unitVector_{\eone} \, dt
+  = \mathbf{1}^{\transpose}\big[ (I - \branchingMatrix)^{-1} - I \big] \unitVector_{\eone}
+  = C_{\eone} - 1 .
+ \end{equation}
+\end{corol}
+\begin{proof}
+ By \eqref{eq.forwardMeanState} the two mean states are
+ $m_{t}(z)$ and $m_{t}(z + \unitVector_{\eone})$,
+ whose difference is $e^{\hurwitzMatrix t}\unitVector_{\eone}$:
+ the inhomogeneity is the same for both copies and cancels.
+ The eigenvalues of $\hurwitzMatrix$ are $\decay(\gamma_i - 1)$, giving the stated rates;
+ by Lemma \ref{lemma.perronFrobenius}~\emph{i.} the spectral radius $\branchingRatio$ is
+ itself an eigenvalue of $\branchingMatrix$ and dominates the others in modulus,
+ so $\decay(1-\branchingRatio)$ is the smallest of them.
+ The intensity response follows from
+ $\intensity[ ] = \baseIntensity + \excitation\decayedCounts$ with $\baseIntensity$
+ constant.
+ For \eqref{eq.responseIntegral}, $\meanResponseIntegral(\infty) = -\hurwitzMatrix^{-1}
+ = \decay^{-1}(I-\branchingMatrix)^{-1}$,
+ and $\excitation\decay^{-1} = \branchingMatrix$ gives
+ $\branchingMatrix(I-\branchingMatrix)^{-1} = (I-\branchingMatrix)^{-1} - I$;
+ contracting with $\mathbf{1}^{\transpose}$ and using \eqref{eq.clusterSize} gives
+ $C_{\eone}-1$.
+\end{proof}
+
+\begin{defi}\label{def.relaxationTime}
+ The \emph{relaxation time} of a subcritical Hawkes process is
+ \begin{equation}\label{eq.relaxationTime}
+  \frac{1}{\decay(1-\branchingRatio)} .
+ \end{equation}
+\end{defi}
+
+
+\begin{remark}
+ Notice that \eqref{eq.relaxationTime} is the time constant of the \emph{slowest} mode of
+ \eqref{eq.meanResponse}, and describes the response only asymptotically.
+ It is not a half-life; the half-life of the slowest mode is
+ $\log 2 / (\decay(1-\branchingRatio))$.
+ Nor need the response be monotone: by \eqref{eq.meanResponse},
+ $\frac{d}{dt}\big\vert_{t=0}\mathbf{1}^{\transpose}R_j(t)
+ = \decay\big( (\mathbf{1}^{\transpose}\branchingMatrix)_j - 1 \big)$,
+ so the response to an event of type $j$ rises before it falls precisely when the $j$-th
+ column sum of $\branchingMatrix$ exceeds one.
+ For \eqref{eq.meanResponse} to be asymptotically \emph{proportional} to
+ $e^{-\decay(1-\branchingRatio)t}$, with a strictly positive constant for every $j$,
+ the Perron mode must appear in every response, which holds when $\branchingMatrix$ is
+ irreducible; otherwise $\decay(1-\branchingRatio)$ only bounds the decay.
+\end{remark}
+
+\begin{defi}\label{def.dimensionlessGroups}
+ For a stationary Hawkes process of total rate $\totalRate$ observed in windows of
+ length $w$, we call $\totalRate/\decay$ the \emph{clustering number}
+ and $\totalRate w$ the \emph{window count}.
+\end{defi}
+
+\begin{remark}\label{remark.dimensionlessGroups}
+ Notice that these two numbers, and not $\decay$ or $\totalRate$ separately, are what a
+ measurement made on window sums depends on.
+ The clustering number is the number of events arriving within one excitation timescale,
+ so it decides whether self-excitation is visible at the rate the process is sampled:
+ at $\totalRate/\decay \ll 1$ the excitation of one event has expired before the next
+ arrives, and a study conducted there measures a process in which there is correctly
+ nothing to find.
+ The window count is the number of events falling in one window,
+ and it decides whether a window sum is a statistic or a single event.
+ Both are invariant under the rescaling $t \mapsto ct$,
+ $(\baseIntensity,\excitation,\decay,w) \mapsto
+ (\baseIntensity/c, \excitation/c, \decay/c, cw)$,
+ which leaves $\branchingMatrix$ and hence $\branchingRatio$ unchanged.
+\end{remark}
+
+\subsubsection{Sub- and supercriticality}
+
+Everything above assumes $\branchingRatio < 1$.
+This subsection separates what that assumption is needed for from what holds without it.
+
+Three things hold at every $\branchingRatio$.
+For a linear Hawkes process and every finite horizon $\timeHorizon$,
+$\Expectation[\countingProc(\timeHorizon)^2] < \infty$
+by the generation bound of Remark \ref{remark.noSubcriticality};
+the forward means \eqref{eq.forwardMeanState} and \eqref{eq.forwardMeanCounts} are finite,
+for the same reason;
+and on $[0,\timeHorizon]$ the process
+$\martingale := \multiCountingProc - \compensator$
+is a square-integrable martingale,
+with $\langle \martingale_e \rangle = \compensator_e$
+and $\langle \martingale_e, \martingale_{\eone} \rangle \equiv 0$ for $e \neq \eone$,
+the latter by \eqref{eq.noCommonJumps}.
+Subcriticality does not enter any of the three.
+
+Three others need it, and each fails without it.
+A stationary version exists, by Theorem \ref{thm.stationarity};
+the second moments of the state $(\decayedCounts, \intensity[ ])$ are bounded uniformly in
+$\timeHorizon$, by Theorem \ref{thm.lyapunov};
+and the process is ergodic, so that time averages along one path estimate the stationary
+quantities of this section.
+Each fails at $\branchingRatio \geq 1$, provided $\baseIntensity > 0$ ---
+Remark \ref{remark.strictBaseline} is the counterexample without it.
+Contracting $\dot m_{t} = \hurwitzMatrix m_{t} + \baseIntensity$ with a left Perron
+vector $v$, and using $v^{\transpose}\excitation = \decay\branchingRatio\, v^{\transpose}$,
+\begin{equation}\label{eq.supercriticalGrowth}
+ v^{\transpose} \Expectation \big[ \intensity[ ](t) \big]
+ = \begin{cases}
+   \big( v^{\transpose}\baseIntensity \big)\,(1 + \decay t),
+   & \branchingRatio = 1, \\[2pt]
+   v^{\transpose}\baseIntensity \,
+   \dfrac{\branchingRatio\, e^{\decay(\branchingRatio-1)t} - 1}{\branchingRatio - 1},
+   & \branchingRatio > 1 .
+ \end{cases}
+\end{equation}
+Above criticality the intensity grows exponentially at rate $\decay(\branchingRatio-1)$.
+At $\branchingRatio = 1$ it grows at least linearly,
+and linearly with a quadratic event count when $1$ is a semisimple eigenvalue of
+$\branchingMatrix$, in particular when $\branchingMatrix$ is irreducible.
+
+\begin{remark}\label{remark.martingaleNotBounded}
+ Notice that the martingale is not bounded in $L^{2}$ on $[0,\infty)$ even when
+ $\branchingRatio<1$:
+ $\Expectation[\martingale_e(\timeHorizon)^2]
+ = \Expectation[\compensator_e(\timeHorizon)]
+ \sim \stationaryIntensity[e] \timeHorizon$ diverges.
+ What subcriticality bounds is the state, not the martingale.
+\end{remark}

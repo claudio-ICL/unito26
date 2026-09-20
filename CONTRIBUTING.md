@@ -66,6 +66,22 @@ python -m pytest tests/             # sanity check: tests should pass
    git pull
    ```
 
+## Submitting an assignment
+
+The course sets two optional assignments, one per chapter, described in the welcome chapter
+of the lecture notes. They are submitted through exactly the cycle above: a branch, the
+tests run locally, a pull request into `main`, green CI, lecturer review. The submission is
+complete when the pull request stands open with CI green — not when the branch is pushed.
+
+Two things specific to an assignment:
+
+- **No data in the pull request.** `data/` is git-ignored, and the LOBSTER sample files are
+  downloaded rather than committed. The work must run from a local `data/` that the reviewer
+  also has.
+- **The analysis goes in a notebook, the reusable parts in the package.** Anything worth
+  importing or testing belongs in `unito26/` with a test beside it in `tests/`; the
+  narrative, the figures and the numbers belong in a notebook under `notebooks/`.
+
 ## Conventions
 
 - **Package vs notebooks:** put anything you want to import and test in `unito26/`; keep

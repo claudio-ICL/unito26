@@ -1,0 +1,200 @@
+The definitions of Section \ref{sec.orderDrivenMarkets} describe a book at one instant.
+This section is about where those instants come from,
+and about why a participant computes them rather than receiving them.
+
+\subsection{What an exchange disseminates}
+
+A matching engine produces one thing: a stream of events.
+It publishes that stream in two forms.
+
+The first is the \emph{message stream}:
+one message per submission, cancellation, deletion and execution,
+carrying the identity of the order it concerns.
+It is the tape of the orders themselves,
+and the trading epoch of Definition \ref{def.orderQueue} is exactly what it transmits.
+
+The second is the \emph{aggregated book}:
+the prices and the sizes resting at each of the first $L$ levels of each side,
+republished as they change.
+It is the configuration
+$(\bestAskPrice_t, \bestBidPrice_t, \lbrace(\nthBestAskSize[i]_t, \nthBestBidSize[i]_t)\rbrace)$
+of Section \ref{sec.orderDrivenMarkets}, truncated at depth $L$.\footnote{
+Both are shipped as separate products on every major venue.
+Eurex publishes the message stream as the Enhanced Order Book Interface,
+and the aggregated book twice over:
+as the Enhanced Market Data Interface, un-netted,
+and as the Market Data Interface, whose updates are netted at regular intervals
+\cite{DBG24eob, DBG24emd}.
+On CME's MDP 3.0 the same event appears in a market-by-order and in a market-by-price book
+\cite{CMEmdp, CME26mbo, CME26mbl},
+and Nasdaq publishes the message stream as TotalView-ITCH \cite{NAS23itc, NAS26tot}.
+Venues and vendors call the first of the two market by order, order by order or level three,
+and the second market by price, depth of book or level two
+\cite{B2Bmdp, ONXmdp, EPAmdp, DBNmdp, MDLitc}.
+The nomenclature is not standardised.}
+
+The two are not independent products.
+The queues $\askOrderQueue_t$ and $\bidOrderQueue_t$ are sets of orders,
+and the sizes $\nthBestAskSize[i]_t$ and $\nthBestBidSize[i]_t$ are sums over them,
+so the second stream is the image of the first under those sums.
+The exchange computes that image by applying the matching rules of
+Section \ref{sec.orderDrivenMarkets} to its own message stream,
+which is to say that it runs the fold of the next subsection before publishing the result.
+
+A sum does not record its summands:
+the aggregate says how much rests at a price,
+never how that size is split between orders,
+nor which of them the matching algorithm reaches first.
+That split is what decides whether a given resting order is executed,
+and Section \ref{sec.orderDrivenMarkets} sets it aside.
+
+\begin{remark}\label{remark.whyReconstruct}
+ The aggregated book retains the quantity this chapter is about:
+ how size has accumulated across the price levels of the two sides.
+ That cross-section is what the queue imbalance \eqref{eq.queueImbalance} and the order flow
+ imbalance of Section \ref{sec.priceFormation} are computed from,
+ and Section \ref{sec.priceFormation} is the claim that the movement of the price emerges
+ from its statistics.
+\end{remark}
+
+\begin{remark}\label{remark.derivedAndDelayed}
+ Notice that the aggregated book is derived, and that the derivation sits in the
+ publication path:
+ a message is on the wire once the engine has written it,
+ whereas a level update exists only once the event has been netted against the level's
+ total.
+ It is also truncated at depth $L$, and where the feed is netted its updates are sent at
+ regular intervals, so that intermediate configurations are absent rather than delayed.
+ The aggregation is left out of the message stream by design,
+ price levels and their aggregation being derivable by the recipient from the individual
+ orders, and the stream being published
+ ``in order to send public market data as fast as possible''
+ \cite[Section 3.1]{DBG24eob}.
+ A participant who folds the stream herself therefore holds the aggregated book sooner,
+ and to a depth the feed does not publish.
+\end{remark}
+
+\begin{remark}\label{remark.aggregatedAsCheck}
+ The two feeds therefore have different jobs.
+ A fold run on the message stream is the participant's own computation:
+ it is available sooner and to any depth,
+ and a dropped message or a mishandled event leaves it wrong
+ in a way that no statistic computed from it reveals.
+ The aggregated book is the exchange's own fold of the same stream,
+ published later and truncated,
+ and comparing the two level by level locates such an error where nothing else does.
+ It is a check on the reconstruction rather than a substitute for it.
+\end{remark}
+
+A second tape exists in United States equities for a regulatory rather than a technical
+reason.
+Rule 603(c) of Regulation NMS obliges anyone who displays quotations,
+where a trading decision can be implemented,
+to display consolidated data alongside them \cite{SEC05reg}.
+Consolidation is performed by a party other than the venue on which the quotation arose,
+and costs a latency that a participant reading each venue's own feed does not pay.
+
+\subsection{The book as a fold}
+
+Writing $\mathcal{B}$ for a configuration and $m_k$ for the $k$-th message of the stream,
+\begin{equation}\label{eq.bookFold}
+ \mathcal{B}_{k} = F(\mathcal{B}_{k-1}, m_k),
+ \qquad \mathcal{B}_0 = \varnothing ,
+\end{equation}
+so that the book is the accumulator of a fold and holds one state, the current one.
+The sequence $(\mathcal{B}_k)_k$ is not held by the book;
+it is produced by whatever drives the fold, at whatever resolution is wanted.
+
+The transition $F$ is Proposition \ref{prop.lobUpdate}.
+What makes it a single function rather than a case analysis is
+Proposition \ref{prop.decompositionOfLimitOrder}:
+every incoming order is processed as its market part followed by its resting part,
+so there is no separate branch for a marketable order,
+and an implementation that writes one has two code paths where the mathematics has one.
+
+A message is a submission, carrying an order $(t,q,p,d)$,
+or a cancellation, withdrawing a size $q$ from the queue at $p$ on the side $d$;
+a deletion is the cancellation of all of it.
+An execution is not a third kind:
+by Remark \ref{remark.passiveDirection} it is the record of the market part of somebody
+else's submission, read on the passive side.
+Algorithm \ref{algo.bookFold} is $F$.
+
+\begin{algorithm}[h!]
+ \caption{{The fold of the message stream into the aggregated book}}
+ \label{algo.bookFold}
+ \begin{algorithmic}[5]
+  \REQUIRE $\mathcal{B}_{k-1}$ as two maps from price to size, and the message $m_k$
+  \IF{$m_k$ is a cancellation of $q$ at $p$ on the side $d$}
+  \STATE subtract $q$ from the size at $p$ on the side $d$, and remove $p$ if it reaches zero
+  \ELSE
+  \STATE let $(t,q,p,d)$ be the submitted order and set
+         $\marketOrderSize$ as in Proposition \ref{prop.decompositionOfLimitOrder}
+  \STATE set $r := \marketOrderSize$
+  \WHILE{$r > 0$}
+  \STATE let $\pi$ be the best price-eligible price on the side $-d$
+  \STATE match $r \wedge \nthBestAskSize[1]$ shares at $\pi$ if $d=+1$, and
+         $r \wedge \nthBestBidSize[1]$ if $d=-1$
+  \STATE subtract them at $\pi$, remove $\pi$ if it reaches zero,
+         and decrease $r$ by the same amount
+  \ENDWHILE
+  \STATE add $q - \marketOrderSize$ to the size at $p$ on the side $d$
+  \ENDIF
+  \RETURN $\mathcal{B}_{k}$
+ \end{algorithmic}
+\end{algorithm}
+
+The loop is the reduction of Proposition \ref{prop.lobUpdate} to its elementary pieces,
+and it terminates because each pass empties one price.
+We implement it more than once,
+and compare the implementations on the time and the memory they take.
+
+\begin{remark}\label{remark.gridAgainstOccupied}
+ The index $i$ of $\nthBestAskSize[i]$ counts levels of the price grid,
+ whereas an aggregated feed reports the first $L$ \emph{occupied} prices of each side.
+ The two agree only when the occupied prices are contiguous on the grid,
+ so the queue imbalance \eqref{eq.queueImbalance} is recoverable from a truncated aggregated
+ book only for those $n$ within which no gap falls.
+\end{remark}
+
+\subsection{LOBSTER}
+
+LOBSTER \cite{HP11lob} reconstructs the limit order book of a Nasdaq-traded stock from
+Nasdaq's historical TotalView-ITCH files and publishes the result at
+\url{https://lobsterdata.com}.
+It distributes, for each ticker and each trading day,
+a \emph{message} file and an \emph{orderbook} file:
+the historical, file-based form of the same pair of feeds.
+The message file carries the time, the event type, an order identifier, a size, a price and a
+direction;
+the orderbook file carries $4L$ columns, the price and size of each side repeated outward
+from the touch, padded with sentinels where a side has fewer than $L$ occupied prices.
+
+Six event types occur:
+the submission of a limit order,
+its partial cancellation,
+its total deletion,
+the execution of a visible limit order,
+the execution of a hidden one,
+and a trading halt.
+
+\begin{remark}\label{remark.passiveDirection}
+ Notice that there is no event for an aggressive order.
+ A trade is recorded as the execution of the \emph{resting} order it matched,
+ so the direction carried by an execution names the passive side
+ and the aggressor's direction is its opposite.
+ In the decomposition of Proposition \ref{prop.decompositionOfLimitOrder}
+ the message stream records the second component of the pair explicitly,
+ and the first only through its effect on the opposite side.
+ Signing a trade is therefore exact and free here,
+ and inverted by anyone who reads the column as the direction of the trade.
+\end{remark}
+
+The two files are aligned by position alone:
+row $k$ of the orderbook file is the configuration after the event on row $k$ of the message
+file, and the orderbook file carries no timestamp and no key of its own.
+Since the first file determines the second through \eqref{eq.bookFold},
+the pair is the check of Remark \ref{remark.aggregatedAsCheck} in recorded form:
+an implementation of the fold is compared against the exchange's own, state by state.
+Section \ref{sec.lobsterEmpirics} works from these files,
+and \cite{LPV22sho} is the same question asked of them at scale.

@@ -1,0 +1,36 @@
+\chapter{Market microstructure}
+\label{chap.microstructure}
+
+This chapter describes how prices are formed in order-driven markets.
+It begins with the mechanism --- what an order is, how the exchange matches orders,
+and what the limit order book is at any instant ---
+and with the reconstruction of that book from the message file of a recorded session.
+It then develops the theory of point processes and of self-excitation,
+which is the apparatus we use to model the arrival of orders
+and to read the statistical properties of a trading epoch.
+Section \ref{sec.priceFormation} is the one the others are for:
+price formation.
+It asks how a price emerges from the flow of trading orders,
+and which statistics of that flow forecast the movements of the mid-price.
+Section \ref{sec.lobsterEmpirics} is the assignment of the chapter,
+and puts those statements to recorded data.
+
+\section{Order-driven markets}
+\label{sec.orderDrivenMarkets}
+\input{order_driven_markets}
+
+\section{From message files to the aggregated order book}
+\label{sec.messageFiles}
+\input{message_files}
+
+\section{Point processes and self-excitation}
+\label{sec.pointProcesses}
+\input{point_processes}
+
+\section{Price formation}
+\label{sec.priceFormation}
+\input{price_formation}
+
+\section{Assignment --- evidence from recorded data}
+\label{sec.lobsterEmpirics}
+\input{lobster_empirics}
