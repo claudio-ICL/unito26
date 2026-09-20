@@ -48,7 +48,7 @@ define a macro locally in a content file. See `references/notation.md`.
 
 **5. Labels are `type.camelCaseDescription`, all lowercase.** `eq.` `sec.` `chap.`
 `prop.` `def.` `lemma.` `thm.` `corol.` `remark.` `example.` `exercise.` `assumption.`
-`algo.` `fig.` `tab.` `listing.` `item.` The description names the subject, never a
+`assignment.` `algo.` `fig.` `tab.` `listing.` `item.` The description names the subject, never a
 position: `chap.lob`, not `chap.lec01`.
 
 **6. Names are topics, not numbers.** Files and directories are `lob.tex`, `sabr.tex`.
@@ -63,6 +63,10 @@ person plural. `\emph{}` for emphasis and for the first use of a defined term â€
 module, no file path. The notes are self-contained and independent: it is the notebooks and the
 documentation that cite the notes, not the other way round. A fact worth having in the notes is
 worth writing in the notes.
+
+An external address is not such a reference. The notes name the exchanges of `sec.orderDrivenMarkets`,
+LOBSTER in `sec.messageFiles` and the course repository in `sec.assignments`, each as a `\url`.
+What the rule forbids is a path *into this repository*.
 
 **9. Every paragraph earns its place.** A free-standing paragraph must introduce a symbol,
 state a hypothesis, or draw a consequence. One that does none of the three exists only to

@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "unito26"
 version = "0.1.0"
-description = "Quantitative finance and option pricing models — University of Turin, 2026"
+description = "Python for Finance — University of Turin, Fall 2026"
 authors = [
     {name = "Claudio", email = "claudio.bellani01@gmail.com"}
 ]

@@ -39,7 +39,7 @@ contents — `\section` / `\label` / `\input` triples and nothing else
 
 Format `type.camelCaseDescription`, all lowercase. Prefixes in use: `eq.` `sec.` `chap.`
 `prop.` `def.` `lemma.` `thm.` `corol.` `remark.` `example.` `exercise.` `assumption.`
-`algo.` `fig.` `tab.` `listing.` `item.`
+`assignment.` `algo.` `fig.` `tab.` `listing.` `item.`
 
 *Deliberate tightening:* the thesis mixes `eq.`/`Eq.` and `def.`/`defi.`/`Sec.`. Do not
 reproduce that inconsistency.

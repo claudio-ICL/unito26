@@ -21,18 +21,37 @@ Recorded here as context, not as working instructions:
   LLMs now widespread, the edge is shifting from *writing* working code toward
   **judgment** — making the right choices, evaluating what an assistant
   proposes, and steering it well.
-- Because of this, the exam is moving from a coding project to a
-  **multiple-choice format**: students read code snippets and judge what they
-  do and which is best for a given purpose.
 - Planned distinctive content includes the **SABR model** (the option-desk
   standard) and an introduction to **market microstructure**.
 
 See `dev-context/` for the per-topic development notes.
 
+## Assessment
+
+Stated in the notes themselves, in `sec.examination` and `sec.assignments`.
+
+- A **multiple-choice questionnaire**, marked out of 100, pass mark 60. A question shows a
+  snippet of code and asks what it computes, or shows several and asks which fits a stated
+  purpose. Candidates are harvested into the *Exercises & exam snippets* section of each
+  `dev-context/*.md`. Sample questions are published during the course.
+- **Two optional assignments**, one per chapter, marked out of 25 each. They are not added
+  to the questionnaire: they lower its pass mark to `60 - a1 - a2`, so full marks on both
+  bring it down to 10. How the recorded mark is formed is **not decided**, and the notes
+  say nothing about it.
+- Assignments are submitted as **pull requests** into this repository, through the cycle of
+  [`CONTRIBUTING.md`](CONTRIBUTING.md).
+
 ## Course structure
 
-The course is **two chapters and only two**. A new topic joins one of them as a section; it
-never becomes a third chapter.
+The course has **two subject chapters and only two**. A new topic joins one of them as a
+section; it never becomes a third chapter. Ahead of them sits the welcome chapter, which is
+front matter: it describes the course rather than its subject.
+
+**Chapter 0 — Welcome** (`chap.welcome`) — the two chapters, what is learnt in each, the
+examination and the assignments. It is numbered zero by `\setcounter{chapter}{-1}` in
+`main.tex`, so that microstructure stays chapter 1: every equation number and every
+cross-reference in the book is written against that. Sections: `sec.theCourse`,
+`sec.learningPython`, `sec.learningFinance`, `sec.examination`, `sec.assignments`.
 
 **Chapter 1 — Market microstructure** (`chap.microstructure`), in this order:
 
@@ -40,13 +59,15 @@ never becomes a third chapter.
 2. `sec.messageFiles` — what an exchange disseminates, and the book as a fold of the message stream
 3. `sec.pointProcesses` — counting processes, Hawkes processes, exponential kernels, stability, second order, simulation
 4. `sec.priceFormation` — the order flow imbalance. **This is what the chapter is for**; everything before it is background for it.
-5. `sec.lobsterEmpirics` — evidence from recorded data
+5. `sec.lobsterEmpirics` — the chapter's assignment: the order flow imbalance on recorded
+   data, what it accounts for and what it forecasts
 
-**Chapter 2 — Option pricing**: Black–Scholes, the fundamental theorem of derivative trading,
-SABR.
+**Chapter 2 — Option pricing and volatility trading** (`chap.options`): Black–Scholes, the
+fundamental theorem of derivative trading, SABR. On disk as a placeholder —
+`options/options.tex` carries the title and one line saying when the material arrives.
 
-The notes live in `documentation/tex/notes/microstructure/`, one file per section under
-`sections/`, with the sectioning in `microstructure.tex`. See
+The notes live in `documentation/tex/notes/`, one directory per chapter, one file per
+section under `sections/`, with the sectioning in the chapter file. See
 [`documentation/tex/notes/README.md`](documentation/tex/notes/README.md).
 
 ## Repo layout
