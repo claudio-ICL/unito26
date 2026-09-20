@@ -9,8 +9,12 @@
 \def\input@path{
     {./}{../}
     {../include/}
+    {./welcome/}
+    {./welcome/sections/}
     {./microstructure/}
     {./microstructure/sections/}
+    {./options/}
+    {./options/sections/}
 }
 \makeatother
 
@@ -32,6 +36,7 @@
 \graphicspath{
     {./figures/}
     {./microstructure/figures/}
+    {./options/figures/}
 }
 \usepackage{booktabs}
 \usepackage{pdflscape} %make landscape orientation available
@@ -72,6 +77,10 @@
 \newtheorem{assumption}[theorem]{Assumption}
 \newtheorem{approximation}[theorem]{Approximation}
 
+% The course sets two assignments, one per chapter, and they are numbered as such:
+% own counter, not the shared one, and not numbered within a section.
+\newtheorem{assignment}{Assignment}
+
 %% MISCELLANEOUS %%
 \usepackage{appendix}
 \usepackage{fancyhdr, float, enumerate, longtable, upquote, mathtools, setspace, tikz}
@@ -81,6 +90,14 @@
 
 \definecolor{unitoblue}{rgb}{0.000, 0.243, 0.455}
 \definecolor{chaptergrey}{rgb}{0.000, 0.243, 0.455}
+
+%% THE VERSION LINE %%
+% babel's `english' sets \today in the American form; the book is British throughout.
+\newcommand{\compilationDate}{%
+ \number\day\space
+ \ifcase\month\or January\or February\or March\or April\or May\or June\or
+ July\or August\or September\or October\or November\or December\fi
+ \space\number\year}
 
 \setcounter{secnumdepth}{3}
 \numberwithin{algorithm}{section}

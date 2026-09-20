@@ -1,0 +1,30 @@
+The stack is the one a quantitative desk uses:
+\codehl{numpy} and \codehl{scipy} for the numerics,
+\codehl{pandas} and \codehl{pyarrow} for tabular data,
+\codehl{pandera} for the schemas that say what a table is,
+\codehl{scikit-learn} for the fitting,
+and \codehl{matplotlib} and \codehl{plotly} for the figures.
+
+Four habits are taught alongside them.
+
+A type owns its own serialisation:
+the schema that validates it,
+the pair of functions that write it to a table and read it back,
+and a test that the round trip is the identity.
+
+A parametrisation is a frozen object and never a computed default.
+A default invites a reader to skip the choice,
+and in a model the choice is usually the subject.
+
+The clear implementation comes first and is understood before anything faster is written.
+An optimisation is then a second implementation shown to beat the first,
+and the comparison is part of the material.
+
+A claim about what code does is written as a test,
+so that it is re-run whenever the code changes.
+
+Work is kept under version control,
+and reaches the course repository through branches and pull requests,
+with the tests run automatically on each.
+Section \ref{sec.assignments} uses that route,
+and it is part of what the assignments teach.
