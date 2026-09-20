@@ -45,9 +45,37 @@ over a session is a property of the seed.
  a traded market; a result favourable to $\queueImbalance[1]$ is the stronger finding.
 \end{remark}
 
-On recorded data we estimate the kernel,
-apply the diagnostics of Section \ref{sec.simulation} to recorded rather than simulated paths,
-and ask the questions the generated setting cannot answer:
-whether $\signedExcitation$ of \eqref{eq.signedExcitation} carries either sign in a traded
-market, whether a single excitation timescale suffices to describe one,
-and whether the sign of \eqref{eq.priceForecast} can be read from $\OFI$ alone.
+Recorded data is what settles the questions the generated setting cannot:
+whether $\signedExcitation$ of \eqref{eq.signedExcitation} carries either sign
+in a traded market,
+and over what window and what horizon
+the sign of \eqref{eq.priceForecast} can be read from $\OFI$ at all.
+
+\begin{assignment}\label{assignment.orderFlowImbalance}
+ Take one ticker over one trading day,
+ and carry the following through on its recorded messages.
+ \begin{enumerate}[label={\emph{\roman{*}}.}]
+  \item Build the session from the message and orderbook files of
+        Section \ref{sec.messageFiles}.
+  \item Compute $\OFI_{t,\ofiWindow}$ by Definition \ref{def.orderFlowImbalance} and
+        $\queueImbalance[1]_{t}$ by \eqref{eq.queueImbalance},
+        and say on which rows either is undefined.
+  \item Regress $\Delta \midPrice_{t,\ofiWindow}$ on $\OFI_{t,\ofiWindow}$,
+        and compare the slope with the $\tickSizeOfLOB/(2\uniformDepth)$
+        of \eqref{eq.idealisedUpdate}:
+        report the depth it implies,
+        and how much of the difference \eqref{eq.idealisedResidual} accounts for.
+  \item Over a grid of windows $\ofiWindow$ and horizons $\forecastHorizon$,
+        report the sign and the strength of the relation between $\OFI_{t,\ofiWindow}$
+        and $\midPrice_{t+\forecastHorizon} - \midPrice_{t}$,
+        and say at which $(\ofiWindow, \forecastHorizon)$ it can be read at all.
+  \item Repeat \emph{iv.} with $\queueImbalance[1]_{t}$ in place of
+        $\OFI_{t,\ofiWindow}$.
+        Remark \ref{remark.asymmetricReading} does not bind here, the flow being traded,
+        so the comparison is symmetric;
+        say what that changes.
+ \end{enumerate}
+ Report the sign against the session it was measured on and not of $\OFI$ as such.
+ The assignment is marked out of 25, as Section \ref{sec.examination} describes,
+ and submitted as Section \ref{sec.assignments} describes.
+\end{assignment}
