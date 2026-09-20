@@ -51,7 +51,8 @@ front matter: it describes the course rather than its subject.
 examination and the assignments. It is numbered zero by `\setcounter{chapter}{-1}` in
 `main.tex`, so that microstructure stays chapter 1: every equation number and every
 cross-reference in the book is written against that. Sections: `sec.theCourse`,
-`sec.learningPython`, `sec.learningFinance`, `sec.examination`, `sec.assignments`.
+`sec.prerequisites`, `sec.learningPython`, `sec.learningFinance`, `sec.examination`,
+`sec.assignments`, `sec.readingList`.
 
 **Chapter 1 — Market microstructure** (`chap.microstructure`), in this order:
 
