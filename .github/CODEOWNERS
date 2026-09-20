@@ -1,5 +1,3 @@
-# Every change requires review from the owner (the lecturer).
-# On a free private repo this AUTO-REQUESTS your review on each PR.
-# It becomes a hard requirement once branch protection is enabled
-# (needs GitHub Pro on a private repo, or making the repo public).
+# Every change requires review from the owner (the lecturer): the ruleset on `main`
+# requires an approving review from a code owner before a pull request can be merged.
 * @claudio-ICL
