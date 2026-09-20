@@ -26,21 +26,30 @@ as the Enhanced Market Data Interface, un-netted,
 and as the Market Data Interface, whose updates are netted at regular intervals
 \cite{DBG24eob, DBG24emd}.
 On CME's MDP 3.0 the same event appears in a market-by-order and in a market-by-price book
-\cite{CMEmdp}, and Nasdaq publishes the message stream as TotalView-ITCH \cite{NAS23itc}.
+\cite{CMEmdp, CME26mbo, CME26mbl},
+and Nasdaq publishes the message stream as TotalView-ITCH \cite{NAS23itc, NAS26tot}.
 Venues and vendors call the first of the two market by order, order by order or level three,
-and the second market by price, depth of book or level two.
+and the second market by price, depth of book or level two
+\cite{B2Bmdp, ONXmdp, EPAmdp, DBNmdp, MDLitc}.
 The nomenclature is not standardised.}
 
-The second is a function of the first.
-The exchange computes it by applying the matching rules of
+The two are not independent products.
+The queues $\askOrderQueue_t$ and $\bidOrderQueue_t$ are sets of orders,
+and the sizes $\nthBestAskSize[i]_t$ and $\nthBestBidSize[i]_t$ are sums over them,
+so the second stream is the image of the first under those sums.
+The exchange computes that image by applying the matching rules of
 Section \ref{sec.orderDrivenMarkets} to its own message stream,
 which is to say that it runs the fold of the next subsection before publishing the result.
 
+A sum does not record its summands:
+the aggregate says how much rests at a price,
+never how that size is split between orders,
+nor which of them the matching algorithm reaches first.
+That split is what decides whether a given resting order is executed,
+and Section \ref{sec.orderDrivenMarkets} sets it aside.
+
 \begin{remark}\label{remark.whyReconstruct}
- Notice that the order-by-order stream determines the aggregated book, through
- \eqref{eq.bookFold}, while the aggregated book does not determine the order-by-order
- stream: summing a queue erases the identity of the orders in it.
- What the aggregated book retains is the quantity this chapter is about ---
+ The aggregated book retains the quantity this chapter is about:
  how size has accumulated across the price levels of the two sides.
  That cross-section is what the queue imbalance \eqref{eq.queueImbalance} and the order flow
  imbalance of Section \ref{sec.priceFormation} are computed from,
@@ -49,9 +58,11 @@ which is to say that it runs the fold of the next subsection before publishing t
 \end{remark}
 
 \begin{remark}\label{remark.derivedAndDelayed}
- Notice that the aggregated book is derived:
- a participant who subscribes to it observes that cross-section only once the exchange has
- computed and published it.
+ Notice that the aggregated book is derived, and that the derivation sits in the
+ publication path:
+ a message is on the wire once the engine has written it,
+ whereas a level update exists only once the event has been netted against the level's
+ total.
  It is also truncated at depth $L$, and where the feed is netted its updates are sent at
  regular intervals, so that intermediate configurations are absent rather than delayed.
  The aggregation is left out of the message stream by design,
@@ -61,6 +72,18 @@ which is to say that it runs the fold of the next subsection before publishing t
  \cite[Section 3.1]{DBG24eob}.
  A participant who folds the stream herself therefore holds the aggregated book sooner,
  and to a depth the feed does not publish.
+\end{remark}
+
+\begin{remark}\label{remark.aggregatedAsCheck}
+ The two feeds therefore have different jobs.
+ A fold run on the message stream is the participant's own computation:
+ it is available sooner and to any depth,
+ and a dropped message or a mishandled event leaves it wrong
+ in a way that no statistic computed from it reveals.
+ The aggregated book is the exchange's own fold of the same stream,
+ published later and truncated,
+ and comparing the two level by level locates such an error where nothing else does.
+ It is a check on the reconstruction rather than a substitute for it.
 \end{remark}
 
 A second tape exists in United States equities for a regulatory rather than a technical
@@ -171,5 +194,7 @@ The two files are aligned by position alone:
 row $k$ of the orderbook file is the configuration after the event on row $k$ of the message
 file, and the orderbook file carries no timestamp and no key of its own.
 Since the first file determines the second through \eqref{eq.bookFold},
-the pair is what lets an implementation of the fold be checked against the exchange's own,
-state by state.
+the pair is the check of Remark \ref{remark.aggregatedAsCheck} in recorded form:
+an implementation of the fold is compared against the exchange's own, state by state.
+Section \ref{sec.lobsterEmpirics} works from these files,
+and \cite{LPV22sho} is the same question asked of them at scale.
