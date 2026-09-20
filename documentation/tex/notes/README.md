@@ -24,8 +24,7 @@ as a section.
 
 - point processes: `counting_processes`, `hawkes_processes`, `exponential_kernels`,
   `stability`, `simulation`
-- price formation: `order_flow_imbalance`, `order_flow_model`, `reading_the_intensity`,
-  `forecasting_the_mid`
+- price formation: `order_flow_imbalance`, `order_flow_model`, `forecasting_the_mid`
 
 `stability.tex` carries four `\subsubsection`s of its own — second-order structure, the
 scalar case, timescales, sub- and supercriticality — and `sec.secondOrder` labels the first

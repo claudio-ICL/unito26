@@ -62,6 +62,12 @@ already name, and never rename a concept on the way into Python.
   only under direction symmetry.** The two differ by $\varpi^\top\mu$. `hawkes.py`'s
   `intensities_at_events` docstring writes the first form; the symbol table writes the
   second. Both are right, and only together with the hypothesis.
+- **Direction symmetry removes the Perron mode from every pressure contrast.** At an
+  irreducible $\Gamma$ the right Perron vector satisfies $\Sigma u = u$, so
+  $\varpi^\top u = \varpi^\top A u = 0$. The relaxation time $1/(\beta(1-\rho))$ therefore
+  *bounds* the decay of $\varpi^\top A \Phi(h)$ and does not set it: the rate is
+  $\beta(1 - \gamma_2)$ on the second eigenvalue — 2.79 and 1.68 on the two shipped kernels,
+  against a relaxation rate of 1.6.
 - **$\rho < 1$ is checked in `__post_init__`.** Nothing downstream re-checks it.
 - **$Z$ is left-continuous**, $S_e(t) = \sum_{T^e_j < t}e^{-\beta(t-T^e_j)}$, with a strict
   inequality, because Definition `def.compensator` requires a predictable intensity. Name

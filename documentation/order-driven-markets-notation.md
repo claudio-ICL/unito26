@@ -175,8 +175,9 @@ mid-price change over the window is approximately $\mathrm{OFI}_{t,w}$ over twic
 size at the touch, so the sum is a prediction in ticks only after that normalisation. It reads
 the touch alone, so a market order that walks registers only the *old* best-ask size.
 
-Under the idealised book of `assumption.idealisedBook` — every event at the touch and no
-larger than it — the contribution collapses to the pressure-signed order size,
+Under the idealised book of `assumption.idealisedBook` — no event behind the best quote of
+its side, and no order reaching past the quote it acts on — the contribution collapses to
+the pressure-signed order size,
 $e_n = \varpi_{E_n} q_n$ (`prop.signedSizeContribution`). That is what turns $\mathrm{OFI}$
 from a book statistic into a functional of the marked point process, and it is the hinge the
 forecast of `sec.forecastingTheMid` hangs on. A market order that walks the book is exactly

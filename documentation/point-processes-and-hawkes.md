@@ -24,7 +24,7 @@ $\bar\lambda = 30.19$ events/s — unless another parametrization is named.
 | §3 `sec.exponentialKernels` | $\lambda = \mu + AZ$, the $O(1)$ recursion, the compensator display | `hawkes.intensities_at_events`, `hawkes.compensators_at_events` | `test_hawkes.py::TestTheReplayedIntensity` |
 | §4 `sec.stability` | $\rho$, $\lambda^*$, cluster sizes, the endogenous fraction, the Lyapunov equation, the forward mean | `HawkesParams.branching_matrix`, `.branching_ratio`, `.stationary_intensity`, `.endogenous_fraction`, `.mean_cluster_size` | `test_hawkes.py::TestTheBranchingStructure` |
 | §5 `sec.simulation` | Dassios–Zhao, Ogata thinning, the residual test | `hawkes.ExponentialHawkes`, `hawkes.OgataThinningHawkes` | `test_hawkes.py::TestExactSimulation`, `::TestAgreementAndClustering` |
-| `sec.orderFlowModel`, `sec.readingTheIntensity`, `sec.forecastingTheMid` (all under `sec.priceFormation`) | $\varpi$, $\Delta\lambda$, $\theta$, the forecast and the comparison with $\mathrm{OFI}$ | `HawkesParams.signed_endogenous_fraction`, `imbalance_regression` | `test_hawkes.py::TestTheSignedContrasts` |
+| `sec.orderFlowModel`, `sec.forecastingTheMid` (both under `sec.priceFormation`) | $\varpi$, $\Delta\lambda$, $\theta$, the forecast and the comparison with $\mathrm{OFI}$ | `HawkesParams.signed_endogenous_fraction`, `imbalance_regression` | `test_hawkes.py::TestTheSignedContrasts` |
 
 Three invariants any implementation must respect, all of them load-bearing:
 
