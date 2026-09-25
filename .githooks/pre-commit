@@ -1,0 +1,25 @@
+#!/bin/sh
+# Notebook outputs are not tracked.  A figure of a few hundred thousand points is a
+# megabyte of JSON, it changes on every re-execution, and it makes a diff unreadable.
+#
+# Stripped in place rather than through a clean filter, so that what is committed is
+# what is on disk.  The cost is that the outputs go from the working copy too: a
+# notebook is re-run to see its figures again.
+
+set -e
+
+notebooks=$(git diff --cached --name-only --diff-filter=ACM -- '*.ipynb')
+[ -z "$notebooks" ] && exit 0
+
+if command -v nbstripout >/dev/null 2>&1; then
+    strip=nbstripout
+elif [ -x "$HOME/anaconda3/envs/unito26/bin/nbstripout" ]; then
+    strip="$HOME/anaconda3/envs/unito26/bin/nbstripout"
+else
+    echo "pre-commit: nbstripout not found, and a notebook is staged." >&2
+    echo "  conda activate unito26, or install it: pip install nbstripout" >&2
+    exit 1
+fi
+
+echo "$notebooks" | xargs "$strip"
+echo "$notebooks" | xargs git add --
