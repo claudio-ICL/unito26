@@ -1,18 +1,36 @@
 \documentclass{unito26slides}
 \input{specs}
 \input{slide_formatting}
-\include{include/snippets_stylerendering}
-\include{include/notation}
-\include{include/sethyperref}
+\input{snippets_stylerendering}
+\input{notation}
+\input{sethyperref}
+
+% Each class of the course is one \include below, so \includeonly builds that class alone:
+% uncomment this line, name the file wanted, and rebuild. It must stay in the preamble.
+% The files above are \input rather than \include for the same reason -- \includeonly would
+% otherwise exclude the notation macros and the deck would not compile.
+%\includeonly{sections/order_driven_markets}
 
 \begin{document}
 \inserttitleframe
 \inserttableofcontents
 
-% One section per chapter of the notes, in the same order,
-% named after its subject.
-\section{Market microstructure}
-\include{sections/microstructure}
+% One section per chapter of the notes, in the same order, named after its subject.
+% Within a chapter, one \include per section of the notes, under the notes' own name
+% and in the notes' own order. A class is one of these files.
+\section{Welcome}
+\include{sections/the_course}
+\include{sections/prerequisites}
+\include{sections/learning_python}
+\include{sections/examination}
+\include{sections/reading_list}
 
-\include{sections/references}
+\section{Market microstructure}
+\include{sections/order_driven_markets}
+\include{sections/message_files}
+\include{sections/point_processes}
+\include{sections/price_formation}
+\include{sections/lobster_empirics}
+
+\input{sections/references}
 \end{document}

@@ -20,9 +20,11 @@ from unito26.lob.messages import BUY, SELL, MessageType, is_market_price
 from unito26.lob.orderbook import AggregateBook
 
 __all__ = [
+    "use_template",
     "ascii_ladder",
     "describe_message",
     "book_figure",
+    "snapshots_figure",
     "example_figure",
     "depth_figure",
     "level_evolution_figure",
@@ -41,6 +43,30 @@ ASK_COLOUR = "#eb6834"
 MID_COLOUR = "#1baf7a"
 MICRO_COLOUR = "#eda100"
 
+SURFACE = "#fcfcfb"
+INK = "#0b0b0b"
+MUTED = "#898781"
+GRID = "#e1e0d9"
+AXIS = "#c3c2b7"
+
+
+def use_template(name: str = "unito26") -> None:
+    """Register the course plotly template and make it the default."""
+    import plotly.graph_objects as go
+    import plotly.io as pio
+
+    axis = dict(gridcolor=GRID, linecolor=AXIS, zeroline=False, tickfont=dict(color=MUTED))
+    pio.templates[name] = go.layout.Template(
+        layout=dict(
+            paper_bgcolor=SURFACE,
+            plot_bgcolor=SURFACE,
+            font=dict(color=INK, size=12),
+            xaxis=axis,
+            yaxis=axis,
+        )
+    )
+    pio.templates.default = name
+
 
 def describe_message(message) -> str:
     """One line naming what a message asks the book to do, in the notation's terms."""
@@ -57,7 +83,7 @@ def ascii_ladder(book: AggregateBook, bar: int = 28) -> str:
 
     Every occupied price appears, and only occupied prices: an empty grid position
     inside the book is shown as a gap in the price column, which is what makes the two
-    empty levels of section 8's case B visible at a glance.
+    empty levels of the walking case visible at a glance.
     """
     bids = book.levels_map(BUY)
     asks = book.levels_map(SELL)
@@ -125,6 +151,58 @@ def book_figure(book: AggregateBook, depth: int = 10, title: str = "") -> "objec
         barmode="overlay",
         template="simple_white",
         height=420,
+    )
+    return figure
+
+
+def snapshots_figure(books: dict, depth: int = 10, title: str = "") -> "object":
+    """Several books on one pair of axes, with a dropdown choosing which is drawn.
+
+    ``books`` maps a label to an :class:`~unito26.lob.orderbook.AggregateBook`.  One at a
+    time rather than side by side: the books are compared at the same size axis, and a
+    panel each would give them a width each as well.
+
+    Each button's mask spans every trace in the figure, in trace order, and the initial
+    ``visible`` must agree with ``active``.  A side contributes no trace where it is
+    empty, so the masks are built from the counts rather than from a stride.
+    """
+    import plotly.graph_objects as go
+
+    figure = go.Figure()
+    counts = []
+    for slot, (label, book) in enumerate(books.items()):
+        traces = _bars(book, depth)
+        counts.append(len(traces))
+        for trace in traces:
+            trace.visible = slot == 0
+            trace.showlegend = slot == 0
+            figure.add_trace(trace)
+
+    total = sum(counts)
+    starts = [sum(counts[:slot]) for slot in range(len(counts))]
+    buttons = [
+        dict(
+            label=label, method="update",
+            args=[
+                {"visible": [starts[slot] <= i < starts[slot] + counts[slot]
+                             for i in range(total)],
+                 "showlegend": [starts[slot] <= i < starts[slot] + counts[slot]
+                                for i in range(total)]},
+                {"title": f"{title} &mdash; {label}" if title else label},
+            ],
+        )
+        for slot, label in enumerate(books)
+    ]
+    figure.update_layout(
+        title=f"{title} &mdash; {next(iter(books))}" if title else next(iter(books)),
+        updatemenus=[dict(buttons=buttons, active=0, x=1.0, xanchor="right", y=1.16,
+                          yanchor="top", showactive=True)],
+        xaxis_title="size",
+        yaxis_title="price (ticks)",
+        barmode="overlay",
+        template="simple_white",
+        height=460,
+        margin=dict(t=110),
     )
     return figure
 

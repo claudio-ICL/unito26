@@ -26,7 +26,7 @@ documentation/tex/
     ├── slide_formatting.tex        templates, TOC frames, \AtBeginSection
     ├── main.tex                    one \section + \include per chapter
     ├── figures/
-    └── sections/microstructure.tex
+    └── sections/            one file per section of the notes, same name, same order
 ```
 
 One notes book and one slide deck for the whole course.
@@ -62,7 +62,7 @@ Say the topic is `<topic>`.
 5. Add `\include{<topic>/<topic>}` to `notes/main.tex`, in the position the course runs —
    after the welcome chapter, so the numbering above holds.
 6. Copy `templates/slides-section.tex` to `slides/sections/<topic>.tex`, and add
-   `\section{...}` + `\include{sections/<topic>}` to `slides/main.tex`.
+   `\include{sections/<topic>}` to `slides/main.tex` under that chapter's `\section`.
 7. Add any new symbols to `include/notation.tex`, in a new block at the end.
 8. Compile both documents (see SKILL.md).
 
@@ -81,5 +81,23 @@ main files say `\bibliography{../bibliography}` explicitly.
 ## Keeping notes and slides in step
 
 The deck mirrors the book: one `\section` per chapter, in the same order, with the same
-topic name. Statements shared between the two use the **same label**, so a definition
-can be moved or copied without editing its cross-references.
+topic name, and beneath it **one `\include` per section of the notes**, under the notes' own
+file name. Statements shared between the two use the **same label**, so a definition can be
+moved or copied without editing its cross-references.
+
+`\include` rather than `\input` at that level, so that `\includeonly` builds one section —
+one lecture — alone. That line lives in the preamble; after `\begin{document}` it raises
+`Can be used only in preamble`. For the same reason the shared preamble files are `\input`:
+`\includeonly` would otherwise exclude `notation.tex`.
+
+Two consequences of the deck being **one** document:
+
+- a label may be defined once across the section files, and a cross-file `\ref` prints `??`
+  under `\includeonly`, the other files' `.aux` being absent. A statement a later section
+  needs is restated there without a label;
+- `algorithm` is a float and does not place inside a `frame`. An algorithm goes on a slide as
+  bare `algorithmic`, with its caption in the `\frametitle` and no `\label`.
+
+Beamer supplies `theorem`, `lemma`, `corollary` and `example` itself, so `unito26slides.cls`
+declares neither `lemma` nor `example`; declaring one raises `Command \lemma already
+defined`.

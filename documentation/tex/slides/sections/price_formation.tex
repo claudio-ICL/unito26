@@ -1,0 +1,194 @@
+% CLASS 4, part one -- the notes' section 1.4, sec.priceFormation.
+% The chapter's destination, and the one section covered IN DETAIL.
+% Budget 105 min for the whole class, shared with lobster_empirics; planned 93 here over 20
+% frames and 18 there, so 111 against 105.
+% Overrunning, cut F4.18 (remark.totalResponse, which is a refinement of F4.16 and can close
+% it as a clause), then take a minute each from F4.2 and F4.17. That lands at 106.
+% Next after that is F4.20, which is the best frame in the deck to hand to the notebook: the
+% three weightings are three columns of a frame.
+%
+% THE FRAME CONTRACT. These slides are projection material, not reference material: the
+% students read the notes, and they only ever see a frame while it is being talked over.
+% So every frame carries ONE OBJECT -- a display, a statement of at most two lines, a TikZ
+% picture, a table or an algorithmic block -- and under it at most three CAPTIONS. A caption
+% is a gloss (`term: noun phrase'), a fragment of subject and predicate, or a condition
+% written as mathematics. It is never a sentence, never a subordinate clause, and never a
+% repetition of the frame title: what the title says, the body does not say again, and what
+% follows from the object is spoken. At most 12 words of prose each, 25 to a frame, hard
+% cap 40. A statement states its head claim and stops; its consequence is spoken.
+% What is said over the object goes in \note{}, which \documentclass[script]{unito26slides}
+% prints beside each frame and the deck itself never shows. Check with
+%   python3 .claude/skills/writing-in-tex/scripts/frame_density.py <file>
+% Open the class on the chapter roadmap, as classes 1 and 2 do. Do not close on a summary
+% frame: a slide that recites what the class just did is the spoken half written down.
+%
+% LABELS. A label is defined once across the five class files, and a cross-file \ref prints
+% ?? under \includeonly. prop.lobUpdate, prop.decompositionOfLimitOrder, prop.forwardMean,
+% thm.markovState, eq.queueImbalance and def.relaxationTime all belong to earlier classes and
+% are RESTATED HERE WITHOUT LABELS.
+
+\subsection{Price formation}
+
+\begin{frame}
+  \frametitle{Outline}
+% 3 min. One \nocite per line -- a multi-key \nocite spanning lines breaks bibtex.
+\nocite{CKS14pri}
+\nocite{CDJ18enh}
+\nocite{Bou18tra}
+% Which features of the order flow reverberate into the movements of the mid-price. Name the
+% three things we want: one number off the aggregated book, a model of the flow that produces
+% it, and a forecast.
+\end{frame}
+
+\begin{frame}
+  \frametitle{Too fine, and too expensive}
+% 4 min. prop.lobUpdate tracks the whole book and needs the whole tape -- restate in one
+% line, no label. We want a statistic of the observed aggregated book alone, whose only job
+% is to track the mid-price.
+\end{frame}
+
+\begin{frame}
+  \frametitle{The idealised book}
+% 5 min. assumption.idealisedBook, four parts, in the notes' own list syntax now that
+% enumitem is loaded. PICTURE: the grid with every queue behind both touches holding exactly
+% \uniformDepth and the two touches holding less, and an arrow for part iv -- the next bid
+% limit order arriving one tick ABOVE the best bid once the touch reaches \uniformDepth.
+% Closing: parts i, iii and iv are the stylised book of \cite{CKS14pri}; part ii is ours, and
+% it is what prop.signedSizeContribution costs.
+\end{frame}
+
+\begin{frame}
+  \frametitle{The order flow imbalance}
+% 5 min. def.orderFlowImbalance with eq.orderFlowContribution and eq.orderFlowImbalance.
+% Fix the convention explicitly -- the size at the best bid AFTER the n-th event -- because
+% it is the thing that is got wrong.
+\end{frame}
+
+\begin{frame}
+  \frametitle{What each event contributes}
+% 5 min. PICTURE, three panels. (a) the best bid does not move: both indicators fire and the
+% event contributes the CHANGE in the size resting there; (b) the bid improves: only the
+% first fires, and the event contributes the whole new queue; (c) the bid is cleared: only
+% the second fires, and it contributes minus the whole old queue.
+\end{frame}
+
+\begin{frame}
+  \frametitle{The mid-price moves with the flow}
+% 5 min. prop.idealisedUpdate with eq.idealisedUpdate, then exercise.idealisedUpdate: measure
+% the position of the bid in shares, show each event moves it by its own signed bid-side
+% flow, sum over the window, and say where each part of the assumption is used.
+\end{frame}
+
+\begin{frame}
+  \frametitle{The residual is the flow that went into the queues}
+% 5 min. eq.idealisedResidual, then remark.residualIsQueueFlow. On a window over which
+% neither quote moves the mid-price change is zero while the imbalance is not, and the two
+% terms cancel EXACTLY. The residual is bounded by one tick and does not grow with
+% \ofiWindow, which is what makes the identity useful over windows whose flow term is larger.
+\end{frame}
+
+\begin{frame}
+  \frametitle{The order flow is a marked Hawkes process}
+% 5 min. def.orderFlowProcess, two parts, and the booktabs table of the six types with
+% \pressure underneath. The reading: a market buy consumes the ask and a withdrawal from the
+% bid removes support, so the first pushes up and the second down.
+\end{frame}
+
+\begin{frame}
+  \frametitle{The contribution is the signed size}
+% 4 min. prop.signedSizeContribution and eq.signedSizeContribution. This is the frame where
+% assumption.idealisedBook part ii pays for itself: no order reaches past the quote it acts
+% on, so each event changes one queue by its own size.
+\end{frame}
+
+\begin{frame}
+  \frametitle{Direction symmetry}
+% 5 min. def.directionSymmetry and prop.directionSymmetry, with eq.baselineSymmetry.
+% Closing: the swap-invariant matrices are closed under products and limits, so they contain
+% the matrix exponential, \meanResponseIntegral and the resolvent, and every expression of
+% the next subsection contracted with \pressure loses its baseline term.
+\end{frame}
+
+\begin{frame}
+  \frametitle{Choosing a specification}
+% 4 min. def.orderFlowSpecification, then the replenishment mechanism: the two kinds of
+% depleting event must beget the limit orders that refill the side they emptied, so such a
+% kernel has large column sums on the market-order and withdrawal types, a small one on the
+% limit types, and its mass off the diagonal blocks \pressure separates.
+% Then eq.baselineFromTarget, chosen so that \branchingRatio < 1 and \baseIntensity > 0.
+\end{frame}
+
+\begin{frame}
+  \frametitle{The intensity contrast}
+% 5 min. def.intensityContrast, eq.intensityContrast, eq.contrastFromState. Under direction
+% symmetry the baseline term vanishes and the contrast is a function of the STATE ALONE.
+\end{frame}
+
+\begin{frame}
+  \frametitle{Signed excitation}
+% 5 min. prop.signedExcitation, eq.signedExcitation, eq.contrastFromSignedExcitation.
+% \signedExcitation positive begets its own pressure, negative the opposite, zero neither --
+% and the sign is a property of the KERNEL and not of the type: the same six types carry
+% either sign under different specifications.
+\end{frame}
+
+\begin{frame}
+  \frametitle{The short-horizon forecast}
+% 6 min. THE FRAME THE CHAPTER EXISTS FOR. prop.shortHorizonForecast with
+% eq.shortHorizonForecast. First beat: recall prop.forwardMean and \meanResponseIntegral as a
+% PLAIN UNLABELLED DISPLAY -- the label belongs to class 3 and a cross-file \ref would print
+% ?? under \includeonly. Second: the marks are independent with mean \meanSize. Third:
+% \pressure annihilates the two baseline terms by direction symmetry, and what remains is the
+% forecast.
+\end{frame}
+
+\begin{frame}
+  \frametitle{The forecast of the mid-price}
+% 5 min. corol.priceForecast and eq.priceForecast: conditional expectation in
+% eq.idealisedUpdate with the forecast substituted. The residual is carried, not absorbed.
+\end{frame}
+
+\begin{frame}
+  \frametitle{The residual bounds the forecast}
+% 5 min. remark.residualAgainstForecast. Two reasons it is carried: it is not independent of
+% the first term, since along a path on which neither quote moves the two cancel exactly; and
+% it does not shrink as the horizon grows, the first term being bounded in \forecastHorizon
+% while the residual is bounded by one tick at every horizon.
+% A long horizon does not buy a forecast that exceeds the residual.
+% So the empirical question is about the SIGN and not the magnitude.
+\end{frame}
+
+\begin{frame}
+  \frametitle{The contrast is the drift of the imbalance}
+% 4 min. corol.contrastAsDrift and eq.contrastAsDrift: the expansion of
+% \meanResponseIntegral gives the leading term. The contrast is the drift OF THE FLOW; the
+% price inherits it only through the forecast.
+\end{frame}
+
+\begin{frame}
+  \frametitle{The long horizon}
+% 3 min. remark.totalResponse: the whole expected progeny of the present state, and it
+% finishes STRICTLY SOONER than the relaxation time, the slowest mode being annihilated by
+% the contraction with \pressure. First to cut.
+\end{frame}
+
+\begin{frame}
+  \frametitle{The sign belongs to the kernel}
+% 5 min. corol.regimeSign and eq.signedExcitationAtHorizon. PICTURE:
+% \signedExcitation_a(\forecastHorizon) against \forecastHorizon for the two shipped
+% specifications -- one curve above zero and one below, at the SAME branching ratio and the
+% same stationary intensity. Then:
+% No statement of the form ``the order flow imbalance predicts continuation'' is made
+% without naming the specification it is made in.
+% With the honest caveat: at a general state two specifications of opposite sign need not
+% disagree.
+\end{frame}
+
+\begin{frame}
+  \frametitle{Three statistics of the same past flow}
+% 5 min. remark.imbalanceAsProxy. The signed count weights equally and ignores sizes; the
+% decayed count weights by age and ignores sizes; the imbalance weights equally and by sizes.
+% The forecast is driven by none of the three. The weighting gap closes exactly when
+% \pressure is a left eigenvector of \excitation; the mark gap does not close at all, since
+% no function of \decayedCounts recovers a size.
+\end{frame}

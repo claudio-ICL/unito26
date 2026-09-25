@@ -56,7 +56,7 @@ conventions circulate.
 - **A fill trades at the resting order's price**, $\pi$, never at the incoming order's $p$.
 - **Sizes are non-negative.** In the order-level representation a price whose queue empties
   is removed from the dict; the level *index* of §3 is unaffected and may still read zero
-  (Case B of §8 has two such levels). By convention $S^{\cdot,j} = 0$ for $j \le 0$ — ours,
+  (Case B of the worked example has two such levels). By convention $S^{\cdot,j} = 0$ for $j \le 0$ — ours,
   not the notes', but required to make the shifted index in §5 well defined.
 - **An exhausted side is a separate branch.** The update rule of §5 assumes the incoming
   order does not consume the whole price-eligible side; when it does, $N_s$ (and, for a market

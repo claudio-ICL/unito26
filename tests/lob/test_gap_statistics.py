@@ -50,7 +50,7 @@ class TestTheWorkedLadder:
 
 
 class TestCaseB:
-    """Section 8 case B leaves asks at 999, 1002, 1003: two interior holes."""
+    """The walking sell leaves asks at 999, 1002, 1003: two interior holes."""
 
     @pytest.fixture
     def book(self, book_cls):

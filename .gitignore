@@ -42,6 +42,7 @@ documentation/**/*.lol
 documentation/**/*.toc
 documentation/**/*.nav
 documentation/**/*.snm
+documentation/**/*.vrb
 documentation/**/*.fls
 documentation/**/*.fdb_latexmk
 documentation/**/*.synctex.gz

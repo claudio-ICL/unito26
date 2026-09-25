@@ -40,16 +40,16 @@ from unito26.lob.orderbook import AggregateBook
 __all__ = [
     "WorkedExample",
     "CATALOGUE",
-    "SECTION_8_BOOK",
+    "BASELINE_BOOK",
     "to_sides",
     "signed_state",
     "reflect",
     "check",
 ]
 
-#: The book at ``t-`` of section 8 of the notation, in ticks: bid 10.00 x 100,
+#: The book every example below starts from, in ticks: bid 10.00 x 100,
 #: 9.99 x 200, 9.98 x 150; ask 10.02 x 120, 10.03 x 180.
-SECTION_8_BOOK = {1000: 100, 999: 200, 998: 150, 1002: -120, 1003: -180}
+BASELINE_BOOK = {1000: 100, 999: 200, 998: 150, 1002: -120, 1003: -180}
 
 
 @dataclass(frozen=True)
@@ -97,56 +97,56 @@ CATALOGUE: tuple[WorkedExample, ...] = (
     WorkedExample(
         name="a passive buy joins an occupied level",
         branch="N = 0, q^inf = q; the remainder lands where size already rests",
-        before=SECTION_8_BOOK,
+        before=BASELINE_BOOK,
         message=limit_order(1.0, 75, 999, BUY),
         after={1000: 100, 999: 275, 998: 150, 1002: -120, 1003: -180},
     ),
     WorkedExample(
         name="a passive buy rests inside the spread",
         branch="N = 0, q^inf = q; the best bid improves and the spread narrows",
-        before=SECTION_8_BOOK,
+        before=BASELINE_BOOK,
         message=limit_order(1.0, 50, 1001, BUY),
         after={1001: 50, 1000: 100, 999: 200, 998: 150, 1002: -120, 1003: -180},
     ),
     WorkedExample(
         name="a sell takes part of the best bid",
         branch="N_s bites at n = 1, so N = 0: one price prints and the best is unmoved",
-        before=SECTION_8_BOOK,
+        before=BASELINE_BOOK,
         message=limit_order(1.0, 50, 1000, SELL),
         after={1000: 50, 999: 200, 998: 150, 1002: -120, 1003: -180},
     ),
     WorkedExample(
         name="a sell clears the best bid exactly",
         branch="N = 1 with nothing walked -- the converse of section 6 failing",
-        before=SECTION_8_BOOK,
+        before=BASELINE_BOOK,
         message=limit_order(1.0, 100, 1000, SELL),
         after={999: 200, 998: 150, 1002: -120, 1003: -180},
     ),
     WorkedExample(
-        name="section 8 case A: executed in full, no remainder",
+        name="a sell executed in full, with no remainder",
         branch="N_p bites before N_s; q^inf = 0, so the ask side is untouched",
-        before=SECTION_8_BOOK,
+        before=BASELINE_BOOK,
         message=limit_order(1.0, 250, 999, SELL),
         after={999: 50, 998: 150, 1002: -120, 1003: -180},
     ),
     WorkedExample(
-        name="section 8 case B: walks the book and rests the remainder",
-        branch="q^inf > 0 inside the old spread; ask indices shift, two levels empty",
-        before=SECTION_8_BOOK,
+        name="a sell that walks the book and rests the remainder",
+        branch="q^inf > 0 below the old best bid; ask indices shift, two levels empty",
+        before=BASELINE_BOOK,
         message=limit_order(1.0, 400, 999, SELL),
         after={998: 150, 999: -100, 1002: -120, 1003: -180},
     ),
     WorkedExample(
         name="a sell consumes the whole bid side",
         branch="N_s = +inf: the side empties and P^b is undefined",
-        before=SECTION_8_BOOK,
+        before=BASELINE_BOOK,
         message=limit_order(1.0, 500, 998, SELL),
         after={998: -50, 1002: -120, 1003: -180},
     ),
     WorkedExample(
         name="a market sell larger than the book",
         branch="market-to-limit: the remainder rests at the price last executed against",
-        before=SECTION_8_BOOK,
+        before=BASELINE_BOOK,
         message=market_order(1.0, 1000, SELL),
         after={998: -550, 1002: -120, 1003: -180},
     ),
@@ -161,14 +161,14 @@ CATALOGUE: tuple[WorkedExample, ...] = (
     WorkedExample(
         name="a withdrawal away from the best",
         branch="a signed delta on one level; the best price does not move",
-        before=SECTION_8_BOOK,
+        before=BASELINE_BOOK,
         message=withdrawal(1.0, 60, 999, BUY),
         after={1000: 100, 999: 140, 998: 150, 1002: -120, 1003: -180},
     ),
     WorkedExample(
         name="a withdrawal that empties the best bid",
         branch="the best price moves *down* and the spread widens -- only cancellation does this",
-        before=SECTION_8_BOOK,
+        before=BASELINE_BOOK,
         message=withdrawal(1.0, 100, 1000, BUY),
         after={999: 200, 998: 150, 1002: -120, 1003: -180},
     ),
@@ -191,7 +191,7 @@ def reflect(example: WorkedExample, centre: int) -> WorkedExample:
     *meaning* rather than by its price field.
 
     ``centre`` must be chosen so that every reflected price stays non-negative.  Note
-    the reflected book is a different book, not the section 8 book relabelled: no
+    the reflected book is a different book, not the baseline book relabelled: no
     centre maps that one to itself, because its two sides have different shapes.
     """
     def mirror(state: dict[int, int]) -> dict[int, int]:

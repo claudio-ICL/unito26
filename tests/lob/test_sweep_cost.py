@@ -15,16 +15,16 @@ from unito26.lob.messages import (
 from unito26.lob.orderbook import AXIS_B_VARIANTS, AggregateBook, _sweep_cost
 from unito26.lob.session import MarketSession
 from unito26.lob.statistics import SessionStatistics
-from unito26.lob.worked_examples import SECTION_8_BOOK, to_sides
+from unito26.lob.worked_examples import BASELINE_BOOK, to_sides
 
 DEPTH = ReportedDepth(5)
 
-#: Section 8: bid 10.00 x 100, 9.99 x 200, 9.98 x 150; ask 10.02 x 120, 10.03 x 180.
+#: The baseline book: bid 10.00 x 100, 9.99 x 200, 9.98 x 150; ask 10.02 x 120, 10.03 x 180.
 #: So phi = 2 ticks and the half-spread is 1 tick.
-BIDS, ASKS = to_sides(SECTION_8_BOOK)
+BIDS, ASKS = to_sides(BASELINE_BOOK)
 
 
-def section_8(book_cls) -> AggregateBook:
+def baseline_book(book_cls) -> AggregateBook:
     return book_cls.from_levels(dict(BIDS), dict(ASKS))
 
 
@@ -36,17 +36,17 @@ def sizes(*values) -> tuple[SweepSize, ...]:
 class TestTheWorkedExample:
     @pytest.mark.parametrize("size", [1, 50, 119, 120])
     def test_an_order_that_does_not_walk_pays_the_half_spread(self, book_cls, size):
-        book = section_8(book_cls)
+        book = baseline_book(book_cls)
         assert book.sweep_cost(BUY, SweepSize(size), DEPTH) == pytest.approx(book.spread / 2)
 
     def test_walking_one_level_costs_a_tick_more_on_what_it_walks(self, book_cls):
         # 120 at 10.02 (one tick over the mid) and 120 at 10.03 (two).
-        book = section_8(book_cls)
+        book = baseline_book(book_cls)
         assert book.sweep_cost(BUY, SweepSize(240), DEPTH) == pytest.approx(1.5)
 
     def test_it_is_not_exact_in_binary(self, book_cls):
         """1.6 is not representable, so every comparison here needs a tolerance."""
-        book = section_8(book_cls)
+        book = baseline_book(book_cls)
         assert book.sweep_cost(BUY, SweepSize(300), DEPTH) == pytest.approx(1.6)
 
     @pytest.mark.parametrize("size", [0, -100])
@@ -54,16 +54,16 @@ class TestTheWorkedExample:
         """Named for what the caller did.  Unscreened, a size of 0 divides by zero and a
         negative one takes nothing anywhere, is deemed filled, and trips the assertion that
         says the book is crossed -- sending the reader to the matching engine."""
-        book = section_8(book_cls)
+        book = baseline_book(book_cls)
         with pytest.raises(ValueError, match="positive number of shares"):
             book.sweep_cost(BUY, SweepSize(size), DEPTH)
 
     def test_a_size_the_side_cannot_fill_is_undefined(self, book_cls):
-        book = section_8(book_cls)
+        book = baseline_book(book_cls)
         assert book.sweep_cost(BUY, SweepSize(301), DEPTH) is None
 
     def test_the_two_sides_are_symmetric_here(self, book_cls):
-        book = section_8(book_cls)
+        book = baseline_book(book_cls)
         assert book.sweep_cost(SELL, SweepSize(100), DEPTH) == pytest.approx(book.spread / 2)
 
 
@@ -108,7 +108,7 @@ class TestUndefinedRatherThanWrong:
         cost, and numerically what a correct buy of 120 answers.  The sign is the only
         thing that tells the two apart.
         """
-        book = section_8(AggregateBook)
+        book = baseline_book(AggregateBook)
         asks = book.occupied_levels(SELL, DEPTH)
         with pytest.raises(AssertionError):
             _sweep_cost(asks, book.mid_price, sizes(100), SELL)

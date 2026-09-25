@@ -1,0 +1,35 @@
+% WELCOME -- the notes' section 0.3, sec.learningPython. Budget 3 min.
+% The stack itself is on the prerequisites frame; this frame is the four habits taught
+% alongside it. The caption contract is stated in the header of the_course.tex.
+
+\subsection{How we write Python}
+
+\begin{frame}
+  \frametitle{Four habits, taught alongside the stack}
+\begin{center}
+\footnotesize
+\begin{tabular}{@{}ll@{}}
+\toprule
+\emph{habit} & \emph{what it looks like} \\
+\midrule
+properties before code & invariants, round trips, two routes to one value \\
+tests before the implementation & the property, written first \\
+an object carries its own definition & the schema with the type, the parameters frozen \\
+clear first, fast second & the optimisation beats a measured baseline \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\note{
+We reason about what an implementation must satisfy before we write it: the invariants it
+preserves, the round trips it closes, and the alternative routes through a computation that
+must reach the same value. Those properties are then written as tests, before the
+implementation they specify.
+What defines an object is written down with the object: a type carries the schema that
+validates it, and a model carries its parametrisation as a frozen object, never as a
+computed default.
+The clear implementation comes first and is understood before anything faster is written.
+An optimisation is a second implementation shown to beat the first, and section 1.2's five
+books are exactly that comparison.
+}
+\end{frame}

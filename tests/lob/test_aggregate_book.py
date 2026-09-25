@@ -1,6 +1,6 @@
 """Tests for the aggregate book, rungs L0 to L3.
 
-The centrepiece is the worked example of section 8 of the notation, reproduced
+The centrepiece is the worked example of the notation, reproduced
 verbatim.  Case B is the canonical fixture because it exercises, in one message,
 everything that usually breaks: walking the book, a residual resting inside the old
 spread, the index shift, and empty levels between the best price and the deeper ones.
@@ -31,7 +31,7 @@ TICK = TickGrid(0.01)
 
 @pytest.fixture
 def worked_example() -> AggregateBook:
-    """The book at ``t-`` in section 8, in ticks.
+    """The baseline book at ``t-``, in ticks.
 
     ask 10.03 x 180, ask 10.02 x 120 (best);  bid 10.00 x 100 (best), 9.99 x 200,
     9.98 x 150.  So the spread is 2 ticks and the mid is 10.01.
@@ -75,7 +75,7 @@ class TestConfiguration:
 
 
 class TestCaseA:
-    """Section 8, case A: sell (t, 250, 9.99, -1).  Fully executed, no remainder."""
+    """Case A of the worked example: sell (t, 250, 9.99, -1), fully executed."""
 
     def test_fills_at_resting_prices(self, worked_example):
         result = worked_example.submit(limit_order(1.0, 250, 999, SELL), record=True)
@@ -98,7 +98,7 @@ class TestCaseA:
 
 
 class TestCaseB:
-    """Section 8, case B: sell (t, 400, 9.99, -1).  Walks the book and leaves a rest.
+    """Case B of the worked example: sell (t, 400, 9.99, -1), walking and leaving a rest.
 
     The canonical fixture.
     """

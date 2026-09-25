@@ -74,12 +74,12 @@ which can move the best price on that side. It changes nothing else.
 
 `tests/` mirrors the package layout; run `python -m pytest tests/`.
 
-**Canonical fixture.** §8 of the reference, Case B: $\tau = 0.01$; bid $10.00 \times 100$,
+**Canonical fixture.** Case B of the reference's worked example: $\tau = 0.01$; bid $10.00 \times 100$,
 $9.99 \times 200$, $9.98 \times 150$; ask $10.02 \times 120$, $10.03 \times 180$; incoming
 sell $(t, 400, 9.99, -1)$. Expected: $q_M = 300$ filled as $100$ at $10.00$ and $200$ at
 $9.99$; the remaining $100$ rests at $9.99$ on the ask side; afterwards $P^b_t = 9.98$,
 $P^a_t = 9.99$, $\phi_t = 0.01$, $P^m_t = 9.985$, $I^1_t = +0.2$. It exercises walking the
-book, a residual resting inside the old spread, index shifting and empty levels in one go.
+book, a residual resting below the old best bid, index shifting and empty levels in one go.
 Case A (the same book, sell $(t, 250, 9.99, -1)$) is the no-remainder counterpart.
 
 **Property tests** worth having from the start:
@@ -90,7 +90,7 @@ Case A (the same book, sell $(t, 250, 9.99, -1)$) is the no-remainder counterpar
 - `queue_imbalance(n)` lies in $[-1, 1]$ and is $+1$ / $-1$ exactly when one side is empty
   (with both sides empty it is $0/0$ — assert the precondition rather than the bound);
 - the level-aggregated view derived from the order-level book agrees, level by level, with
-  the update rule of §5 applied to the previous snapshot — the two routes of §8 agreeing is
+  the update rule of §5 applied to the previous snapshot — the two routes of the worked example agreeing is
   the general statement of this test;
 - prices coming out are integer multiples of `tick_size`.
 

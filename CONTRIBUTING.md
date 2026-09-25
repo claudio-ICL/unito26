@@ -12,6 +12,7 @@ cd unito26
 conda env create -f unito26.yml     # creates the `unito26` env (installs the package with `pip install -e .`)
 conda activate unito26
 python -m pytest tests/             # sanity check: tests should pass
+git config core.hooksPath .githooks  # strips notebook outputs before they are committed
 ```
 
 ## The development cycle
@@ -87,6 +88,9 @@ Two things specific to an assignment:
 - **Package vs notebooks:** put anything you want to import and test in `unito26/`; keep
   teaching narrative and exercises in `notebooks/`.
 - **Data is not tracked:** files under `data/` are git-ignored — don't commit datasets.
+- **Notebook outputs are not tracked** either: the `pre-commit` hook of `.githooks/` strips
+  them from what is staged, and from the file on disk with it. A notebook is re-run to see
+  its figures again.
 - **Keep PRs small and focused** — easier to review, easier to merge.
 
 ## What is enforced

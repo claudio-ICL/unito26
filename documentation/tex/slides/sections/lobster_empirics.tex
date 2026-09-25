@@ -1,0 +1,63 @@
+% CLASS 4, part two -- the notes' section 1.5, sec.lobsterEmpirics.
+% The chapter's assignment, briefed and set. Planned 18 min over 5 frames.
+% Under \includeonly this file builds alone, so it carries its own Outline.
+%
+% THE FRAME CONTRACT. These slides are projection material, not reference material: the
+% students read the notes, and they only ever see a frame while it is being talked over.
+% So every frame carries ONE OBJECT -- a display, a statement of at most two lines, a TikZ
+% picture, a table or an algorithmic block -- and under it at most three CAPTIONS. A caption
+% is a gloss (`term: noun phrase'), a fragment of subject and predicate, or a condition
+% written as mathematics. It is never a sentence, never a subordinate clause, and never a
+% repetition of the frame title: what the title says, the body does not say again, and what
+% follows from the object is spoken. At most 12 words of prose each, 25 to a frame, hard
+% cap 40. A statement states its head claim and stops; its consequence is spoken.
+% What is said over the object goes in \note{}, which \documentclass[script]{unito26slides}
+% prints beside each frame and the deck itself never shows. Check with
+%   python3 .claude/skills/writing-in-tex/scripts/frame_density.py <file>
+% Open the class on the chapter roadmap, as classes 1 and 2 do. Do not close on a summary
+% frame: a slide that recites what the class just did is the spoken half written down.
+%
+% LABELS. eq.queueImbalance belongs to class 1 and remark.passiveDirection to class 2; both
+% are RESTATED HERE WITHOUT LABELS. Nobody remembers a formula from three weeks ago, and the
+% assignment turns on both of them.
+
+\subsection{Assignment --- evidence from recorded data}
+
+\begin{frame}
+  \frametitle{Outline}
+% 2 min. One \nocite per line -- a multi-key \nocite spanning lines breaks bibtex.
+\nocite{LPV22sho}
+\nocite{HP11lob}
+% The apparatus is developed on flow we generate, and a result obtained on generated flow is
+% a result about the generator.
+\end{frame}
+
+\begin{frame}
+  \frametitle{The intensities do not read the book}
+% 4 min. Redisplay eq.queueImbalance here, unlabelled. A resting limit order is short an
+% option: it is filled when someone wishes to trade against it, which is disproportionately
+% when trading against it is right, and the defence is to withdraw first. So a queue about to
+% be picked off is one whose own side pulls away from it, and depletion begets depletion.
+% That is what makes \queueImbalance[1] informative in a traded book -- a thin bid is thin
+% BECAUSE those posting on that side inferred something. A kernel built for replenishment
+% does the reverse, and the two cannot both be strong in one specification.
+\end{frame}
+
+\begin{frame}
+  \frametitle{Three more absences}
+% 3 min. The marks are independent of the flow, and a generator whose withdrawals draw
+% against the size actually resting emits a THINNED process rather than the Hawkes process it
+% started from -- the hypothesis fails first on the withdrawal types. One excitation
+% timescale; no intraday non-stationarity; and no anchor for the price level, so the mean
+% price change over a session is a property of the seed.
+\end{frame}
+
+\begin{frame}
+  \frametitle{Read the comparison asymmetrically}
+% 4 min. remark.asymmetricReading. Whatever forecasting power \queueImbalance[1] retains in
+% the generated setting is MECHANICAL -- a depleted queue is one market order from clearing
+% -- and none of it is informational.
+% A result favourable to \queueImbalance[1] is the stronger finding.
+% Then what recorded data settles: whether \signedExcitation carries either sign in a traded
+% market, and over what window and horizon the sign of the forecast can be read at all.
+\end{frame}
