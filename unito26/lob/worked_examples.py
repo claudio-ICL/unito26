@@ -131,7 +131,7 @@ CATALOGUE: tuple[WorkedExample, ...] = (
     ),
     WorkedExample(
         name="section 8 case B: walks the book and rests the remainder",
-        branch="q^inf > 0 inside the old spread; ask indices shift, two levels empty",
+        branch="q^inf > 0 below the old best bid; ask indices shift, two levels empty",
         before=SECTION_8_BOOK,
         message=limit_order(1.0, 400, 999, SELL),
         after={998: 150, 999: -100, 1002: -120, 1003: -180},

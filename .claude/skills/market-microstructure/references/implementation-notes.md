@@ -79,7 +79,7 @@ $9.99 \times 200$, $9.98 \times 150$; ask $10.02 \times 120$, $10.03 \times 180$
 sell $(t, 400, 9.99, -1)$. Expected: $q_M = 300$ filled as $100$ at $10.00$ and $200$ at
 $9.99$; the remaining $100$ rests at $9.99$ on the ask side; afterwards $P^b_t = 9.98$,
 $P^a_t = 9.99$, $\phi_t = 0.01$, $P^m_t = 9.985$, $I^1_t = +0.2$. It exercises walking the
-book, a residual resting inside the old spread, index shifting and empty levels in one go.
+book, a residual resting below the old best bid, index shifting and empty levels in one go.
 Case A (the same book, sell $(t, 250, 9.99, -1)$) is the no-remainder counterpart.
 
 **Property tests** worth having from the start:

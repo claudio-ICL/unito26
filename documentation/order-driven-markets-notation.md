@@ -347,7 +347,7 @@ $I^1_t = (50-120)/170 = -0.4118$. Both routes agree.
 $(t, 400, 9.99, -1)$.
 
 Decomposition: $q_M = \min(400,\ 300) = 300$, remainder $(t, 100, 9.99, -1)$ rests on the ask
-side at 9.99 — inside the old spread.
+side at 9.99 — a tick below the old best bid, on a level it has just cleared.
 
 Update rule: $N_s = 3$ (since $400 < 450$), $N_p = 3$, $N = 2$; $q^0 = 400$, $q^1 = 300$,
 $q^i = 100$ for $i \ge 2$, so $q^\infty = 100 = q - q_M$.
@@ -360,8 +360,8 @@ using $S^{a,j}_{t-} = 0$ for $j \le 0$), $S^{a,2}_t = S^{a,3}_t = 0$ at 10.00 an
 $S^{a,4}_t = 120$ at 10.02. Hence $\phi_t = 0.01$, $P^m_t = 9.985$,
 $I^1_t = (150-100)/250 = +0.2$.
 
-Case B exercises everything that usually breaks: walking the book, a residual resting inside
-the spread, index shifting, and empty levels between the best price and the deeper ones. Use
+Case B exercises everything that usually breaks: walking the book, a residual resting below
+the old best bid, index shifting, and empty levels between the best price and the deeper ones. Use
 it as the canonical test fixture.
 
 ## 9. Symbol table
