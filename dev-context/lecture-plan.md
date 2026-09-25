@@ -12,7 +12,7 @@ One notes section per class, and slides and a notebook in every class.
 | | notes section | slides | notebooks |
 | --- | --- | --- | --- |
 | Class 1 | §1.1 `sec.orderDrivenMarkets` | 1h45 | `01-the-limit-order-book` 1h |
-| Class 2 | §1.2 `sec.messageFiles` | 45m | `02-the-fold` 1h15 · `03-the-book-made-faster` 1h |
+| Class 2 | §1.2 `sec.messageFiles` | 1h | `02-the-fold` 1h05 · `03-the-book-made-faster` 55m |
 | Class 3 | §1.3 `sec.pointProcesses` | 1h15 | `04-simulating-self-excitation` 1h45 |
 | Class 4 | §1.4 `sec.priceFormation`, §1.5 `sec.lobsterEmpirics` | 1h45 | `05-price-formation` 1h15 |
 
@@ -33,7 +33,7 @@ first slide of the course was "Two market infrastructures".
 | --- | --- | --- | --- | --- |
 | `sections/` × 7 (Welcome) | day one | 9 | 15m | ☑ 25 Sep |
 | `sections/order_driven_markets.tex` | 1 | 23 | 100m | ☑ 22 Sep, revised 25 Sep |
-| `sections/message_files.tex` | 2 | 12 | 46m | ☐ |
+| `sections/message_files.tex` | 2 | 16 | 66m | ☑ 25 Sep |
 | `sections/point_processes.tex` | 3 | 18 | 76m | ☐ |
 | `sections/price_formation.tex` | 4 | 20 | 90m | ☐ |
 | `sections/lobster_empirics.tex` | 4 | 4 | 13m | ☐ |
@@ -113,7 +113,7 @@ The cut order lives in each file's header, so it is read where it is needed. In 
 | class | cut first | then |
 | --- | --- | --- |
 | 1 | the elementary-stream reduction, recoverable in class 2 | the `Sto18mic` beat on the micro-price |
-| 2 | the consolidated tape — Regulation NMS is background and plays no part in the assignment | hand the fold's termination argument to the notebook |
+| 2 | the consolidated tape — Regulation NMS is background and plays no part in the assignment | the nomenclature frame, the vendor names surviving under the schematic; then hand the fold's termination argument to the notebook |
 | 3 | the mean response, folding the relaxation time into the frame before it | the conditional survival function, asserted inline in the two algorithms |
 | 4 | the total response, as a closing clause on the residual frame | a minute each from two frames; then hand the three weightings to the notebook |
 
@@ -155,15 +155,23 @@ than asserted. The notebook also stopped hand-rolling what the package provides
 claims instead of asserting them: the sentinel spread at level 10 prints as 19,999,999,998
 file units, and the padding census reports 0 of 269,748 rows.
 
-### Two errata for the lecturer, reported and not fixed
+### Two errata, reported on 25 September and fixed the same day
 
-- `notes/microstructure/sections/order_driven_markets.tex:529-530`: a market order walks the
-  book **iff** its sweep cost exceeds the **half**-spread, not the spread. With the full
-  spread only one direction survives. The same two lines read *"if an only if"*, *"larget"*,
-  *"sprad"*. The deck states the half-spread version, so it currently contradicts the notes at
-  the one place the deck is right.
-- `documentation/order-driven-markets-notation.md` §8 Case B carries the "inside the old
-  spread" error the deck inherited. Not the notes, so it can be fixed on request.
+Both are closed. They are recorded here because the second was in five files and only one of
+them had been named.
+
+- `notes/microstructure/sections/order_driven_markets.tex:529-530` stated the walking condition
+  against the **spread**; it is the **half**-spread, and with the full spread only one direction
+  survives. The same two lines read *"if an only if"*, *"larget"*, *"sprad"*. Rewritten as one
+  edit, with the clause that makes the equivalence checkable from `eq.sweepCost`
+  (commit `ad4053a`). **The only change ever made to the lecture notes**, and authorised as a
+  typo fix.
+- The residual of §8 Case B described as resting *inside the old spread* when it rests a tick
+  *below the old best bid*. The phrase had been copied into four files —
+  `documentation/order-driven-markets-notation.md`, `documentation/order-flow-to-order-book.md`,
+  the `market-microstructure` skill's implementation notes and `unito26/lob/worked_examples.py`
+  — and all four were fixed together (commit `ae86a8a`). Uses of the same phrase that are
+  correct, in the micro-price discussion and in a different fixture, were left alone.
 
 ## The notebooks
 
@@ -200,8 +208,8 @@ what Sunday's plan promised, so the question is what to finish rather than what 
 | Mon 21 | nothing — held for a review the author had no time to give | | ☒ |
 | Tue 22 | class 1 deck, §1.1, 23 frames, three schematics | | ☑ |
 | Wed 23 | notebook `01`, written and executed; the plotly template lifted into `visualization.py` | **class 1 teachable end to end** | ☑ |
-| Thu 24 | class 2 deck, §1.2 | | ☐ |
-| Fri 25 | notebooks `02` and `03`, written and executed | **class 2 teachable end to end** | ☐ |
+| Thu 24 | nothing for class 2: the evening went to reviewing class 1 | | ☒ |
+| Fri 25 | the class-1 review applied, both errata fixed, then class 2 in full: the deck at 16 frames and notebooks `02` and `03`, written and executed | **class 2 teachable end to end** | ☑ |
 
 Classes 3 and 4 keep their skeletons and are built in the week of 28 September; they are
 taught on 5 and 8 October. **The gate: nothing for class 2 begins until class 1 is teachable.**
@@ -214,13 +222,13 @@ cannot read anything before teaching, so a checklist gated on it could never clo
 | artefact | scaffolded | written | builds / runs | inspected |
 | --- | --- | --- | --- | --- |
 | `slides/sections/order_driven_markets.tex` | ☑ | ☑ | ☑ | ☑ |
-| `slides/sections/message_files.tex` | ☑ | ☐ | ☑ | ☐ |
+| `slides/sections/message_files.tex` | ☑ | ☑ | ☑ | ☑ |
 | `slides/sections/point_processes.tex` | ☑ | ☐ | ☑ | ☐ |
 | `slides/sections/price_formation.tex` | ☑ | ☐ | ☑ | ☐ |
 | `slides/sections/lobster_empirics.tex` | ☑ | ☐ | ☑ | ☐ |
 | `notebooks/lectures/01-the-limit-order-book.ipynb` | ☑ | ☑ | ☑ | ☑ |
-| `notebooks/lectures/02-the-fold.ipynb` | ☑ | ☐ | ☐ | ☐ |
-| `notebooks/lectures/03-the-book-made-faster.ipynb` | ☑ | ☐ | ☐ | ☐ |
+| `notebooks/lectures/02-the-fold.ipynb` | ☑ | ☑ | ☑ | ☑ |
+| `notebooks/lectures/03-the-book-made-faster.ipynb` | ☑ | ☑ | ☑ | ☑ |
 | `notebooks/lectures/04-simulating-self-excitation.ipynb` | ☑ | ☐ | ☐ | ☐ |
 | `notebooks/lectures/05-price-formation.ipynb` | ☑ | ☐ | ☐ | ☐ |
 | `unito26slides.cls` and `slide_formatting.tex` | ☑ | ☑ | ☑ | ☑ |
@@ -238,6 +246,24 @@ top of the reply, not buried in it — including a class that will not fit its b
 the failure mode this plan is most exposed to.
 
 ---
+
+### What class 2 does instead of the reconciliation the notes promise
+
+§1.2 closes by saying that an implementation of the fold is compared against the exchange's
+own, state by state. That comparison needs a map from a `LobsterEvent` to a `Message`, and the
+package deliberately does not carry one: `market-microstructure.md` records L6 —
+reconstructing the real LOBSTER book from its message file — as the aspiration the ladder
+points at and as unbuilt on purpose. **Class 2 does not build it**, and therefore needs no new
+code in `unito26/` at all.
+
+What notebook `02` practises the habit on instead is the coarsening, which is built, tested and
+measurable. The feed writes one row per resting order consumed and a session one row per order
+that consumed them; the identity
+$\sum_n e_n - e(\text{first},\text{last}) = S_{\text{end}} - \sum_i S_{j_i}$ says the order
+flow contribution survives a queue split and cannot survive a level walk. On AMZN's whole day:
+6,591 market orders, 1,511 of several fills, **297 that walked a level, and exactly 297 rows on
+which the contribution differs**. A proof of where two routes must agree, and a measurement that
+lands on it.
 
 ### Two things notebook `01` turned up
 
