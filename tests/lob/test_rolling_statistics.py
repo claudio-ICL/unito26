@@ -25,7 +25,7 @@ SPEC = SessionStatistics(LEVELS, SWEEPS, WINDOWS)
 DEPTH = ReportedDepth(4)
 PRICE_UNIT = 100
 
-#: Section 8: bid 10.00 x 100, 9.99 x 200, 9.98 x 150; ask 10.02 x 120, 10.03 x 180.
+#: The baseline book: bid 10.00 x 100, 9.99 x 200, 9.98 x 150; ask 10.02 x 120, 10.03 x 180.
 BIDS = {1000: 100, 999: 200, 998: 150}
 ASKS = {1002: 120, 1003: 180}
 

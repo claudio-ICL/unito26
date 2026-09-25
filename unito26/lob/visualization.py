@@ -82,7 +82,7 @@ def ascii_ladder(book: AggregateBook, bar: int = 28) -> str:
 
     Every occupied price appears, and only occupied prices: an empty grid position
     inside the book is shown as a gap in the price column, which is what makes the two
-    empty levels of section 8's case B visible at a glance.
+    empty levels of the walking case visible at a glance.
     """
     bids = book.levels_map(BUY)
     asks = book.levels_map(SELL)

@@ -91,7 +91,7 @@ moved between the two"*, and did not keep it.
   `\booksizeaxis{left}{right}{top}{step}` in `unito26slides.cls` draws the horizontal grid
   and the share counts, and is called *first* inside the picture so that the columns sit over
   it. All six book pictures take it; `message_files.tex`'s passive-side schematic was drawing
-  heights in centimetres and was rescaled onto the section 8 sizes to take it too.
+  heights in centimetres and was rescaled onto the baseline book's sizes to take it too.
 - **`tikz` was loaded with no libraries.** `positioning`, `arrows.meta` and `calc` are all
   hard errors when used, and every schematic wants one. Added.
 - **there was no way to build the lecturer's script.** `\documentclass[script]{unito26slides}`
@@ -243,7 +243,7 @@ said nothing about how much a column was, so `\booksizeaxis` now puts a light ho
 grid and the share counts behind all six of them.
 
 **`sec.orderDrivenMarkets` went from 22 frames to 27.** *The sweep cost, visualised* draws
-the split of `eq.sweepCost` on the section 8 book: a buy of 250 at 1003 takes 120 at 1002 and
+the split of `eq.sweepCost` on the baseline book: a buy of 250 at 1003 takes 120 at 1002 and
 130 at 1003, and pays $1 + 0.52$ ticks. *The rule is a loop before it is a formula* gives the
 procedure before `prop.lobUpdate` gives the closed form — `algo.bookFold` of the notes cut to
 its matching half, since the message, the stream and the fold are class 2's objects and the
@@ -252,7 +252,7 @@ that was already there: a passive order resting inside the spread, case A, and a
 that moves the best bid down.
 
 **The drawn numbers are `unito26.lob.worked_examples.CATALOGUE`**, entries 2, 5, 6 and 11 on
-`SECTION_8_BOOK`, each checked term by term against the catalogue and each pinning the branch
+`BASELINE_BOOK`, each checked term by term against the catalogue and each pinning the branch
 of `prop.lobUpdate` its caption names. A change to one is a change to both: the catalogue is
 under test, the slides are not.
 
@@ -267,7 +267,7 @@ them had been named.
   edit, with the clause that makes the equivalence checkable from `eq.sweepCost`
   (commit `ad4053a`). **The only change ever made to the lecture notes**, and authorised as a
   typo fix.
-- The residual of §8 Case B described as resting *inside the old spread* when it rests a tick
+- The residual of Case B described as resting *inside the old spread* when it rests a tick
   *below the old best bid*. The phrase had been copied into four files —
   `documentation/order-driven-markets-notation.md`, `documentation/order-flow-to-order-book.md`,
   the `market-microstructure` skill's implementation notes and `unito26/lob/worked_examples.py`
