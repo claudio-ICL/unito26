@@ -1,0 +1,8 @@
+Calendar:
+https://unito.prod.up.cineca.it/calendarioPubblico/linkCalendarioId=6a578a218085d001c84c695c
+
+Moodle:
+https://elearning.unito.it/sme/course/view.php?id=9517
+
+Campusnet:
+https://www.finance-insurance.unito.it/do/corsi.pl/Show?_id=ssse
