@@ -57,3 +57,6 @@ documentation/tex/**/figures/
 
 # Editor swap files
 *.sw[a-p]
+
+# Correspondence with students
+emails/
