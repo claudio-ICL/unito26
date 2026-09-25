@@ -23,17 +23,19 @@ One notes section per class, and slides and a notebook in every class.
 One deck, `documentation/tex/slides/main.tex`, mirroring the book: one `\section` for the
 chapter and one `\include` per section of the notes, under the notes' own name.
 
-**A Welcome section now opens the deck**, mirroring `notes/welcome/` one file per section:
-`the_course`, `prerequisites`, `learning_python`, `learning_finance`, `examination`,
-`assignments`, `reading_list` — nine frames, about fifteen minutes, under
-`\section{Welcome}` ahead of `\section{Market microstructure}`. Before 25 September the
-first slide of the course was "Two market infrastructures".
+**A Welcome section now opens the deck**, under `\section{Welcome}` ahead of
+`\section{Market microstructure}`: six frames, about ten minutes, in `the_course`,
+`prerequisites`, `learning_python`, `examination`, `reading_list`. It mirrored
+`notes/welcome/` one file per section until the caption pass of 25 September, which merged
+`learning_finance` into the chapters table of `the_course` and `assignments` into the
+arithmetic frame of `examination`, and deleted the two files. Before 25 September the first
+slide of the course was "Two market infrastructures".
 
 | file | class | frames | planned | written |
 | --- | --- | --- | --- | --- |
-| `sections/` × 7 (Welcome) | day one | 9 | 15m | ☑ 25 Sep |
-| `sections/order_driven_markets.tex` | 1 | 23 | 100m | ☑ 22 Sep, revised 25 Sep |
-| `sections/message_files.tex` | 2 | 16 | 66m | ☑ 25 Sep |
+| `sections/` × 5 (Welcome) | day one | 6 | 10m | ☑ 25 Sep |
+| `sections/order_driven_markets.tex` | 1 | 22 | 95m | ☑ 22 Sep, revised 25 Sep |
+| `sections/message_files.tex` | 2 | 16 | 58m | ☑ 25 Sep |
 | `sections/point_processes.tex` | 3 | 18 | 76m | ☐ |
 | `sections/price_formation.tex` | 4 | 20 | 90m | ☐ |
 | `sections/lobster_empirics.tex` | 4 | 4 | 13m | ☐ |
@@ -78,13 +80,76 @@ moved between the two"*, and did not keep it.
 - **The References frame printed across the footer** and the log said nothing.
   `allowframebreaks` breaks on `\textheight`; with the footline reserving space it now breaks
   clear. Verified by rendering the page.
+- **the deck carried no version.** The notes date their title page with `This version:
+  \compilationDate`; the deck said `Fall 2026` and nothing else, so two printouts could not be
+  told apart. `\date[Fall 2026]{Fall 2026\\[1ex] This version: \compilationDate}` in
+  `specs.tex` dates the title page and leaves the footline one line — the footline prints the
+  *short* form, through `\insertshortdate`. `\compilationDate` is defined again in
+  `unito26slides.cls`, as the two classes share no preamble.
 - **`tikz` was loaded with no libraries.** `positioning`, `arrows.meta` and `calc` are all
   hard errors when used, and every schematic wants one. Added.
+- **there was no way to build the lecturer's script.** `\documentclass[script]{unito26slides}`
+  now sets `show notes`, so each frame is followed by a page carrying its `\note`: the slide
+  and what is said over it are one source and cannot drift apart. Combine it with `handout`, or
+  every `\pause` beat gets a page and the script repeats. natbib renews `\makeindex`
+  unconditionally and beamer leaves it undefined once notes are typeset, so the class
+  `\providecommand`s it before loading natbib — without that the script build alone fails.
 - **`handout` was swallowed in silence.** `\LoadClass[10pt]{beamer}` forwarded no options, so
   `\documentclass[handout]` did nothing and each `\pause` beat stayed its own page.
   `\DeclareOption*{\PassOptionsToClass{\CurrentOption}{beamer}}` before it fixes that: the
   deck is 130 pages in presentation mode and **83 in handout**, which is the difference
   between rendering 130 images to review and 83.
+
+### The frame contract
+
+The first version of both microstructure decks reproduced the notes' paragraphs. Measured
+against `~/Documents/thesis/viva/tex`, which is the style model, class 1 ran at 115 words a
+frame and class 2 at 133, against the viva's 67 — and class 2 carried **one display across
+sixteen frames**, with eight frames holding no object at all.
+
+**The deck is projection material, not reference material.** Students do not read the slides;
+they see them while the lecturer talks, and the reference material is the notes. So:
+
+- **every frame carries one object** — a display, a statement of at most two lines, a TikZ
+  picture, a `booktabs` table or an `algorithmic` block. No frame is prose alone;
+- **at most three captions under it**. A caption is a *gloss* (`term: noun phrase`), a
+  *fragment* of subject and predicate, or a *symbol* — a condition written as mathematics
+  rather than said in words. It is never a sentence, and never a repetition of the frame
+  title: what the title claims, the body does not claim again. Budget 12 words of prose a
+  caption, 25 a frame, hard cap 40;
+- **a statement states its head claim and stops.** Its consequence is spoken. Remark 9 reads
+  `$\vwap_{t,w}$ is a statistic of the transactions.` and *cannot be recovered from the
+  sequence of configurations alone* is in the `\note`. Definitions keep their mathematics
+  whole: one that sheds a condition is a different definition;
+- **no closing summary frame.** A slide that recites what the class just did is the spoken
+  half written down; the forward signpost lives in the last frame's `\note`;
+- **what is said over the object goes in `\note{}`**, not on the slide. Nothing is lost: it
+  moves to where it is used;
+- a statement environment keeps the notes' label only where it survives *as a statement*.
+  Where the claim becomes a caption or a picture, the label goes with it, and the file header
+  says which labels the file still owns.
+
+Measured, in caption words a frame: the viva deck 67; class 1 115 before the first rewrite,
+24 after it, **15** after the caption pass; class 2 133, then 21, then **16**; the Welcome
+section 82 before the caption pass and **17** after. Zero frames over the cap, zero with a
+caption over twelve words, zero with no object, across all forty-four.
+
+The contract is checked, not remembered:
+
+```bash
+python3 .claude/skills/writing-in-tex/scripts/frame_density.py documentation/tex/slides/sections/<file>.tex
+```
+
+It prints every frame over the cap (`OVER`), every frame carrying a caption that reads as a
+sentence (`LONG`), every frame whose statement says more than its head claim (`STMT`), and
+every frame with no object (`BARE`), with the file's average. It counts `\note` separately
+and never holds it against a frame, and it counts prose only: a symbol is not a word.
+`STMT` is a list to justify rather than a list to forbid — three of the notes' statements
+carry their hypotheses in words, and abridging them would change the claim.
+
+Two recurring objects came out of the rewrite and belong in classes 3 and 4 too: the **chapter
+roadmap**, four boxes with the current section highlighted, which opens and closes every class;
+and **the schematic**, boxes and arrows in the vocabulary of the two-feed picture.
 
 Conventions the deck inherits, and the two it does not:
 
@@ -295,7 +360,8 @@ pdftoppm -r 110 -png documentation/tex/slides/main.pdf /tmp/frame
 ```
 
 then measure how far body ink reaches down each page (a frame over about 90% is worth
-looking at twice), and read the rendered frames. Class 1 measures 65--88%.
+looking at twice), and read the rendered frames. After the rewrite the deck's median frame
+measures 63%, and the four deepest are the class 2 schematics at 83--89%.
 
 ```bash
 # the notes must still build, unchanged
@@ -312,6 +378,14 @@ grep -icE '^! |Undefined control sequence|LaTeX Warning: (Reference|Citation)|mu
 conda activate unito26 && python -m pytest tests/
 jupyter nbconvert --to notebook --execute --inplace notebooks/lectures/0*.ipynb
 python3 .claude/skills/writing-in-tex/scripts/loose_paragraphs.py documentation/tex/slides
+
+# the frame contract: 0 over the cap, 0 with no object, average well under 40
+python3 .claude/skills/writing-in-tex/scripts/frame_density.py documentation/tex/slides/sections
+# and the title page, read as an image: the version line on it, `Fall 2026' in the footline
+
+# the lecturer's script builds from the same sources
+sed 's/{unito26slides}/[handout,script]{unito26slides}/' documentation/tex/slides/main.tex \
+  > documentation/tex/slides/script.tex
 ```
 
 A `\nocite` key is checked against `documentation/tex/bibliography.bib` before it is written.

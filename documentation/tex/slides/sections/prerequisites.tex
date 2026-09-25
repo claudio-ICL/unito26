@@ -1,21 +1,42 @@
-% WELCOME -- the notes' section 0.2, sec.prerequisites. Budget 2 min.
+% WELCOME -- the notes' sections 0.2 and 0.3, sec.prerequisites and sec.learningPython.
+% Budget 3 min. The stack belongs here, beside the machine it is installed on; the habits
+% taught alongside it keep their own frame in learning_python.tex.
+% The caption contract is stated in the header of the_course.tex.
 
-\subsection{Prerequisites}
+\subsection{Prerequisites, and the stack}
 
 \begin{frame}
-  \frametitle{We assume stochastic processes, and a machine that runs Python}
-The basic theory of stochastic processes is assumed:
-filtrations, conditional expectation, martingales and stopping times.
-The lecture notes of a first course on the subject suffice;
+  \frametitle{Stochastic processes, a machine, and four libraries}
+\begin{center}
+\begin{tikzpicture}[font=\scriptsize, node distance=3mm,
+    box/.style={draw=gray!60, rounded corners=2pt, align=center, inner sep=4pt,
+                text width=3.1cm, fill=gray!8},
+    layer/.style={draw=blue!50, rounded corners=2pt, align=center, inner sep=4pt,
+                  text width=3.6cm, fill=blue!10}]
+  \node[box] (theory) {filtrations, conditional\\ expectation, martingales\\ stopping times};
+  \node[box, below=of theory] (machine) {a machine that runs\\ Python and Jupyter};
+  \node[layer, right=12mm of theory] (num) {\codehl{numpy} \codehl{scipy}\\ the numerics};
+  \node[layer, below=of num] (tab)
+       {\codehl{pandas} \codehl{pyarrow} \codehl{pandera}\\ tables, and what a table is};
+  \node[layer, below=of tab] (fit)
+       {\codehl{scikit-learn}\\ \codehl{matplotlib} \codehl{plotly}\\ the fitting, the figures};
+\end{tikzpicture}
+\end{center}
+
+\pause
+
+Assumed on the left, installed on the right.
+
+\pause
+
+No setup, or no idea where to start: write to me, early.
+\note{
+The basic theory of stochastic processes is assumed: filtrations, conditional expectation,
+martingales and stopping times. The lecture notes of a first course on the subject suffice;
 \citet{Wil91pro} is the classical textbook reference.
-
-\pause
-
-The course also assumes a machine set up for development,
-on which Python code and Jupyter notebooks can be read, written and run.
-
-\pause
-
-If you have no such setup, or are not sure how to arrange one, write to me ---
-before you need it rather than after.
+The course also assumes a machine set up for development, on which Python code and Jupyter
+notebooks can be read, written and run. Write to me before you need it rather than after.
+\codehl{pandera} is the one that will be unfamiliar: it is where a table's schema is
+written down, and section 1.2 uses it on the first day we read recorded data.
+}
 \end{frame}

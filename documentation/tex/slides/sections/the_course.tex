@@ -1,47 +1,89 @@
-% WELCOME -- the notes' section 0.1, sec.theCourse.
+% WELCOME -- the notes' sections 0.1 and 0.4, sec.theCourse and sec.learningFinance.
 % The first frames of the course. Budget 4 min.
-% The Welcome files mirror notes/welcome/sections/ one for one, under the notes' own names.
+% sec.learningFinance has no frame of its own: what we build in each chapter is the second
+% and third rows of the table below, where it costs no words.
+%
+% THE CAPTION CONTRACT. A caption is a gloss (`term: noun phrase'), a fragment of subject
+% and predicate, or a condition written as mathematics -- never a sentence, and never a
+% repetition of the frame title. At most 12 words each, three to a frame, 25 to a frame in
+% total. What is said over the object goes in \note{}. Check with
+%   python3 .claude/skills/writing-in-tex/scripts/frame_density.py <file>
 
 \subsection{The course}
 
 \begin{frame}
   \frametitle{The course has two chapters}
-Chapter 1 is \emph{market microstructure}:
-what an order is,
-how an exchange matches orders,
-what the limit order book is at any instant,
-and how the flow of orders forms a price.
+\begin{center}
+\small
+\begin{tabular}{@{}lll@{}}
+\toprule
+ & \emph{Chapter 1} & \emph{Chapter 2} \\
+ & market microstructure & options and volatility \\
+\midrule
+the subject & orders, matching, the book & Black--Scholes, SABR \\
+we build & the fold, and faster folds & pricers for calls and puts \\
+on the way & Hawkes processes & the fundamental theorem \\
+the end point & price formation & a volatility signal's P\&L \\
+\bottomrule
+\end{tabular}
+\end{center}
 
 \pause
 
-Chapter 2 is \emph{option pricing and volatility trading}:
-the Black--Scholes model,
-the fundamental theorem of derivative trading,
-and the SABR model.
+Both in Python. Every computable statement, computed.
 
 \pause
 
-Both are taught in Python.
-Every statement of the notes that can be computed is computed,
-and you are expected to read and understand the implementations that compute them.
-The code is at \url{https://github.com/claudio-ICL/unito26}.
+\url{https://github.com/claudio-ICL/unito26}
+\note{
+Chapter 1 is about market microstructure: what an order is, how an exchange matches orders,
+what the limit order book is at any instant, and how the flow of orders forms a price. We
+fold the stream of orders into an aggregated book, examine several implementations of that
+fold and compare their performance, then model the arrival of orders as a Hawkes process and
+ask what its parametrisation says about a trading epoch. The order flow imbalance and price
+formation are the end point.
+Chapter 2 is option pricing and volatility trading: the Black--Scholes model, the
+fundamental theorem of derivative trading, and SABR. We write pricers for European calls and
+puts under each, and quantify the profit and loss of strategies built to capture a
+volatility signal.
+You are expected to read and understand the implementations, not only to run them.
+}
 \end{frame}
 
 \begin{frame}
   \frametitle{Writing code that works no longer gates the analysis}
+\begin{center}
+\begin{tikzpicture}[font=\scriptsize, node distance=6mm,
+    box/.style={draw=gray!60, rounded corners=2pt, align=center, inner sep=4pt,
+                text width=2.0cm, fill=gray!8},
+    tool/.style={box, fill=blue!12, draw=blue!50},
+    keep/.style={draw=orange!70, rounded corners=2pt, align=left, inner sep=5pt,
+                 text width=3.7cm, fill=orange!15}]
+  \node[box] (code) {code that works};
+  \node[box, right=10mm of code] (analysis) {the analysis};
+  \node[tool, below=of code] (llm) {coding assistants};
+  \node[keep, right=6mm of analysis] (judgment)
+       {\emph{judgment}\\ correct, or merely running\\ two designs, one choice\\
+        the cost a year later};
+  \draw[-{Stealth}, gray!60] (code) -- node[above, font=\tiny, gray] {the gate} (analysis);
+  \draw[-{Stealth}, blue!50] (llm) -- (code);
+  \draw[-{Stealth}, orange!70] (judgment) -- (analysis);
+\end{tikzpicture}
+\end{center}
+
+\pause
+
+The assistants close the blue arrow, not the orange one.
+
+\pause
+
+Taught here, and examined.
+\note{
 Until recently, writing code that worked was the skill that gated everything else in
-quantitative analysis.
-With coding assistants that is no longer true.
-
-\pause
-
-What an assistant does not supply is the \emph{judgment}
-to tell a correct implementation from one that merely runs,
-to choose between two designs,
-and to see what an implementation choice will cost a year later.
-
-\pause
-
-That judgment is what this course teaches,
-and it is what the examination tests.
+quantitative analysis. With coding assistants that is no longer true.
+What an assistant does not supply is the judgment to tell a correct implementation from one
+that merely runs, to choose between two designs, and to see what an implementation choice
+will cost a year later.
+That judgment is what this course teaches, and it is what the examination tests.
+}
 \end{frame}

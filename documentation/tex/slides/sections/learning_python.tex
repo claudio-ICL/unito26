@@ -1,41 +1,38 @@
-% WELCOME -- the notes' section 0.3, sec.learningPython. Budget 4 min.
+% WELCOME -- the notes' section 0.3, sec.learningPython. Budget 3 min.
+% The stack itself is on the prerequisites frame; this frame is the four habits taught
+% alongside it. The caption contract is stated in the header of the_course.tex.
 
-\subsection{What we learn about Python}
-
-\begin{frame}
-  \frametitle{The stack}
-\codehl{numpy} and \codehl{scipy} for the numerics.
-
-\pause
-
-\codehl{pandas} and \codehl{pyarrow} for tabular data,
-and \codehl{pandera} for the schemas that say what a table is.
-
-\pause
-
-\codehl{scikit-learn} for the fitting,
-and \codehl{matplotlib} and \codehl{plotly} for the figures.
-\end{frame}
+\subsection{How we write Python}
 
 \begin{frame}
   \frametitle{Four habits, taught alongside the stack}
-We reason about what an implementation must satisfy before we write it:
-the invariants it preserves, the round trips it closes,
-and the alternative routes through a computation that must reach the same value.
+\begin{center}
+\footnotesize
+\begin{tabular}{@{}ll@{}}
+\toprule
+\emph{habit} & \emph{what it looks like} \\
+\midrule
+properties before code & invariants, round trips, two routes to one value \\
+tests before the implementation & the property, written first \\
+an object carries its own definition & the schema with the type, the parameters frozen \\
+clear first, fast second & the optimisation beats a measured baseline \\
+\bottomrule
+\end{tabular}
+\end{center}
 
 \pause
 
-Those properties are then written as tests, before the implementation they specify.
-
-\pause
-
-What defines an object is written down with the object:
-a type carries the schema that validates it,
-and a model carries its parametrisation as a frozen object, never as a computed default.
-
-\pause
-
+The comparison in the fourth row is part of the material.
+\note{
+We reason about what an implementation must satisfy before we write it: the invariants it
+preserves, the round trips it closes, and the alternative routes through a computation that
+must reach the same value. Those properties are then written as tests, before the
+implementation they specify.
+What defines an object is written down with the object: a type carries the schema that
+validates it, and a model carries its parametrisation as a frozen object, never as a
+computed default.
 The clear implementation comes first and is understood before anything faster is written.
-An optimisation is a second implementation shown to beat the first,
-and the comparison is part of the material.
+An optimisation is a second implementation shown to beat the first, and section 1.2's five
+books are exactly that comparison.
+}
 \end{frame}

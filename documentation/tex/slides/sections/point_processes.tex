@@ -4,6 +4,21 @@
 % picture), then F3.3 (assert the survival function inline on F3.15 and F3.16).
 % Do NOT cut F3.12: section 1.4.3 is unstateable without prop.forwardMean.
 %
+% THE FRAME CONTRACT. These slides are projection material, not reference material: the
+% students read the notes, and they only ever see a frame while it is being talked over.
+% So every frame carries ONE OBJECT -- a display, a statement of at most two lines, a TikZ
+% picture, a table or an algorithmic block -- and under it at most three CAPTIONS. A caption
+% is a gloss (`term: noun phrase'), a fragment of subject and predicate, or a condition
+% written as mathematics. It is never a sentence, never a subordinate clause, and never a
+% repetition of the frame title: what the title says, the body does not say again, and what
+% follows from the object is spoken. At most 12 words of prose each, 25 to a frame, hard
+% cap 40. A statement states its head claim and stops; its consequence is spoken.
+% What is said over the object goes in \note{}, which \documentclass[script]{unito26slides}
+% prints beside each frame and the deck itself never shows. Check with
+%   python3 .claude/skills/writing-in-tex/scripts/frame_density.py <file>
+% Open the class on the chapter roadmap, as classes 1 and 2 do. Do not close on a summary
+% frame: a slide that recites what the class just did is the spoken half written down.
+%
 % DROPPED BY DESIGN: lemma.perronFrobenius; the whole second-order block (sec.secondOrder,
 % thm.lyapunov, lemma.lyapunovUniqueness, eq.stationaryCovariance, eq.stateProductJump,
 % eq.lyapunov, eq.explicitFormulaeOfStationaryCovariance, eq.secondMomentODE); the scalar

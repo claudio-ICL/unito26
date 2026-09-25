@@ -1,8 +1,21 @@
 % CLASS 1 -- the notes' section 1.1, sec.orderDrivenMarkets.
-% Budget 105 min; planned 100 over 23 frames.
+% Budget 105 min; planned 95 over 22 frames, with the welcome frames ahead of them.
 % Overrunning, cut in this order: the elementary stream (recoverable in class 2), then the
 % Sto18mic beat on the micro-price, then fold "Trades are market orders" into the frame
 % before it.
+%
+% THE FRAME CONTRACT. These slides are projection material, not reference material: the
+% students read the notes, and they only ever see a frame while it is being talked over.
+% So every frame carries ONE OBJECT -- a display, a statement of at most two lines, a TikZ
+% picture, a table or an algorithmic block -- and under it at most three CAPTIONS. A caption
+% is a gloss (`term: noun phrase'), a fragment of subject and predicate, or a condition
+% written as mathematics. It is never a sentence, never a subordinate clause, and never a
+% repetition of the frame title: what the title says, the body does not say again, and what
+% follows from the object is spoken. At most 12 words of prose each, 25 to a frame, hard
+% cap 40. A statement states its head claim and stops; its consequence is spoken.
+% What is said over the object goes in \note{}, which \documentclass[script]{unito26slides}
+% prints on its own and the deck itself never shows. Check with
+%   python3 .claude/skills/writing-in-tex/scripts/frame_density.py <file>
 %
 % ORDER. The notes put prop.lobUpdate before prop.decompositionOfLimitOrder, because their
 % proof of the second uses N_s, N_p and q^i from the first. The deck skips both proofs, so
@@ -29,109 +42,119 @@
 \nocite{FPR13mar}
 \nocite{GPWMFH13lim}
 \nocite{Bou18tra}
-Order-driven markets are trading venues organised around \emph{limit orders}:
-the participants supply the prices themselves,
-and the venue only matches them against one another.
+\begin{center}
+\begin{tikzpicture}[font=\scriptsize, node distance=3mm,
+    stage/.style={draw=gray!60, rounded corners=2pt, align=center, inner sep=4pt,
+                 text width=2.1cm, fill=gray!8},
+    current/.style={stage, fill=blue!15, draw=blue!55},
+    target/.style={stage, fill=orange!20, draw=orange!70}]
+  \node[current] (a) {1.1\\the book};
+  \node[stage, right=of a] (b) {1.2\\the fold};
+  \node[stage, right=of b] (c) {1.3\\point processes};
+  \node[target, right=of c] (d) {1.4\\price formation};
+  \draw[-{Stealth}, gray!60] (a) -- (b);
+  \draw[-{Stealth}, gray!60] (b) -- (c);
+  \draw[-{Stealth}, gray!60] (c) -- (d);
+\end{tikzpicture}
+\end{center}
 
 \pause
 
-We describe the mechanism precisely ---
-what a limit order is,
-how the matching algorithm clears it,
-what the limit order book is at any instant,
-and what it costs to trade against it.
+Today: orders, matching, the book at an instant, what trading costs.
 
 \pause
 
-Two features of the data these venues produce shape everything that follows:
-the events are recorded in continuous physical time,
-and the occurrence of one type of event bears on the timing of the others.
-
-\pause
-
-Section 1.4, price formation, is the one the others are for.
-It asks how a price emerges from the flow of orders,
-and which statistics of that flow forecast the mid-price.
-Everything in this class is the mechanism that question is asked about.
+1.4 is what the rest is for.
+\note{
+Order-driven markets are trading venues organised around limit orders: the participants
+supply the prices themselves, and the venue only matches them against one another.
+Two features of the data these venues produce shape everything that follows --- the events
+are recorded in continuous physical time, and the occurrence of one type of event bears on
+the timing of the others.
+Section 1.4 asks how a price emerges from the flow of orders, and which statistics of that
+flow forecast the mid-price. Everything in this class is the mechanism that question is
+asked about.
+}
 \end{frame}
 
 \begin{frame}
   \frametitle{Two market infrastructures}
-Market infrastructures fall in two categories:
-\emph{dealer markets}, also known as quote-driven,
-and \emph{limit order markets}, also known as order-driven.
+\begin{center}
+\begin{tabular}{@{}lll@{}}
+\toprule
+ & \emph{dealer} & \emph{limit order} \\
+ & quote-driven & order-driven \\
+\midrule
+prices from & the dealer & the participants \\
+the venue & quotes & matches \\
+you observe & the dealer's quotes & every commitment, live \\
+\midrule
+venues & --- & Euronext, Swiss, Tokyo, \\
+ & & Hong Kong, Toronto \\
+ & & NYSE, NASDAQ, LSE \\
+ & & (the last three keep legacy quotes) \\
+\bottomrule
+\end{tabular}
+\end{center}
 
 \pause
 
-Euronext, the Swiss, Helsinki, Canadian, Toronto, Australian, Hong Kong, Shenzhen and Tokyo
-exchanges are purely order-driven;
-NYSE, NASDAQ and the LSE are order-driven with some legacy quote-driven mechanisms.
-
-\pause
-
-An order-driven market is transparent:
-every participant observes in real time all the others' commitments to trade,
-organised in the \emph{limit order book}.
-The by-product is a high-frequency record of those commitments.
+Third row: a high-frequency record of every commitment.
+\note{
+Market infrastructures fall in two categories. An order-driven market is transparent: every
+participant observes in real time all the others' commitments to trade, organised in the
+limit order book. That transparency is what makes the data exist at all, and the whole
+chapter is about what can be read off it.
+}
 \end{frame}
 
 \begin{frame}
   \frametitle{A limit order is four numbers}
-A limit order is the fundamental action a participant can perform.
-It is the 4-tuple
 \[
-(t,q,p,d),
+(t,q,p,d), \qquad d = +1 \text{ (buy)}, \quad d = -1 \text{ (sell)},
+\qquad p \in \tickSizeOfLOB \mathbb{Z} .
 \]
-where $t$ is the time of submission, $q$ the size in shares, $p$ the price,
-and $d = +1$ (buy) or $d = -1$ (sell) the direction.
 
 \pause
 
-A participant who \emph{posts} $(t,q,p,d)$ commits at time $t$
-to buy or to sell the amount $q$ at the price $p$.
-That price is the \emph{worst} she accepts:
-the highest at which she buys, the lowest at which she sells.
+$p$: the \emph{worst} price accepted --- highest to buy, lowest to sell.
+
+\pause
+
+\emph{Cancelling}: withdrawing the commitment.
+\note{
+A limit order is the fundamental action a participant can perform: $t$ the time of
+submission, $q$ the size in shares, $p$ the price, $d$ the direction. A participant who
+posts $(t,q,p,d)$ commits at time $t$ to buy or to sell the amount $q$ at the price $p$.
 By regulation $p$ is an integer multiple of a fixed tick size $\tickSizeOfLOB > 0$.
-
-\pause
-
-She may also withdraw the commitment, by \emph{cancelling} an order she has already
-submitted.
+}
 \end{frame}
 
 \begin{frame}
   \frametitle{A trading epoch is the graph of a function}
-A \emph{trading epoch} $\tradingEpoch$ is the collection of all limit orders submitted within
-a time interval.
-
-\pause
-
-Orders cannot be submitted simultaneously,
-so an order is identified by its timestamp.
-We say this by asking that $\tradingEpoch$ be the graph of a function
-from a subset of the positive half-line into
+\emph{trading epoch} $\tradingEpoch$: the graph of a function from $\mathbb{R}_+$ into
 \[
 \lbrace (q,p,d) : \, q \geq 0, \; p \geq 0, \; d = \pm 1 \rbrace .
 \]
 
 \pause
 
-Timestamps are therefore unique,
-which is what makes the priority relation of the next frame a \emph{total} order.
+A function: no two orders share a timestamp.
+
+\pause
+
+What the next frame's \emph{total} order needs.
+\note{
+A trading epoch is the collection of all limit orders submitted within a time interval.
+Orders cannot be submitted simultaneously, which we say by asking that $\tradingEpoch$ be
+the graph of a function: no two orders share a time. Uniqueness of timestamps is exactly
+the hypothesis connexity needs on the next frame.
+}
 \end{frame}
 
 \begin{frame}
   \frametitle{A match trades at the resting price}
-When $(t,q,p,d)$ arrives, the matching algorithm searches the active orders with timestamp
-$s<t$ and \emph{opposite} direction $-d$.
-An order is \emph{active} at time $u$ if it was submitted by then
-and has been neither executed nor cancelled.
-
-\pause
-
-The active order $(s,\rho,\pi,-d)$ \emph{matches} the incoming one if $\pi d \leq p d$.
-Then $\rho \wedge q$ shares transact at the \emph{resting} price $\pi$,
-and the two orders are replaced by
+\emph{matches}: $(s,\rho,\pi,-d)$ active, $\pi d \leq p d$. Replaced by
 \[
 (s,\rho - \rho \wedge q, \pi, -d),
 \qquad
@@ -140,24 +163,28 @@ and the two orders are replaced by
 
 \pause
 
-At least one of the two has null size.
-If the resting order is exhausted it leaves its queue.
-If the incoming order is exhausted the search stops;
-if it is not --- that is, if $q > \rho$ --- the search continues,
-and the incoming order is matched against the next resting order in priority.
+\alert{$\rho \wedge q$ shares at $\pi$ --- never at $p$.}
+
+\pause
+
+\emph{Active} at $u$: submitted, not executed, not cancelled.
+\note{
+The matching algorithm searches the active orders with timestamp $s<t$ and opposite
+direction $-d$. The two orders are replaced by the pair above: $\rho \wedge q$ shares
+transact, at the resting price. The single expression $\pi d \leq p d$ handles both sides: for a buy it
+reads $\pi \leq p$ and for a sell $\pi \geq p$. Every fill prices at the resting order's
+price, which is the fact the sweep cost and the VWAP are both built on later.
+}
 \end{frame}
 
 \begin{frame}
   \frametitle{Better price first, then earlier timestamp}
-The search follows the ordering
 \begin{equation}
 \label{eq.orderingOfLimitOrders}
- (s,\rho,\pi,-d)<(s\derivative,\rho\derivative,\pi\derivative,-d)
- \quad \text{ iff } \quad
- (d\pi<d\pi\derivative)\vee((\pi=\pi\derivative)\wedge(s<s\derivative)).
+ (s,\rho,\pi,d) \prec (s',\rho',\pi',d)
+ \quad :\Longleftrightarrow \quad
+ d\pi < d\pi' , \; \text{ or } \; \pi = \pi' \text{ and } s < s' .
 \end{equation}
-Better price first --- and $d\pi < d\pi\derivative$ says that for both sides at once ---
-then, at equal price, the earlier timestamp.
 
 \pause
 
@@ -165,18 +192,20 @@ then, at equal price, the earlier timestamp.
 \label{lemma.orderingOfOrders}
  The ordering \eqref{eq.orderingOfLimitOrders} is total on each side of a trading epoch.
 \end{lemma}
-Antisymmetry and transitivity are those of the lexicographic order on $(d\pi,s)$.
-Connexity is where the epoch enters:
-two distinct orders of the same side at one price must differ in timestamp.
 
 \pause
 
 \begin{defi}
 \label{def.orderQueue}
- $\askOrderQueue_t := \lbrace (s,q,p,-1) \in \tradingEpoch : \text{active at } t \rbrace$
- and
- $\bidOrderQueue_t := \lbrace (s,q,p,+1) \in \tradingEpoch : \text{active at } t \rbrace$.
+ $\askOrderQueue_t := \lbrace (s,q,p,-1) \in \tradingEpoch : \text{active at } t \rbrace$,
+ and $\bidOrderQueue_t$ with $d=+1$.
 \end{defi}
+\note{
+Price-time priority: better price first, and at equal price the earlier timestamp.
+Antisymmetry and transitivity are those of the lexicographic order on $(d\pi,s)$.
+Connexity is where the epoch enters --- two distinct orders of the same side at one price
+must differ in timestamp, and that is exactly what the previous frame bought.
+}
 \end{frame}
 
 \begin{frame}
@@ -204,34 +233,28 @@ two distinct orders of the same side at one price must differ in timestamp.
   \node[orange!85!black] at (7.6,258) {ask};
 \end{tikzpicture}
 \end{center}
-Prices increase to the right, spaced $\tickSizeOfLOB$ apart, with buy offers on the left and
-sell offers on the right.
-The two never overlap:
-a buy order at or above a resting sell order would have been matched on arrival.
 
 \pause
 
 Level $i$ is a \emph{position on the grid}, occupied or not.
-The second ask level here carries nothing and is still the second ask level.
+\note{
+Prices increase to the right, spaced $\tickSizeOfLOB$ apart, buy offers on the left and sell
+offers on the right. The two never overlap: a buy order at or above a resting sell order
+would have been matched on arrival.
+The second ask level here carries nothing and is still the second ask level. Hold on to
+that --- it is the distinction section 1.2 is paid for, and the sweep cost two frames from
+now charges a tick for it.
+}
 \end{frame}
 
 \begin{frame}
   \frametitle{Four quantities fix the book}
-The configuration at time $t$ is fixed by four things:
-the best ask price $\bestAskPrice_t$, the lowest at which sell offers are active;
-the best bid price $\bestBidPrice_t$, the highest at which buy offers are;
-and the sizes resting at the levels of each side,
 \[
 \nthBestAskSize[i]_t
  = \sum_{\lbrace (s,q,\nthBestAskPrice[i]_t,-1) \in \askOrderQueue_t \, : \, s \leq t\rbrace} q,
 \qquad
 \nthBestAskPrice[i]_t = \bestAskPrice_t + (i-1)\tickSizeOfLOB ,
 \]
-and symmetrically on the bid, with $\nthBestBidPrice[i]_t = \bestBidPrice_t - (i-1)\tickSizeOfLOB$.
-
-\pause
-
-So the whole state is
 \[
 \Big( \bestAskPrice_t, \; \bestBidPrice_t, \;
 \lbrace (\nthBestAskSize[i]_t, \nthBestBidSize[i]_t) : i = 1,2,\dots \rbrace \Big).
@@ -239,151 +262,153 @@ So the whole state is
 
 \pause
 
-In this course a limit order book always means this \emph{aggregated} book.
-We do not map the sizes back to the orders of the epoch that make them up.
+A limit order book always means this \emph{aggregated} book.
+
+\pause
+
+No route back from a size to the orders under it.
+\note{
+The best ask price is the lowest at which sell offers are active, the best bid the highest
+at which buy offers are, and the sizes are the sums over the queues at each level. The bid
+side is symmetric, with $\nthBestBidPrice[i]_t = \bestBidPrice_t - (i-1)\tickSizeOfLOB$.
+The second display is the whole state. Proposition \ref{prop.lobUpdate} is written entirely
+in terms of it, which is what makes it enough.
+}
 \end{frame}
 
 \begin{frame}
   \frametitle{Size is not volume}
 \begin{remark}
 \label{remark.sizeVersusVolume}
- The sum of the quantities queuing at a price is the \emph{size} of that level.
- We reserve \emph{volume} for the number of shares transacted over an interval.
+ \emph{Size}: the quantity queuing at a price level.\\
+ \emph{Volume}: the shares transacted over an interval.
 \end{remark}
 
 \pause
 
-A level has a size at every instant;
-volume accumulates between two instants.
-
-\pause
-
 \alert{Volume is not a change in size.}
-A level shrinks by cancellation as well as by execution,
-so no sequence of sizes determines the volume traded.
-
-\pause
-
-What volume is, rather than what it is not:
-by the decomposition of two frames hence,
-$\volume_{t,w}$ is the sum of $\marketOrderSize$ over the market orders of the window.
-It is read off the tape, and Sections 1.2 and 1.4 both turn on that.
+\note{
+A level has a size at every instant; volume accumulates between two instants. So no
+sequence of sizes determines the volume traded --- the same book can be reached by a trade
+and by a cancellation.
+What volume is, rather than what it is not: by the decomposition two frames hence,
+$\volume_{t,w}$ is the sum of $\marketOrderSize$ over the market orders of the window. It is
+read off the tape, and sections 1.2 and 1.4 both turn on that.
+}
 \end{frame}
 
 \begin{frame}
   \frametitle{The spread is at least one tick}
 \begin{defi}
- The \emph{spread} at time $t$ is
- $\LOBspread_t = \abs{\bestAskPrice_t - \bestBidPrice_t}$.
+ $\LOBspread_t = \abs{\bestAskPrice_t - \bestBidPrice_t}$ is the \emph{spread};
+ $\midPrice_t = (\bestAskPrice_t + \bestBidPrice_t)/2$ the \emph{mid-price}.
 \end{defi}
 
 \pause
 
-\begin{defi}
- The \emph{mid-price} at time $t$ is
- $\midPrice_t = (\bestAskPrice_t + \bestBidPrice_t)/2$.
-\end{defi}
+\[
+\LOBspread_t \geq \tickSizeOfLOB
+\qquad\text{whenever both sides are non-empty.}
+\]
 
 \pause
 
-The two sides never overlap and every price is a multiple of $\tickSizeOfLOB$,
-so $\LOBspread_t \geq \tickSizeOfLOB$ whenever both sides are non-empty.
-
-\pause
-
-The mid-price is the quantity we shall track for the rest of the chapter.
+$\midPrice_t$ is what we track for the rest of the chapter.
+\note{
+The two sides never overlap and every price is a multiple of $\tickSizeOfLOB$, so the
+spread is at least one tick. It is not a modelling assumption: it follows from the matching
+rule, so a crossed book is a bug rather than a market state.
+Notice that the mid-price need not lie on the grid. On an odd spread it sits on a half tick,
+and it is a derived quantity rather than a price at which anything can rest.
+}
 \end{frame}
 
 \begin{frame}
   \frametitle{Imbalance is bid minus ask over the total}
 \begin{defi}
- The \emph{$n$-levels queue imbalance} at time $t$ is the normalised excess of the first $n$
- bid levels over the first $n$ ask levels,
  \begin{equation}
  \label{eq.queueImbalance}
  \queueImbalance[n]_t =
  \frac{\sum_{i\leq n}\nthBestBidSize[i]_t - \sum_{i\leq n}\nthBestAskSize[i]_t}
-      {\sum_{i\leq n}\nthBestBidSize[i]_t + \sum_{i\leq n}\nthBestAskSize[i]_t}.
+      {\sum_{i\leq n}\nthBestBidSize[i]_t + \sum_{i\leq n}\nthBestAskSize[i]_t}
+ \; \in [-1,1].
  \end{equation}
 \end{defi}
 
 \pause
 
-Bid minus ask over the total, so a bid-heavy book is positive.
+Bid-heavy is positive. \alert{Inverting this sign inverts every signal built on it.}
 
 \pause
 
-The index $i$ runs over the grid, as on the picture two frames ago,
-and not over the prices that happen to carry size.
-On a book with a hole the two readings differ,
-and Section 1.2 is where that difference is paid for.
+$i$ runs over the \emph{grid}, not over the occupied prices.
+\note{
+The $n$-levels queue imbalance is the normalised excess of the first $n$ bid levels over the
+first $n$ ask levels.
+The index runs over the grid, as on the picture three frames ago, and not over the prices
+that happen to carry size. On a book with a hole the two readings differ, and section 1.2 is
+where that difference is paid for --- a feed reports occupied prices, so a column slice of a
+file is a different statistic that also lies in $[-1,1]$.
+}
 \end{frame}
 
 \begin{frame}
   \frametitle{The micro-price weights each price by the opposite size}
 \begin{defi}
- The \emph{micro-price} at time $t$ is
  \begin{equation}
  \label{eq.microPrice}
-  \microPrice_t = \midPrice_t + \frac{\LOBspread_t}{2}\queueImbalance[1]_t .
+  \microPrice_t = \midPrice_t + \frac{\LOBspread_t}{2}\queueImbalance[1]_t
+  = \frac{ \nthBestBidSize[1]_t\bestAskPrice_t
+         + \nthBestAskSize[1]_t\bestBidPrice_t }
+         { \nthBestBidSize[1]_t + \nthBestAskSize[1]_t } .
  \end{equation}
 \end{defi}
 
 \pause
 
-\begin{remark}
- Equivalently
- $\microPrice_t = \big( \nthBestBidSize[1]_t\bestAskPrice_t
- + \nthBestAskSize[1]_t\bestBidPrice_t \big)
- / \big( \nthBestBidSize[1]_t + \nthBestAskSize[1]_t \big)$,
- the weighting in which each price carries the size resting on the \emph{opposite} side.
-\end{remark}
-So $\microPrice_t$ lies in $[\bestBidPrice_t, \bestAskPrice_t]$,
-and a bid-heavy book carries it towards the ask.
+$\microPrice_t \in [\bestBidPrice_t, \bestAskPrice_t]$; bid-heavy carries it to the ask.
 
 \pause
 
-The name is also given to a different object,
-the martingale-adjusted limit of the mid-price conditional on the imbalance
-\citep{Sto18mic}.
-The two are not the same, and the literature does not always keep them apart.
+A second route to the same number, and the notebook takes both.
+\note{
+The second expression is an independent route to the same number, and the notebook computes
+it both ways.
+The name is also given to a different object, the martingale-adjusted limit of the mid-price
+conditional on the imbalance \citep{Sto18mic}. The two are not the same, and the literature
+does not always keep them apart --- so when a paper says micro-price, check which it means.
+}
 \end{frame}
 
 \begin{frame}
   \frametitle{Every share pays the half-spread}
-Let the ask side hold at least $\quantityToLiquidate > 0$ shares at time $t$.
-The quantity a buy order for $\quantityToLiquidate$ shares fills at the $i$-th ask level is
 \begin{equation}
 \label{eq.fillAtLevel}
  q_i := \Big( \quantityToLiquidate - \sum_{j<i} q_j \Big)_{+} \wedge \nthBestAskSize[i]_t ,
  \qquad \sum_{i \geq 1} q_i = \quantityToLiquidate .
 \end{equation}
+\begin{equation}
+\label{eq.sweepCost}
+ \sweepCost_t(\quantityToLiquidate)
+ = \frac{1}{\quantityToLiquidate}\sum_{i\geq1} q_i
+   \big(\nthBestAskPrice[i]_t - \midPrice_t\big)
+ = \underbrace{\frac{\LOBspread_t}{2}}_{\text{every share}}
+   + \underbrace{\frac{1}{\quantityToLiquidate}\sum_{i\geq1} q_i (i - 1)\tickSizeOfLOB}
+     _{\text{its own distance, in ticks of the \emph{grid}}}
+\end{equation}
 
 \pause
 
-\begin{defi}
- The \emph{sweep cost} is its per-share cost against the mid,
- \begin{equation}
- \label{eq.sweepCost}
-  \sweepCost_t(\quantityToLiquidate)
-  = \frac{1}{\quantityToLiquidate}\sum_{i\geq1} q_i
-    \big(\nthBestAskPrice[i]_t - \midPrice_t\big)
-  = \frac{\LOBspread_t}{2}
-    + \frac{1}{\quantityToLiquidate}\sum_{i\geq1} q_i (i - 1)\tickSizeOfLOB .
- \end{equation}
-\end{defi}
-
-\pause
-
-Every share pays the half-spread;
-each additionally pays its own distance from the touch, in ticks of the \emph{grid}.
-For a sell order the definition is the same with the bid side,
-and $\midPrice_t - \nthBestBidPrice[i]_t$ in place of $\nthBestAskPrice[i]_t - \midPrice_t$.
-
-\pause
-
-Where the side holds fewer than $\quantityToLiquidate$ shares the quantity is not defined,
-and code must branch on that rather than return a number.
+Fewer than $\quantityToLiquidate$ shares on the side: undefined, so branch.
+\note{
+Let the ask side hold at least $\quantityToLiquidate$ shares. The first display is what the
+order fills at each level, the second its per-share cost against the mid.
+For a sell order the definition is the same with the bid side, and
+$\midPrice_t - \nthBestBidPrice[i]_t$ in place of
+$\nthBestAskPrice[i]_t - \midPrice_t$.
+The second term is a grid distance and not a count of queues, which the next frame is the
+picture of.
+}
 \end{frame}
 
 \begin{frame}
@@ -410,21 +435,27 @@ and code must branch on that rather than return a number.
   \draw[<->, gray] (4,250) -- node[above, fill=white, inner sep=1pt] {$\LOBspread_t/2$} (5,250);
 \end{tikzpicture}
 \end{center}
-The shaded part is what a buy order for $\quantityToLiquidate$ shares takes.
 
 \pause
 
-The second ask level is empty, so $q_2 = 0$,
-and the third still pays two ticks rather than one.
-The distance the sweep cost charges is a grid distance and not a count of queues.
+Shaded: what a buy order for $\quantityToLiquidate$ shares takes.
+
+\pause
+
+The third level pays two ticks, not one.
+\note{
+The second ask level is empty, so $q_2 = 0$, and the third one is two ticks from the touch
+whether or not anything rests between them. The distance the sweep cost charges is a grid
+distance and not a count of queues, which is the whole reason the previous display is
+written with $(i-1)\tickSizeOfLOB$ rather than with a running index over occupied prices.
+}
 \end{frame}
 
 \begin{frame}
   \frametitle{Every limit order is a market order and a resting order}
 \begin{prop}
 \label{prop.decompositionOfLimitOrder}
- Processing the sell limit order $(t,q,p,-1)$ against the book at $t-$ is equivalent to
- processing the ordered pair
+ Processing $(t,q,p,-1)$ against the book at $t-$ is processing the ordered pair
  \[
  \big[\,(t,\marketOrderSize,0,-1)\,,\;(t,q-\marketOrderSize,p,-1)\,\big],
  \]
@@ -432,87 +463,83 @@ The distance the sweep cost charges is a grid distance and not a count of queues
  \marketOrderSize := \min\Big(q, \; \textstyle\sum_{i\geq 1} \nthBestBidSize[i]_{t-}
  \indicator{\nthBestBidPrice[i]_{t-}\geq p}\Big),
  \]
- the first having priority over the second.
- For a buy the pair is the mirror image, with $\infty$ in place of $0$
- and the ask side taken under $\nthBestAskPrice[i]_{t-} \leq p$.
+ the first having priority. For a buy, $\infty$ in place of $0$ and the ask side under
+ $\nthBestAskPrice[i]_{t-} \leq p$.
 \end{prop}
 
 \pause
 
-The first component is the \emph{market order}:
-the price $0$ for a sell, and $\infty$ for a buy,
-is a price \emph{specification} guaranteeing immediate execution,
-and not a price at which anything may rest.
-The second is exactly the part that rests.
-
-\pause
-
-A matching engine therefore needs \emph{one} code path --- consume, then rest the remainder
---- and never a separate branch for an order that happens to be marketable.
+\alert{One code path: consume, then rest the remainder.}
+\note{
+The first component is the market order: the price $0$ for a sell, $\infty$ for a buy, is a
+price \emph{specification} guaranteeing immediate execution and not a price at which
+anything may rest. The second is exactly the part that rests.
+An implementation that writes a separate branch for a marketable order has two code paths
+where the mathematics has one, and the two will drift.
+}
 \end{frame}
 
 \begin{frame}
   \frametitle{Walking costs more than the half-spread}
-A sell market order $(t,\marketOrderSize,0,-1)$ \emph{walks the book} if
-$\marketOrderSize > \nthBestBidSize[1]_{t-}$:
-it reaches past the best level, and each further level it reaches executes at a worse price.
-A buy market order walks it if $\marketOrderSize > \nthBestAskSize[1]_{t-}$.
+\emph{walks the book}: reaches past the best level.
+\[
+\marketOrderSize > \nthBestBidSize[1]_{t-} \text{ (sell)},
+\qquad
+\marketOrderSize > \nthBestAskSize[1]_{t-} \text{ (buy)},
+\qquad\Longleftrightarrow\qquad
+\sweepCost_t(\quantityToLiquidate) > \frac{\LOBspread_t}{2} .
+\]
 
 \pause
 
-Walking implies $N \geq 1$ in the update rule below.
-The converse fails: an order that clears the best level exactly moves the best price,
-so $N = 1$, yet it prints at a single price and walks nothing.
+The walk term of \eqref{eq.sweepCost} is positive: some $q_i > 0$, $i \geq 2$.
 
 \pause
 
-Equivalently, wherever the sweep cost is defined, the order walks the book exactly when
-$\sweepCost_t > \LOBspread_t/2$ ---
-the walk term of \eqref{eq.sweepCost} being positive precisely when some $q_i$ is positive at
-$i \geq 2$.
-
-\pause
-
-Over a window, the seller-initiated trades are the components
-$(t,\marketOrderSize,0,-1)$ with $\marketOrderSize > 0$,
-and the buyer-initiated trades the components
-$(t,\marketOrderSize,\infty,+1)$ with $\marketOrderSize > 0$.
-We adopt that as our convention for the word \emph{trade},
-and keep it on venues that accept genuine market orders too.
+Walking implies $N \geq 1$ below; the converse fails.
+\note{
+The equivalence holds wherever the sweep cost is defined, which is where the side holds the
+shares asked for.
+The converse of the second claim fails because an order that clears the best level exactly
+moves the best price, so $N = 1$, yet it prints at a single price and walks nothing.
+Over a window, the seller-initiated trades are the components $(t,\marketOrderSize,0,-1)$
+with $\marketOrderSize > 0$, and the buyer-initiated ones the components with $\infty$. We
+adopt that as our convention for the word \emph{trade}, on venues that accept genuine market
+orders too.
+}
 \end{frame}
 
 \begin{frame}
   \frametitle{An order clears one level at a time}
-The market part may reach any depth, and it can be decomposed one level at a time.
-Writing $N$ for the number of bid levels it consumes in full,
-processing $(t,q,p,-1)$ is processing the stream
 \begin{equation}
 \label{eq.elementaryStream}
  (t,\nthBestBidSize[1]_{t-},\nthBestBidPrice[1]_{t-},-1), \dots,
  (t,\nthBestBidSize[N]_{t-},\nthBestBidPrice[N]_{t-},-1),
  (t,q^{N}, p, -1),
 \end{equation}
-with priority from left to right.
+with priority from left to right, $N$ the levels consumed in full.
 
 \pause
 
-Each piece is \emph{elementary}:
-it either clears exactly one level, or rests without matching.
+\emph{Elementary}: clears one level, or rests without matching.
 
 \pause
 
-That is what the update of the next two frames is bookkeeping for,
-and it is why the fold of Section 1.2 terminates: each pass empties one price.
+Why the fold of section 1.2 terminates.
+\note{
+The market part may reach any depth, and it can be decomposed one level at a time. That is
+what the update rule of the next two frames is bookkeeping for.
+The termination argument matters in class 2: each pass of the loop empties one price, so the
+loop is finite because the book is.
+}
 \end{frame}
 
 \begin{frame}
   \frametitle{The update rule --- 1 of 2}
 \begin{prop}
 \label{prop.lobUpdate}
- Let the sell limit order $(t,q,p,-1)$ arrive at $t$, and assume
- $q < \sum_{i\geq1}\nthBestBidSize[i]_{t-}\indicator{\nthBestBidPrice[i]_{t-}\geq p}$,
- so that it does not consume the whole price-eligible side.
- Put
+ Let $(t,q,p,-1)$ arrive with
+ $q < \sum_{i\geq1}\nthBestBidSize[i]_{t-}\indicator{\nthBestBidPrice[i]_{t-}\geq p}$. Put
  \[
  N_s := \inf\Big\lbrace n \geq 0 : q < \textstyle\sum_{i=1}^{n}
  \nthBestBidSize[i]_{t-}\Big\rbrace,
@@ -529,55 +556,52 @@ and it is why the fold of Section 1.2 terminates: each pass empties one price.
 
 \pause
 
-$N_s$ is where the size runs out, $N_p$ where the price constraint bites,
-and $N$ is the number of bid levels consumed in full.
-$q^i$ is the quantity still to be executed once the first $i$ levels are gone.
-
-\pause
-
-Both infima may be over an empty set.
-Read $\inf\emptyset = +\infty$:
-$N_s$ carries no price constraint, so it is infinite when $q$ exceeds the \emph{total} bid
-size; and $N_p$ is infinite for a market order, since prices are non-negative.
+$N_s$: size runs out. $N_p$: the price constraint bites.\\
+$\inf\emptyset = +\infty$.
+\note{
+$N$ is the number of bid levels consumed in full, and $q^i$ the quantity still to be
+executed once the first $i$ levels are gone.
+Both infima may be over an empty set. $N_s$ carries no price constraint, so it is infinite
+when $q$ exceeds the \emph{total} bid size --- not the price-eligible one --- and $N_p$ is
+infinite for a market order, since prices are non-negative.
+The hypothesis is that the order does not consume the whole price-eligible side. When it
+does, the best price on that side is undefined and the rule does not apply.
+}
 \end{frame}
 
 \begin{frame}
   \frametitle{The update rule --- 2 of 2}
-On the bid side,
 \[
  \bestBidPrice_t = \nthBestBidPrice[1+N]_{t-},
  \qquad
  \nthBestBidSize[k]_{t} = \nthBestBidSize[k+N]_{t-} - \big( q^{k+N-1}-q^{k+N} \big),
- \quad k = 1,2,\dots
 \]
-and on the ask side,
 \[
  \bestAskPrice_t = \bestAskPrice_{t-} - \max(0,\bestAskPrice_{t-} - p)
  \indicator{q^{\infty} > 0},
 \]
 \[
  \nthBestAskSize[k]_t = \nthBestAskSize[k+\delta\bestAskPrice_t/\tickSizeOfLOB]_{t-}
- + q^{\infty}\indicator{p=\bestAskPrice_t + (k-1)\tickSizeOfLOB} .
+ + q^{\infty}\indicator{p=\bestAskPrice_t + (k-1)\tickSizeOfLOB} ,
+\]
+\[
+\delta\bestAskPrice_t := \bestAskPrice_t - \bestAskPrice_{t-} \leq 0,
+\qquad
+\nthBestAskSize[j]_{t-} = \nthBestBidSize[j]_{t-} = 0 \; \text{ for } j \leq 0 .
 \]
 
 \pause
 
-Here $\delta\bestAskPrice_t = \bestAskPrice_t - \bestAskPrice_{t-} \leq 0$, and
-$\nthBestAskSize[j]_{t-} = \nthBestBidSize[j]_{t-} = 0$ for $j \leq 0$.
-
-\pause
-
-Reading the four lines:
-the bid side shifts up by the $N$ levels consumed,
-and the new best bid may be partially eaten;
-the ask side is untouched unless something is left over.
-
-\pause
-
-If $q^{\infty} > 0$ the residual rests at $p$,
-improving the best ask when $p < \bestAskPrice_{t-}$
-and shifting every ask index by $-\delta\bestAskPrice_t/\tickSizeOfLOB$ levels.
-For a buy order the rules are the same with the sides interchanged.
+Bid: shifts up by $N$. Ask: untouched unless a residual rests.
+\note{
+Reading the four lines: the bid side shifts up by the $N$ levels consumed, and the new best
+bid may be partially eaten; the ask side is untouched unless something is left over.
+If $q^{\infty} > 0$ the residual rests at $p$, improving the best ask when
+$p < \bestAskPrice_{t-}$ and shifting every ask index by
+$-\delta\bestAskPrice_t/\tickSizeOfLOB$ levels.
+For a buy order the rules are the same with the sides interchanged. The next frame is the
+picture.
+}
 \end{frame}
 
 \begin{frame}
@@ -609,27 +633,27 @@ For a buy order the rules are the same with the sides interchanged.
   \end{scope}
 \end{tikzpicture}
 \end{center}
-The order takes $100$ at $1000$ and $200$ at $999$, so $N = 2$ and $q^{\infty} = 100$.
 
 \pause
 
-The residual rests at its own limit price $999$ ---
-a tick \emph{below} the old best bid, on a level the order has just cleared.
-Since $999 < \bestAskPrice_{t-} = 1002$, the best ask improves by three ticks,
-and every ask index shifts by three.
+$N = 2$, $q^{\infty} = 100$, and every ask index shifts by three.
+
+\pause
+
 Two ask levels, $1000$ and $1001$, are now empty and still counted.
+\note{
+The order takes $100$ at $1000$ and $200$ at $999$, so two levels are consumed in full and a
+hundred shares are left over. They rest at the order's own limit price, $999$ --- on a level
+it has just cleared, which is now on the ask side.
+Since $999 < \bestAskPrice_{t-} = 1002$, the best ask improves by three ticks and every ask
+index shifts by three. This is the case people get wrong: the residual is not inside the old
+spread.
+}
 \end{frame}
 
 \begin{frame}
   \frametitle{Volume is a sum over market orders}
-Let $(\arrivalTimes[]_n, \marketOrderSize[n], d_n)$ be the stream of market orders of a
-trading epoch, and $q_{n,i}$ the fills of the $n$-th of them, at prices $\pi_{n,i}$.
-A market order does not in general execute at a single price.
-
-\pause
-
 \begin{defi}
- The \emph{volume} transacted and the \emph{value} traded over $(t-w,t]$ are
  \begin{equation}
  \label{eq.transactedVolume}
   \volume_{t,w} := \sum_{n \, : \, t-w < \arrivalTimes[]_n \leq t} \marketOrderSize[n] ,
@@ -637,61 +661,45 @@ A market order does not in general execute at a single price.
  \begin{equation}
  \label{eq.tradedValue}
   \tradedValue_{t,w} := \sum_{n \, : \, t-w < \arrivalTimes[]_n \leq t}
-  \sum_{i \geq 1} q_{n,i} \, \pi_{n,i} .
+  \sum_{i \geq 1} q_{n,i} \, \pi_{n,i} ,
  \end{equation}
+ and $\vwap_{t,w} := \tradedValue_{t,w}/\volume_{t,w}$ where $\volume_{t,w} > 0$.
 \end{defi}
 
 \pause
 
-\begin{defi}
- The \emph{volume-weighted average price} is
- $\vwap_{t,w} := \tradedValue_{t,w}/\volume_{t,w}$,
- defined whenever $\volume_{t,w} > 0$.
-\end{defi}
+Every fill in \eqref{eq.tradedValue} prices at $\pi_{n,i}$, the \emph{resting} price.
+\note{
+Let $(\arrivalTimes[]_n, \marketOrderSize[n], d_n)$ be the stream of market orders of a
+trading epoch, and $q_{n,i}$ the fills of the $n$-th of them, at prices $\pi_{n,i}$. A market
+order does not in general execute at a single price, which is why the traded value is a
+double sum and not a product.
+The volume-weighted average price is defined whenever anything traded in the window.
+}
 \end{frame}
 
 \begin{frame}
   \frametitle{VWAP reads the tape, the sweep cost reads the book}
-Every fill in \eqref{eq.tradedValue} prices at the \emph{resting} order's price,
-never at the price the incoming order named.
-
-\pause
-
 \begin{remark}
- $\vwap_{t,w}$ is a statistic of the tape.
- It is a function of the transactions, and cannot be recovered from the sequence of
- configurations alone.
+ $\vwap_{t,w}$ is a statistic of the \emph{transactions}.
 \end{remark}
-That is Remark \ref{remark.sizeVersusVolume} again:
-a level shrinks by cancellation as well as by execution.
 
 \pause
 
-The sweep cost, by contrast, is a function of \emph{one} configuration,
-and is defined whether or not the order it prices is ever submitted.
-\end{frame}
-
-\begin{frame}
-  \frametitle{What to take away}
-The aggregated state
-$\big(\bestAskPrice_t, \bestBidPrice_t,
-\lbrace(\nthBestAskSize[i]_t,\nthBestBidSize[i]_t)\rbrace\big)$
-is closed under the arrival of an order:
-Proposition \ref{prop.lobUpdate} is written entirely in terms of it.
+cf.\ Remark \ref{remark.sizeVersusVolume}.
 
 \pause
 
-Every limit order is a market part followed by a resting part.
-One code path, not two.
-
-\pause
-
-Size and volume are different words,
-and no sequence of sizes determines the volume traded.
-
-\pause
-
-Section 1.2 next: where the sequence of configurations comes from,
-and why a participant computes it rather than receiving it.
-Section 1.4 is where all of it is going.
+The sweep cost prices an order that is never submitted.
+\note{
+The VWAP cannot be recovered from the sequence of configurations alone. A level shrinks by
+cancellation as well as by execution, so no sequence of sizes determines the volume traded,
+and therefore none determines the VWAP.
+The sweep cost, by contrast, is a function of one configuration, defined whether or not the
+order it prices is ever submitted. One quantity needs the tape and one needs only the book.
+In class 2 that is exactly why a LOBSTER pair is read together --- the orderbook file alone
+determines no volume.
+Section 1.2 next: where the sequence of configurations comes from, and why a participant
+computes it rather than receiving it. Section 1.4 is where all of it is going.
+}
 \end{frame}

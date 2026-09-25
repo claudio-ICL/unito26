@@ -1,20 +1,35 @@
-% WELCOME -- the notes' section 0.5, sec.examination. Budget 2 min.
-% This describes the format of the paper. It does not set questions.
+% WELCOME -- the notes' sections 0.5 and 0.6, sec.examination and sec.assignments.
+% Budget 3 min. This describes the format, the arithmetic and the route. It sets no
+% question and no assignment.
+% sec.assignments has no frame of its own: the display below is its arithmetic.
+% The caption contract is stated in the header of the_course.tex.
 
-\subsection{The examination}
+\subsection{Examination and assignments}
 
 \begin{frame}
-  \frametitle{The examination shows you code and asks what it computes}
-The examination is a multiple-choice questionnaire.
-A question shows a snippet of code and asks what it computes,
-or shows several and asks which is the right one for a stated purpose.
+  \frametitle{The assignments lower the pass mark}
+\emph{Questionnaire}: a snippet of code, and what it computes. Out of 100.\\
+\emph{Assignments}: two, one per chapter, optional, 25 each.
 
 \pause
 
-It is marked out of 100, and the pass mark is 60.
+\[
+\text{pass mark} \; = \; 60 - a_1 - a_2 .
+\]
 
 \pause
 
-Sample questions are published during the course,
-so that the format holds no surprises.
+Submitted as a pull request. Sample questions published during the course.
+\note{
+The examination is a multiple-choice questionnaire. A question shows a snippet of code and
+asks what it computes, or shows several and asks which is the right one for a stated
+purpose. It is marked out of 100, and the pass mark is 60.
+The two assignments are optional: submit one, both or neither. Their marks are not added to
+the questionnaire, they lower its pass mark instead --- full marks on both bring it down to
+10 out of 100.
+An assignment is submitted as a pull request into the course repository: a branch, the tests
+run, the pull request opened, and the submission complete once continuous integration has
+passed on it.
+Sample questions are published during the course, so that the format holds no surprises.
+}
 \end{frame}

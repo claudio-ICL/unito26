@@ -1,21 +1,41 @@
 % CLASS 2 -- the notes' section 1.2, sec.messageFiles.
-% Budget 60 min of slides, then the two notebooks; planned 66 over 16 frames.
+% Budget 60 min of slides, then the two notebooks; planned 58 over 16 frames.
 % Overrunning, cut in this order: the consolidated tape (Regulation NMS is background and
-% plays no part in the assignment), then the nomenclature frame (the vendor names survive as
-% the sentence under the schematic), then hand the termination argument to the notebook.
-% That lands at 60.
+% plays no part in the assignment), then the nomenclature table (the vendor names survive in
+% the \note of the schematic), then hand the termination argument to the notebook.
+% That lands at 49, with slack for the two file pictures, which are the ones a first
+% audience asks about.
 %
-% LABELS. The five class files are \include'd into ONE document, so a label is defined once
-% across all five, and a cross-file \ref prints ?? on a clean tree. These are class 2's:
-% remark.whyReconstruct, remark.derivedAndDelayed, remark.aggregatedAsCheck, eq.bookFold,
+% THE FRAME CONTRACT. These slides are projection material, not reference material: the
+% students read the notes, and they only ever see a frame while it is being talked over.
+% So every frame carries ONE OBJECT -- a display, a statement of at most two lines, a TikZ
+% picture, a table or an algorithmic block -- and under it at most three CAPTIONS. A caption
+% is a gloss (`term: noun phrase'), a fragment of subject and predicate, or a condition
+% written as mathematics. It is never a sentence, never a subordinate clause, and never a
+% repetition of the frame title: what the title says, the body does not say again, and what
+% follows from the object is spoken. At most 12 words of prose each, 25 to a frame, hard
+% cap 40. A statement states its head claim and stops; its consequence is spoken.
+% What is said over the object goes in \note{}, which \documentclass[script]{unito26slides}
+% prints beside each frame and the deck itself never shows. Check with
+%   python3 .claude/skills/writing-in-tex/scripts/frame_density.py <file>
+%
+% Section 1.2 is the discursive section of the chapter, so most of these objects are drawn
+% rather than derived. That is the point: a feed, a netting interval and a file layout are
+% pictures, and writing them as paragraphs is what made the first version of this file twice
+% the density of the rest of the deck.
+%
+% LABELS. A label is defined once across the five class files, and a cross-file \ref prints
+% ?? under \includeonly. Class 2 owns: eq.bookFold, remark.aggregatedAsCheck,
 % remark.gridAgainstOccupied, remark.passiveDirection.
+% remark.whyReconstruct and remark.derivedAndDelayed are the notes' and appear here as
+% captions and as a picture, so they carry no label in this deck -- do not \ref them.
 % Class 1 owns def.orderQueue, prop.lobUpdate, prop.decompositionOfLimitOrder and
-% eq.queueImbalance; each is RESTATED HERE WITHOUT A LABEL, in one line, and none is \ref'd.
-% Section numbers of the notes are written out as digits, as class 1 writes them.
+% eq.queueImbalance; each is restated here without a label. Section numbers of the notes are
+% written out as digits, as class 1 writes them.
 %
-% algo.bookFold appears on its own frame as a bare `algorithmic' environment: `algorithm' is
-% a float and floats do not place inside a frame, so there is no caption, no line numbering
-% and no \label{algo.*} here.
+% algo.bookFold appears as a bare `algorithmic' environment: `algorithm' is a float and
+% floats do not place inside a frame, so there is no caption, no line numbering and no
+% \label{algo.*} here.
 %
 % A frame holds 218pt of body -- eighteen 12pt lines, or seven two-line paragraphs.
 
@@ -28,267 +48,376 @@
 \nocite{DBG24eob}
 \nocite{NAS23itc}
 \nocite{LPV22sho}
-Section 1.1 described a limit order book at one instant.
-This class is about where those instants come from,
-and about why a participant computes them rather than receiving them.
+\begin{center}
+\begin{tikzpicture}[font=\scriptsize, node distance=3mm,
+    stage/.style={draw=gray!60, rounded corners=2pt, align=center, inner sep=4pt,
+                  text width=2.1cm, fill=gray!8},
+    past/.style={stage, fill=gray!20, draw=gray!70},
+    current/.style={stage, fill=blue!15, draw=blue!55},
+    target/.style={stage, fill=orange!20, draw=orange!70}]
+  \node[past] (a) {1.1\\the book};
+  \node[current, right=of a] (b) {1.2\\the fold};
+  \node[stage, right=of b] (c) {1.3\\point processes};
+  \node[target, right=of c] (d) {1.4\\price formation};
+  \draw[-{Stealth}, gray!60] (a) -- (b);
+  \draw[-{Stealth}, gray!60] (b) -- (c);
+  \draw[-{Stealth}, gray!60] (c) -- (d);
+\end{tikzpicture}
+\end{center}
 
 \pause
 
-An exchange publishes the same events twice,
-once as a stream of orders and once as a book of totals,
-and the second is a function of the first.
-We say what that function discards,
-and what it costs to be handed its output rather than to apply it oneself.
+Where the sequence of configurations comes from.
 
 \pause
 
-We then write the book as a fold,
-and read the two files LOBSTER distributes as the recorded form of the same pair.
-Section 1.4 computes its statistics from exactly these files.
+Why a participant computes it rather than receiving it.
+
+\pause
+
+Then LOBSTER: the same pair of feeds, recorded.
+\note{
+Section 1.1 described a limit order book at one instant. An exchange publishes the same
+events twice, once as a stream of orders and once as a book of totals, and the second is a
+function of the first. We say what that function discards, and what it costs to be handed
+its output rather than to apply it oneself.
+Section 1.4 computes its statistics from exactly the files we meet at the end of this class.
+}
 \end{frame}
 
 \begin{frame}
   \frametitle{A matching engine publishes two views of one truth}
 \begin{center}
 \begin{tikzpicture}[font=\scriptsize,
-    box/.style={draw=gray!70, rounded corners=2pt, align=center, inner sep=3pt}]
+    box/.style={draw=gray!70, rounded corners=2pt, align=center, inner sep=4pt}]
   \node[box, fill=gray!15] (engine) at (0,0) {matching\\engine};
-  \node[box, fill=blue!15, text width=2.9cm] (stream) at (4.8,0.82)
+  \node[box, fill=blue!15, text width=3.2cm] (stream) at (5.2,0.95)
        {\emph{message stream}\\one message per order event};
-  \node[box, fill=orange!30] (agg) at (2.5,-0.82) {aggregation};
-  \node[box, fill=orange!15, text width=2.9cm] (level) at (5.8,-0.82)
+  \node[box, fill=orange!30] (agg) at (2.7,-0.95) {aggregation};
+  \node[box, fill=orange!15, text width=3.2cm] (level) at (6.1,-0.95)
        {\emph{aggregated book}\\total size at each of $L$ prices};
   \draw[-{Stealth}, gray!70] (engine.north east) -- (stream.west);
   \draw[-{Stealth}, gray!70] (engine.south east) -- (agg.west);
   \draw[-{Stealth}, gray!70] (agg.east) -- (level.west);
 \end{tikzpicture}
 \end{center}
-The message stream carries one message per submission, cancellation, deletion and execution,
-each naming the order it concerns;
-it is the tape of the orders themselves,
-and the trading epoch of Section 1.1 is exactly what it transmits.
 
 \pause
 
+One engine, one stream of events, two products.
+
+\pause
+
+Everything in this class is that orange box.
+\note{
+The message stream carries one message per submission, cancellation, deletion and execution,
+each naming the order it concerns; it is the tape of the orders themselves, and the trading
+epoch of section 1.1 is exactly what it transmits.
 The aggregated book carries the size resting at each of the first $L$ levels of each side,
-republished as it changes:
-the configuration of Section 1.1, truncated at depth $L$.
+republished as it changes: the configuration of section 1.1, truncated at depth $L$.
+Both are shipped on every major venue. Eurex publishes the stream as the Enhanced Order Book
+Interface and the aggregated book as the Enhanced Market Data Interface and the Market Data
+Interface; CME carries both in MDP 3.0; Nasdaq's stream is TotalView-ITCH.
+}
 \end{frame}
 
 \begin{frame}
   \frametitle{The aggregate is the image of the stream}
-The two are not independent products.
-The queues $\askOrderQueue_t$ and $\bidOrderQueue_t$ are sets of orders,
-and the sizes $\nthBestAskSize[i]_t$ and $\nthBestBidSize[i]_t$ are sums over them,
-so the second stream is the image of the first under those sums.
+\[
+\nthBestAskSize[i]_t
+ \; = \!\!\!\!
+ \sum_{\lbrace (s,q,p,-1) \, \in \, \askOrderQueue_t \; : \; p \, = \, \nthBestAskPrice[i]_t \rbrace}
+ \!\!\!\! q
+\]
 
 \pause
 
-The exchange computes that image by applying the matching rules of Section 1.1 to its own
-message stream,
-which is to say that it runs the fold we write next before publishing the result.
+The exchange runs this fold before publishing.
 
 \pause
 
-A sum does not record its summands:
-the aggregate says how much rests at a price,
-never how that size is split between orders,
-nor which of them the matching algorithm reaches first.
+A sum does not record its summands.
 
 \pause
 
-\begin{remark}
-\label{remark.whyReconstruct}
- The aggregated book retains the quantity this chapter is about:
- how size has accumulated across the price levels of the two sides.
- That cross-section is what the queue imbalance $\queueImbalance[n]$ and the order flow
- imbalance of Section 1.4 are computed from.
-\end{remark}
+The summand reached first decides who is filled.
+\note{
+The two feeds are not independent products. The queues $\askOrderQueue_t$ and
+$\bidOrderQueue_t$ are sets of orders and the sizes are sums over them, so the second stream
+is the image of the first under those sums, computed by applying the matching rules of
+section 1.1 to the engine's own message stream.
+The aggregate says how much rests at a price, never how that size is split between orders,
+nor which of them the matching algorithm reaches first. That split is what decides whether a
+given resting order is executed, and section 1.1 sets it aside.
+What survives is the quantity the chapter is about: how size has accumulated across the
+levels of the two sides. That cross-section is what the queue imbalance and the order flow
+imbalance of section 1.4 are computed from.
+}
 \end{frame}
 
 \begin{frame}
   \frametitle{The aggregation sits in the publication path}
-\begin{remark}
-\label{remark.derivedAndDelayed}
- Notice that the aggregated book is derived, and that the derivation sits in the
- publication path:
- a message is on the wire once the engine has written it,
- whereas a level update exists only once the event has been netted against the level's
- total.
- The aggregation is left out of the message stream by design,
- price levels and their aggregation being derivable by the recipient from the individual
- orders, and the stream being published
- ``in order to send public market data as fast as possible''
- \cite[Section 3.1]{DBG24eob}.
-\end{remark}
+\begin{center}
+\begin{tikzpicture}[font=\scriptsize, x=1cm, y=1cm]
+  \node[left, align=right, gray!40!black] at (-0.15,0.85) {message\\stream};
+  \node[left, align=right, gray!40!black] at (-0.15,-0.85) {level\\feed};
+  \draw[-{Stealth}, gray!55] (0,0.85) -- (8.1,0.85);
+  \draw[-{Stealth}, gray!55] (0,-0.85) -- (8.1,-0.85);
+  \draw[gray!50, dashed] (0.9,-1.5) -- (0.9,1.45);
+  \node[above, gray!40!black] at (0.9,1.45) {the engine writes the event};
+  \fill[blue!60] (1.25,0.85) circle (2.3pt);
+  \node[above=1pt, blue!55!black] at (1.9,0.85) {on the wire};
+  \node[draw=orange!70, fill=orange!20, rounded corners=2pt, inner sep=3pt]
+       at (3.5,-0.85) {net against the level's total};
+  \fill[orange!85] (6.3,-0.85) circle (2.3pt);
+  \node[above=1pt, orange!75!black] at (6.9,-0.85) {level update};
+  \draw[<->, gray!70] (1.25,-1.5)
+    -- node[below, inner sep=2pt, text=black] {$\delta$, the aggregation's own latency}
+    (6.3,-1.5);
+\end{tikzpicture}
+\end{center}
 
 \pause
 
-A participant who folds the stream herself therefore holds the aggregated book sooner,
-and to a depth the feed does not publish.
+Message: written. Level update: netted first.
 
 \pause
 
-The wire is not what separates them.
-Both feeds are fixed-length binary on the same transport;
-what differs is how many stages of the venue's own book-building sit between the match and
-the message.
+Folding it yourself: sooner, and deeper than the feed publishes.
+\note{
+The aggregated book is derived, and the derivation sits in the publication path. The
+aggregation is left out of the message stream by design, price levels and their aggregation
+being derivable by the recipient from the individual orders, and the stream being published
+``in order to send public market data as fast as possible'' \cite[Section 3.1]{DBG24eob}.
+The wire is not what separates them: both feeds are fixed-length binary on the same
+transport, and what differs is how many stages of the venue's own book-building sit between
+the match and the message.
+}
 \end{frame}
 
 \begin{frame}
   \frametitle{Truncation and netting remove states, not just time}
-The aggregated book is truncated at depth $L$,
-and where the feed is netted its updates are sent at regular intervals,
-so that intermediate configurations are absent rather than delayed.
+\begin{center}
+\begin{tabular}{@{}lll@{}}
+\toprule
+ & what it costs & recoverable? \\
+\midrule
+the netting interval & the states inside it & \alert{no} \\
+truncation at $L$ & the levels past the $L$-th & \alert{no} \\
+the snapshot product & the deltas between them & \alert{no} \\
+\midrule
+the publication path & $\delta$ & yes \\
+\bottomrule
+\end{tabular}
+\end{center}
 
 \pause
 
-A level whose total is unchanged publishes nothing.
-Ten orders resting at the best bid, one of them added and another partly filled between two
-intervals, can leave the level's total where it was,
-and the aggregated feed is then silent about both events.
-
-\pause
-
-Limited-depth products go further and restate the book with each snapshot rather than sending
-incremental deltas \cite{CME26mbl},
-so the configurations between two snapshots are not recoverable at any latency.
-
-\pause
-
-Waiting longer recovers a delayed state.
-No amount of waiting recovers one that was never published.
+Only the last row is a delay.
+\note{
+Where the feed is netted its updates are sent at regular intervals, so that intermediate
+configurations are absent rather than delayed. A level whose total is unchanged publishes
+nothing: ten orders at the best bid, one added and another partly filled between two
+intervals, can leave the total where it was and the feed is silent about both events.
+Limited-depth products go further and restate the book with each snapshot rather than
+sending incremental deltas \cite{CME26mbl}.
+Waiting longer recovers a delayed state. No amount of waiting recovers one that was never
+published.
+}
 \end{frame}
 
 \begin{frame}
   \frametitle{Queue position is recoverable only from the order stream}
-A message carries the identity of the order it concerns,
-so a participant folding the stream knows how many shares rest ahead of her own order at its
-price, and in what order they will be reached.
+\begin{center}
+\begin{tikzpicture}[font=\scriptsize, x=1.25cm, y=1.25cm]
+  \node[above] at (1.8,0.5) {one price, order by order};
+  \draw[fill=blue!12] (0,0) rectangle (0.75,0.42); \node at (0.375,0.21) {$20$};
+  \draw[fill=blue!12] (0.75,0) rectangle (1.35,0.42); \node at (1.05,0.21) {$15$};
+  \draw[fill=blue!12] (1.35,0) rectangle (2.30,0.42); \node at (1.825,0.21) {$25$};
+  \draw[fill=blue!55] (2.30,0) rectangle (2.95,0.42); \node[white] at (2.625,0.21) {mine};
+  \draw[fill=blue!12] (2.95,0) rectangle (3.60,0.42); \node at (3.275,0.21) {$22$};
+  \draw[<->, gray] (0,-0.28) -- node[below, inner sep=1.5pt] {$60$ ahead of mine} (2.30,-0.28);
+  \begin{scope}[xshift=4.9cm]
+    \node[above] at (1.8,0.5) {the same price, aggregated};
+    \draw[fill=orange!55] (0,0) rectangle (3.60,0.42); \node[white] at (1.8,0.21) {$100$};
+    \draw[<->, gray] (0,-0.28) -- node[below, inner sep=1.5pt] {$?$ ahead of mine} (3.60,-0.28);
+  \end{scope}
+\end{tikzpicture}
+\end{center}
 
 \pause
 
-The aggregate carries only the total.
-The split it discards is what decides whether a given resting order is executed,
-and Section 1.1 sets that split aside.
+Fill probability is a function of the discarded split.
 
 \pause
 
-Fill probability is a function of the discarded split,
-and no latency buys it back:
-a participant may read the aggregated feed arbitrarily early and still not know her place in
-the queue.
+\alert{No latency buys it back.}
+\note{
+A message carries the identity of the order it concerns, so a participant folding the stream
+knows how many shares rest ahead of her own order at its price, and in what order they will
+be reached. The aggregate carries only the total.
+This is the one quantity on which reading the aggregated feed arbitrarily early does not
+help: a participant may have the level's total before anybody else and still not know her
+place in the queue. Anything that depends on fill probability needs the order stream.
+}
 \end{frame}
 
 \begin{frame}
   \frametitle{The nomenclature is not standardised}
-Both products are shipped on every major venue.
-Eurex publishes the message stream as the Enhanced Order Book Interface,
-and the aggregated book twice over:
-as the Enhanced Market Data Interface, un-netted,
-and as the Market Data Interface, whose updates are netted at regular intervals
-\cite{DBG24eob, DBG24emd}.
+\begin{center}
+\begin{tabular}{@{}lll@{}}
+\toprule
+ & message stream & aggregated book \\
+\midrule
+Eurex & EOBI & EMDI (un-netted), MDI (netted) \\
+CME MDP 3.0 & market by order & market by price \\
+Nasdaq & TotalView-ITCH & TotalView depth of book \\
+\midrule
+also called & order by order & depth of book \\
+ & level three & level two \\
+\bottomrule
+\end{tabular}
+\end{center}
 
 \pause
 
-On CME's MDP 3.0 the same event appears in a market-by-order and in a market-by-price book
-\cite{CMEmdp, CME26mbo},
-and Nasdaq publishes the message stream as TotalView-ITCH \cite{NAS23itc, NAS26tot}.
-
-\pause
-
-Venues and vendors call the first of the two market by order, order by order or level three,
-and the second market by price, depth of book or level two.
-The three names on either line are one product.
+Three names on a line are one product.
+\note{
+Eurex publishes the aggregated book twice over: the Enhanced Market Data Interface is
+un-netted and the Market Data Interface is netted at regular intervals
+\cite{DBG24eob, DBG24emd}. On CME's MDP 3.0 the same event appears in a market-by-order and
+in a market-by-price book \cite{CMEmdp, CME26mbo}, and Nasdaq publishes the message stream as
+TotalView-ITCH \cite{NAS23itc, NAS26tot}.
+The names travel between vendors and none of them is standard, so read the specification
+rather than the product name.
+}
 \end{frame}
 
 \begin{frame}
-  \frametitle{A check, not a substitute}
+  \frametitle{One stream, two folds}
+\begin{center}
+\begin{tikzpicture}[font=\scriptsize, node distance=7mm and 20mm,
+    box/.style={draw=gray!70, rounded corners=2pt, align=center, inner sep=4pt,
+                text width=2.4cm}]
+  \node[box, fill=gray!12] (m) {message\\stream};
+  \node[box, fill=blue!15, above right=of m] (ours) {our fold,\\any depth, sooner};
+  \node[box, fill=orange!15, below right=of m] (theirs) {the exchange's,\\depth $L$, later};
+  \draw[-{Stealth}, gray!70] (m) -- (ours);
+  \draw[-{Stealth}, gray!70] (m) -- (theirs);
+  \draw[<->, dashed, gray!80] (ours) -- node[right, align=left, text width=2.4cm]
+       {compare, level by level} (theirs);
+\end{tikzpicture}
+\end{center}
+
+\pause
+
 \begin{remark}
 \label{remark.aggregatedAsCheck}
- The two feeds have different jobs.
- A fold run on the message stream is the participant's own computation:
- it is available sooner and to any depth,
- and a dropped message or a mishandled event leaves it wrong
- in a way that no statistic computed from it reveals.
- The aggregated book is the exchange's own fold of the same stream,
- published later and truncated,
- and comparing the two level by level locates such an error where nothing else does.
- It is a check on the reconstruction rather than a substitute for it.
+ A check on the reconstruction, not a substitute for it.
 \end{remark}
 
 \pause
 
-A book that has drifted by one dropped message still has a mid-price, a spread and an
-imbalance, all of them in range and all of them wrong.
-The habit this asks for is two routes to one number,
-with the disagreement read as a location rather than as a nuisance.
+One dropped message: every statistic still in range.
+\note{
+The two feeds have different jobs. A fold run on the message stream is the participant's own
+computation: available sooner and to any depth, and a dropped message or a mishandled event
+leaves it wrong in a way that no statistic computed from it reveals. The aggregated book is
+the exchange's own fold of the same stream, published later and truncated, and comparing the
+two level by level locates such an error where nothing else does.
+A drifted book still has a mid-price, a spread and an imbalance, all of them in range and all
+of them wrong. The first notebook builds the habit: two routes to one number, with the
+disagreement read as a location.
+}
 \end{frame}
 
 \begin{frame}
   \frametitle{Consolidation costs a latency the venue's own feed does not}
+\begin{center}
+\begin{tikzpicture}[font=\scriptsize, x=1cm, y=1cm,
+    box/.style={draw=gray!70, rounded corners=2pt, align=center, inner sep=3pt}]
+  \node[box, fill=gray!12] (a) at (0,0.85) {venue A};
+  \node[box, fill=gray!12] (b) at (0,0) {venue B};
+  \node[box, fill=gray!12] (c) at (0,-0.85) {venue C};
+  \node[box, fill=orange!25] (sip) at (2.7,0) {consolidator};
+  \node[box, fill=orange!12] (tape) at (5.4,0) {consolidated tape};
+  \node[box, fill=blue!12] (you) at (8.3,0) {a participant};
+  \foreach \n in {a,b,c} \draw[-{Stealth}, gray!70] (\n) -- (sip);
+  \draw[-{Stealth}, gray!70] (sip) -- (tape);
+  \draw[-{Stealth}, gray!70] (tape) -- (you);
+  \draw[-{Stealth}, blue!60, dashed] (a.north) to[out=35, in=135]
+       node[above, text=blue!55!black, pos=0.55] {each venue's own feed, direct} (you.north);
+\end{tikzpicture}
+\end{center}
+
+\pause
+
+Rule 603(c) of Regulation NMS \cite{SEC05reg}: display consolidated data.
+
+\pause
+
+The obligation is to display it, not to trade on it.
+\note{
 A second tape exists in United States equities for a regulatory rather than a technical
-reason.
-
-\pause
-
-Rule 603(c) of Regulation NMS obliges anyone who displays quotations,
-where a trading decision can be implemented,
-to display consolidated data alongside them \cite{SEC05reg}.
-
-\pause
-
-Consolidation is performed by a party other than the venue on which the quotation arose,
-and costs a latency that a participant reading each venue's own feed does not pay.
+reason: anyone who displays quotations, where a trading decision can be implemented, must
+display consolidated data alongside them.
+The dashed arrow is what a latency-sensitive participant actually reads. The obligation is to
+display the consolidated tape, not to trade on it.
+}
 \end{frame}
 
 \begin{frame}
-  \frametitle{The book is a fold, and holds one state}
-Writing $\mathcal{B}$ for a configuration and $m_k$ for the $k$-th message of the stream,
+  \frametitle{The book is a fold}
 \begin{equation}
 \label{eq.bookFold}
  \mathcal{B}_{k} = F(\mathcal{B}_{k-1}, m_k),
- \qquad \mathcal{B}_0 = \varnothing ,
+ \qquad \mathcal{B}_0 = \varnothing .
 \end{equation}
-so that the book is the accumulator of a fold and holds one state, the current one.
 
 \pause
 
-The sequence $(\mathcal{B}_k)_k$ is not held by the book;
-it is produced by whatever drives the fold, at whatever resolution is wanted.
+The book is the accumulator: one state, the current one.
 
 \pause
 
-Sampling every message, every second, or only at the times a statistic is evaluated,
-are three drivers of one accumulator,
-and none of them is a different book.
+The sequence $(\mathcal{B}_k)_k$ belongs to whatever drives the fold.
+\note{
+Writing $\mathcal{B}$ for a configuration and $m_k$ for the $k$-th message of the stream, the
+book is the accumulator of a fold.
+The sequence of states is not held by the book; it is produced by whatever drives the fold,
+at whatever resolution is wanted. Sampling every message, every second, or only at the times
+a statistic is evaluated, are three drivers of one accumulator, and none of them is a
+different book.
+}
 \end{frame}
 
 \begin{frame}
   \frametitle{The transition is one function, not a case analysis}
-The transition $F$ is the update rule of Section 1.1:
-the arrival of an order takes the aggregated state to the aggregated state,
-with no reference to the individual orders resting behind the sizes.
+\[
+F\big(\mathcal{B},\,(t,q,p,d)\big)
+ \; = \;
+ \underbrace{\text{consume } \marketOrderSize}_{\text{market part}}
+ \; \text{then} \;
+ \underbrace{\text{rest } q - \marketOrderSize \text{ at } p}_{\text{resting part}}
+\]
 
 \pause
 
-What makes it a single function rather than a case analysis is the decomposition of
-Section 1.1:
-every incoming order is processed as its market part followed by its resting part.
-There is no separate branch for a marketable order,
-and an implementation that writes one has two code paths where the mathematics has one.
+No separate branch for a marketable order.
 
 \pause
 
-A message is a submission, carrying an order $(t,q,p,d)$,
-or a cancellation, withdrawing a size $q$ from the queue at $p$ on the side $d$;
-a deletion is the cancellation of all of it.
-
-\pause
-
-An execution is not a third kind:
-it is the record of the market part of somebody else's submission,
-read on the passive side.
+Two code paths where the mathematics has one.
+\note{
+The transition $F$ is the update rule of section 1.1: the arrival of an order takes the
+aggregated state to the aggregated state, with no reference to the individual orders resting
+behind the sizes. What makes it a single function rather than a case analysis is the
+decomposition of section 1.1.
+A message is a submission, carrying an order $(t,q,p,d)$, or a cancellation, withdrawing a
+size $q$ from the queue at $p$ on the side $d$; a deletion is the cancellation of all of it.
+An execution is not a third kind: it is the record of the market part of somebody else's
+submission, read on the passive side.
+}
 \end{frame}
 
 \begin{frame}
@@ -317,10 +446,13 @@ read on the passive side.
 
 \pause
 
-The loop is the reduction of the update rule to its elementary pieces,
-and it terminates because each pass empties one price.
-We implement it more than once,
-and compare the implementations on the time and the memory they take.
+Finite, because the book is.
+\note{
+The loop is the reduction of the update rule to its elementary pieces, and it is the
+elementary stream of section 1.1 written as code.
+We implement it more than once, and compare the implementations on the time and the memory
+they take --- which is the whole of the second notebook.
+}
 \end{frame}
 
 \begin{frame}
@@ -346,91 +478,138 @@ and compare the implementations on the time and the memory they take.
 
 \begin{remark}
 \label{remark.gridAgainstOccupied}
- The index $i$ of $\nthBestAskSize[i]$ counts levels of the price grid,
- whereas an aggregated feed reports the first $L$ \emph{occupied} prices of each side.
- The two agree only when the occupied prices are contiguous on the grid,
- so the queue imbalance $\queueImbalance[n]$ is recoverable from a truncated aggregated
- book only for those $n$ within which no gap falls.
+ The queue imbalance $\queueImbalance[n]$ is recoverable from a truncated aggregated book
+ only for those $n$ within which no gap falls.
 \end{remark}
-
-\pause
-
-Here the second column names a price two ticks from the touch.
+\note{
+The index $i$ of $\nthBestAskSize[i]$ counts levels of the price grid, whereas an aggregated
+feed reports the first $L$ \emph{occupied} prices of each side. The two agree only when the
+occupied prices are contiguous on the grid.
+Here the second column names a price two ticks from the touch, and the two indexings part
+company from $i=2$ onwards. Summing the first $n$ size columns of a file is therefore a
+different statistic, which the first notebook measures: on the reference book it reads
+$0.54$ where $\queueImbalance[2]$ reads $0.14$, and both lie in $[-1,1]$.
+}
 \end{frame}
 
 \begin{frame}
   \frametitle{Two files, aligned by position alone}
+\begin{center}
+\begin{tikzpicture}[font=\tiny, x=1cm, y=1cm]
+  \node[above, font=\scriptsize] at (1.6,1.05) {\emph{message} file};
+  \foreach \r/\y in {1/0.75, 2/0.375, 3/0.0, 4/-0.375} {
+    \draw[gray!60, fill=blue!6] (0,\y) rectangle (3.2,\y+0.28);
+  }
+  \draw[fill=blue!35, draw=blue!65] (0,0) rectangle (3.2,0.28);
+  \node at (1.6,0.14) {time \; type \; id \; size \; price \; dir};
+  \node[left, font=\scriptsize] at (-0.06,0.14) {row $k$};
+
+  \node[above, font=\scriptsize] at (6.6,1.05) {\emph{orderbook} file};
+  \foreach \r/\y in {1/0.75, 2/0.375, 3/0.0, 4/-0.375} {
+    \draw[gray!60, fill=orange!6] (4.4,\y) rectangle (8.8,\y+0.28);
+  }
+  \draw[fill=orange!45, draw=orange!75] (4.4,0) rectangle (8.8,0.28);
+  \node at (6.6,0.14) {$\bestAskPrice \; \nthBestAskSize[1] \; \bestBidPrice \;
+                       \nthBestBidSize[1] \; \cdots \; 4L$ columns};
+  \draw[<->, gray!80] (3.3,0.14) -- (4.3,0.14);
+  \node[font=\scriptsize, above, inner sep=2pt] at (3.8,0.2) {position};
+  \node[below, gray!40!black, font=\scriptsize] at (6.6,-0.5)
+       {no timestamp, no sequence number, no key};
+\end{tikzpicture}
+\end{center}
+
+\pause
+
+Orderbook row $k$: the configuration \emph{after} message $k$.
+
+\pause
+
+Sentinels pad a side with fewer than $L$ occupied prices.
+\note{
 LOBSTER \cite{HP11lob} reconstructs the book of a Nasdaq-traded stock from the historical
-TotalView-ITCH files, and distributes, per ticker and per day,
-a \emph{message} file and an \emph{orderbook} file:
-the file-based form of the same pair of feeds.
+TotalView-ITCH files, and distributes a message file and an orderbook file per ticker and per
+day: the file-based form of the same pair of feeds.
+Alignment is assumed, not verified. Equal lengths catch a file truncated at either end; a row
+missing from the \emph{middle} shifts every state after it and is undetectable by any count.
+Since the first file determines the second, the pair is the check of the earlier frame in
+recorded form.
+}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Six event types, and only two move the book}
+\begin{center}
+\begin{tabular}{@{}clc@{}}
+\toprule
+type & & effect on the book \\
+\midrule
+1 & submission of a limit order & submit \\
+2 & partial cancellation & withdraw \\
+3 & total deletion & withdraw \\
+4 & execution of a visible limit order & withdraw, on the resting side \\
+5 & execution of a hidden one & \alert{none} \\
+7 & trading halt & \alert{none} \\
+\bottomrule
+\end{tabular}
+\end{center}
 
 \pause
 
-The message file carries the time, the event type, an order identifier, a size, a price and a
-direction.
-Six event types occur:
-the submission of a limit order,
-its partial cancellation,
-its total deletion,
-the execution of a visible limit order,
-the execution of a hidden one,
-and a trading halt.
+Two words in the book's vocabulary: submit, withdraw.
 
 \pause
 
-The orderbook file carries $4L$ columns, the price and size of each side repeated outward
-from the touch, padded with sentinels where a side has fewer than $L$ occupied prices.
-
-\pause
-
-Row $k$ of the orderbook file is the configuration after the event on row $k$ of the message
-file, and the orderbook file carries no timestamp and no key of its own.
+A type 4 and a type 3 look the same.
+\note{
+Type 6, the cross trade, is documented in the format and does not occur in continuous
+trading, which is why the notes count six. A hidden execution moves nothing because the size
+never rested in the visible book.
+That the aggregated state cannot distinguish an execution from a cancellation is the
+size-versus-volume remark of class 1 read from the other side: a level shrinks by
+cancellation as well as by execution, so the volume traded is not recoverable from the states,
+and that is exactly why the pair of files is read together.
+}
 \end{frame}
 
 \begin{frame}
   \frametitle{An execution names the passive side}
+\begin{center}
+\begin{tikzpicture}[font=\scriptsize, x=1cm, y=1cm]
+  \draw[gray!55] (0.2,0) -- (2.6,0);
+  \foreach \x/\h in {0.7/0.55, 1.4/0.8, 2.1/0.4}
+    \draw[fill=blue!55, draw=blue!70] (\x-0.2,0) rectangle (\x+0.2,\h);
+  \node[blue!70!black, above] at (1.4,0.85) {resting buy orders};
+  \draw[-{Stealth}, orange!85!black, thick] (4.3,0.95) -- node[above, font=\tiny] {aggressive \emph{sell}} (2.5,0.5);
+  \node[draw=gray!60, fill=gray!8, rounded corners=2pt, inner sep=4pt, font=\ttfamily\tiny]
+       at (6.0,0.15) {34201.5 \; 4 \; 11 \; 30 \; 1000 \; +1};
+  \node[gray!40!black, font=\scriptsize, align=center] at (6.0,-0.5)
+       {the file writes \texttt{+1}: the side that \emph{rested}};
+\end{tikzpicture}
+\end{center}
+
+\pause
+
 \begin{remark}
 \label{remark.passiveDirection}
- Notice that there is no event for an aggressive order.
- A trade is recorded as the execution of the \emph{resting} order it matched,
- so the direction carried by an execution names the passive side
- and the aggressor's direction is its opposite.
- In the decomposition of Section 1.1
- the message stream records the second component of the pair explicitly,
- and the first only through its effect on the opposite side.
+ There is no event for an aggressive order, so the aggressor's direction is the opposite of
+ the one the execution carries.
 \end{remark}
 
 \pause
 
-\alert{Signing a trade is therefore exact and free here,
-and inverted by anyone who reads the column as the direction of the trade.}
-
-\pause
-
-Every statistic of Section 1.4 is signed by that column.
-An inversion leaves each of them in range, and each of them backwards.
-\end{frame}
-
-\begin{frame}
-  \frametitle{What to take away}
-The aggregated book is derived from the message stream, later than it, and truncated.
-A sum does not record its summands,
-and queue position is the summand that decides who is filled.
-
-\pause
-
-The book is a fold.
-It holds one state, the transition is one function, and the sequence belongs to the driver.
-
-\pause
-
-The exchange's own fold is a check on ours and not a substitute for it:
-a drifted book still returns a number in range.
-
-\pause
-
-Section 1.3 next: the message stream as a point process in continuous time,
-and the excitation one event exerts on the timing of the others.
-Section 1.4 is where all of it is going.
+\alert{Exact and free --- and inverted if read as the trade's direction.}
+\note{
+A trade is recorded as the execution of the resting order it matched. In the decomposition of
+section 1.1 the message stream records the second component of the pair explicitly, and the
+first only through its effect on the opposite side.
+Every statistic of section 1.4 is signed by that column. An inversion leaves each of them in
+range and each of them backwards, which is the kind of error that survives every plot.
+The first notebook checks this as an equality rather than as a sign: a type-4 row prints at
+the prior best price on the side that rested, and on the whole AMZN day there is no exception.
+Queue position is the summand that decides who is filled, and no latency buys it back. The
+exchange's own fold is a check on ours, never a substitute.
+Section 1.3 next: the message stream as a point process in continuous time, and the
+excitation one event exerts on the timing of the others. Section 1.4 is where all of it is
+going.
+}
 \end{frame}

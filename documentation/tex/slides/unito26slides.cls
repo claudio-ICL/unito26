@@ -2,11 +2,21 @@
 %% Modelled on the beamer class of Claudio's viva.
 %% This file owns the whole preamble: content files carry none.
 %% CLASS OPTIONS %%
-% Forwarded to beamer, so that \documentclass[handout]{unito26slides} collapses the
-% \pause beats to one page per frame.  Without this they are swallowed in silence.
+% `script' interleaves the lecturer's script with the slides: every frame is followed by a
+% page carrying its \note.  A frame holds the object and its captions, and what is said over
+% it lives in the \note, so the two are one source and cannot drift apart.  Combine with
+% `handout' -- \documentclass[handout,script]{unito26slides} -- or each \pause beat gets a
+% page of its own and the script repeats.
+\newif\if@unito@script
+\DeclareOption{script}{\@unito@scripttrue}
+% Everything else is forwarded to beamer, so that \documentclass[handout]{unito26slides}
+% collapses the \pause beats to one page per frame.  Without this they are swallowed in
+% silence.
 \DeclareOption*{\PassOptionsToClass{\CurrentOption}{beamer}}
 \ProcessOptions\relax
 \LoadClass[10pt]{beamer}
+% After \LoadClass: \setbeameroption is beamer's, and does not exist before it.
+\if@unito@script\setbeameroption{show notes}\fi
 
 %% INPUT PATHS %%
 \makeatletter
@@ -22,6 +32,9 @@
 \usepackage[utf8]{inputenc}
 \usepackage[english]{babel}
 %% BIBLIOGRAPHY %%
+% natbib renews \makeindex unconditionally, and beamer leaves it undefined once notes are
+% being typeset, so the `script' build fails here and the slide build does not.
+\providecommand{\makeindex}{}
 \usepackage[round,sort,comma,numbers,authoryear]{natbib}
 \setcitestyle{aysep={ },yysep={,}}
 %% FIGURES AND GRAPHICS %%
@@ -44,6 +57,15 @@
 \usepackage{mathrsfs}
 \usepackage{xfrac}
 \usepackage{esint}
+
+%% THE VERSION LINE %%
+% babel's `english' sets \today in the American form; the course is British throughout.
+% The notes class carries the same macro: the two classes share no preamble.
+\newcommand{\compilationDate}{%
+ \number\day\space
+ \ifcase\month\or January\or February\or March\or April\or May\or June\or
+ July\or August\or September\or October\or November\or December\fi
+ \space\number\year}
 
 \setlength{\parskip}{7pt}
 \setlength{\parindent}{0pt}
