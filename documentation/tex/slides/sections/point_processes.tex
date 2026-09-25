@@ -1,0 +1,181 @@
+% CLASS 3 -- the notes' section 1.3, sec.pointProcesses, COMPRESSED.
+% Budget 75 min; planned 75 over 18 frames, so no headroom.
+% Overrunning, cut F3.13 (fold def.relaxationTime into F3.12 as one line and drop its
+% picture), then F3.3 (assert the survival function inline on F3.15 and F3.16).
+% Do NOT cut F3.12: section 1.4.3 is unstateable without prop.forwardMean.
+%
+% DROPPED BY DESIGN: lemma.perronFrobenius; the whole second-order block (sec.secondOrder,
+% thm.lyapunov, lemma.lyapunovUniqueness, eq.stationaryCovariance, eq.stateProductJump,
+% eq.lyapunov, eq.explicitFormulaeOfStationaryCovariance, eq.secondMomentODE); the scalar
+% case (eq.scalarVariance, remark.scalarVariance); sub- and supercriticality
+% (eq.supercriticalGrowth, remark.martingaleNotBounded, remark.strictBaseline);
+% prop.meanState; remark.noSubcriticality; corol.constantClusterSize as a statement;
+% remark.hurwitzNeedsNonNegativity; the Poisson example and eq.NTE_counting_proc.
+% Perron-Frobenius parts i and iv are used silently on F3.11 and F3.12, in a subordinate
+% clause each, and get no statement.
+%
+% LABELS. A label is defined once across the five class files.
+
+\subsection{Point processes and self-excitation}
+
+\begin{frame}
+  \frametitle{Outline}
+% 3 min. One \nocite per line -- a multi-key \nocite spanning lines breaks bibtex.
+\nocite{DVJ08int}
+\nocite{Haw71spe}
+\nocite{HO74clu}
+\nocite{DZ13exa}
+% The two features of the data that force the apparatus, taken from section 1.1's own
+% paragraph: continuous physical time, and the effect of one type of event on the time
+% distribution of others. Say what is kept and what is skipped.
+\end{frame}
+
+\begin{frame}
+  \frametitle{Intensity and compensator}
+% 5 min. One line on \multiCountingProc, the ground process \groundProc and the labels
+% \event[n]; name eq.arrivalTimesOfGroundProcess and eq.eventLabels without displaying them.
+% Then def.compensator with its four conditions, the absolutely continuous case, and the
+% conditional expectation. Closing: predictability is the whole content -- \intensity(t) is a
+% function of the STRICT past, which is why every intensity we write is left-continuous.
+\end{frame}
+
+\begin{frame}
+  \frametitle{The conditional survival function}
+% 4 min. prop.conditionalSurvival and eq.conditionalSurvival. The filtration is the INTERNAL
+% history, and on the event that no arrival occurs the right-hand side is measurable, so it
+% is a survival function we can invert. Both simulators are this proposition, one run
+% backwards and one forwards.
+\end{frame}
+
+\begin{frame}
+  \frametitle{Meyer's time change}
+% 4 min. thm.meyer1971 and eq.time-changed_intertimes. The three hypotheses as a list --
+% enumitem is now loaded, so the notes' own list syntax compiles. Closing: hypothesis i is
+% what buys the JOINT independence; the univariate statement holds without it.
+\end{frame}
+
+\begin{frame}
+  \frametitle{Hawkes processes}
+% 4 min. def.hawkesprocess, eq.intensity_ordHawkes, eq.branchingMatrix. The half-open
+% interval is what makes the intensity predictable.
+\end{frame}
+
+\begin{frame}
+  \frametitle{The order of the indices}
+% 4 min. remark.indexOrder. \alert{The row is excited and the column excites.}
+% The column sum is the expected number of direct offspring of one event of type \eone.
+% A matrix and its transpose share a spectral radius, so a transposed kernel passes every
+% stability test and produces a path of the right total rate: the convention is the only
+% defence against it.
+\end{frame}
+
+\begin{frame}
+  \frametitle{The cluster representation}
+% 5 min. prop.clusterRepresentation. PICTURE: a time axis with immigrant marks, each
+% immigrant's offspring hanging below as a two-level tree with one whole cluster shaded, and
+% the same points projected onto the axis as the path an observer sees. The picture IS the
+% statement that the clusters are unobservable.
+% Closing beat, ours rather than the notes': a cluster is a run with a common ancestor, and
+% it is not a run of same-signed events.
+\end{frame}
+
+\begin{frame}
+  \frametitle{The exponential kernel and its state}
+% 4 min. def.exponentialHawkes, eq.exponentialKernel, eq.decayedCounts, eq.GammaIsAOverBeta,
+% eq.intensityFromState, eq.stateDynamics. A SINGLE \decay shared by every pair. The strict
+% inequality in \decayedCounts is what makes the intensity predictable. One clause for
+% remark.countsAgainstRates: \branchingMatrix is dimensionless and \excitation is a rate.
+\end{frame}
+
+\begin{frame}
+  \frametitle{The state is Markov}
+% 5 min. thm.markovState and eq.generatorOfDecayedCount. The integrability condition in
+% words, not symbols. Closing: the past enters through \numEventTypes numbers, so updating
+% costs O(1) per event against O(n^2), and a decay per pair would need a state of dimension
+% \numEventTypes squared -- exercise.eventDependentDecays as a clause, not a frame.
+\end{frame}
+
+\begin{frame}
+  \frametitle{Stationarity and the mean intensity}
+% 4 min. def.stationaryHawkes then thm.stationarity and eq.stationaryIntensity. Stationary
+% iff \branchingRatio < 1. The one-line sketch: \stationaryIntensity = \baseIntensity +
+% \branchingMatrix\stationaryIntensity, and \branchingRatio < 1 inverts.
+% Introduce \totalRate and \bar\baseIntensity here.
+\end{frame}
+
+\begin{frame}
+  \frametitle{Cluster size and the endogenous fraction}
+% 5 min. def.endogenousFraction, prop.clusterSize, remark.clusterBudget, all reusing their
+% labels. The cluster size COUNTS THE ANCESTOR. \bar\baseIntensity \bar C = \totalRate is the
+% cheapest consistency check an implementation admits.
+% \alert{\branchingRatio is neither the endogenous fraction nor 1 - 1/\bar C.}
+% The two non-generic conditions in words: constant column sums, or \baseIntensity a right
+% Perron vector. The shipped numbers 0.682 against 0.60 and 3.15 against 2.5 come from the
+% package, not from the notes -- say so on the frame.
+\end{frame}
+
+\begin{frame}
+  \frametitle{The forward mean and the Hurwitz matrix}
+% 6 min. THE LOAD-BEARING FRAME OF THE CLASS. def.hurwitzMatrix, prop.hurwitzCriterion
+% (\hurwitzMatrix = \excitation - \decay I is Hurwitz iff \branchingRatio < 1), and
+% prop.forwardMean with both displays and \meanResponseIntegral(\forecastHorizon).
+% Say aloud that eq.forwardMeanCounts is the equation class 4's forecast is a contraction of.
+% One clause for remark.transientAgainstStationary.
+\end{frame}
+
+\begin{frame}
+  \frametitle{The mean response and the relaxation time}
+% 4 min. corol.meanResponse and def.relaxationTime. PICTURE: the mean response against t for
+% two types, one decaying monotonically and one RISING BEFORE IT FALLS (a column sum of
+% \branchingMatrix exceeding one), with the relaxation time marked as a tangent intercept and
+% not as a half-life. The response integral ties back to the cluster size. First to cut.
+\end{frame}
+
+\begin{frame}
+  \frametitle{Two dimensionless groups}
+% 4 min. def.dimensionlessGroups and remark.dimensionlessGroups. \totalRate/\decay, events
+% per excitation timescale, decides whether self-excitation is visible at the rate the
+% process is sampled; \totalRate \ofiWindow decides whether a window sum is a statistic.
+% \alert{At \totalRate/\decay well below one a study measures a process in which there is
+% correctly nothing to find.}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Ogata's thinning algorithm}
+% 5 min. algo.ogata as a bare algorithmic environment -- `algorithm' is a float and will not
+% place inside a frame. The bound is free: \excitation >= 0 makes \totalIntensity
+% non-increasing between events, so no separate majorant is constructed, and the dominating
+% value is the POST-JUMP one. Then eq.update_of_exponential_intensity, O(1) against O(n^2).
+% Closing beat as remark.prePostJump: the pre-jump value enters the intensity and the
+% post-jump value is carried forward; confusing them shifts every intensity by one event and
+% produces a path that is plausible and wrong.
+\end{frame}
+
+\begin{frame}
+  \frametitle{The exact scheme --- 1 of 2}
+% 4 min. eq.totalIntensityBetweenEvents and eq.dzSurvival: the common decay makes the excited
+% part of \totalIntensity one exponential, so the survival function is a PRODUCT and the wait
+% is a minimum of two independent clocks, one immigration and one defective excitation.
+% thm.dassiosZhao with eq.dzDraws. One clause of remark.commonDecay: with a decay per pair
+% the two-factor form fails and one clock per decay rate is needed.
+\end{frame}
+
+\begin{frame}
+  \frametitle{The exact scheme --- 2 of 2}
+% 4 min. algo.dassiosZhao as bare algorithmic. Nothing is approximate and nothing is
+% rejected. remark.defectiveClock: the excited factor carries finite mass D/\decay, the
+% expected number of direct offspring the state still owes, and with probability
+% exp(-D/\decay) it expires and the next event is an immigrant -- clipping biases the
+% immigrant share. remark.typeDraw: the wait sees \excitation only through its column sums,
+% and the type draw is where the full matrix re-enters.
+\end{frame}
+
+\begin{frame}
+  \frametitle{The residual test}
+% 5 min. prop.compensatorClosedForm -- the compensator exactly, from the state and the
+% counts, with no numerical integration; the count is read before T and the state at it
+% (remark.readPreJump, one clause). Then the test: rescaled inter-arrivals are Exp(1),
+% \cite{Oga88sta}. The three hypotheses, and which of them fails on a RECORDED path.
+% Closing: remark.marginsOnly. \alert{A suite of \numEventTypes passing tests has established
+% \numEventTypes margins.}
+\end{frame}

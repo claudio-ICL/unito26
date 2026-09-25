@@ -1,0 +1,109 @@
+% CLASS 2 -- the notes' section 1.2, sec.messageFiles.
+% Budget 45 min of slides, then the two notebooks; planned 49 over 12 frames.
+% Overrunning, cut F2.6 (Regulation NMS is background and plays no part in the assignment),
+% then hand algo.bookFold's termination argument to the notebook. That lands at 45.
+%
+% LABELS. A label is defined once across the five class files, and a cross-file \ref prints
+% ?? under \includeonly. prop.lobUpdate and prop.decompositionOfLimitOrder belong to class 1
+% and are RESTATED HERE WITHOUT LABELS, in one line each.
+
+\subsection{From message files to the aggregated order book}
+
+\begin{frame}
+  \frametitle{Outline}
+% 3 min. One \nocite per line -- a multi-key \nocite spanning lines breaks bibtex.
+\nocite{HP11lob}
+\nocite{DBG24eob}
+\nocite{NAS23itc}
+\nocite{LPV22sho}
+% Section 1.1 described a book at one instant. Where those instants come from, and why a
+% participant computes them rather than receiving them.
+\end{frame}
+
+\begin{frame}
+  \frametitle{A matching engine publishes two streams}
+% 4 min. Unlabelled: "A matching engine produces one thing: a stream of events."
+% The message stream is the tape of the orders and is exactly the trading epoch of
+% def.orderQueue -- restate that in one line, no label. The aggregated book is the
+% configuration of section 1.1 truncated at depth L. Name Eurex EOBI against EMDI and MDI,
+% CME MDP 3.0, Nasdaq TotalView-ITCH, and say the nomenclature is not standardised.
+% One sentence for the whole vendor footnote: eight citations on a frame is a bibliography.
+\end{frame}
+
+\begin{frame}
+  \frametitle{The aggregate is the image of the stream}
+% 4 min. The sizes are sums over the queues, so the second feed is the image of the first and
+% the exchange runs the fold before publishing. A sum does not record its summands, and that
+% split is what decides whether a given resting order is executed.
+% Third beat: remark.whyReconstruct -- the cross-section that survives is what the queue
+% imbalance and the order flow imbalance are computed from.
+\end{frame}
+
+\begin{frame}
+  \frametitle{The aggregated book is derived, and later}
+% 5 min. remark.derivedAndDelayed. A message is on the wire once written; a level update
+% exists only once netted against the level's total. Truncated at L, and where netted the
+% intermediate configurations are ABSENT rather than delayed.
+% \cite[Section 3.1]{DBG24eob} for "in order to send public market data as fast as possible".
+\end{frame}
+
+\begin{frame}
+  \frametitle{A check, not a substitute}
+% 4 min. remark.aggregatedAsCheck. A dropped message leaves your fold wrong in a way no
+% statistic computed from it reveals; comparing level by level against the exchange's own
+% fold locates the error where nothing else does. This frame is what the first notebook does.
+\end{frame}
+
+\begin{frame}
+  \frametitle{The consolidated tape}
+% 3 min. Rule 603(c) of Regulation NMS, \cite{SEC05reg}: consolidation performed by a party
+% other than the venue the quotation arose on, at a latency a participant reading each
+% venue's own feed does not pay. First to cut.
+\end{frame}
+
+\begin{frame}
+  \frametitle{The book is a fold}
+% 4 min. eq.bookFold. The book is the accumulator and holds ONE state, the current one; the
+% sequence is produced by whatever drives the fold, at whatever resolution is wanted.
+\end{frame}
+
+\begin{frame}
+  \frametitle{The transition is one function, not a case analysis}
+% 5 min. F is prop.lobUpdate and what makes it one function is
+% prop.decompositionOfLimitOrder -- restate both in one line each, no labels. Market part
+% then resting part, so there is no separate branch for a marketable order, and an
+% implementation that writes one has two code paths where the mathematics has one.
+% A message is a submission, a cancellation or a deletion; an execution is not a third kind.
+\end{frame}
+
+\begin{frame}
+  \frametitle{The fold, written out}
+% 5 min. algo.bookFold as a bare algorithmic environment: `algorithm' is a float and floats
+% do not place inside a frame, so there is no caption and no \label{algo.*} here.
+% The while loop is eq.elementaryStream of class 1; it terminates because each pass empties
+% one price. Closing: we implement it more than once and compare time and memory.
+\end{frame}
+
+\begin{frame}
+  \frametitle{Grid levels against occupied prices}
+% 4 min. remark.gridAgainstOccupied. \nthBestAskSize[i] counts grid levels; a feed reports
+% the first L OCCUPIED prices. They agree only where the occupied prices are contiguous, so
+% \queueImbalance[n] is recoverable from a truncated feed only for those n within which no
+% gap falls. Reuse class 1's grid picture, with its unoccupied node.
+\end{frame}
+
+\begin{frame}
+  \frametitle{LOBSTER}
+% 5 min. Unlabelled: "LOBSTER \cite{HP11lob} reconstructs the limit order book", "Six event
+% types occur", "The two files are aligned by position alone". The message file and the
+% orderbook file as the historical form of the same pair; 4L columns padded with sentinels;
+% row k of one is the configuration after row k of the other, with no timestamp of its own.
+\end{frame}
+
+\begin{frame}
+  \frametitle{An execution names the passive side}
+% 5 min. remark.passiveDirection. There is no event for an aggressive order. The direction
+% carried by an execution names the PASSIVE side and the aggressor's is its opposite.
+% \alert{} the closing sentence: signing a trade is exact and free here, and inverted by
+% anyone who reads the column as the direction of the trade.
+\end{frame}
