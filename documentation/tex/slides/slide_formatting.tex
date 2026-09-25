@@ -8,8 +8,12 @@
 \setbeamercolor{structure}{fg=unitoblue}
 \setbeamertemplate{navigation symbols}{}
 
+% The picture is zero-height, so beamer would reserve no space for the footline and
+% paint it inside the body.  The strut gives the template the height the picture
+% occupies; it shares the picture's baseline, so no coordinate below changes.
 \setbeamertemplate{footline}
 {%
+    \rule{0pt}{28pt}%
     \begin{picture}(0,0)
         \put(20,20){%
             \rule{320pt}{0.4pt}
