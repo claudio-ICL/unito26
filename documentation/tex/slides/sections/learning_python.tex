@@ -1,0 +1,41 @@
+% WELCOME -- the notes' section 0.3, sec.learningPython. Budget 4 min.
+
+\subsection{What we learn about Python}
+
+\begin{frame}
+  \frametitle{The stack}
+\codehl{numpy} and \codehl{scipy} for the numerics.
+
+\pause
+
+\codehl{pandas} and \codehl{pyarrow} for tabular data,
+and \codehl{pandera} for the schemas that say what a table is.
+
+\pause
+
+\codehl{scikit-learn} for the fitting,
+and \codehl{matplotlib} and \codehl{plotly} for the figures.
+\end{frame}
+
+\begin{frame}
+  \frametitle{Four habits, taught alongside the stack}
+We reason about what an implementation must satisfy before we write it:
+the invariants it preserves, the round trips it closes,
+and the alternative routes through a computation that must reach the same value.
+
+\pause
+
+Those properties are then written as tests, before the implementation they specify.
+
+\pause
+
+What defines an object is written down with the object:
+a type carries the schema that validates it,
+and a model carries its parametrisation as a frozen object, never as a computed default.
+
+\pause
+
+The clear implementation comes first and is understood before anything faster is written.
+An optimisation is a second implementation shown to beat the first,
+and the comparison is part of the material.
+\end{frame}
