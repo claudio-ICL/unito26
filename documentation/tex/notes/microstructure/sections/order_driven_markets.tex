@@ -526,8 +526,10 @@ this implies $N\geq 1 $ in the notation of Proposition \ref{prop.lobUpdate},
 the converse failing when the order exactly clears the best level.
 Similarly, a buy market order $(t,\marketOrderSize,\infty,1)$ walks the book
 if $\marketOrderSize > \nthBestAskSize[1]_{t-}$.
-A market order walks the book if an only if
-its sweep cost is larget than the bid-ask sprad.
+A market order walks the book if and only if
+its sweep cost is larger than half the bid-ask spread,
+the walk term in \eqref{eq.sweepCost} being positive
+exactly when some $q_i$ with $i\geq 2$ is non-zero.
 
 Given a time window $\timeWindow$,
 the evolution in time of the limit order book
