@@ -20,6 +20,7 @@ from unito26.lob.messages import BUY, SELL, MessageType, is_market_price
 from unito26.lob.orderbook import AggregateBook
 
 __all__ = [
+    "use_template",
     "ascii_ladder",
     "describe_message",
     "book_figure",
@@ -40,6 +41,30 @@ BID_COLOUR = "#2a78d6"
 ASK_COLOUR = "#eb6834"
 MID_COLOUR = "#1baf7a"
 MICRO_COLOUR = "#eda100"
+
+SURFACE = "#fcfcfb"
+INK = "#0b0b0b"
+MUTED = "#898781"
+GRID = "#e1e0d9"
+AXIS = "#c3c2b7"
+
+
+def use_template(name: str = "unito26") -> None:
+    """Register the course plotly template and make it the default."""
+    import plotly.graph_objects as go
+    import plotly.io as pio
+
+    axis = dict(gridcolor=GRID, linecolor=AXIS, zeroline=False, tickfont=dict(color=MUTED))
+    pio.templates[name] = go.layout.Template(
+        layout=dict(
+            paper_bgcolor=SURFACE,
+            plot_bgcolor=SURFACE,
+            font=dict(color=INK, size=12),
+            xaxis=axis,
+            yaxis=axis,
+        )
+    )
+    pio.templates.default = name
 
 
 def describe_message(message) -> str:
