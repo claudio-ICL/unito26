@@ -93,4 +93,15 @@
 \usetikzlibrary{positioning, arrows.meta, calc}
 % enumitem, as the notes class loads it, so that a list copied from the notes compiles.
 \usepackage[inline]{enumitem}
+
+%% THE BOOK AXIS %%
+% Every picture of the limit order book draws price across the page and size up it, so the
+% grid is horizontal and the axis carries share counts.  It is called first inside the
+% picture, so that the columns are drawn over it.
+\newcommand{\booksizeaxis}[4]{% #1 left edge, #2 right edge, #3 top size, #4 step
+ \foreach \s in {0,#4,...,#3}{%
+  \draw[gray!20, very thin] (#1,\s) -- (#2,\s);
+  \node[left, gray!65, inner sep=1.5pt] at (#1,\s) {$\s$};}
+ \draw[gray!45] (#1,0) -- (#1,#3);
+}
 \sloppy %Prevents overflowing lines

@@ -202,9 +202,9 @@ the match and the message.
 \toprule
  & what it costs & recoverable? \\
 \midrule
-the netting interval & the states inside it & \alert{no} \\
-truncation at $L$ & the levels past the $L$-th & \alert{no} \\
-the snapshot product & the deltas between them & \alert{no} \\
+the netting interval & the states inside it & no \\
+truncation at $L$ & the levels past the $L$-th & no \\
+the snapshot product & the deltas between them & no \\
 \midrule
 the publication path & $\delta$ & yes \\
 \bottomrule
@@ -251,7 +251,7 @@ Fill probability is a function of the discarded split.
 
 \pause
 
-\alert{No latency buys it back.}
+No latency buys it back.
 \note{
 A message carries the identity of the order it concerns, so a participant folding the stream
 knows how many shares rest ahead of her own order at its price, and in what order they will
@@ -449,7 +449,8 @@ submission, read on the passive side.
 Finite, because the book is.
 \note{
 The loop is the reduction of the update rule to its elementary pieces, and it is the
-elementary stream of section 1.1 written as code.
+elementary stream of section 1.1 written as code. Class 1 saw its matching half; what is new
+here is the branch for a cancellation, the state it carries and the value it returns.
 We implement it more than once, and compare the implementations on the time and the memory
 they take --- which is the whole of the second notebook.
 }
@@ -459,6 +460,7 @@ they take --- which is the whole of the second notebook.
   \frametitle{A feed reports occupied prices, not grid levels}
 \begin{center}
 \begin{tikzpicture}[x=1.2cm, y=0.0094cm, font=\scriptsize]
+  \booksizeaxis{0.4}{4.7}{200}{50}
   \draw[gray!55] (0.4,0) -- (4.7,0);
   \foreach \x/\h in {1/120, 3/180, 4/90}
     \draw[fill=orange!75, draw=orange!85] (\x-0.26,0) rectangle (\x+0.26,\h);
@@ -547,8 +549,8 @@ type & & effect on the book \\
 2 & partial cancellation & withdraw \\
 3 & total deletion & withdraw \\
 4 & execution of a visible limit order & withdraw, on the resting side \\
-5 & execution of a hidden one & \alert{none} \\
-7 & trading halt & \alert{none} \\
+5 & execution of a hidden one & none \\
+7 & trading halt & none \\
 \bottomrule
 \end{tabular}
 \end{center}
@@ -574,15 +576,16 @@ and that is exactly why the pair of files is read together.
 \begin{frame}
   \frametitle{An execution names the passive side}
 \begin{center}
-\begin{tikzpicture}[font=\scriptsize, x=1cm, y=1cm]
+\begin{tikzpicture}[font=\scriptsize, x=1cm, y=0.004cm]
+  \booksizeaxis{0.2}{2.6}{200}{100}
   \draw[gray!55] (0.2,0) -- (2.6,0);
-  \foreach \x/\h in {0.7/0.55, 1.4/0.8, 2.1/0.4}
+  \foreach \x/\h in {0.7/150, 1.4/200, 2.1/100}
     \draw[fill=blue!55, draw=blue!70] (\x-0.2,0) rectangle (\x+0.2,\h);
-  \node[blue!70!black, above] at (1.4,0.85) {resting buy orders};
-  \draw[-{Stealth}, orange!85!black, thick] (4.3,0.95) -- node[above, font=\tiny] {aggressive \emph{sell}} (2.5,0.5);
+  \node[blue!70!black, above] at (1.4,212) {resting buy orders};
+  \draw[-{Stealth}, orange!85!black, thick] (4.3,238) -- node[above, font=\tiny] {aggressive \emph{sell}} (2.5,125);
   \node[draw=gray!60, fill=gray!8, rounded corners=2pt, inner sep=4pt, font=\ttfamily\tiny]
-       at (6.0,0.15) {34201.5 \; 4 \; 11 \; 30 \; 1000 \; +1};
-  \node[gray!40!black, font=\scriptsize, align=center] at (6.0,-0.5)
+       at (6.0,38) {34201.5 \; 4 \; 11 \; 30 \; 1000 \; +1};
+  \node[gray!40!black, font=\scriptsize, align=center] at (6.0,-125)
        {the file writes \texttt{+1}: the side that \emph{rested}};
 \end{tikzpicture}
 \end{center}
@@ -597,7 +600,7 @@ and that is exactly why the pair of files is read together.
 
 \pause
 
-\alert{Exact and free --- and inverted if read as the trade's direction.}
+Exact and free --- and inverted if read as the trade's direction.
 \note{
 A trade is recorded as the execution of the resting order it matched. In the decomposition of
 section 1.1 the message stream records the second component of the pair explicitly, and the

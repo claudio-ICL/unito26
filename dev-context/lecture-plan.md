@@ -34,7 +34,7 @@ slide of the course was "Two market infrastructures".
 | file | class | frames | planned | written |
 | --- | --- | --- | --- | --- |
 | `sections/` × 5 (Welcome) | day one | 6 | 10m | ☑ 25 Sep |
-| `sections/order_driven_markets.tex` | 1 | 22 | 95m | ☑ 22 Sep, revised 25 Sep |
+| `sections/order_driven_markets.tex` | 1 | 27 | 112m | ☑ 22 Sep, revised 25 Sep |
 | `sections/message_files.tex` | 2 | 16 | 58m | ☑ 25 Sep |
 | `sections/point_processes.tex` | 3 | 18 | 76m | ☐ |
 | `sections/price_formation.tex` | 4 | 20 | 90m | ☐ |
@@ -54,7 +54,7 @@ otherwise exclude `notation.tex` and nothing would compile.
 `sections/microstructure.tex` is the superseded deck. It is no longer included, and it is
 deleted once the rewrite has been read.
 
-### Six fixes to the class and formatting files, made and verified
+### Nine fixes to the class and formatting files, made and verified
 
 The class promises in its own comment *"Same names as the notes, so that a statement can be
 moved between the two"*, and did not keep it.
@@ -86,6 +86,12 @@ moved between the two"*, and did not keep it.
   `specs.tex` dates the title page and leaves the footline one line — the footline prints the
   *short* form, through `\insertshortdate`. `\compilationDate` is defined again in
   `unito26slides.cls`, as the two classes share no preamble.
+- **a picture of the book said nothing about size.** Every schematic drew price across the
+  page and size up it, and carried no axis, so a column was a shape rather than a quantity.
+  `\booksizeaxis{left}{right}{top}{step}` in `unito26slides.cls` draws the horizontal grid
+  and the share counts, and is called *first* inside the picture so that the columns sit over
+  it. All six book pictures take it; `message_files.tex`'s passive-side schematic was drawing
+  heights in centimetres and was rescaled onto the section 8 sizes to take it too.
 - **`tikz` was loaded with no libraries.** `positioning`, `arrows.meta` and `calc` are all
   hard errors when used, and every schematic wants one. Added.
 - **there was no way to build the lecturer's script.** `\documentclass[script]{unito26slides}`
@@ -121,6 +127,10 @@ they see them while the lecturer talks, and the reference material is the notes.
   `$\vwap_{t,w}$ is a statistic of the transactions.` and *cannot be recovered from the
   sequence of configurations alone* is in the `\note`. Definitions keep their mathematics
   whole: one that sheds a condition is a different definition;
+- **no `\alert`.** A slide does not raise its voice: the emphasis is carried by position —
+  a caption is the last line of the frame already — or by `\emph`, which is the only emphasis
+  the house style admits. Removed from the two taught files and from the commented plans of
+  classes 3 and 4, so that the unwritten classes do not inherit it;
 - **no closing summary frame.** A slide that recites what the class just did is the spoken
   half written down; the forward signpost lives in the last frame's `\note`;
 - **what is said over the object goes in `\note{}`**, not on the slide. Nothing is lost: it
@@ -130,9 +140,10 @@ they see them while the lecturer talks, and the reference material is the notes.
   says which labels the file still owns.
 
 Measured, in caption words a frame: the viva deck 67; class 1 115 before the first rewrite,
-24 after it, **15** after the caption pass; class 2 133, then 21, then **16**; the Welcome
-section 82 before the caption pass and **17** after. Zero frames over the cap, zero with a
-caption over twelve words, zero with no object, across all forty-four.
+24 after it, **12** after the caption pass and the five pictures that followed it; class 2
+133, then 21, then **16**; the Welcome section 82 before the caption pass and **17** after.
+Zero frames over the cap, zero with a caption over twelve words, zero with no object, across
+all forty-nine.
 
 The contract is checked, not remembered:
 
@@ -219,6 +230,31 @@ than asserted. The notebook also stopped hand-rolling what the package provides
 `lobster.load_orderbook`, `frames.lobster_padding_row`), and now *computes* its two standing
 claims instead of asserting them: the sentinel spread at level 10 prints as 19,999,999,998
 file units, and the padding census reports 0 of 269,748 rows.
+
+### The second review of 25 September: five frames, and an axis
+
+The reviewed deck came back with four instructions. Captions that a picture or a table
+already said were struck out rather than rewritten, which is the rule the contract now
+carries: *if the object says it, nothing under it says it again.* Every `\alert` went. And
+three frames were commissioned.
+
+**The book pictures gained an axis.** They drew price across the page and size up it and
+said nothing about how much a column was, so `\booksizeaxis` now puts a light horizontal
+grid and the share counts behind all six of them.
+
+**`sec.orderDrivenMarkets` went from 22 frames to 27.** *The sweep cost, visualised* draws
+the split of `eq.sweepCost` on the section 8 book: a buy of 250 at 1003 takes 120 at 1002 and
+130 at 1003, and pays $1 + 0.52$ ticks. *The rule is a loop before it is a formula* gives the
+procedure before `prop.lobUpdate` gives the closed form — `algo.bookFold` of the notes cut to
+its matching half, since the message, the stream and the fold are class 2's objects and the
+full listing stays in `message_files.tex`. And three worked examples join the case B picture
+that was already there: a passive order resting inside the spread, case A, and a cancellation
+that moves the best bid down.
+
+**The drawn numbers are `unito26.lob.worked_examples.CATALOGUE`**, entries 2, 5, 6 and 11 on
+`SECTION_8_BOOK`, each checked term by term against the catalogue and each pinning the branch
+of `prop.lobUpdate` its caption names. A change to one is a change to both: the catalogue is
+under test, the slides are not.
 
 ### Two errata, reported on 25 September and fixed the same day
 

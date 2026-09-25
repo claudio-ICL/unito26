@@ -1,8 +1,8 @@
 % CLASS 1 -- the notes' section 1.1, sec.orderDrivenMarkets.
-% Budget 105 min; planned 95 over 22 frames, with the welcome frames ahead of them.
+% Budget 120 min; planned 112 over 27 frames, with the welcome frames ahead of them.
 % Overrunning, cut in this order: the elementary stream (recoverable in class 2), then the
-% Sto18mic beat on the micro-price, then fold "Trades are market orders" into the frame
-% before it.
+% two worked examples that do not walk the book -- the resting one and the cancellation,
+% both of which the first notebook runs -- then the Sto18mic beat on the micro-price.
 %
 % THE FRAME CONTRACT. These slides are projection material, not reference material: the
 % students read the notes, and they only ever see a frame while it is being talked over.
@@ -58,13 +58,6 @@
 \end{tikzpicture}
 \end{center}
 
-\pause
-
-Today: orders, matching, the book at an instant, what trading costs.
-
-\pause
-
-1.4 is what the rest is for.
 \note{
 Order-driven markets are trading venues organised around limit orders: the participants
 supply the prices themselves, and the venue only matches them against one another.
@@ -140,10 +133,6 @@ By regulation $p$ is an integer multiple of a fixed tick size $\tickSizeOfLOB > 
 \pause
 
 A function: no two orders share a timestamp.
-
-\pause
-
-What the next frame's \emph{total} order needs.
 \note{
 A trading epoch is the collection of all limit orders submitted within a time interval.
 Orders cannot be submitted simultaneously, which we say by asking that $\tradingEpoch$ be
@@ -163,11 +152,7 @@ the hypothesis connexity needs on the next frame.
 
 \pause
 
-\alert{$\rho \wedge q$ shares at $\pi$ --- never at $p$.}
-
-\pause
-
-\emph{Active} at $u$: submitted, not executed, not cancelled.
+$\rho \wedge q$ shares at $\pi$ --- never at $p$.
 \note{
 The matching algorithm searches the active orders with timestamp $s<t$ and opposite
 direction $-d$. The two orders are replaced by the pair above: $\rho \wedge q$ shares
@@ -182,7 +167,7 @@ price, which is the fact the sweep cost and the VWAP are both built on later.
 \begin{equation}
 \label{eq.orderingOfLimitOrders}
  (s,\rho,\pi,d) \prec (s',\rho',\pi',d)
- \quad :\Longleftrightarrow \quad
+ \quad \Longleftrightarrow \quad
  d\pi < d\pi' , \; \text{ or } \; \pi = \pi' \text{ and } s < s' .
 \end{equation}
 
@@ -212,6 +197,7 @@ must differ in timestamp, and that is exactly what the previous frame bought.
   \frametitle{The book is a grid of prices}
 \begin{center}
 \begin{tikzpicture}[x=1.05cm, y=0.0125cm, font=\scriptsize]
+  \booksizeaxis{0.3}{9.2}{250}{50}
   \draw[gray!55] (0.3,0) -- (9.2,0);
   % bid side
   \foreach \x/\h in {1/150, 2/200, 3/100}
@@ -262,7 +248,7 @@ now charges a tick for it.
 
 \pause
 
-A limit order book always means this \emph{aggregated} book.
+In our course, a limit order book always means this \emph{aggregated} book.
 
 \pause
 
@@ -286,7 +272,7 @@ in terms of it, which is what makes it enough.
 
 \pause
 
-\alert{Volume is not a change in size.}
+Volume is not a change in size.
 \note{
 A level has a size at every instant; volume accumulates between two instants. So no
 sequence of sizes determines the volume traded --- the same book can be reached by a trade
@@ -313,7 +299,7 @@ read off the tape, and sections 1.2 and 1.4 both turn on that.
 
 \pause
 
-$\midPrice_t$ is what we track for the rest of the chapter.
+$\midPrice_t$: ``fundamental'' price? The reference for mark-to-market.
 \note{
 The two sides never overlap and every price is a multiple of $\tickSizeOfLOB$, so the
 spread is at least one tick. It is not a modelling assumption: it follows from the matching
@@ -337,7 +323,7 @@ and it is a derived quantity rather than a price at which anything can rest.
 
 \pause
 
-Bid-heavy is positive. \alert{Inverting this sign inverts every signal built on it.}
+Bid-heavy is positive.
 
 \pause
 
@@ -367,10 +353,6 @@ file is a different statistic that also lies in $[-1,1]$.
 \pause
 
 $\microPrice_t \in [\bestBidPrice_t, \bestAskPrice_t]$; bid-heavy carries it to the ask.
-
-\pause
-
-A second route to the same number, and the notebook takes both.
 \note{
 The second expression is an independent route to the same number, and the notebook computes
 it both ways.
@@ -381,7 +363,7 @@ does not always keep them apart --- so when a paper says micro-price, check whic
 \end{frame}
 
 \begin{frame}
-  \frametitle{Every share pays the half-spread}
+  \frametitle{The sweep cost}
 \begin{equation}
 \label{eq.fillAtLevel}
  q_i := \Big( \quantityToLiquidate - \sum_{j<i} q_j \Big)_{+} \wedge \nthBestAskSize[i]_t ,
@@ -406,8 +388,64 @@ order fills at each level, the second its per-share cost against the mid.
 For a sell order the definition is the same with the bid side, and
 $\midPrice_t - \nthBestBidPrice[i]_t$ in place of
 $\nthBestAskPrice[i]_t - \midPrice_t$.
-The second term is a grid distance and not a count of queues, which the next frame is the
-picture of.
+The second term is a grid distance and not a count of queues, which the picture two frames
+on is about.
+}
+\end{frame}
+
+\begin{frame}
+  \frametitle{The sweep cost, visualised}
+\begin{center}
+\begin{tikzpicture}[x=0.72cm, y=0.0125cm, font=\tiny]
+  \begin{scope}
+    \booksizeaxis{0.4}{4.7}{200}{50}
+    \draw[gray!55] (0.4,0) -- (4.7,0);
+    \draw[fill=blue!55, draw=blue!70] (1-0.26,0) rectangle (1+0.26,100);
+    \draw[fill=orange!30, draw=orange!60] (3-0.26,0) rectangle (3+0.26,120);
+    \draw[fill=orange!30, draw=orange!60] (4-0.26,0) rectangle (4+0.26,180);
+    \draw[fill=orange!85, draw=orange!90] (3-0.26,0) rectangle (3+0.26,120);
+    \draw[fill=orange!85, draw=orange!90] (4-0.26,0) rectangle (4+0.26,130);
+    \draw[dashed, gray!70] (2,0) -- (2,150);
+    \node[below] at (1,-4) {$1000$}; \node[below] at (2,-4) {$1001$};
+    \node[below] at (3,-4) {$1002$}; \node[below] at (4,-4) {$1003$};
+    \node[gray!50!black, above, inner sep=1pt] at (2,150) {$\midPrice_{t-}$};
+    \node[white] at (3,60) {$120$}; \node[white] at (4,65) {$130$};
+    \node at (3.6,225) {before};
+  \end{scope}
+  \draw[-{Stealth}, gray!55] (5.0,120) -- node[above, inner sep=2pt, text=black]
+       {buy $250$ at $1003$} (7.8,120);
+  \begin{scope}[xshift=5.9cm]
+    \booksizeaxis{0.4}{4.7}{200}{50}
+    \draw[gray!55] (0.4,0) -- (4.7,0);
+    \draw[fill=blue!55, draw=blue!70] (1-0.26,0) rectangle (1+0.26,100);
+    \draw[fill=orange!75, draw=orange!85] (4-0.26,0) rectangle (4+0.26,50);
+    \node[below] at (1,-4) {$1000$}; \node[below] at (2,-4) {$1001$};
+    \node[below] at (3,-4) {$1002$}; \node[below] at (4,-4) {$1003$};
+    \node at (3.6,225) {after};
+  \end{scope}
+\end{tikzpicture}
+\end{center}
+
+\pause
+
+\[
+ \sweepCost_t(250)
+ = \frac{120 \cdot 1 + 130 \cdot 2}{250} \, \tickSizeOfLOB
+ = \underbrace{1}_{\LOBspread_t / 2} + \underbrace{0.52}_{\text{the walk}}
+   \quad \text{ticks} .
+\]
+
+\pause
+
+One tick of spread; $130$ shares one tick further.
+\note{
+The book is the one the worked examples run on: best bid $1000$ for $100$, ask $1002$ for
+$120$ and $1003$ for $180$, so the mid is $1001$ and the spread two ticks.
+The order takes $120$ at $1002$ and $130$ at $1003$, and $50$ shares are left resting at
+$1003$: the best ask moves up a tick and the spread widens to three.
+Every one of the $250$ shares pays the half-spread; only the $130$ that reach the second
+occupied level pay the extra tick, and they pay it because of where that level sits on the
+\emph{grid}, not because it is the second queue.
 }
 \end{frame}
 
@@ -415,6 +453,7 @@ picture of.
   \frametitle{An empty level still charges its tick}
 \begin{center}
 \begin{tikzpicture}[x=1.05cm, y=0.0125cm, font=\scriptsize]
+  \booksizeaxis{2.3}{9.2}{250}{50}
   \draw[gray!55] (2.3,0) -- (9.2,0);
   \draw[fill=blue!25, draw=blue!45] (3-0.24,0) rectangle (3+0.24,100);
   \draw[fill=orange!30, draw=orange!60] (5-0.24,0) rectangle (5+0.24,120);
@@ -469,7 +508,7 @@ written with $(i-1)\tickSizeOfLOB$ rather than with a running index over occupie
 
 \pause
 
-\alert{One code path: consume, then rest the remainder.}
+One code path: consume, then rest the remainder.
 \note{
 The first component is the market order: the price $0$ for a sell, $\infty$ for a buy, is a
 price \emph{specification} guaranteeing immediate execution and not a price at which
@@ -531,6 +570,41 @@ The market part may reach any depth, and it can be decomposed one level at a tim
 what the update rule of the next two frames is bookkeeping for.
 The termination argument matters in class 2: each pass of the loop empties one price, so the
 loop is finite because the book is.
+}
+\end{frame}
+
+% algo.bookFold of the notes, cut to the matching loop: the message, the stream and the
+% fold are class 2's objects, and the full listing stays in message_files.tex.
+% `algorithm' is a float and floats do not place inside a frame, so the environment is
+% bare -- no caption, no line numbering, no \label{algo.*} -- and carries no \pause.
+\begin{frame}
+  \frametitle{The rule is a loop before it is a formula}
+{\footnotesize
+\begin{algorithmic}
+ \REQUIRE the book at $t-$, and the order $(t,q,p,d)$
+ \STATE set the market part $\marketOrderSize$ by
+        Proposition \ref{prop.decompositionOfLimitOrder}, and $r := \marketOrderSize$
+ \WHILE{$r > 0$}
+ \STATE let $\pi$ be the best price-eligible price on the side $-d$
+ \STATE match $r$ against the size resting at $\pi$, at $\pi$
+ \STATE subtract the matched shares, remove $\pi$ if it empties,
+        and decrease $r$ by the same amount
+ \ENDWHILE
+ \STATE add $q - \marketOrderSize$ to the size at $p$ on the side $d$
+\end{algorithmic}
+}
+
+\pause
+
+The next two frames are this loop, closed.
+\note{
+Each pass of the loop empties one price, so the loop is finite because the book is: this is
+the elementary stream of the previous frame, read as a procedure.
+The two frames that follow are the same rule in closed form, which is what an implementation
+is checked against rather than what it is written from.
+In class 2 the procedure gains the branch for a cancellation, the state
+$\mathcal{B}_{k-1}$ it carries and the value $\mathcal{B}_{k}$ it returns, and becomes the
+fold of the message stream.
 }
 \end{frame}
 
@@ -605,30 +679,123 @@ picture.
 \end{frame}
 
 \begin{frame}
+  \frametitle{A resting order can improve the best price}
+\begin{center}
+\begin{tikzpicture}[x=0.54cm, y=0.0125cm, font=\tiny]
+  \begin{scope}
+    \booksizeaxis{0.4}{6.6}{200}{50}
+    \draw[gray!55] (0.4,0) -- (6.6,0);
+    \draw[fill=blue!55, draw=blue!70] (1-0.26,0) rectangle (1+0.26,150);
+    \draw[fill=blue!55, draw=blue!70] (2-0.26,0) rectangle (2+0.26,200);
+    \draw[fill=blue!55, draw=blue!70] (3-0.26,0) rectangle (3+0.26,100);
+    \draw[fill=orange!75, draw=orange!85] (5-0.26,0) rectangle (5+0.26,120);
+    \draw[fill=orange!75, draw=orange!85] (6-0.26,0) rectangle (6+0.26,180);
+    \node[below] at (1,-4) {$998$}; \node[below] at (2,-4) {$999$};
+    \node[below] at (3,-4) {$1000$}; \node[below] at (4,-4) {$1001$};
+    \node[below] at (5,-4) {$1002$}; \node[below] at (6,-4) {$1003$};
+    \node at (3.5,240) {before};
+  \end{scope}
+  \draw[-{Stealth}, gray!55] (7.0,120) -- node[above, inner sep=2pt, text=black] {buy $50$ at $1001$} (10.3,120);
+  \begin{scope}[xshift=5.9cm]
+    \booksizeaxis{0.4}{6.6}{200}{50}
+    \draw[gray!55] (0.4,0) -- (6.6,0);
+    \draw[fill=blue!55, draw=blue!70] (1-0.26,0) rectangle (1+0.26,150);
+    \draw[fill=blue!55, draw=blue!70] (2-0.26,0) rectangle (2+0.26,200);
+    \draw[fill=blue!55, draw=blue!70] (3-0.26,0) rectangle (3+0.26,100);
+    \draw[fill=blue!55, draw=blue!70] (4-0.26,0) rectangle (4+0.26,50);
+    \draw[fill=orange!75, draw=orange!85] (5-0.26,0) rectangle (5+0.26,120);
+    \draw[fill=orange!75, draw=orange!85] (6-0.26,0) rectangle (6+0.26,180);
+    \node[below] at (1,-4) {$998$}; \node[below] at (2,-4) {$999$};
+    \node[below] at (3,-4) {$1000$}; \node[below] at (4,-4) {$1001$};
+    \node[below] at (5,-4) {$1002$}; \node[below] at (6,-4) {$1003$};
+    \node at (3.5,240) {after};
+  \end{scope}
+\end{tikzpicture}
+\end{center}
+
+\pause
+
+$N = 0$, $q^{\infty} = q$: nothing matches, the spread narrows to a tick.
+\note{
+The price $1001$ is below every resting ask, so the order matches nothing and the whole of
+it rests. It rests inside the old spread, which is how a best price improves without a
+single share trading.
+This is the baseline the next three frames are read against: the same book each time, and
+one order or one cancellation against it.
+}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Executed in full, and nothing rests}
+\begin{center}
+\begin{tikzpicture}[x=0.54cm, y=0.0125cm, font=\tiny]
+  \begin{scope}
+    \booksizeaxis{0.4}{6.6}{200}{50}
+    \draw[gray!55] (0.4,0) -- (6.6,0);
+    \draw[fill=blue!55, draw=blue!70] (1-0.26,0) rectangle (1+0.26,150);
+    \draw[fill=blue!55, draw=blue!70] (2-0.26,0) rectangle (2+0.26,200);
+    \draw[fill=blue!55, draw=blue!70] (3-0.26,0) rectangle (3+0.26,100);
+    \draw[fill=orange!75, draw=orange!85] (5-0.26,0) rectangle (5+0.26,120);
+    \draw[fill=orange!75, draw=orange!85] (6-0.26,0) rectangle (6+0.26,180);
+    \node[below] at (1,-4) {$998$}; \node[below] at (2,-4) {$999$};
+    \node[below] at (3,-4) {$1000$}; \node[below] at (4,-4) {$1001$};
+    \node[below] at (5,-4) {$1002$}; \node[below] at (6,-4) {$1003$};
+    \node at (3.5,240) {before};
+  \end{scope}
+  \draw[-{Stealth}, gray!55] (7.0,120) -- node[above, inner sep=2pt, text=black] {sell $250$ at $999$} (10.3,120);
+  \begin{scope}[xshift=5.9cm]
+    \booksizeaxis{0.4}{6.6}{200}{50}
+    \draw[gray!55] (0.4,0) -- (6.6,0);
+    \draw[fill=blue!55, draw=blue!70] (1-0.26,0) rectangle (1+0.26,150);
+    \draw[fill=blue!55, draw=blue!70] (2-0.26,0) rectangle (2+0.26,50);
+    \draw[fill=orange!75, draw=orange!85] (5-0.26,0) rectangle (5+0.26,120);
+    \draw[fill=orange!75, draw=orange!85] (6-0.26,0) rectangle (6+0.26,180);
+    \node[below] at (1,-4) {$998$}; \node[below] at (2,-4) {$999$};
+    \node[below] at (3,-4) {$1000$}; \node[below] at (4,-4) {$1001$};
+    \node[below] at (5,-4) {$1002$}; \node[below] at (6,-4) {$1003$};
+    \node at (3.5,240) {after};
+  \end{scope}
+\end{tikzpicture}
+\end{center}
+
+\pause
+
+$N_p$ bites before $N_s$: $q^{\infty} = 0$, the ask side untouched.
+\note{
+The order takes $100$ at $1000$ and $150$ of the $200$ resting at $999$, which is its own
+limit price. Nothing is left over, so nothing rests and the ask side does not move.
+The best bid falls one level and the spread widens from two ticks to three: an execution
+widens the spread by consuming a queue, never by moving a price the other way.
+}
+\end{frame}
+
+\begin{frame}
   \frametitle{The residual rests below the old best bid}
 \begin{center}
-\begin{tikzpicture}[x=0.58cm, y=0.0125cm, font=\tiny]
+\begin{tikzpicture}[x=0.54cm, y=0.0125cm, font=\tiny]
   \begin{scope}
+    \booksizeaxis{0.4}{6.6}{200}{50}
     \draw[gray!55] (0.4,0) -- (6.6,0);
     \foreach \x/\h in {1/150, 2/200, 3/100}
       \draw[fill=blue!55, draw=blue!70] (\x-0.26,0) rectangle (\x+0.26,\h);
     \foreach \x/\h in {5/120, 6/180}
       \draw[fill=orange!75, draw=orange!85] (\x-0.26,0) rectangle (\x+0.26,\h);
     \node[below] at (1,-4) {$998$}; \node[below] at (2,-4) {$999$};
-    \node[below] at (3,-4) {$1000$}; \node[below] at (5,-4) {$1002$};
-    \node[below] at (6,-4) {$1003$};
+    \node[below] at (3,-4) {$1000$}; \node[below] at (4,-4) {$1001$};
+    \node[below] at (5,-4) {$1002$}; \node[below] at (6,-4) {$1003$};
     \node at (3.5,240) {before};
   \end{scope}
-  \draw[-{Stealth}, gray!55] (6.9,120) -- node[above, font=\scriptsize, text=black] {sell $400$ at $999$} (8.6,120);
-  \begin{scope}[xshift=5.3cm]
+  \draw[-{Stealth}, gray!55] (7.0,120) -- node[above, inner sep=2pt, text=black] {sell $400$ at $999$} (10.3,120);
+  \begin{scope}[xshift=5.9cm]
+    \booksizeaxis{0.4}{6.6}{200}{50}
     \draw[gray!55] (0.4,0) -- (6.6,0);
     \draw[fill=blue!55, draw=blue!70] (1-0.26,0) rectangle (1+0.26,150);
     \draw[fill=orange!75, draw=orange!85] (2-0.26,0) rectangle (2+0.26,100);
     \foreach \x/\h in {5/120, 6/180}
       \draw[fill=orange!75, draw=orange!85] (\x-0.26,0) rectangle (\x+0.26,\h);
     \node[below] at (1,-4) {$998$}; \node[below] at (2,-4) {$999$};
-    \node[below] at (3,-4) {$1000$}; \node[below] at (5,-4) {$1002$};
-    \node[below] at (6,-4) {$1003$};
+    \node[below] at (3,-4) {$1000$}; \node[below] at (4,-4) {$1001$};
+    \node[below] at (5,-4) {$1002$}; \node[below] at (6,-4) {$1003$};
     \node at (3.5,240) {after};
   \end{scope}
 \end{tikzpicture}
@@ -648,6 +815,51 @@ it has just cleared, which is now on the ask side.
 Since $999 < \bestAskPrice_{t-} = 1002$, the best ask improves by three ticks and every ask
 index shifts by three. This is the case people get wrong: the residual is not inside the old
 spread.
+}
+\end{frame}
+
+\begin{frame}
+  \frametitle{A cancellation moves the best bid down}
+\begin{center}
+\begin{tikzpicture}[x=0.54cm, y=0.0125cm, font=\tiny]
+  \begin{scope}
+    \booksizeaxis{0.4}{6.6}{200}{50}
+    \draw[gray!55] (0.4,0) -- (6.6,0);
+    \draw[fill=blue!55, draw=blue!70] (1-0.26,0) rectangle (1+0.26,150);
+    \draw[fill=blue!55, draw=blue!70] (2-0.26,0) rectangle (2+0.26,200);
+    \draw[fill=blue!55, draw=blue!70] (3-0.26,0) rectangle (3+0.26,100);
+    \draw[fill=orange!75, draw=orange!85] (5-0.26,0) rectangle (5+0.26,120);
+    \draw[fill=orange!75, draw=orange!85] (6-0.26,0) rectangle (6+0.26,180);
+    \node[below] at (1,-4) {$998$}; \node[below] at (2,-4) {$999$};
+    \node[below] at (3,-4) {$1000$}; \node[below] at (4,-4) {$1001$};
+    \node[below] at (5,-4) {$1002$}; \node[below] at (6,-4) {$1003$};
+    \node at (3.5,240) {before};
+  \end{scope}
+  \draw[-{Stealth}, gray!55] (7.0,120) -- node[above, inner sep=2pt, text=black] {withdraw $100$ at $1000$} (10.3,120);
+  \begin{scope}[xshift=5.9cm]
+    \booksizeaxis{0.4}{6.6}{200}{50}
+    \draw[gray!55] (0.4,0) -- (6.6,0);
+    \draw[fill=blue!55, draw=blue!70] (1-0.26,0) rectangle (1+0.26,150);
+    \draw[fill=blue!55, draw=blue!70] (2-0.26,0) rectangle (2+0.26,200);
+    \draw[fill=orange!75, draw=orange!85] (5-0.26,0) rectangle (5+0.26,120);
+    \draw[fill=orange!75, draw=orange!85] (6-0.26,0) rectangle (6+0.26,180);
+    \node[below] at (1,-4) {$998$}; \node[below] at (2,-4) {$999$};
+    \node[below] at (3,-4) {$1000$}; \node[below] at (4,-4) {$1001$};
+    \node[below] at (5,-4) {$1002$}; \node[below] at (6,-4) {$1003$};
+    \node at (3.5,240) {after};
+  \end{scope}
+\end{tikzpicture}
+\end{center}
+
+\pause
+
+The spread widens, and not one share traded.
+\note{
+The whole of the best bid queue is withdrawn, so $1000$ leaves the book and the best bid
+becomes $999$. The spread widens from two ticks to three, and not one share has traded.
+A size falls for two reasons and only one of them is a trade, which is the content of the
+remark on size against volume, and the reason the volume over a window cannot be read off
+the sequence of configurations.
 }
 \end{frame}
 
