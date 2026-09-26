@@ -24,7 +24,12 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
-from unito26.lob.binary_gaps import count_binary_gaps, measure_largest_binary_gap
+from unito26.lob.binary_gaps import (
+    count_binary_gaps,
+    keep_highest_set_bits,
+    keep_lowest_set_bits,
+    measure_largest_binary_gap,
+)
 from unito26.lob.frames import ASK_PADDING, BID_PADDING
 from unito26.lob.messages import (
     BUY,
@@ -51,21 +56,6 @@ __all__ = [
     "TickArrayBook",
     "AXIS_B_VARIANTS",
 ]
-
-
-def _span_bits(bits: int, origin: int, levels: list[tuple[int, int]]) -> int:
-    """Occupancy between the best and deepest of ``levels``, shifted to start at bit 0.
-
-    Bit 0 is always set, so the result is odd and needs no normalising before
-    :func:`measure_largest_binary_gap`.  Gap length and gap count are invariant under
-    reversal of the bit string, which is what lets the bid side -- read downward from the
-    top bit -- share this with the ask side.
-    """
-    if len(levels) < 2:
-        return 0
-    low = min(levels[0][0], levels[-1][0]) - origin
-    high = max(levels[0][0], levels[-1][0]) - origin
-    return (bits & (((1 << (high - low + 1)) - 1) << low)) >> low
 
 
 def grid_prices(prices: Iterable[int]) -> list[int]:
@@ -568,10 +558,12 @@ class AggregateBook:
         Each of them agrees with its own method; a test asserts that on every rung.
 
         The gaps are read off the *differences between consecutive occupied prices*
-        rather than off the occupancy bitmap.  Two prices `reported_depth` apart bound
+        rather than off the occupancy bitmap.  Two consecutive occupied prices bound
         exactly one maximal run of empty positions, so the whole gap structure is a
         by-product of the walk that produced ``levels`` -- and no rung has to enumerate
-        the positions, mask an integer or count bits to get at it.
+        the positions, mask an integer or count bits to get at it.  The bitmap rungs
+        answer :meth:`gap_count` faster off the integer, but by skipping the walk, and
+        this method cannot skip it: ``levels`` is part of what it returns.
         """
         levels = self.occupied_levels(direction, reported_depth)
         if not levels:
@@ -1026,29 +1018,36 @@ class BitmapBook(AggregateBook):
     Both identities, and the reason the second costs O(span) where the first is O(1),
     are derived in ``documentation/integers-in-binary.md``.
 
-    ``origin`` only keeps the integer narrow.  Unlike an array there is no upper edge to
-    fall off: the bitmap grows as prices arrive, so its span tracks the market rather
-    than a declared band.
+    ``floor`` is the price of bit 0, and it only keeps the integer narrow.  There is no
+    ceiling: unlike an array the bitmap grows as prices arrive, so its span tracks the
+    market rather than a declared band.
     """
 
-    def __init__(self, origin: int, strict: bool = False):
+    def __init__(self, floor: int, strict: bool = False):
         super().__init__(strict)
-        self.origin = origin
+        self.floor = floor
         self._bits: dict[int, int] = {BUY: 0, SELL: 0}
 
     @classmethod
     def for_prices(cls, prices: "Iterable[int]", strict: bool = False) -> "BitmapBook":
-        # Only to keep the integer narrow: the bitmap has no upper edge to fall off.
+        # Only to keep the integer narrow: the bitmap has no ceiling to fall off.
         prices = grid_prices(prices)
-        origin = min(prices) - cls.BAND_MARGIN if prices else 0
-        return cls(origin=origin, strict=strict)
+        floor = min(prices) - cls.BAND_MARGIN if prices else 0
+        return cls(floor=floor, strict=strict)
 
     def _empty_like(self) -> "BitmapBook":
-        return type(self)(origin=self.origin, strict=self.strict)
+        return type(self)(floor=self.floor, strict=self.strict)
 
     def set_size(self, direction: int, price: int, size: int) -> None:
+        # Checked before the dict is written, or a refused price would leave a level
+        # in the dict that the bitmap does not know about.
+        if price < self.floor:
+            raise ValueError(
+                f"price {price} is below the floor {self.floor}, where the integer has "
+                "no bit for it"
+            )
         super().set_size(direction, price, size)
-        bit = 1 << (price - self.origin)
+        bit = 1 << (price - self.floor)
         if size > 0:
             self._bits[direction] |= bit
         else:
@@ -1059,14 +1058,20 @@ class BitmapBook(AggregateBook):
         if not bits:
             return None
         if direction == BUY:
-            return self.origin + bits.bit_length() - 1
-        return self.origin + (bits & -bits).bit_length() - 1
+            return self.floor + bits.bit_length() - 1
+        return self.floor + (bits & -bits).bit_length() - 1
 
     def span_bits(self, direction: int, reported_depth: ReportedDepth) -> int:
-        return _span_bits(
-            self._bits[direction], self.origin,
-            self.occupied_levels(direction, reported_depth),
-        )
+        """The occupancy over :meth:`grid_span`, shifted down so its low end is bit 0.
+
+        With no ceiling the asks are not mirrored: their touch is the lowest set bit, so
+        that side keeps its lowest bits where the bids keep their highest.  The gaps do not
+        depend on which end is the touch.
+        """
+        if reported_depth <= 0:
+            raise ValueError(f"reported_depth must be >= 1, got {reported_depth}")
+        keep = keep_highest_set_bits if direction == BUY else keep_lowest_set_bits
+        return keep(self._bits[direction], reported_depth)
 
     def gap_count(self, direction: int, reported_depth: ReportedDepth) -> int:
         return count_binary_gaps(self.span_bits(direction, reported_depth))
@@ -1097,30 +1102,30 @@ class TickArrayBook(AggregateBook):
 
     Having a band buys something the rung below cannot have.  ``bit_length`` finds the
     *highest* set bit in constant time and the lowest only by scanning, so the ask side
-    of a single bitmap pays for the whole span at every lookup.  Here the sell side is
-    indexed **downward from the ceiling** -- bit ``ceiling - price`` rather than
-    ``price - origin`` -- and the best price on either side is the highest set bit.
-    :class:`BitmapBook` cannot do this: it has no upper edge to count down from.
+    of a single bitmap pays for the whole span at every lookup.  Here each side counts
+    from the band edge **behind** it -- the bids bit ``price - floor``, the asks bit
+    ``ceiling - price`` -- so the best price on either side is the highest set bit, and
+    the levels beyond any reported depth are the low bits, cut the same way on both
+    sides.  :class:`BitmapBook` cannot do this: it has no ceiling to count down from.
 
-    The sizes stay indexed by ``price - origin`` on both sides; only the occupancy
-    bitmap is reversed.  The consequence is that the band's *upper* edge is now
-    load-bearing on the ask side, where before only the lower one was, so the
-    band-shifting this docstring anticipates would have to move the ask bitmap rather
-    than merely extend the array.
+    The sizes stay indexed by ``price - floor`` on both sides; only the occupancy
+    bitmap is reversed.  The consequence is that the ceiling is load-bearing on the ask
+    side, where before only the floor was, so the band-shifting this docstring
+    anticipates would have to move the ask bitmap rather than merely extend the array.
 
     Deliberately a plain ``list`` and not a numpy array: this access pattern is one
     element at a time, which is where numpy is *slower* than a list, and the trade it
     offers here is space rather than speed.
     """
 
-    def __init__(self, origin: int, width: int, strict: bool = False):
+    def __init__(self, floor: int, width: int, strict: bool = False):
         super().__init__(strict)
-        self.origin = origin
+        self.floor = floor
         self.width = width
         #: Highest price the band holds.  The ask bitmap counts down from it, so this is
         #: part of the encoding and not a derived convenience: a copy that changed the
         #: width would decode every ask bit to the wrong price.
-        self.ceiling = origin + width - 1
+        self.ceiling = floor + width - 1
         self._sizes: dict[int, list[int]] = {
             BUY: [0] * width,
             SELL: [0] * width,
@@ -1136,13 +1141,13 @@ class TickArrayBook(AggregateBook):
         prices = grid_prices(prices)
         low, high = (min(prices), max(prices)) if prices else (0, 0)
         return cls(
-            origin=low - cls.BAND_MARGIN,
-            width=high - low + 2 * cls.BAND_MARGIN,
+            floor=low - cls.BAND_MARGIN,
+            width=high - low + 1 + 2 * cls.BAND_MARGIN,
             strict=strict,
         )
 
     def _empty_like(self) -> "TickArrayBook":
-        return type(self)(origin=self.origin, width=self.width, strict=self.strict)
+        return type(self)(floor=self.floor, width=self.width, strict=self.strict)
 
     def size_at(self, direction: int, price: int) -> int:
         """Zero outside the band, rather than an error.
@@ -1152,21 +1157,20 @@ class TickArrayBook(AggregateBook):
         a grid position outside the band holds nothing, which is a true answer.  Writes
         are the other case, and they raise.
         """
-        index = price - self.origin
-        if not 0 <= index < self.width:
+        slot = price - self.floor
+        if not 0 <= slot < self.width:
             return 0
-        return self._sizes[direction][index]
+        return self._sizes[direction][slot]
 
     def set_size(self, direction: int, price: int, size: int) -> None:
-        index = price - self.origin
-        if not 0 <= index < self.width:
+        slot = price - self.floor
+        if not 0 <= slot < self.width:
             raise ValueError(
-                f"price {price} is outside the band "
-                f"[{self.origin}, {self.origin + self.width}); a real book would shift "
-                "the band or fall back to a sorted map"
+                f"price {price} is outside the band [{self.floor}, {self.ceiling}]; "
+                "a real book would shift the band or fall back to a sorted map"
             )
-        self._sizes[direction][index] = size
-        bit = 1 << (index if direction == BUY else self.ceiling - price)
+        self._sizes[direction][slot] = size
+        bit = 1 << (price - self.floor if direction == BUY else self.ceiling - price)
         if size > 0:
             self._bits[direction] |= bit
         else:
@@ -1177,7 +1181,7 @@ class TickArrayBook(AggregateBook):
         if not bits:
             return None
         index = bits.bit_length() - 1
-        return self.origin + index if direction == BUY else self.ceiling - index
+        return self.floor + index if direction == BUY else self.ceiling - index
 
     def levels_map(self, direction: int) -> dict[int, int]:
         """Built on demand, by walking the occupancy bits from the bottom up.
@@ -1188,13 +1192,13 @@ class TickArrayBook(AggregateBook):
         """
         sizes = self._sizes[direction]
         bits = self._bits[direction]
-        origin, ceiling = self.origin, self.ceiling
+        floor, ceiling = self.floor, self.ceiling
         buying = direction == BUY
         levels: dict[int, int] = {}
         while bits:
             index = bits.bit_length() - 1
-            price = origin + index if buying else ceiling - index
-            levels[price] = sizes[price - origin]
+            price = floor + index if buying else ceiling - index
+            levels[price] = sizes[price - floor]
             bits ^= 1 << index
         return levels
 
@@ -1210,30 +1214,26 @@ class TickArrayBook(AggregateBook):
             raise ValueError(f"reported_depth must be >= 1, got {reported_depth}")
         bits = self._bits[direction]
         sizes = self._sizes[direction]
-        origin, ceiling = self.origin, self.ceiling
+        floor, ceiling = self.floor, self.ceiling
         buying = direction == BUY
         found: list[tuple[int, int]] = []
         while bits and len(found) < reported_depth:
             index = bits.bit_length() - 1
-            price = origin + index if buying else ceiling - index
-            found.append((price, sizes[price - origin]))
+            price = floor + index if buying else ceiling - index
+            found.append((price, sizes[price - floor]))
             bits ^= 1 << index
         return found
 
     def span_bits(self, direction: int, reported_depth: ReportedDepth) -> int:
-        """The occupancy window, cut in this book's own bit order.
+        """The occupancy over :meth:`grid_span`, the deepest reported level at bit 0.
 
-        The ask bits count down from the ceiling, so the window is measured from there;
-        taking ``price - origin`` on both sides would mask the wrong end of the integer
-        and read the gaps of a book reflected in the band.
+        Both sides count from the band edge behind them, so the touch is the highest set
+        bit and every level beyond the reported depth lies below the deepest reported
+        one: the window is the same cut on either side.
         """
-        levels = self.occupied_levels(direction, reported_depth)
-        if len(levels) < 2:
-            return 0
-        base = self.origin if direction == BUY else self.ceiling
-        first, last = abs(levels[0][0] - base), abs(levels[-1][0] - base)
-        low, high = (first, last) if first < last else (last, first)
-        return (self._bits[direction] & (((1 << (high - low + 1)) - 1) << low)) >> low
+        if reported_depth <= 0:
+            raise ValueError(f"reported_depth must be >= 1, got {reported_depth}")
+        return keep_highest_set_bits(self._bits[direction], reported_depth)
 
     def gap_count(self, direction: int, reported_depth: ReportedDepth) -> int:
         return count_binary_gaps(self.span_bits(direction, reported_depth))
@@ -1258,7 +1258,7 @@ class TickArrayBook(AggregateBook):
                 totals.append(0)
                 continue
             sizes = self._sizes[direction]
-            start = best - self.origin
+            start = best - self.floor
             indices = range(start, start - n, -1) if direction == BUY else range(start, start + n)
             totals.append(sum(sizes[i] for i in indices if 0 <= i < self.width))
         total = totals[0] + totals[1]
@@ -1288,7 +1288,7 @@ class TickArrayBook(AggregateBook):
                 running[direction] = [0] * deepest
                 continue
             sizes = self._sizes[direction]
-            start = best - self.origin
+            start = best - self.floor
             window = (
                 sizes[max(0, start - deepest + 1):start + 1][::-1] if direction == BUY
                 else sizes[start:start + deepest]

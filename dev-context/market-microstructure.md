@@ -339,6 +339,25 @@ sample, eight ticker-days, 3,499,101 book states).
   folded session and a loaded one are not row-wise comparable. See
   [`lobster-execution-granularity.md`](lobster-execution-granularity.md).
 
+From a fourth pass over the gap statistics, which reopens a retirement of the third
+(`notebooks/why-the-tick-array-book-is-not-faster.ipynb` §4 and §7d).
+
+- **the third pass's 1.4× measured the walk, not the integer.** The bit route it timed called
+  `occupied_levels` once per statistic to find the deepest reported level, and
+  `count_binary_gaps` then stripped the window one bit per Python iteration. Cut on the
+  integer instead — the $d$-th highest set bit is the largest $k$ with
+  `(bits >> k).bit_count() >= d`, found by bisection — and counted by a popcount, the two
+  standalone gap methods cost 2.6–25× less than before, and together 1.4–4.6× less than
+  `side_statistics`. *"The gap statistics are where the bitmap books earn their keep"* is true
+  again, for the methods that need nothing else;
+- **inside the fold the walk is paid anyway**, because `side_statistics` returns `levels` for
+  the LOBSTER row. Reading all five statistics off the window after the walk is within a few
+  per cent of the difference loop at depth 10, either way; at depth 50 it gains 8–15% on the
+  dense streams and loses 8% on a sparse one, where the erosion's pass per tick of the longest
+  gap outweighs a loop with little to walk. The fold keeps the loop;
+- **the bisection's cost does not depend on the depth**: about 0.8 µs a side, against about
+  75 ns a level for walking the top bit down. Equal at depth 10, 4.4× apart at depth 50.
+
 ## Exercises & exam snippets
 
 Harvested from the implementation, for the multiple-choice format: float tick prices; a

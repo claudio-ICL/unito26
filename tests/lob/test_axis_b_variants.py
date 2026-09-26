@@ -25,6 +25,7 @@ from unito26.lob.messages import (
 from unito26.lob.orderbook import (
     AXIS_B_VARIANTS,
     AggregateBook,
+    BitmapBook,
     HeapBook,
     TickArrayBook,
 )
@@ -131,7 +132,7 @@ class TestTheBandIsTheFusedBookTradeOff:
     """The cost of indexing by tick, made explicit rather than discovered in production."""
 
     def test_writing_outside_the_band_is_refused_loudly(self):
-        book = TickArrayBook(origin=1000, width=10)
+        book = TickArrayBook(floor=1000, width=10)
         with pytest.raises(ValueError, match="outside the band"):
             book.submit(limit_order(1.0, 10, 5000, BUY), record=False)
 
@@ -142,6 +143,87 @@ class TestTheBandIsTheFusedBookTradeOff:
         book = TickArrayBook.from_levels({1005: 50}, {1008: 40})
         assert book.size_at(BUY, 999_999) == 0
         assert len(book.levels(SELL, DEPTH)) == DEPTH
+
+    def test_sizing_leaves_the_same_margin_above_and_below(self):
+        book = TickArrayBook.for_prices([9995, 10004])
+        assert book.floor == 9995 - TickArrayBook.BAND_MARGIN
+        assert book.ceiling == 10004 + TickArrayBook.BAND_MARGIN
+
+
+class TestFarFromTheFloor:
+    """A wide band, with the book at its floor, in its middle and at its ceiling.
+
+    A band sized around its book keeps every bit index small.  Here each encoding is read
+    at both ends of a ten-thousand-tick range, on both sides, against the baseline.
+    """
+
+    FLOOR, WIDTH = 1000, 10_000
+    CEILING = FLOOR + WIDTH - 1
+    PLACEMENTS = {
+        "at the floor": ({1000: 5, 1001: 7, 1004: 3}, {1006: 4, 1009: 6, 1010: 2}),
+        "in the middle": ({5990: 5, 5987: 7, 5980: 3}, {5995: 4, 5996: 6, 6010: 2}),
+        "at the ceiling": ({10_980: 5, 10_977: 7, 10_970: 3}, {10_990: 4, 10_994: 6, 10_999: 2}),
+    }
+    LEVELS = tuple(GridDepth(n) for n in (1, 2, 3, 5, 10, 40))
+
+    def build(self, book, bids, asks):
+        for direction, levels in ((BUY, bids), (SELL, asks)):
+            for price, size in levels.items():
+                book.set_size(direction, price, size)
+        return book
+
+    def tick_array(self, bids, asks):
+        return self.build(TickArrayBook(floor=self.FLOOR, width=self.WIDTH), bids, asks)
+
+    def bitmap(self, bids, asks):
+        return self.build(BitmapBook(floor=self.FLOOR), bids, asks)
+
+    @pytest.mark.parametrize("placement", PLACEMENTS)
+    def test_every_reading_matches_the_baseline(self, placement):
+        bids, asks = self.PLACEMENTS[placement]
+        reference = AggregateBook.from_levels(bids, asks)
+        for book in (self.tick_array(bids, asks), self.bitmap(bids, asks)):
+            book.check_invariants()
+            assert (book.best_bid_price, book.best_ask_price) == (
+                reference.best_bid_price, reference.best_ask_price
+            )
+            assert book.queue_imbalance_profile(self.LEVELS) == (
+                reference.queue_imbalance_profile(self.LEVELS)
+            )
+            for direction in (BUY, SELL):
+                assert book.levels_map(direction) == reference.levels_map(direction)
+                assert book.copy().levels_map(direction) == reference.levels_map(direction)
+                for depth in (1, 2, 3, 4):
+                    assert book.occupied_levels(direction, depth) == (
+                        reference.occupied_levels(direction, depth)
+                    )
+                    assert book.side_statistics(direction, depth) == (
+                        reference.side_statistics(direction, depth)
+                    )
+                    assert book.gap_count(direction, depth) == (
+                        reference.gap_count(direction, depth)
+                    )
+                    assert book.largest_gap_size_between_non_empty_levels(direction, depth) == (
+                        reference.largest_gap_size_between_non_empty_levels(direction, depth)
+                    )
+
+    @pytest.mark.parametrize("direction", [BUY, SELL], ids=["bid", "ask"])
+    @pytest.mark.parametrize("price", [FLOOR - 1, CEILING + 1])
+    def test_one_tick_outside_the_band_is_refused_and_changes_nothing(self, direction, price):
+        book = self.tick_array(*self.PLACEMENTS["in the middle"])
+        before = {side: book.levels_map(side) for side in (BUY, SELL)}
+        with pytest.raises(ValueError, match="outside the band"):
+            book.set_size(direction, price, 10)
+        assert {side: book.levels_map(side) for side in (BUY, SELL)} == before
+
+    @pytest.mark.parametrize("direction", [BUY, SELL], ids=["bid", "ask"])
+    def test_the_bitmap_refuses_a_price_below_its_floor_and_changes_nothing(self, direction):
+        book = self.bitmap(*self.PLACEMENTS["at the floor"])
+        before = {side: book.levels_map(side) for side in (BUY, SELL)}
+        with pytest.raises(ValueError, match="below the floor"):
+            book.set_size(direction, self.FLOOR - 1, 10)
+        assert {side: book.levels_map(side) for side in (BUY, SELL)} == before
+        assert book.best_bid_price == 1004 and book.best_ask_price == 1006
 
 
 class TestTheCeilingIsPartOfTheEncoding:
@@ -156,15 +238,15 @@ class TestTheCeilingIsPartOfTheEncoding:
     why the band is built by hand here.
     """
 
-    ORIGIN, WIDTH = 1000, 10
+    FLOOR, WIDTH = 1000, 10
 
     def book(self):
-        return TickArrayBook(origin=self.ORIGIN, width=self.WIDTH)
+        return TickArrayBook(floor=self.FLOOR, width=self.WIDTH)
 
     @pytest.mark.parametrize("offset", [0, 1, 4, 8, 9])
     def test_an_ask_anywhere_in_the_band_decodes_to_itself(self, offset):
         book = self.book()
-        price = self.ORIGIN + offset
+        price = self.FLOOR + offset
         book.set_size(SELL, price, 70)
         assert book.best_ask_price == price
         assert book.levels_map(SELL) == {price: 70}
@@ -172,7 +254,7 @@ class TestTheCeilingIsPartOfTheEncoding:
 
     def test_the_two_edges_are_both_reachable_and_ordered(self):
         book = self.book()
-        floor, ceiling = self.ORIGIN, self.ORIGIN + self.WIDTH - 1
+        floor, ceiling = self.FLOOR, self.FLOOR + self.WIDTH - 1
         assert book.ceiling == ceiling
         book.set_size(SELL, ceiling, 11)
         book.set_size(SELL, floor, 22)
@@ -181,7 +263,7 @@ class TestTheCeilingIsPartOfTheEncoding:
         assert book.levels_map(SELL) == {floor: 22, ceiling: 11}
 
     def test_it_matches_the_baseline_at_the_edges(self):
-        floor, ceiling = self.ORIGIN, self.ORIGIN + self.WIDTH - 1
+        floor, ceiling = self.FLOOR, self.FLOOR + self.WIDTH - 1
         asks = {floor: 22, floor + 3: 33, ceiling: 11}
         book = self.book()
         for price, resting in asks.items():
@@ -196,8 +278,8 @@ class TestTheCeilingIsPartOfTheEncoding:
         """`copy` goes through `_empty_like`, which must preserve the width: the ask bits
         are meaningless against a different one."""
         book = self.book()
-        book.set_size(SELL, self.ORIGIN + self.WIDTH - 1, 11)
-        book.set_size(SELL, self.ORIGIN, 22)
+        book.set_size(SELL, self.FLOOR + self.WIDTH - 1, 11)
+        book.set_size(SELL, self.FLOOR, 22)
         clone = book.copy()
         assert clone.ceiling == book.ceiling
         assert clone.levels_map(SELL) == book.levels_map(SELL)
@@ -232,7 +314,7 @@ class TestTheImbalanceProfile:
     def test_the_window_may_run_off_the_band(self):
         """A grid position outside the band holds nothing, so the running total stops
         growing rather than going short or raising."""
-        book = TickArrayBook(origin=1000, width=10)
+        book = TickArrayBook(floor=1000, width=10)
         book.set_size(BUY, 1001, 30)
         book.set_size(SELL, 1008, 70)
         reference = AggregateBook.from_levels({1001: 30}, {1008: 70})

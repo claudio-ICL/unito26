@@ -5,8 +5,9 @@ import pytest
 from unito26.lob.binary_gaps import (
     count_binary_gaps,
     count_trailing_zeros,
-    discard_trailing_ones,
     discard_trailing_zeros,
+    keep_highest_set_bits,
+    keep_lowest_set_bits,
     measure_largest_binary_gap,
 )
 
@@ -16,6 +17,26 @@ CASES = range(1, 5000)
 def runs(n: int) -> list[int]:
     """Lengths of the zero runs lying strictly between ones."""
     return [len(run) for run in bin(n)[2:].strip("0").split("1") if run]
+
+
+def window(digits: str, count: int) -> str:
+    """``digits`` from its first ``1`` to its ``count``-th, or ``"0"`` when it has none."""
+    ones = [i for i, digit in enumerate(digits) if digit == "1"][:count]
+    return digits[ones[0]:ones[-1] + 1] if ones else "0"
+
+
+@pytest.mark.parametrize("count", range(1, 7))
+def test_keeping_the_highest_set_bits_matches_the_string_reference(count):
+    for n in range(5000):
+        expected = int(window(bin(n)[2:], count), 2)
+        assert keep_highest_set_bits(n, count) == expected, f"n = {n:b}"
+
+
+@pytest.mark.parametrize("count", range(1, 7))
+def test_keeping_the_lowest_set_bits_matches_the_string_reference(count):
+    for n in range(5000):
+        expected = int(window(bin(n)[2:][::-1], count)[::-1], 2)
+        assert keep_lowest_set_bits(n, count) == expected, f"n = {n:b}"
 
 
 @pytest.mark.parametrize("n", CASES)
@@ -52,7 +73,6 @@ def test_a_power_of_two_has_no_gap(power):
 def test_a_block_of_ones_has_no_gap(width):
     solid = (1 << width) - 1
     assert count_binary_gaps(solid) == 0
-    assert discard_trailing_ones(solid) == 0
 
 
 @pytest.mark.parametrize("n", CASES)

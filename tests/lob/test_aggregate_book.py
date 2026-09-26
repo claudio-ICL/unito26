@@ -319,7 +319,7 @@ class TestSizingFromAStream:
         from_stream = book_cls.for_prices(stream)
         from_real = book_cls.for_prices(self.REAL)
         assert from_stream.levels_map(BUY) == from_real.levels_map(BUY)
-        for attribute in ("origin", "width"):
+        for attribute in ("floor", "width"):
             assert getattr(from_stream, attribute, None) == getattr(from_real, attribute, None)
 
     def test_the_buy_sentinel_no_longer_asks_for_an_impossible_band(self, book_cls):
