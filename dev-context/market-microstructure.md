@@ -191,7 +191,8 @@ fold). Two of these contradict the plan again:
 
 From the third pass, which set out to find why `TickArrayBook` was the *slowest* rung in
 the session fold and ended up retiring two findings above
-(`notebooks/why-the-tick-array-book-is-not-faster.ipynb`).
+(the notebook it produced was later folded into
+`notebooks/lectures/03-the-book-made-faster.ipynb` and `notebooks/aggregate-book.ipynb` §3).
 
 **The measurement was wrong three ways, and only the third was about the code.**
 
@@ -340,7 +341,7 @@ sample, eight ticker-days, 3,499,101 book states).
   [`lobster-execution-granularity.md`](lobster-execution-granularity.md).
 
 From a fourth pass over the gap statistics, which reopens a retirement of the third
-(`notebooks/why-the-tick-array-book-is-not-faster.ipynb` §4 and §7d).
+(`notebooks/aggregate-book.ipynb` §3 for the standalone methods).
 
 - **the third pass's 1.4× measured the walk, not the integer.** The bit route it timed called
   `occupied_levels` once per statistic to find the deepest reported level, and
@@ -354,7 +355,9 @@ From a fourth pass over the gap statistics, which reopens a retirement of the th
   the LOBSTER row. Reading all five statistics off the window after the walk is within a few
   per cent of the difference loop at depth 10, either way; at depth 50 it gains 8–15% on the
   dense streams and loses 8% on a sparse one, where the erosion's pass per tick of the longest
-  gap outweighs a loop with little to walk. The fold keeps the loop;
+  gap outweighs a loop with little to walk. The fold keeps the loop. That comparison was
+  measured with a throwaway `side_statistics` override reading the window after the walk,
+  which was not kept: it is the thing to rebuild before a deep report on a dense book;
 - **the bisection's cost does not depend on the depth**: about 0.8 µs a side, against about
   75 ns a level for walking the top bit down. Equal at depth 10, 4.4× apart at depth 50.
 

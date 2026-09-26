@@ -322,7 +322,7 @@ length $|p_{i+1} - p_i| - 1$. The `gap_count` and `largest_gap_size_between_non_
 of the two bitmap rungs do not walk. They cut the window with section 7 and count it, and
 alone they are faster than `side_statistics`. Inside the fold, once the walk is paid for, the
 window buys little and depends on the book, so the fold keeps the one loop.
-`notebooks/why-the-tick-array-book-is-not-faster.ipynb` has both measurements.
+`notebooks/aggregate-book.ipynb` has the first measurement.
 
 All in `unito26.lob.orderbook`. Entry 4 of
 [`order-flow-to-order-book.md`](order-flow-to-order-book.md) puts these lookups back in
