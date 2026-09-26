@@ -1,13 +1,16 @@
 """Occupied levels, the holes between them, and the span they cover.
 
 Every assertion runs on all five rungs: the dict books walk sorted keys, the bitmap books
-read the answer off an integer, and the whole point is that they cannot disagree.
+read the answer off an integer, and the whole point is that they cannot disagree.  The
+bitmap books are checked once more on bands built by hand, since only they have edges.
 """
+
+import random
 
 import pytest
 
 from unito26.lob.messages import BUY, SELL, ReportedDepth
-from unito26.lob.orderbook import AXIS_B_VARIANTS
+from unito26.lob.orderbook import AXIS_B_VARIANTS, AggregateBook, BitmapBook, TickArrayBook
 
 #: The stub's example, written the way `occupied_levels` returns it: (price, size).
 LADDER_BIDS = {100: 25, 99: 50, 97: 50, 96: 150, 93: 200}
@@ -185,3 +188,67 @@ class TestWhereTheGapsAre:
         side = book.side_statistics(SELL, ReportedDepth(4))
         assert side.gap_count == 1 and side.first_gap_size == 1
         assert side.first_gap_distance == 1.0
+
+
+class TestTheWindowEndsAtTheDeepestReportedLevel:
+    """The reported window is cut at the ``d``-th occupied level, which can lie well past
+    the ``d``-th tick.  A cut on the grid would miss every gap closing beyond that tick,
+    and return a plausible, smaller count."""
+
+    @pytest.mark.parametrize(
+        "bids,asks,depth,largest",
+        [
+            ({1005: 1, 1003: 1}, {1010: 1, 1012: 1}, 2, 1),
+            ({1000: 1, 999: 1, 998: 1, 995: 1}, {1001: 1, 1002: 1, 1003: 1, 1006: 1}, 4, 2),
+        ],
+    )
+    def test_a_gap_closing_beyond_the_dth_tick_is_counted(
+        self, book_cls, bids, asks, depth, largest
+    ):
+        book = book_cls.from_levels(bids, asks)
+        for direction in (BUY, SELL):
+            assert book.gap_count(direction, ReportedDepth(depth)) == 1
+            assert book.largest_gap_size_between_non_empty_levels(
+                direction, ReportedDepth(depth)
+            ) == largest
+
+    @pytest.mark.parametrize("bids", [LADDER_BIDS, {}], ids=["occupied", "empty"])
+    def test_depth_must_be_positive_for_the_gap_methods(self, book_cls, bids):
+        book = book_cls.from_levels(bids, {110: 10})
+        for method in (book.gap_count, book.largest_gap_size_between_non_empty_levels):
+            with pytest.raises(ValueError, match="must be >= 1"):
+                method(BUY, ReportedDepth(0))
+
+
+class TestBandsBuiltByHand:
+    """The bitmap books on bands of their own, levels anywhere up to both edges, each side
+    alone, and every depth from one to past the last level, against the baseline's grid
+    enumeration.  ``from_levels`` would leave a margin and keep the edges out of reach."""
+
+    @pytest.mark.parametrize("seed", range(10))
+    def test_the_gap_methods_and_the_window_agree_with_the_grid(self, seed):
+        rng = random.Random(seed)
+        for _ in range(60):
+            floor, width = rng.randint(500, 5000), rng.randint(1, 300)
+            direction = rng.choice((BUY, SELL))
+            prices = rng.sample(range(floor, floor + width), rng.randint(0, min(width, 40)))
+            levels = {price: rng.randint(1, 9) for price in prices}
+            sides = (levels, {}) if direction == BUY else ({}, levels)
+            reference = AggregateBook.from_levels(*sides)
+            books = [TickArrayBook(floor=floor, width=width), BitmapBook(floor=floor)]
+            for book in books:
+                for price, size in levels.items():
+                    book.set_size(direction, price, size)
+            for depth in map(ReportedDepth, range(1, len(levels) + 3)):
+                for book in books:
+                    assert book.gap_count(direction, depth) == reference.gap_count(
+                        direction, depth
+                    )
+                    assert book.largest_gap_size_between_non_empty_levels(
+                        direction, depth
+                    ) == reference.largest_gap_size_between_non_empty_levels(direction, depth)
+                    window = book.span_bits(direction, depth)
+                    assert window.bit_length() == reference.grid_span(direction, depth)
+                    assert window.bit_count() == reference.occupied_level_count(
+                        direction, depth
+                    )

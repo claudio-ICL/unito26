@@ -443,7 +443,7 @@ and the step from `BitmapBook` to `TickArrayBook` measures exactly that fusion.
 | `TickArrayBook` | the same, indexing the array the sizes live in | flat list |
 
 The bitmap deserves its formulae, because they are the whole trick.
-With occupancy held as a single arbitrary-precision integer $B$ and origin $p_0$,
+With occupancy held as a single arbitrary-precision integer $B$ and floor $p_0$,
 
 $$\max\{p : \text{occupied}\} = p_0 + \operatorname{bitlength}(B) - 1,
 \qquad

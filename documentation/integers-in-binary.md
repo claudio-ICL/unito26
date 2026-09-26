@@ -1,9 +1,9 @@
 # Integers in binary, and the lowest-set-bit trick
 
 Prerequisite for entry 4 of [`order-flow-to-order-book.md`](order-flow-to-order-book.md),
-where `BitmapBook` and `TickArrayBook` find the best price on a side with three operations on
-a single integer. Those operations are standard and they are not obvious; this note derives
-them, proves them, measures them, and stops.
+where `BitmapBook` and `TickArrayBook` find the best price on a side, and read its gaps, with a
+few operations on a single integer. Those operations are standard and they are not obvious;
+this note derives them, proves them, measures them, and stops.
 
 **Notation.** Formulas below use the logic symbols on the left; code snippets use Python's own
 operators on the right.
@@ -21,8 +21,8 @@ operators on the right.
 
 Read an integer by its binary digits rather than by its magnitude, and it is a **set of
 positions**: bit $k$ of $B$ is set exactly when $k$ belongs to the set. Prices already live on
-an integer grid, so with an origin $p_0$ the position $k = p - p_0$ is a price and one integer
-is the occupancy of a whole side of the book.
+an integer grid, so with a floor $p_0$, the price of bit 0, the position $k = p - p_0$ is a price
+and one integer is the occupancy of a whole side of the book.
 
 | operation | meaning |
 | --- | --- |
@@ -35,7 +35,7 @@ is the occupancy of a whole side of the book.
 In C the set is capped at the width of a machine word, and a wide price range means an array of
 words with the index arithmetic done by hand. Python's integers are unbounded, so the set is as
 wide as the market and needs no declared band — which is why `BitmapBook`, unlike
-`TickArrayBook`, has no upper edge to fall off.
+`TickArrayBook`, has a floor and no ceiling.
 
 ## 2. Bit sequences, two ways
 
@@ -220,7 +220,7 @@ b & -b  0000000001000
 ```
 
 `b = 0` is not covered: `b & -b == 0` and `(0).bit_length() == 0`, so both formulae return $-1$,
-a grid position below the origin and hence a plausible price, returned without an exception. An
+a grid position below the floor and hence a plausible price, returned without an exception. An
 empty side has to be tested for, which is the `if not bits: return None` opening both
 `best_price` methods.
 
@@ -252,7 +252,50 @@ So in the book the best-*bid* lookup is flat in the width of the market and the 
 lookup is not. The asymmetry belongs to Python's unbounded integers and not to the algorithm:
 in C, on one word, both are a single instruction.
 
-## 7. Where the book uses it
+## 7. Rank, and the runs of a set
+
+The gap statistics of a side are read on a *window*: the occupancy from the touch to the
+deepest reported level, shifted so that level is bit 0. Two identities cut it and count it.
+
+**Proposition 6.** For $b \in \mathbb{N}$ and $k \ge 0$, `(b >> k).bit_count()` is the number of
+set bits of $b$ at positions $k$ and above. As a function of $k$ it is non-increasing, and it
+falls by one exactly where bit $k$ is set.
+
+*Proof.* `b >> k` is $\lfloor b / 2^k \rfloor$, whose digits are those of $B(b)$ from position $k$
+up, moved down by $k$; its population count therefore counts the set bits of $b$ from $k$ up.
+Passing from $k$ to $k+1$ discards exactly bit $k$. $\blacksquare$
+
+So the $d$-th highest set bit is the largest $k$ at which the count still reaches $d$, and a
+monotone predicate is found by bisection: $O(\log W)$ population counts, whatever $d$, rather
+than $d$ steps down the bits. That is `keep_highest_set_bits`.
+
+**Proposition 7.** For $b > 0$, $b \wedge \sim(b \ll 1)$ has exactly one set bit per maximal run
+of ones in $B(b)$, at the lowest position of the run. So the number of gaps -- runs of zeros
+lying strictly between ones -- is `(b & ~(b << 1)).bit_count() - 1`.
+
+*Proof.* Bit $k$ of $b \ll 1$ is bit $k-1$ of $b$, and $0$ at $k = 0$. So bit $k$ of
+$b \wedge \sim(b \ll 1)$ is set exactly when bit $k$ of $b$ is set and bit $k-1$ is not, which
+is to say when $k$ is the lowest position of a run of ones. Between the lowest and the highest
+set bit, runs of ones and gaps alternate, beginning and ending with a run, so there is one
+gap fewer than there are runs. $\blacksquare$
+
+```python
+import random
+
+def gaps(b):
+    return len([run for run in bin(b)[2:].strip("0").split("1") if run])
+
+for _ in range(1000):
+    b = random.randint(1, 2**200)
+    assert (b & ~(b << 1)).bit_count() - 1 == gaps(b)
+    for k in range(0, 201, 7):
+        assert (b >> k).bit_count() == sum(b >> j & 1 for j in range(k, 201))
+```
+
+The longest gap is the flood of `measure_largest_binary_gap`, one pass per tick of the widest
+gap. It counts trailing zeros as a gap, so it wants the window odd, which the cut provides.
+
+## 8. Where the book uses it
 
 | operation | where |
 | --- | --- |
@@ -260,22 +303,26 @@ in C, on one word, both are a single instruction.
 | `bit_length() - 1` | `best_price` on both sides in `TickArrayBook`, the $d = +1$ branch in `BitmapBook` |
 | `(bits & -bits).bit_length() - 1` | the $d = -1$ branch of `BitmapBook.best_price` |
 | `bits ^= 1 << k` | walking the occupied levels in both |
+| `(bits >> k).bit_count()` | the cut of the gap window: both sides in `TickArrayBook`, the bids in `BitmapBook` |
+| `m &= m - 1` | the cut of the gap window for the asks in `BitmapBook` |
+| `b & ~(b << 1)` | `count_binary_gaps` |
 
 The asymmetry of section 6 is the reason `TickArrayBook` no longer appears in the third row.
 Since it declares a band it has a *ceiling*, so it indexes its sell side downward from it --
-bit $\mathrm{ceiling} - p$ rather than $p - \mathrm{origin}$ -- and the best price is the
-highest set bit on either side. `BitmapBook` cannot: it has no upper edge, which is the whole
-distinction between the two rungs, and the cost of that freedom is the scan.
+bit $\mathrm{ceiling} - p$ rather than $p - \mathrm{floor}$ -- and the best price is the
+highest set bit on either side. The same reversal puts the unreported depth at the low end of
+the integer on both sides, so the gap window is one cut for either. `BitmapBook` cannot: it has
+no ceiling, which is the whole distinction between the two rungs, and the cost of that freedom
+is the scan, and a second cut for its asks.
 
-**What the book stopped using.** `count_binary_gaps` and `measure_largest_binary_gap` no
-longer answer `side_statistics`. Two consecutive occupied prices bound exactly one maximal
-run of empty positions, of length $|p_{i+1} - p_i| - 1$, so the gaps fall out of the walk
-that produced the levels, and doing that costs less than masking a window out of the
-occupancy integer -- measured at about 1.4 times on the deep book. The derivations above
-stand, `unito26.lob.binary_gaps` keeps its tests, and the individual `gap_count` and
-`largest_gap_size_between_non_empty_levels` still go through them. What changed is which one
-is on the hot path.
-`notebooks/why-the-tick-array-book-is-not-faster.ipynb` has the measurement.
+**Which reading is on the hot path.** The session fold calls `side_statistics`, which walks the
+reported levels because it returns them, and reads the gaps off the differences of consecutive
+prices: two consecutive occupied prices bound exactly one maximal run of empty positions, of
+length $|p_{i+1} - p_i| - 1$. The `gap_count` and `largest_gap_size_between_non_empty_levels`
+of the two bitmap rungs do not walk. They cut the window with section 7 and count it, and
+alone they are faster than `side_statistics`. Inside the fold, once the walk is paid for, the
+window buys little and depends on the book, so the fold keeps the one loop.
+`notebooks/aggregate-book.ipynb` has the first measurement.
 
 All in `unito26.lob.orderbook`. Entry 4 of
 [`order-flow-to-order-book.md`](order-flow-to-order-book.md) puts these lookups back in
