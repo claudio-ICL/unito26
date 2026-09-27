@@ -328,3 +328,5 @@ All in `unito26.lob.orderbook`. Entry 4 of
 [`order-flow-to-order-book.md`](order-flow-to-order-book.md) puts these lookups back in
 context, against the four other ways of finding a best price and with the timings of the
 ladder as a whole; `notebooks/aggregate-book.ipynb` runs them.
+`notebooks/lectures/03a-integers-as-sets.ipynb` runs each identity of sections 3–7 on worked
+examples, for the classroom.
