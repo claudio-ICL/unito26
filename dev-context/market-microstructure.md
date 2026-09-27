@@ -91,6 +91,11 @@ is the notebook to re-run before changing what `_write_statistics` reads. Two de
 `unito26/lob/orderbook.py` rest on it: that `submit` accumulates the traded totals rather
 than the fold recording fills, and that the sweep costs reuse `SideStatistics.levels`.
 
+`notebooks/lectures/03a-integers-as-sets.ipynb` takes the functions of
+`unito26/lob/binary_gaps.py` one at a time, on worked examples, against the string references
+of the tests and against hand-rolled property tests. It is the prerequisite for sections 6–7
+of `03-the-book-made-faster`.
+
 ## The example parametrization changed
 
 `example_order_flow_params()` moved from a branching ratio of 0.8 to 0.6, its composition
@@ -419,6 +424,17 @@ From the performance pass, all three live mistakes rather than invented ones:
   writes. Ask for the values it produces — small non-negative integers that pass a
   `Check.ge(0)` schema and read as a crossed book. Better than "find the bug", because the
   bug is a missing line rather than a wrong one.
+
+From the bit vocabulary (`03a-integers-as-sets`, section 12), each a "what does it print":
+
+- **`measure_largest_binary_gap(0b10100)`** prints 2, where the only gap is 1: trailing zeros
+  flood like a gap. The candidate who normalises by eye answers 1;
+- **`n = -12; n & -n`** prints 4. Whether the lowest set bit is read off the infinite two's
+  complement expansion or off the magnitude, the answer is the same, and the question is why;
+- **`n & ~(n << 1)` on `0b1011000`** prints `0b1001000`, one mark per run of ones;
+- **two passes of `rest &= rest - 1` on `0b110101`, then `n ^ rest`** prints `0b101`;
+- **`bin(n)[2:].count("10")` offered as a gap counter.** Right on every odd `n` and one too
+  many on every even one; a property test finds it and a list of odd examples does not.
 
 From the sweep-cost / OFI / VWAP work. Every one of these is a **plausible wrong answer**
 rather than an error, and four of them were found by review or by measurement rather than by
