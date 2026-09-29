@@ -8,6 +8,9 @@ round.
 
 ## Setup
 
+Starting from a laptop with nothing installed, follow [`GETTING-STARTED.md`](GETTING-STARTED.md).
+With conda and git already in place:
+
 ```bash
 conda env create -f unito26.yml
 conda activate unito26
