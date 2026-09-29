@@ -15,6 +15,8 @@ from unito26.lob.messages import (
     MARKET_BUY_PRICE,
     MARKET_SELL_PRICE,
     SELL,
+    Message,
+    MessageType,
     is_market_price,
     TickGrid,
     limit_order,
@@ -24,7 +26,13 @@ from unito26.lob.messages import (
 from unito26.lob import config
 from unito26.lob.orderbook import AXIS_B_VARIANTS, AggregateBook
 from unito26.lob.simulate import OrderFlowSimulator
-from unito26.lob.worked_examples import CATALOGUE, check, reflect
+from unito26.lob.worked_examples import (
+    BASELINE_BOOK,
+    CATALOGUE,
+    check,
+    reflect,
+    to_sides,
+)
 
 TICK = TickGrid(0.01)
 
@@ -340,3 +348,75 @@ def test_a_level_at_the_sell_sentinel_is_not_sizeable():
 
     with pytest.raises(ValueError, match="outside the band"):
         TickArrayBook.from_levels({MARKET_SELL_PRICE: 5}, {500: 5})
+
+
+def price_eligible_size(book: AggregateBook, price: int, direction: int) -> int:
+    """The size on the far side that an order at ``price`` may take, read off the levels."""
+    return sum(
+        resting
+        for level, resting in book.levels_map(-direction).items()
+        if level * direction <= price * direction
+    )
+
+
+@pytest.fixture(scope="module")
+def submissions() -> list[tuple[AggregateBook, Message]]:
+    """Every submission of the catalogue, its mirror image and a simulated session,
+    each with the book it arrived at."""
+    examples = [*CATALOGUE, *(reflect(example, MIRROR_CENTRE) for example in CATALOGUE)]
+    pairs = [
+        (AggregateBook.from_levels(*to_sides(example.before)), example.message)
+        for example in examples
+    ]
+    # An order that empties the far side short of its own price, where the remainder
+    # rests at that price and not at the last one traded.
+    baseline = AggregateBook.from_levels(*to_sides(BASELINE_BOOK))
+    pairs += [
+        (baseline, limit_order(1.0, 500, 996, SELL)),
+        (baseline, limit_order(1.0, 400, 1005, BUY)),
+    ]
+
+    simulator = OrderFlowSimulator(
+        config.example_order_flow_params(), config.example_mark_params(), 10000, rng=7
+    )
+    driver = AggregateBook()
+    simulator.warm_up(driver, horizon=30.0, journal=None)
+    for message in simulator.stream(driver, horizon=200.0, journal=None):
+        pairs.append((driver.copy(), message))
+        driver.apply(message, record=False)
+
+    return [(book, message) for book, message in pairs if message.kind is MessageType.SUBMIT]
+
+
+class TestTheDecomposition:
+    """``prop.decompositionOfLimitOrder``, checked against the engine on every submission.
+
+    Nothing here states an expected book: the formula for ``q_M`` and the decomposed
+    order are second routes to what the engine computes, and the two must agree.
+    """
+
+    def test_q_M_is_the_formula(self, submissions):
+        for book, message in submissions:
+            eligible = price_eligible_size(book, message.price, message.direction)
+            predicted = min(message.size, eligible)
+            executed = book.copy().submit(message, record=True).market_order_size
+            assert executed == predicted, message
+
+    def test_an_order_and_its_decomposition_reach_the_same_book(self, submissions):
+        # A market order is excluded: market-to-limit rests its remainder at the last
+        # traded price, which is not the price it carries.
+        for book, message in submissions:
+            if is_market_price(message.price):
+                continue
+            t, q, p, d = message.time, message.size, message.price, message.direction
+            q_M = min(q, price_eligible_size(book, p, d))
+
+            whole, parts = book.copy(), book.copy()
+            whole.submit(message, record=False)
+            if q_M > 0:
+                parts.submit(market_order(t, q_M, d), record=False)
+            if q - q_M > 0:
+                assert parts.submit(limit_order(t, q - q_M, p, d), record=True).fills == []
+
+            for direction in (BUY, SELL):
+                assert parts.levels_map(direction) == whole.levels_map(direction), message
