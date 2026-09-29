@@ -732,10 +732,8 @@ terminal.
 
 1. In the file browser, open `notebooks`, then `lectures`, then
    `01-the-limit-order-book.ipynb`.
-2. If a *Select Kernel* dialog appears, choose **Python 3 (ipykernel)**. That is the Python
-   of the `unito26` environment. Do not choose any other entry the list may offer.
-3. Choose *Kernel → Restart Kernel and Run All Cells…* and confirm.
-4. Wait until no cell shows `[*]`, then scroll through. The cell that loads the data prints
+2. Choose *Kernel → Restart Kernel and Run All Cells…* and confirm.
+3. Wait until no cell shows `[*]`, then scroll through. The cell that loads the data prints
    one line per stock, of the form
 
    ```
