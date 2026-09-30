@@ -556,19 +556,39 @@ def band_width_figure(timings, title: str):
 # ---- point processes -----------------------------------------------------------------
 
 
-def intensity_figure(clock, intensities, times, types, labels, title: str = ""):
+def intensity_figure(params, times, types, clock, labels, title: str = ""):
     """The intensity of every type along one path, with the events beneath it.
 
-    ``intensities`` is ``(len(clock), d)``, read on ``clock``.  The intensity decays
-    continuously between events, so it is drawn as a line and not as steps; the events
-    are ticks in a strip below, one row per type.
+    ``params`` is the specification the path ``(times, types)`` was drawn from, and the path
+    starts from empty.  The intensity is read on ``clock``, and at every event on it twice,
+    just before the event and just after, so that each jump is drawn at its event and not
+    across the step of the clock that holds it.  The events are ticks in a strip below, one
+    row per type.
     """
     import numpy as np
     import plotly.graph_objects as go
     from plotly.subplots import make_subplots
 
+    from unito26.lob.hawkes import Clock, decayed_counts_at
+
     times = np.asarray(times, dtype=float)
     types = np.asarray(types, dtype=int)
+    clock = np.asarray(clock, dtype=float)
+    shown = (times >= clock[0]) & (times <= clock[-1])
+    events, kinds = times[shown], types[shown]
+    empty = np.zeros(params.dimension)
+
+    def intensity(at):
+        states = decayed_counts_at(params.decay, times, types, empty, Clock(at))
+        return params.baseline + states @ params.excitation.T
+
+    grid = np.sort(np.concatenate([clock, events]))
+    after = intensity(events) + params.excitation[:, kinds].T
+    x = np.concatenate([grid, events])
+    y = np.concatenate([intensity(grid), after])
+    order = np.lexsort((np.r_[np.zeros(grid.size), np.ones(events.size)], x))
+    x, y = x[order], y[order]
+
     figure = make_subplots(
         rows=2, cols=1, shared_xaxes=True, row_heights=[0.8, 0.2], vertical_spacing=0.03
     )
@@ -576,12 +596,12 @@ def intensity_figure(clock, intensities, times, types, labels, title: str = ""):
         colour = PALETTE[slot % len(PALETTE)]
         figure.add_trace(
             go.Scatter(
-                x=clock, y=intensities[:, slot], name=label, mode="lines",
+                x=x, y=y[:, slot], name=label, mode="lines",
                 line=dict(color=colour, width=1.5), legendgroup=label,
             ),
             row=1, col=1,
         )
-        mine = times[types == slot]
+        mine = events[kinds == slot]
         figure.add_trace(
             go.Scatter(
                 x=mine, y=np.full(mine.size, slot), mode="markers", showlegend=False,

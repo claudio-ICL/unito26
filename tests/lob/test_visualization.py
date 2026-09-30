@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 
 from unito26.lob import config
-from unito26.lob.hawkes import Clock, ExponentialHawkes, decayed_counts_at
+from unito26.lob.hawkes import Clock, ExponentialHawkes
 from unito26.lob.visualization import (
     exponential_qq_figure,
     intensity_figure,
@@ -23,15 +23,21 @@ def path():
     return times, types
 
 
-def test_the_intensity_figure_draws_a_line_and_a_strip_per_type(path):
+def test_the_intensity_jumps_at_each_event_and_not_before(path):
+    """At an event the line holds two points, the intensity just before and just after,
+    and the difference is the column of the kernel for the event's type."""
     params = config.asymmetric_pair_params()
     times, types = path
-    clock = Clock(np.linspace(0.0, 20.0, 400))
-    states = decayed_counts_at(params.decay, times, types, np.zeros(2), clock)
-    intensities = params.baseline + states @ params.excitation.T
-    figure = intensity_figure(clock, intensities, times, types, LABELS)
+    clock = Clock(np.linspace(5.0, 15.0, 101))
+    figure = intensity_figure(params, times, types, clock, LABELS)
+    shown = (times >= 5.0) & (times <= 15.0)
     assert len(figure.data) == 4
-    assert sum(trace.x.size for trace in figure.data[1::2]) == times.size
+    assert sum(trace.x.size for trace in figure.data[1::2]) == shown.sum()
+    line = figure.data[0]
+    for time, kind in zip(times[shown], types[shown]):
+        at = np.flatnonzero(line.x == time)
+        assert at.size == 2
+        assert line.y[at[1]] - line.y[at[0]] == pytest.approx(params.excitation[0, kind])
 
 
 def test_the_raster_has_a_row_per_path_and_every_event(path):
