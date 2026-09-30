@@ -33,24 +33,33 @@ sufficient summary rather than the history -- in a different setting.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Iterator
+from typing import Iterator, NewType, Self
 
 import numpy as np
 import pandas as pd
 import pandera.pandas as pa
+from scipy.linalg import expm, solve_continuous_lyapunov
 
 from unito26.lob.frames import FrameSerializable
-from unito26.lob.messages import BranchingRatio, Decay
+from unito26.lob.messages import BranchingRatio, Decay, Horizon
 
 __all__ = [
+    "Clock",
     "HawkesParams",
     "ExponentialHawkes",
     "OgataThinningHawkes",
     "compensators_at_events",
+    "decayed_counts_at",
     "intensities_at_events",
+    "mean_response",
+    "mean_response_integral",
     "rescaled_excitation",
     "with_cross_pressure_scaled",
 ]
+
+#: Deterministic times at which the state of a path is read, in seconds and sorted.  A
+#: ``NewType`` because the event times it is read against are an array of the same kind.
+Clock = NewType("Clock", np.ndarray)
 
 
 @dataclass(frozen=True, slots=True)
@@ -104,8 +113,9 @@ class HawkesParams(FrameSerializable):
             )
         if self.branching_ratio >= 1:
             raise ValueError(
-                f"branching ratio is {self.branching_ratio:.4f}, must be < 1 for a "
-                "stationary process; as it approaches 1 the process explodes"
+                f"branching ratio is {self.branching_ratio:.4f}, must be < 1: with every "
+                "baseline positive the process is otherwise not stationary, and above 1 "
+                "its mean intensity grows exponentially"
             )
 
     @property
@@ -118,6 +128,12 @@ class HawkesParams(FrameSerializable):
         """``Gamma = A / beta``.  ``Gamma[i, j]`` is the expected number of type-``i``
         events directly triggered by one type-``j`` event."""
         return self.excitation / self.decay
+
+    @property
+    def hurwitz_matrix(self) -> np.ndarray:
+        """``K = A - beta I``, the drift of the mean state: ``dm/dt = K m + mu``.  It is
+        Hurwitz exactly when the branching ratio is below 1."""
+        return self.excitation - self.decay * np.eye(self.dimension)
 
     @property
     def branching_ratio(self) -> float:
@@ -229,6 +245,64 @@ class HawkesParams(FrameSerializable):
         identity = np.eye(self.dimension)
         return self._signed(pressure, np.linalg.inv(identity - self.branching_matrix))
 
+    def stationary_covariance(self) -> np.ndarray:
+        """``V``, the stationary covariance of the state ``Z``: the solution of the
+        Lyapunov equation ``K V + V K' + diag(lambda*) = 0``.
+
+        The stationary covariance of the intensity is ``A V A'``, since
+        ``lambda = mu + A Z``.
+        """
+        return solve_continuous_lyapunov(
+            self.hurwitz_matrix, -np.diag(self.stationary_intensity())
+        )
+
+    def mean_response(self, horizon: Horizon) -> np.ndarray:
+        """``e^{K h}``.  Column ``j`` is ``R_j(h)``, the difference made to the mean state
+        after ``h`` by one extra event of type ``j`` at time 0."""
+        return mean_response(self.excitation, self.decay, horizon)
+
+    def mean_response_integral(self, horizon: Horizon) -> np.ndarray:
+        """``Phi(h) = int_0^h e^{K s} ds``."""
+        return mean_response_integral(self.excitation, self.decay, horizon)
+
+    def forward_mean_state(self, state: np.ndarray, horizon: Horizon) -> np.ndarray:
+        """``m_h(z) = e^{K h} z + Phi(h) mu``: the mean state ``h`` after starting from
+        ``Z(0+) = z``."""
+        exponential, integral, _ = _mean_response_blocks(self.excitation, self.decay, horizon)
+        return exponential @ np.asarray(state, dtype=float) + integral @ self.baseline
+
+    def forward_mean_counts(self, state: np.ndarray, horizon: Horizon) -> np.ndarray:
+        """``E_z N(h) = h mu + A Phi(h) z + A (int_0^h Phi) mu``, per type, counting the
+        events of ``(0, h]`` after starting from ``Z(0+) = z`` and ``N(0) = 0``."""
+        _, integral, double = _mean_response_blocks(self.excitation, self.decay, horizon)
+        state = np.asarray(state, dtype=float)
+        return float(horizon) * self.baseline + self.excitation @ (
+            integral @ state + double @ self.baseline
+        )
+
+    def relaxation_time(self) -> float:
+        """``1 / (beta (1 - rho))``, the time constant of the slowest mode of the mean
+        response.  It describes the response only asymptotically."""
+        return 1.0 / (self.decay * (1.0 - self.branching_ratio))
+
+    def signed_excitation(self, pressure: np.ndarray) -> np.ndarray:
+        """``theta_e = (p' A)_e / p_e``, the signed excitation strength of each type.
+
+        Under direction symmetry it takes one value on the two members of each pair, and
+        the intensity contrast is ``sum_e p_e theta_e Z_e``.
+        """
+        pressure = self._pressure(pressure)
+        return (pressure @ self.excitation) / pressure
+
+    def signed_excitation_at_horizon(
+        self, pressure: np.ndarray, horizon: Horizon
+    ) -> np.ndarray:
+        """``theta_e(h) = (p' A Phi(h))_e / p_e``.  ``theta(h) / h`` tends to ``theta`` as
+        ``h`` goes to 0, and ``theta(h)`` to ``(p' Gamma (I - Gamma)^{-1})_e / p_e`` as it
+        grows."""
+        pressure = self._pressure(pressure)
+        return (pressure @ self.excitation @ self.mean_response_integral(horizon)) / pressure
+
     def _descendants(self) -> np.ndarray:
         """``1' (I - Gamma)^{-1}``: expected cluster size by the immigrant's type."""
         identity = np.eye(self.dimension)
@@ -236,12 +310,16 @@ class HawkesParams(FrameSerializable):
             (identity - self.branching_matrix).T, np.ones(self.dimension)
         )
 
-    def _signed(self, pressure: np.ndarray, matrix: np.ndarray) -> float:
+    def _pressure(self, pressure: np.ndarray) -> np.ndarray:
         pressure = np.asarray(pressure, dtype=float)
         if pressure.shape != (self.dimension,):
             raise ValueError(
                 f"pressure must be a {self.dimension}-vector, got shape {pressure.shape}"
             )
+        return pressure
+
+    def _signed(self, pressure: np.ndarray, matrix: np.ndarray) -> float:
+        pressure = self._pressure(pressure)
         stationary = self.stationary_intensity()
         return float(((pressure @ matrix) * pressure) @ stationary / stationary.sum())
 
@@ -336,6 +414,28 @@ class _HawkesState:
         self._total_jump = params.excitation.sum(axis=0)
         self._baseline_total = float(params.baseline.sum())
 
+    @classmethod
+    def from_state(
+        cls,
+        params: HawkesParams,
+        state: np.ndarray,
+        rng: np.random.Generator | int | None = None,
+    ) -> Self:
+        """Started from ``Z(0+) = z`` and ``N(0) = 0`` rather than from empty.
+
+        The first event then arrives at intensity ``mu + A e^{-beta T_1} z``.  ``z`` is
+        copied, because the state is decayed in place as the path runs, and a fan of paths
+        started from one ``z`` would otherwise overwrite it.
+        """
+        state = np.array(state, dtype=float)
+        if state.shape != (params.dimension,) or np.any(state < 0):
+            raise ValueError(
+                f"the state must be a non-negative {params.dimension}-vector, got {state}"
+            )
+        simulator = cls(params, rng)
+        simulator.decayed_counts = state
+        return simulator
+
     @property
     def intensities(self) -> np.ndarray:
         """``lambda(t) = mu + A S(t)`` at the current time."""
@@ -343,7 +443,7 @@ class _HawkesState:
 
     @property
     def total_intensity(self) -> float:
-        """``lambda_bar(t) = sum_i lambda_i(t)``, computed via the column sums."""
+        """``lambda_g(t) = sum_i lambda_i(t)``, computed via the column sums."""
         return self._baseline_total + float(self._total_jump @ self.decayed_counts)
 
     def _advance(self, elapsed: float) -> None:
@@ -352,7 +452,7 @@ class _HawkesState:
         self.decayed_counts *= np.exp(-self.params.decay * elapsed)
 
     def _draw_type_and_jump(self) -> int:
-        """Choose which type fired, with probability ``lambda_i / Lambda``, and jump."""
+        """Choose which type fired, with probability ``lambda_i / lambda_g``, and jump."""
         intensities = self.intensities
         cumulative = np.cumsum(intensities)
         threshold = self.rng.random() * cumulative[-1]
@@ -393,7 +493,7 @@ class ExponentialHawkes(_HawkesState):
     """Exact simulation, by the Dassios-Zhao decomposition applied to the total intensity.
 
     Because the decay is common to every pair, the *total* intensity
-    ``lambda_bar(t) = sum_i lambda_i(t)`` decays as a single exponential **between
+    ``lambda_g(t) = sum_i lambda_i(t)`` decays as a single exponential **between
     events**: it relaxes at rate ``beta`` towards ``mu_bar = sum_i mu_i`` and jumps by the
     column sum ``c_j = sum_i alpha_ij`` on a type-``j`` event.  The common decay is all
     that is needed for this; ``alpha_ij >= 0`` does a different job, making the excess over
@@ -402,21 +502,22 @@ class ExponentialHawkes(_HawkesState):
     It is not, however, an autonomous one-dimensional process -- its jump size depends on
     the type that fires -- so the full state is still carried.  Only the *waiting time*
     uses the scalar form, and the type is then drawn with probability
-    ``lambda_i / lambda_bar`` on the pre-jump intensities.  That draw is where the full
+    ``lambda_i / lambda_g`` on the pre-jump intensities.  That draw is where the full
     matrix re-enters, the waiting time having seen only its column sums.
 
     ``Lambda`` is not used for the total intensity here: the notes reserve it for the
     compensator.
 
-    Given ``Lambda_n``, the intensity just after the last event, the compensator over
-    the next ``s`` splits into two increasing pieces::
+    Given ``D = lambda_g(T_n+) - mu_bar``, the excess of the total intensity just after
+    the last event, the compensator over the next ``s`` splits into two increasing
+    pieces::
 
-        Lambda_bar(s) = mu_bar * s   +   (Lambda_n - mu_bar) (1 - e^{-beta s}) / beta
-                        \\ baseline /     \\--------- excited part ---------/
+        Lambda_g(s) = mu_bar * s   +   D (1 - e^{-beta s}) / beta
+                      \\ baseline /     \\---- excited part ----/
 
     A point process with compensator ``L1 + L2`` is the superposition of two
     independent ones, so the next inter-arrival is the minimum of two closed-form draws.
-    The excited part carries the finite total mass ``(Lambda_n - mu_bar) / beta``, and
+    The excited part carries the finite total mass ``D / beta``, and
     ``S2 = inf`` is the event that it expires without firing.
 
     O(1) per event, exact, with no rejection step, no discretisation bias and no time
@@ -425,7 +526,7 @@ class ExponentialHawkes(_HawkesState):
 
     def step(self) -> tuple[float, int]:
         beta = self.params.decay
-        excess = self.total_intensity - self._baseline_total  # (Lambda_n - mu_bar) >= 0
+        excess = self.total_intensity - self._baseline_total  # D >= 0
 
         u1, u2 = self.rng.random(2)
 
@@ -450,7 +551,7 @@ class OgataThinningHawkes(_HawkesState):
     The upper bound is free: with ``alpha >= 0`` the intensity is non-increasing
     between events, so the total intensity right after the last event bounds it until
     the next one.  Propose at the bound, accept with probability
-    ``Lambda(t') / Lambda_bar``, and tighten the bound on every rejection.
+    ``lambda_g(t') / bound``, and tighten the bound on every rejection.
 
     Slower than :class:`ExponentialHawkes`, and it does not need the kernel to be
     common-``beta``, which is what makes it a control on the exact scheme rather than a
@@ -584,4 +685,73 @@ def compensators_at_events(
         counts[event_type] += 1.0
         previous_time = time
 
+    return out
+
+
+def mean_response(excitation: np.ndarray, decay: Decay, horizon: Horizon) -> np.ndarray:
+    """``e^{K h}`` for ``K = A - beta I``, at any branching ratio."""
+    return _mean_response_blocks(excitation, decay, horizon)[0]
+
+
+def mean_response_integral(
+    excitation: np.ndarray, decay: Decay, horizon: Horizon
+) -> np.ndarray:
+    """``Phi(h) = int_0^h e^{K s} ds`` for ``K = A - beta I``, at any branching ratio.
+
+    The closed form ``K^{-1} (e^{K h} - I)`` needs ``K`` invertible, and ``K`` is singular
+    at a branching ratio of 1.  The block exponential below needs no inverse.
+    """
+    return _mean_response_blocks(excitation, decay, horizon)[1]
+
+
+def _mean_response_blocks(
+    excitation: np.ndarray, decay: Decay, horizon: Horizon
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """``(e^{K h}, Phi(h), int_0^h Phi)``, the first block row of
+    ``exp([[K, I, 0], [0, 0, I], [0, 0, 0]] h)``."""
+    excitation = np.asarray(excitation, dtype=float)
+    d = excitation.shape[0]
+    identity = np.eye(d)
+    generator = np.zeros((3 * d, 3 * d))
+    generator[:d, :d] = excitation - float(decay) * identity
+    generator[:d, d : 2 * d] = identity
+    generator[d : 2 * d, 2 * d :] = identity
+    blocks = expm(generator * float(horizon))
+    return blocks[:d, :d], blocks[:d, d : 2 * d], blocks[:d, 2 * d :]
+
+
+def decayed_counts_at(
+    decay: Decay,
+    times: np.ndarray,
+    types: np.ndarray,
+    initial_state: np.ndarray,
+    clock: Clock,
+) -> np.ndarray:
+    """The state ``Z`` of the path ``(times, types)`` read at every time of ``clock``.
+
+    The path starts from ``Z(0+) = initial_state``.  ``Z`` is left-continuous, so a clock
+    time that coincides with an event reads the state before that event's jump.  ``Z``
+    depends on the decay and on the path alone, so this takes ``beta`` rather than a
+    specification, and holds at any branching ratio.
+
+    Returns an ``(m, d)`` array whose row ``k`` is ``Z(clock[k])``.
+    """
+    times = np.asarray(times, dtype=float)
+    types = np.asarray(types, dtype=int)
+    clock = np.asarray(clock, dtype=float)
+    if np.any(np.diff(clock) < 0):
+        raise ValueError("the clock must be sorted")
+    beta = float(decay)
+
+    state = np.array(initial_state, dtype=float)  # Z just after the last event read
+    last = 0.0
+    event = 0
+    out = np.empty((clock.size, state.size))
+    for k, now in enumerate(clock):
+        while event < times.size and times[event] < now:
+            state *= np.exp(-beta * (times[event] - last))
+            state[types[event]] += 1.0
+            last = times[event]
+            event += 1
+        out[k] = state * np.exp(-beta * (now - last))
     return out

@@ -10,13 +10,21 @@ values sit far above them, so the suite fails on a bug rather than on a draw.
 import numpy as np
 import pytest
 from scipy import stats
+from scipy.integrate import quad_vec
+from scipy.linalg import expm
 
+from unito26.lob import config
 from unito26.lob.hawkes import (
+    Clock,
     ExponentialHawkes,
     HawkesParams,
     OgataThinningHawkes,
     compensators_at_events,
+    decayed_counts_at,
+    mean_response,
+    mean_response_integral,
 )
+from unito26.lob.simulate import EventType
 
 
 def four_type_params() -> HawkesParams:
@@ -61,7 +69,7 @@ class TestParameterValidation:
             HawkesParams(baseline=[0.0, 0.0], excitation=np.zeros((2, 2)), decay=1.0)
 
     def test_rejects_unstable_process(self):
-        # alpha / beta = 1.2 > 1: the process explodes.
+        # alpha / beta = 1.2 > 1: the mean intensity grows exponentially.
         with pytest.raises(ValueError, match="branching ratio"):
             HawkesParams(baseline=[1.0], excitation=[[1.2]], decay=1.0)
 
@@ -124,15 +132,42 @@ class TestExactSimulation:
         assert np.array_equal(first[1], second[1])
 
 
+def path_statistics(simulator_cls, params, horizon, paths, seed):
+    """Per-path counts by type, type switches and second gap, over independent paths.
+
+    One number per path, so that a two-sample test sees independent draws: the gaps along
+    one path are serially dependent, and a test that treats them as a sample overstates
+    its own evidence.  The second gap and not the first, because from an empty state the
+    first wait is the immigration clock alone in both schemes.
+    """
+    rng = np.random.default_rng(seed)
+    rows = []
+    for _ in range(paths):
+        times, types = event_arrays(simulator_cls(params, rng=rng), horizon)
+        assert times.size >= 2
+        counts = np.bincount(types, minlength=params.dimension)
+        switches = int(np.count_nonzero(np.diff(types)))
+        rows.append([*counts, switches, times[1] - times[0]])
+    return np.array(rows, dtype=float)
+
+
 class TestAgreementAndClustering:
     def test_exact_agrees_with_thinning(self):
-        # Two independent algorithms for the same law, on independent seeds.
+        """Two independent algorithms for the same law, compared over independent paths.
+
+        The two share the type draw, so this compares their waiting times; the residual
+        test below, whose compensator shares nothing with either, is the one that carries
+        the law of the waits and of the types.  Six tests, so each is held to a sixth of
+        the level.
+        """
         params = four_type_params()
-        exact, _ = event_arrays(ExponentialHawkes(params, rng=1), horizon=3000.0)
-        thinned, _ = event_arrays(OgataThinningHawkes(params, rng=2), horizon=3000.0)
-        gaps_exact = np.diff(np.r_[0.0, exact])
-        gaps_thinned = np.diff(np.r_[0.0, thinned])
-        assert stats.ks_2samp(gaps_exact, gaps_thinned).pvalue > 0.01
+        horizon = 20 * params.relaxation_time()
+        exact = path_statistics(ExponentialHawkes, params, horizon, paths=1500, seed=1)
+        thinned = path_statistics(OgataThinningHawkes, params, horizon, paths=1500, seed=2)
+        level = 0.01 / exact.shape[1]
+        for column in range(exact.shape[1] - 1):
+            assert stats.ttest_ind(exact[:, column], thinned[:, column]).pvalue > level
+        assert stats.ks_2samp(exact[:, -1], thinned[:, -1]).pvalue > level
 
     def test_flow_clusters_where_poisson_does_not(self):
         # The one-line demonstration of why any of this was worth doing: counts in
@@ -308,3 +343,264 @@ class TestTheSeam:
         in_two = list(split.events(10.0)) + list(split.events(40.0))
 
         assert in_two == in_one
+
+
+def asymmetric() -> HawkesParams:
+    return config.asymmetric_pair_params()
+
+
+class TestTheSecondOrder:
+    """``V`` from the Lyapunov equation, against two other routes to it."""
+
+    def test_it_solves_the_lyapunov_equation_and_is_positive_definite(self):
+        params = four_type_params()
+        covariance = params.stationary_covariance()
+        hurwitz = params.hurwitz_matrix
+        residual = (
+            hurwitz @ covariance
+            + covariance @ hurwitz.T
+            + np.diag(params.stationary_intensity())
+        )
+        assert np.abs(residual).max() < 1e-12
+        assert np.allclose(covariance, covariance.T)
+        assert np.linalg.eigvalsh(covariance).min() > 0
+
+    def test_it_is_the_integral_of_the_propagated_arrivals(self):
+        params = asymmetric()
+        hurwitz = params.hurwitz_matrix
+        arrivals = np.diag(params.stationary_intensity())
+        integral, _ = quad_vec(
+            lambda s: expm(hurwitz * s) @ arrivals @ expm(hurwitz.T * s), 0.0, np.inf
+        )
+        assert params.stationary_covariance() == pytest.approx(integral, rel=1e-8)
+
+    @pytest.mark.parametrize(
+        "params",
+        [
+            config.self_exciting_pair_params(),
+            config.cross_exciting_pair_params(),
+            HawkesParams(
+                baseline=np.array([1.0, 2.0]),
+                excitation=np.array([[0.6, 0.2], [0.4, 0.8]]),
+                decay=2.0,
+            ),
+        ],
+    )
+    def test_the_scalar_formula_holds_under_constant_column_sums(self, params):
+        ones = np.ones(params.dimension)
+        total = params.stationary_intensity().sum()
+        scalar = total / (2 * params.decay * (1 - params.branching_ratio))
+        assert ones @ params.stationary_covariance() @ ones == pytest.approx(scalar)
+
+    def test_the_scalar_formula_errs_without_them(self):
+        params = asymmetric()
+        ones = np.ones(2)
+        scalar = params.stationary_intensity().sum() / (
+            2 * params.decay * (1 - params.branching_ratio)
+        )
+        assert ones @ params.stationary_covariance() @ ones == pytest.approx(1.2405303)
+        assert scalar == pytest.approx(0.9375)
+
+    def test_one_long_path_meets_it(self):
+        """Sampled on a clock after a burn-in, the variance of ``1' Z`` lands on the
+        Lyapunov value, 32% above what the scalar formula says."""
+        params = asymmetric()
+        times, types = event_arrays(ExponentialHawkes(params, rng=3), horizon=20_000.0)
+        clock = Clock(np.arange(50.0, 20_000.0, 0.5))
+        states = decayed_counts_at(params.decay, times, types, np.zeros(2), clock)
+        ones = np.ones(2)
+        assert (states @ ones).var() == pytest.approx(
+            ones @ params.stationary_covariance() @ ones, rel=0.1
+        )
+
+
+class TestTheMeanResponse:
+    def test_phi_is_the_closed_form_where_k_is_invertible(self):
+        params = four_type_params()
+        for horizon in (0.1, 1.0, 5.0):
+            closed = np.linalg.solve(
+                params.hurwitz_matrix, params.mean_response(horizon) - np.eye(4)
+            )
+            assert params.mean_response_integral(horizon) == pytest.approx(closed, abs=1e-12)
+
+    def test_phi_is_the_integral_of_the_response(self):
+        params = asymmetric()
+        integral, _ = quad_vec(lambda s: expm(params.hurwitz_matrix * s), 0.0, 1.3)
+        assert params.mean_response_integral(1.3) == pytest.approx(integral, rel=1e-10)
+
+    def test_phi_starts_as_h_times_the_identity_and_ends_at_minus_k_inverse(self):
+        params = asymmetric()
+        assert params.mean_response_integral(1e-6) / 1e-6 == pytest.approx(
+            np.eye(2), abs=1e-5
+        )
+        assert params.mean_response_integral(200.0) == pytest.approx(
+            -np.linalg.inv(params.hurwitz_matrix)
+        )
+
+    def test_phi_needs_no_inverse_at_the_critical_point(self):
+        """At a branching ratio of 1, ``K`` is singular and the closed form is undefined;
+        the integral itself is not."""
+        excitation = 4.0 * np.array([[0.5, 0.5], [0.5, 0.5]])
+        hurwitz = excitation - 4.0 * np.eye(2)
+        assert abs(np.linalg.det(hurwitz)) < 1e-12
+        integral, _ = quad_vec(lambda s: expm(hurwitz * s), 0.0, 2.0)
+        assert mean_response_integral(excitation, 4.0, 2.0) == pytest.approx(integral)
+        assert mean_response(excitation, 4.0, 2.0) == pytest.approx(expm(hurwitz * 2.0))
+
+    def test_the_forward_mean_runs_from_the_state_to_the_stationary_mean(self):
+        params = asymmetric()
+        state = np.array([0.0, 3.0])
+        stationary_mean = params.stationary_intensity() / params.decay
+        assert params.forward_mean_state(state, 0.0) == pytest.approx(state)
+        assert params.forward_mean_state(state, 60.0) == pytest.approx(stationary_mean)
+        assert params.forward_mean_state(stationary_mean, 0.7) == pytest.approx(
+            stationary_mean
+        )
+
+    def test_the_forward_counts_grow_at_the_forward_intensity(self):
+        params = asymmetric()
+        state = np.array([1.0, 0.5])
+        horizon, step = 0.8, 1e-6
+        slope = (
+            params.forward_mean_counts(state, horizon + step)
+            - params.forward_mean_counts(state, horizon - step)
+        ) / (2 * step)
+        intensity = params.baseline + params.excitation @ params.forward_mean_state(
+            state, horizon
+        )
+        assert slope == pytest.approx(intensity, rel=1e-6)
+
+    def test_monte_carlo_from_one_state_meets_both_forward_means(self):
+        params = asymmetric()
+        state = params.stationary_intensity() / params.decay + np.array([0.0, 1.0])
+        horizon = 0.5
+        rng = np.random.default_rng(8)
+        paths = 4000
+        states = np.empty((paths, 2))
+        counts = np.empty((paths, 2))
+        for k in range(paths):
+            simulator = ExponentialHawkes.from_state(params, state, rng=rng)
+            times, types = event_arrays(simulator, horizon)
+            counts[k] = np.bincount(types, minlength=2)
+            states[k] = decayed_counts_at(
+                params.decay, times, types, state, Clock(np.array([horizon]))
+            )[0]
+        for sample, expected in (
+            (states, params.forward_mean_state(state, horizon)),
+            (counts, params.forward_mean_counts(state, horizon)),
+        ):
+            error = sample.std(axis=0, ddof=1) / np.sqrt(paths)
+            assert np.all(np.abs(sample.mean(axis=0) - expected) < 4 * error)
+
+    def test_the_response_rises_before_it_falls_where_a_column_sum_exceeds_one(self):
+        """``1' R_j`` starts with slope ``beta ((1' Gamma)_j - 1)``: positive for the
+        second type, whose column sum is 1.4, and negative for the first, at 0.4."""
+        params = asymmetric()
+        ones = np.ones(2)
+        early, late = params.mean_response(0.137), params.mean_response(3.0)
+        assert ones @ early[:, 1] > 1.09
+        assert ones @ late[:, 1] < 1.0
+        assert ones @ early[:, 0] < 1.0
+        total_intensity = ones @ params.excitation @ early
+        assert total_intensity[1] < ones @ params.excitation[:, 1]
+
+    def test_the_relaxation_time_is_the_slowest_mode(self):
+        for params in (asymmetric(), config.self_exciting_pair_params(), four_type_params()):
+            slowest = -np.linalg.eigvals(params.hurwitz_matrix).real.max()
+            assert params.relaxation_time() == pytest.approx(1 / slowest)
+
+
+class TestTheSignedExcitation:
+    """Statements of section 1.4 of the notes, on the two shipped six-type regimes."""
+
+    PRESSURE = np.array([event.pressure for event in EventType], dtype=float)
+    REGIMES = [config.example_order_flow_params(), config.trending_order_flow_params()]
+
+    @pytest.mark.parametrize("params", REGIMES)
+    def test_it_takes_one_value_on_each_pair(self, params):
+        for theta in (
+            params.signed_excitation(self.PRESSURE),
+            params.signed_excitation_at_horizon(self.PRESSURE, 0.7),
+        ):
+            assert theta[0::2] == pytest.approx(theta[1::2])
+
+    @pytest.mark.parametrize("params", REGIMES)
+    def test_it_starts_as_h_times_theta(self, params):
+        horizon = 1e-6
+        assert params.signed_excitation_at_horizon(
+            self.PRESSURE, horizon
+        ) / horizon == pytest.approx(params.signed_excitation(self.PRESSURE), rel=1e-4)
+
+    @pytest.mark.parametrize("params", REGIMES)
+    def test_it_ends_at_the_whole_expected_progeny(self, params):
+        branching = params.branching_matrix
+        progeny = self.PRESSURE @ branching @ np.linalg.inv(np.eye(6) - branching)
+        assert params.signed_excitation_at_horizon(
+            self.PRESSURE, 100.0
+        ) == pytest.approx(progeny / self.PRESSURE)
+
+    @pytest.mark.parametrize("params", REGIMES)
+    def test_the_perron_mode_is_absent_from_every_contrast(self, params):
+        values, vectors = np.linalg.eig(params.branching_matrix)
+        perron = np.real(vectors[:, np.argmax(values.real)])
+        assert abs(self.PRESSURE @ params.excitation @ perron) < 1e-10
+
+    def test_the_two_regimes_carry_opposite_signs_on_the_market_pair(self):
+        example, trending = self.REGIMES
+        market = EventType.MARKET_BUY
+        for horizon in (0.05, 1.0, 5.0):
+            assert example.signed_excitation_at_horizon(self.PRESSURE, horizon)[market] < 0
+            assert trending.signed_excitation_at_horizon(self.PRESSURE, horizon)[market] > 0
+
+
+class TestStartingFromAState:
+    def test_the_state_is_copied(self):
+        params = asymmetric()
+        state = np.array([0.5, 0.25])
+        simulator = ExponentialHawkes.from_state(params, state, rng=0)
+        list(simulator.events(5.0))
+        assert state == pytest.approx(np.array([0.5, 0.25]))
+
+    def test_the_intensity_at_the_start_is_read_off_the_state(self):
+        params = asymmetric()
+        state = np.array([1.0, 2.0])
+        for simulator_cls in (ExponentialHawkes, OgataThinningHawkes):
+            simulator = simulator_cls.from_state(params, state, rng=0)
+            assert simulator.intensities == pytest.approx(
+                params.baseline + params.excitation @ state
+            )
+
+    def test_a_state_that_is_not_one_is_refused(self):
+        with pytest.raises(ValueError, match="non-negative"):
+            ExponentialHawkes.from_state(asymmetric(), np.array([1.0, -0.5]))
+        with pytest.raises(ValueError, match="non-negative"):
+            ExponentialHawkes.from_state(asymmetric(), np.array([1.0, 0.5, 0.0]))
+
+
+class TestTheStateOnAClock:
+    def test_it_is_the_sum_over_the_past(self):
+        params = four_type_params()
+        times, types = event_arrays(ExponentialHawkes(params, rng=4), horizon=30.0)
+        initial = np.array([0.3, 0.0, 1.2, 0.5])
+        clock = Clock(np.sort(np.random.default_rng(5).uniform(0.0, 30.0, 200)))
+        direct = np.array(
+            [
+                initial * np.exp(-params.decay * now)
+                + np.array(
+                    [
+                        np.exp(-params.decay * (now - times[(times < now) & (types == e)])).sum()
+                        for e in range(4)
+                    ]
+                )
+                for now in clock
+            ]
+        )
+        read = decayed_counts_at(params.decay, times, types, initial, clock)
+        assert read == pytest.approx(direct, abs=1e-12)
+
+    def test_a_clock_time_at_an_event_reads_before_its_jump(self):
+        times = np.array([1.0, 2.0])
+        types = np.array([0, 1])
+        read = decayed_counts_at(1.0, times, types, np.zeros(2), Clock(times))
+        assert read[0] == pytest.approx([0.0, 0.0])
+        assert read[1] == pytest.approx([np.exp(-1.0), 0.0])

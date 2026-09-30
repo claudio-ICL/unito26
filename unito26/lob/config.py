@@ -86,6 +86,12 @@ __all__ = [
     "example_mark_params",
     "shallow_mark_params",
     "deep_mark_params",
+    "SELF_EXCITING_PAIR_PARAMS",
+    "CROSS_EXCITING_PAIR_PARAMS",
+    "ASYMMETRIC_PAIR_PARAMS",
+    "self_exciting_pair_params",
+    "cross_exciting_pair_params",
+    "asymmetric_pair_params",
 ]
 
 #: A six-type flow with the asymmetry described above, at a branching ratio of 0.6.
@@ -270,6 +276,40 @@ DEEP_MARK_PARAMS: list[dict] = [
      "SigmaLogSize": 0.8, "Lot": 10},
 ]
 
+#: Three flows of two abstract types, at the decay of the flows above.  They are for reading
+#: self-excitation before it is given a meaning in the book.
+#:
+#: The first two have the same stationary intensity, one event a second of each type, and
+#: the same branching ratio, 0.75; they differ only in who excites whom.  In the first each
+#: type mostly excites itself, and the second is its row swap, so that each mostly excites
+#: the other.  Their column sums are constant, so in both the endogenous fraction is the
+#: branching ratio, the mean cluster size is ``1 / (1 - rho)``, and the scalar variance
+#: formula is exact.
+SELF_EXCITING_PAIR_PARAMS: list[dict] = [
+    {"Component": 0, "Cause": 0, "BaseIntensity": 0.25, "Kernel": 2.8, "Decay": 4.0},
+    {"Component": 0, "Cause": 1, "BaseIntensity": None, "Kernel": 0.2, "Decay": 4.0},
+    {"Component": 1, "Cause": 0, "BaseIntensity": None, "Kernel": 0.2, "Decay": 4.0},
+    {"Component": 1, "Cause": 1, "BaseIntensity": 0.25, "Kernel": 2.8, "Decay": 4.0},
+]
+
+CROSS_EXCITING_PAIR_PARAMS: list[dict] = [
+    {"Component": 0, "Cause": 0, "BaseIntensity": 0.25, "Kernel": 0.2, "Decay": 4.0},
+    {"Component": 0, "Cause": 1, "BaseIntensity": None, "Kernel": 2.8, "Decay": 4.0},
+    {"Component": 1, "Cause": 0, "BaseIntensity": None, "Kernel": 2.8, "Decay": 4.0},
+    {"Component": 1, "Cause": 1, "BaseIntensity": 0.25, "Kernel": 0.2, "Decay": 4.0},
+]
+
+#: Column sums 0.4 and 1.4 at a branching ratio of 0.6 and a stationary intensity of
+#: ``(2, 1)``.  Here the endogenous fraction is 0.733 and not 0.6, the mean cluster size is
+#: 3.75 and not 2.5, the scalar variance formula understates ``1' V 1``, and the mean total
+#: state after one extra event of the second type, ``1' R_2(t)``, rises before it falls.
+ASYMMETRIC_PAIR_PARAMS: list[dict] = [
+    {"Component": 0, "Cause": 0, "BaseIntensity": 0.2, "Kernel": 1.2, "Decay": 4.0},
+    {"Component": 0, "Cause": 1, "BaseIntensity": None, "Kernel": 4.8, "Decay": 4.0},
+    {"Component": 1, "Cause": 0, "BaseIntensity": None, "Kernel": 0.4, "Decay": 4.0},
+    {"Component": 1, "Cause": 1, "BaseIntensity": 0.6, "Kernel": 0.8, "Decay": 4.0},
+]
+
 
 def example_order_flow_params() -> HawkesParams:
     return HawkesParams.from_records(EXAMPLE_ORDER_FLOW_PARAMS)
@@ -295,3 +335,15 @@ def trending_order_flow_params() -> HawkesParams:
 def trending_mark_params() -> MarkParams:
     """The marks the trending regime is studied with."""
     return MarkParams.from_records(TRENDING_MARK_PARAMS)
+
+
+def self_exciting_pair_params() -> HawkesParams:
+    return HawkesParams.from_records(SELF_EXCITING_PAIR_PARAMS)
+
+
+def cross_exciting_pair_params() -> HawkesParams:
+    return HawkesParams.from_records(CROSS_EXCITING_PAIR_PARAMS)
+
+
+def asymmetric_pair_params() -> HawkesParams:
+    return HawkesParams.from_records(ASYMMETRIC_PAIR_PARAMS)

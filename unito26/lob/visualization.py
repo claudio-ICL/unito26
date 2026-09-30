@@ -1,17 +1,19 @@
-"""Drawing a book and a session: as text for the documentation, as plotly elsewhere.
+"""Drawing a book, a session and a point process: as text for the documentation, as plotly
+elsewhere.
 
 The text ladder goes into markdown and into the lecture notes, where it must survive
 version control and be readable in a diff.  The plotly figures are for a notebook, where
 a level can be hovered and read.
 
-Two conventions hold for every time series here.  The lines are **steps**
+Two conventions hold for every series of a book or a session here.  The lines are **steps**
 (``line_shape="hv"``): the book holds each state until the next message, so a sloped
 segment would draw a state the book never had.  And a padded level is plotted as NaN
 with ``connectgaps=False``, so the line breaks where the side had no such level; drawn
 literally, the sentinel price would take the axis to 10^10.
 
 The book figures go through ``levels_map`` and know nothing about how a book stores its
-levels; the session figures read the LOBSTER frame and its statistics.
+levels; the session figures read the LOBSTER frame and its statistics; the point-process
+figures take event times and types, and samples to set against a formula.
 """
 
 from __future__ import annotations
@@ -33,6 +35,10 @@ __all__ = [
     "imbalance_figure",
     "coverage_figure",
     "band_width_figure",
+    "intensity_figure",
+    "raster_figure",
+    "monte_carlo_figure",
+    "exponential_qq_figure",
 ]
 
 #: The first four slots of the categorical palette, in order.  A side keeps its colour
@@ -42,6 +48,8 @@ BID_COLOUR = "#2a78d6"
 ASK_COLOUR = "#eb6834"
 MID_COLOUR = "#1baf7a"
 MICRO_COLOUR = "#eda100"
+#: Categories without a side -- the event types of a point process -- take these by slot.
+PALETTE = (BID_COLOUR, ASK_COLOUR, MID_COLOUR, MICRO_COLOUR, "#7e57c2", "#5b7f8a")
 
 SURFACE = "#fcfcfb"
 INK = "#0b0b0b"
@@ -542,4 +550,200 @@ def band_width_figure(timings, title: str):
     )
     figure.update_xaxes(title_text="band width (ticks)", type="log")
     figure.update_yaxes(title_text="seconds", rangemode="tozero")
+    return figure
+
+
+# ---- point processes -----------------------------------------------------------------
+
+
+def intensity_figure(clock, intensities, times, types, labels, title: str = ""):
+    """The intensity of every type along one path, with the events beneath it.
+
+    ``intensities`` is ``(len(clock), d)``, read on ``clock``.  The intensity decays
+    continuously between events, so it is drawn as a line and not as steps; the events
+    are ticks in a strip below, one row per type.
+    """
+    import numpy as np
+    import plotly.graph_objects as go
+    from plotly.subplots import make_subplots
+
+    times = np.asarray(times, dtype=float)
+    types = np.asarray(types, dtype=int)
+    figure = make_subplots(
+        rows=2, cols=1, shared_xaxes=True, row_heights=[0.8, 0.2], vertical_spacing=0.03
+    )
+    for slot, label in enumerate(labels):
+        colour = PALETTE[slot % len(PALETTE)]
+        figure.add_trace(
+            go.Scatter(
+                x=clock, y=intensities[:, slot], name=label, mode="lines",
+                line=dict(color=colour, width=1.5), legendgroup=label,
+            ),
+            row=1, col=1,
+        )
+        mine = times[types == slot]
+        figure.add_trace(
+            go.Scatter(
+                x=mine, y=np.full(mine.size, slot), mode="markers", showlegend=False,
+                marker=dict(symbol="line-ns-open", size=10, color=colour),
+                legendgroup=label, hovertemplate="%{x:.3f} s<extra>" + label + "</extra>",
+            ),
+            row=2, col=1,
+        )
+    figure.update_yaxes(title_text="intensity (1/s)", rangemode="tozero", row=1, col=1)
+    figure.update_yaxes(
+        tickvals=list(range(len(labels))), ticktext=list(labels),
+        range=[-0.6, len(labels) - 0.4], row=2, col=1,
+    )
+    figure.update_xaxes(title_text="time (s)", row=2, col=1)
+    figure.update_layout(title=title, height=460, legend=dict(orientation="h", y=1.08, x=0))
+    return figure
+
+
+def raster_figure(paths: dict, labels, title: str = ""):
+    """Event times of several paths, one row per path and one colour per type.
+
+    ``paths`` maps a row name to the ``(times, types)`` of its path.  The rows share the
+    time axis, so how sparse and how clustered the events are is compared by eye.
+    """
+    import numpy as np
+    import plotly.graph_objects as go
+
+    figure = go.Figure()
+    offsets = np.linspace(-0.15, 0.15, len(labels)) if len(labels) > 1 else [0.0]
+    names = list(paths)
+    for row, name in enumerate(names):
+        times, types = (np.asarray(array) for array in paths[name])
+        for slot, label in enumerate(labels):
+            mine = times[types == slot]
+            figure.add_trace(
+                go.Scatter(
+                    x=mine, y=np.full(mine.size, row + offsets[slot]), mode="markers",
+                    name=label, legendgroup=label, showlegend=row == 0,
+                    marker=dict(
+                        symbol="line-ns-open", size=12, color=PALETTE[slot % len(PALETTE)]
+                    ),
+                    hovertemplate="%{x:.3f} s<extra>" + label + "</extra>",
+                )
+            )
+    figure.update_yaxes(
+        tickvals=list(range(len(names))), ticktext=names, autorange="reversed",
+        showgrid=False,
+    )
+    figure.update_xaxes(title_text="time (s)")
+    figure.update_layout(
+        title=title, height=120 + 70 * len(names), legend=dict(orientation="h", y=1.1, x=0)
+    )
+    return figure
+
+
+def monte_carlo_figure(x, samples, formula, labels, title: str = ""):
+    """A formula against the mean of independent samples, with a band of two standard
+    errors about the mean.
+
+    ``samples`` is ``(paths, len(x), k)``: one value per path, per point of ``x`` and per
+    series.  ``formula`` is ``(len(x), k)``.  The standard error is the spread across
+    paths over the square root of their number, which is right only when the paths are
+    independent; batch means of one long path are passed the same way, a batch per path.
+    """
+    import numpy as np
+    import plotly.graph_objects as go
+
+    samples = np.asarray(samples, dtype=float)
+    formula = np.asarray(formula, dtype=float)
+    mean = samples.mean(axis=0)
+    error = samples.std(axis=0, ddof=1) / np.sqrt(samples.shape[0])
+    figure = go.Figure()
+    for slot, label in enumerate(labels):
+        colour = PALETTE[slot % len(PALETTE)]
+        upper = mean[:, slot] + 2 * error[:, slot]
+        lower = mean[:, slot] - 2 * error[:, slot]
+        figure.add_trace(
+            go.Scatter(
+                x=np.r_[x, x[::-1]], y=np.r_[upper, lower[::-1]], fill="toself",
+                fillcolor=colour, opacity=0.2, line=dict(width=0),
+                hoverinfo="skip", showlegend=False, legendgroup=label,
+            )
+        )
+        figure.add_trace(
+            go.Scatter(
+                x=x, y=mean[:, slot], mode="markers", name=f"{label}, Monte Carlo",
+                marker=dict(color=colour, size=5), legendgroup=label,
+            )
+        )
+        figure.add_trace(
+            go.Scatter(
+                x=x, y=formula[:, slot], mode="lines", name=f"{label}, formula",
+                line=dict(color=colour, width=2), legendgroup=label,
+            )
+        )
+    figure.update_layout(title=title, height=420, legend=dict(orientation="h", y=1.1, x=0))
+    return figure
+
+
+def exponential_qq_figure(residuals: dict, levels: int = 1000, title: str = ""):
+    """Quantiles of each sample against those of ``Exp(1)``, with two 95% bands.
+
+    ``residuals`` maps a panel name to its sample.  The inner band is pointwise and exact:
+    the ``k``-th of ``n`` order statistics of a uniform sample is ``Beta(k, n - k + 1)``,
+    and ``-log(1 - u)`` carries it to the exponential.  The outer band is simultaneous: the
+    Kolmogorov-Smirnov band ``p +- 1.358 / sqrt(n)``, carried the same way, and drawn
+    where it is bounded, since its upper edge is infinite once ``p + 1.358 / sqrt(n)``
+    reaches 1.  ``levels`` order statistics are drawn, evenly spread in probability.
+    """
+    import numpy as np
+    import plotly.graph_objects as go
+    from plotly.subplots import make_subplots
+    from scipy import stats
+
+    names = list(residuals)
+    figure = make_subplots(rows=1, cols=len(names), subplot_titles=names)
+    for column, name in enumerate(names, start=1):
+        sample = np.sort(np.asarray(residuals[name], dtype=float))
+        n = sample.size
+        ranks = np.unique(np.clip(np.round(np.linspace(0, 1, levels) * n), 1, n)).astype(int)
+        probability = ranks / (n + 1)
+        theoretical = -np.log1p(-probability)
+        pointwise = [
+            -np.log1p(-stats.beta.ppf(q, ranks, n - ranks + 1)) for q in (0.025, 0.975)
+        ]
+        margin = 1.358 / np.sqrt(n)
+        bounded = probability + margin < 1
+        simultaneous = [
+            -np.log1p(-np.clip(probability[bounded] + sign * margin, 0.0, None))
+            for sign in (-1, 1)
+        ]
+        for grid, band, opacity in (
+            (theoretical[bounded], simultaneous, 0.12),
+            (theoretical, pointwise, 0.3),
+        ):
+            figure.add_trace(
+                go.Scatter(
+                    x=np.r_[grid, grid[::-1]],
+                    y=np.r_[band[1], band[0][::-1]],
+                    fill="toself", fillcolor=MUTED, opacity=opacity, line=dict(width=0),
+                    hoverinfo="skip", showlegend=False,
+                ),
+                row=1, col=column,
+            )
+        figure.add_trace(
+            go.Scatter(
+                x=theoretical, y=theoretical, mode="lines", showlegend=False,
+                line=dict(color=INK, width=1, dash="dot"), hoverinfo="skip",
+            ),
+            row=1, col=column,
+        )
+        figure.add_trace(
+            go.Scatter(
+                x=theoretical, y=sample[ranks - 1], mode="markers", showlegend=False,
+                marker=dict(color=PALETTE[(column - 1) % len(PALETTE)], size=4),
+                hovertemplate=(
+                    "Exp(1): %{x:.3f}<br>sample: %{y:.3f}<extra>" + name + "</extra>"
+                ),
+            ),
+            row=1, col=column,
+        )
+        figure.update_xaxes(title_text="Exp(1) quantile", row=1, col=column)
+    figure.update_yaxes(title_text="sample quantile", row=1, col=1)
+    figure.update_layout(title=title, height=420)
     return figure
