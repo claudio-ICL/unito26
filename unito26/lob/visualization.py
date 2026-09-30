@@ -628,7 +628,7 @@ def raster_figure(paths: dict, labels, title: str = ""):
             )
     figure.update_yaxes(
         tickvals=list(range(len(names))), ticktext=names, autorange="reversed",
-        showgrid=False,
+        showgrid=False, automargin=True,
     )
     figure.update_xaxes(title_text="time (s)")
     figure.update_layout(

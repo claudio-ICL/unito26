@@ -1,8 +1,19 @@
-% CLASS 3 -- the notes' section 1.3, sec.pointProcesses, COMPRESSED.
-% Budget 75 min; planned 75 over 18 frames, so no headroom.
-% Overrunning, cut F3.13 (fold def.relaxationTime into F3.12 as one line and drop its
-% picture), then F3.3 (assert the survival function inline on F3.15 and F3.16).
-% Do NOT cut F3.12: section 1.4.3 is unstateable without prop.forwardMean.
+% CLASS 3 -- the notes' section 1.3, sec.pointProcesses.
+% Three parts, each followed by its notebook, on one two-dimensional process with abstract
+% types 1 and 2. The frames follow the notes' order; no proofs.
+%
+% SWITCH POINTS, each signposted in the \note of the frame before it:
+%   after "The compensator is available in closed form"   -> 04, sections 1-3
+%   after "The mean cluster size counts the ancestor"     -> 04, section 4
+%   after "The scalar formula needs constant column sums" -> 05, sections 1-3
+%   after "Two numbers decide what a window sees"         -> 05, sections 4-6
+%   after "The exact scheme rejects nothing"              -> 06, sections 1-4
+%   after "A passing test has established the margins"    -> 06, sections 5-7
+%
+% Overrunning, cut in this order: the Markov state (its generator is spoken over the Z
+% path), then the index order (said over the definition), then the three routes (said over
+% the QQ schematic). The forward mean and its deviation form are not cut: section 1.4 is
+% unstateable without them.
 %
 % THE FRAME CONTRACT. These slides are projection material, not reference material: the
 % students read the notes, and they only ever see a frame while it is being talked over.
@@ -19,178 +30,1117 @@
 % Open the class on the chapter roadmap, as classes 1 and 2 do. Do not close on a summary
 % frame: a slide that recites what the class just did is the spoken half written down.
 %
-% DROPPED BY DESIGN: lemma.perronFrobenius; the whole second-order block (sec.secondOrder,
-% thm.lyapunov, lemma.lyapunovUniqueness, eq.stationaryCovariance, eq.stateProductJump,
-% eq.lyapunov, eq.explicitFormulaeOfStationaryCovariance, eq.secondMomentODE); the scalar
-% case (eq.scalarVariance, remark.scalarVariance); sub- and supercriticality
-% (eq.supercriticalGrowth, remark.martingaleNotBounded, remark.strictBaseline);
-% prop.meanState; remark.noSubcriticality; corol.constantClusterSize as a statement;
-% remark.hurwitzNeedsNonNegativity; the Poisson example and eq.NTE_counting_proc.
-% Perron-Frobenius parts i and iv are used silently on F3.11 and F3.12, in a subordinate
-% clause each, and get no statement.
+% DROPPED BY DESIGN: every proof; lemma.perronFrobenius as a statement (parts i and ii
+% survive as one caption on the stationarity frame, since v is used by
+% eq.supercriticalGrowth and u by remark.totalResponse); lemma.lyapunovUniqueness;
+% remark.strictBaseline; remark.hurwitzNeedsNonNegativity; the Poisson example and
+% eq.NTE_counting_proc.
 %
-% LABELS. A label is defined once across the five class files.
+% LABELS. A label is defined once across the five class files, and a cross-file \ref prints
+% ?? under \includeonly. Class 3 owns: thm.meyer1971, def.hawkesprocess,
+% prop.clusterRepresentation, prop.compensatorClosedForm, thm.markovState, thm.stationarity,
+% prop.clusterSize, prop.meanState, prop.hurwitzCriterion, thm.lyapunov, prop.forwardMean,
+% corol.meanResponse, def.dimensionlessGroups, thm.dassiosZhao, remark.marginsOnly.
+% Class 4 restates what it needs of them without labels.
+%
+% algo.ogata and algo.dassiosZhao appear as bare `algorithmic' environments: `algorithm' is
+% a float and floats do not place inside a frame.
+%
+% A frame holds 218pt of body -- eighteen 12pt lines, or seven two-line paragraphs.
 
 \subsection{Point processes and self-excitation}
 
 \begin{frame}
   \frametitle{Outline}
-% 3 min. One \nocite per line -- a multi-key \nocite spanning lines breaks bibtex.
+% One \nocite per line -- a multi-key \nocite spanning lines breaks bibtex.
 \nocite{DVJ08int}
 \nocite{Haw71spe}
 \nocite{HO74clu}
+\nocite{Oga81lew}
 \nocite{DZ13exa}
-% The two features of the data that force the apparatus, taken from section 1.1's own
-% paragraph: continuous physical time, and the effect of one type of event on the time
-% distribution of others. Say what is kept and what is skipped.
+\nocite{Mey71dem}
+\nocite{Oga88sta}
+\begin{center}
+\begin{tikzpicture}[font=\scriptsize, node distance=3mm,
+    stage/.style={draw=gray!60, rounded corners=2pt, align=center, inner sep=4pt,
+                  text width=2.1cm, fill=gray!8},
+    past/.style={stage, fill=gray!20, draw=gray!70},
+    current/.style={stage, fill=blue!15, draw=blue!55},
+    target/.style={stage, fill=orange!20, draw=orange!70}]
+  \node[past] (a) {1.1\\the book};
+  \node[past, right=of a] (b) {1.2\\the fold};
+  \node[current, right=of b] (c) {1.3\\point processes};
+  \node[target, right=of c] (d) {1.4\\price formation};
+  \draw[-{Stealth}, gray!60] (a) -- (b);
+  \draw[-{Stealth}, gray!60] (b) -- (c);
+  \draw[-{Stealth}, gray!60] (c) -- (d);
+\end{tikzpicture}
+\end{center}
+
+\pause
+
+The message stream as a process in continuous time.
+
+\pause
+
+One arrival changes the rate of the next.
+
+\pause
+
+One two-type process, simulated throughout.
+\note{
+Section 1.2 turned a stream of messages into a sequence of books, and took the stream as
+given. This class describes the stream itself: when orders arrive, and how the arrival of one
+changes the rate at which the others arrive. Only what section 1.4 needs is kept. The forward
+mean of the second part is the equation class 4 reads the price off.
+We work throughout with one process of two abstract types, types 1 and 2, with no reading in
+the book; class 4 gives the types a meaning. The three notebooks simulate it, and every
+formula on these slides is met by a simulation there.
+}
 \end{frame}
 
 \begin{frame}
-  \frametitle{Intensity and compensator}
-% 5 min. One line on \multiCountingProc, the ground process \groundProc and the labels
-% \event[n]; name eq.arrivalTimesOfGroundProcess and eq.eventLabels without displaying them.
-% Then def.compensator with its four conditions, the absolutely continuous case, and the
-% conditional expectation. Closing: predictability is the whole content -- \intensity(t) is a
-% function of the STRICT past, which is why every intensity we write is left-continuous.
+  \frametitle{The intensity is a rate given the strict past}
+\[
+ \Expectation\big[ \countingProc(t) - \countingProc(s) \,\big|\, \filtrationF_s \big]
+ = \Expectation\Big[ \int_{s}^{t} \intensity(u) \, du \,\Big|\, \filtrationF_s \Big],
+ \qquad
+ \compensator_e(t) = \int_{0}^{t} \intensity(u)\,du
+\]
+
+\pause
+
+$\intensity$: predictable, a function of the strict past
+
+\pause
+
+$\multiCountingProc - \compensator$: a local martingale
+\note{
+A $\numEventTypes$-dimensional counting process $\multiCountingProc$ counts the events of each
+type; its ground process $\groundProc$ counts all of them, and the labels $\event[n]$ say which
+type the $n$-th event is. No two components jump together.
+The compensator is the predictable process that turns $\multiCountingProc$ into a martingale,
+and when it is absolutely continuous its density is the intensity: the instantaneous rate of
+an event of each type, given what has been observed so far. Predictability is the whole
+content --- the intensity at $t$ is a function of the past strictly before $t$, which is why
+every intensity we write is left-continuous.
+}
 \end{frame}
 
 \begin{frame}
-  \frametitle{The conditional survival function}
-% 4 min. prop.conditionalSurvival and eq.conditionalSurvival. The filtration is the INTERNAL
-% history, and on the event that no arrival occurs the right-hand side is measurable, so it
-% is a survival function we can invert. Both simulators are this proposition, one run
-% backwards and one forwards.
+  \frametitle{The next wait has a survival function we can invert}
+\[
+ \Prob\big( \arrivalTimes[ ]_{n+1} - \arrivalTimes[ ]_{n} > s
+ \,\big|\, \filtrationF_{\arrivalTimes[ ]_{n}} \big)
+ = \exp\Big( - \int_{\arrivalTimes[ ]_{n}}^{\arrivalTimes[ ]_{n}+s}
+ \totalIntensity(u) \, du \Big)
+\]
+
+\pause
+
+$\totalIntensity = \intensity[1] + \dots + \intensity[\numEventTypes]$: the ground intensity,
+on the event of no arrival
+
+\pause
+
+Poisson: $e^{-\totalIntensity s}$
+\note{
+With respect to the internal history, on the event that no arrival occurs the integrand is a
+deterministic function of the history up to $\arrivalTimes[ ]_{n}$, so the right-hand side is
+known at $\arrivalTimes[ ]_{n}$ and is a genuine survival function.
+Both simulators of the third part are this proposition: thinning runs it backwards, proposing a
+wait at a dominating rate and keeping it with the ratio; the exact scheme inverts it in closed
+form.
+}
 \end{frame}
 
 \begin{frame}
-  \frametitle{Meyer's time change}
-% 4 min. thm.meyer1971 and eq.time-changed_intertimes. The three hypotheses as a list --
-% enumitem is now loaded, so the notes' own list syntax compiles. Closing: hypothesis i is
-% what buys the JOINT independence; the univariate statement holds without it.
+  \frametitle{The compensator turns a path into unit-rate Poisson processes}
+\begin{thm}[\citealp{Mey71dem}]
+\label{thm.meyer1971}
+ If no two components jump together, $\compensator$ is continuous and
+ $\compensator_e(t) \to \infty$, then
+ $\tau_e^j := \compensator_e(\arrivalTimes_{j}) - \compensator_e(\arrivalTimes_{j-1})$
+ are independent $\mathrm{Exp}(1)$, over $j$ and $e$.
+\end{thm}
+
+\pause
+
+No common jumps: what buys the joint independence
+\note{
+Rescaling each component's clock by its own compensator turns it into a unit-rate Poisson
+process, and the time-changed processes are mutually independent. The univariate statement,
+that each component separately is unit-rate Poisson, holds without the first hypothesis.
+This is the goodness-of-fit test of the third part: if the path is a path of the model, the
+rescaled inter-arrival times are independent $\mathrm{Exp}(1)$ draws.
+}
 \end{frame}
 
 \begin{frame}
-  \frametitle{Hawkes processes}
-% 4 min. def.hawkesprocess, eq.intensity_ordHawkes, eq.branchingMatrix. The half-open
-% interval is what makes the intensity predictable.
+  \frametitle{A Hawkes process: every event raises the rate}
+\begin{defi}
+\label{def.hawkesprocess}
+ $\intensity(t) = \baseIntensity_e
+ + \sum_{\eone} \int_{[0,t)} \hawkesKernel\subscriptee(t-s)\,d\countingProc[\eone](s)$,
+ with $\baseIntensity_e \geq 0$ and $\hawkesKernel\subscriptee \geq 0$.
+\end{defi}
+
+\pause
+
+$\branchingMatrix\subscriptee = \int_0^\infty \hawkesKernel\subscriptee$: the branching
+matrix
+
+\pause
+
+$\branchingRatio$: its spectral radius, the branching ratio
+\note{
+The baseline $\baseIntensity_e$ is the rate at which events of type $e$ arrive on their own
+account, and each past event of type $\eone$ adds $\hawkesKernel\subscriptee$ of the time
+elapsed since it. The half-open interval of integration is what makes the intensity
+predictable.
+$\branchingMatrix\subscriptee$ is the total excitation that one event of type $\eone$ exerts
+on type $e$ over all future time. If some kernel is not integrable the branching ratio is
+$+\infty$ by convention.
+}
 \end{frame}
 
 \begin{frame}
-  \frametitle{The order of the indices}
-% 4 min. remark.indexOrder. The row is excited and the column excites.
-% The column sum is the expected number of direct offspring of one event of type \eone.
-% A matrix and its transpose share a spectral radius, so a transposed kernel passes every
-% stability test and produces a path of the right total rate: the convention is the only
-% defence against it.
+  \frametitle{The row is excited and the column excites}
+\begin{center}
+\begin{tikzpicture}[x=0.62cm, y=0.62cm, font=\scriptsize]
+  \fill[orange!15] (2,0) rectangle (3,4);
+  \fill[blue!12] (0,2) rectangle (4,3);
+  \fill[orange!40] (2,2) rectangle (3,3);
+  \draw[gray!55] (0,0) grid (4,4);
+  \node at (2.5,2.5) {$\branchingMatrix\subscriptee$};
+  \node[above, orange!60!black] at (2.5,4.05) {column $\eone$: the exciting type};
+  \node[left, blue!55!black] at (-0.1,2.5) {row $e$: the excited type};
+  \draw[gray!70] (2,-0.12) -- (2,-0.22) -- (3,-0.22) -- (3,-0.12);
+  \node[below, align=center] at (2.5,-0.45)
+       {$\sum_{e}\branchingMatrix\subscriptee$: the direct offspring\\of one event of type $\eone$};
+\end{tikzpicture}
+\end{center}
+
+\pause
+
+$\branchingMatrix$ and $\branchingMatrix^{\transpose}$: one spectral radius
+\note{
+In the definition, $\hawkesKernel\subscriptee$ is the influence that an event of type $\eone$
+exerts on an event of type $e$. The column sum of $\branchingMatrix$ is therefore the
+expected number of direct offspring of one event of type $\eone$, and it is the column sums,
+not the row sums, that are read.
+A kernel transposed by mistake passes every stability test, since a matrix and its transpose
+share a spectral radius; and when the baseline is solved from a target stationary intensity it
+also produces a path of the right total rate. The convention is the only defence against it.
+}
 \end{frame}
 
 \begin{frame}
-  \frametitle{The cluster representation}
-% 5 min. prop.clusterRepresentation. PICTURE: a time axis with immigrant marks, each
-% immigrant's offspring hanging below as a two-level tree with one whole cluster shaded, and
-% the same points projected onto the axis as the path an observer sees. The picture IS the
-% statement that the clusters are unobservable.
-% Closing beat, ours rather than the notes': a cluster is a run with a common ancestor, and
-% it is not a run of same-signed events.
+  \frametitle{Every event belongs to exactly one cluster}
+\begin{center}
+\begin{tikzpicture}[x=0.95cm, y=0.95cm, font=\scriptsize,
+    one/.style={circle, fill=blue!60, inner sep=1.6pt},
+    two/.style={circle, fill=orange!80, inner sep=1.6pt},
+    link/.style={gray!65}]
+  \fill[blue!6, rounded corners=4pt] (0.35,-2.35) rectangle (3.35,-0.35);
+  \draw[-{Stealth}, gray!70] (0,0) -- (9.3,0) node[right] {$t$};
+  \node[left, gray!40!black] at (0,0) {observed};
+  \node[left, gray!40!black] at (0,-0.7) {immigrants};
+  \node[left, gray!40!black] at (0,-1.35) {offspring};
+  \node[left, gray!40!black] at (0,-2.0) {theirs};
+  % cluster A: immigrant 0.6; children 1.1, 1.9; grandchildren 2.3 (of 1.1), 3.0 (of 1.9)
+  \node[one] (a0) at (0.6,-0.7) {};
+  \node[two] (a1) at (1.1,-1.35) {};
+  \node[one] (a2) at (1.9,-1.35) {};
+  \node[two] (a3) at (2.3,-2.0) {};
+  \node[one] (a4) at (3.0,-2.0) {};
+  \draw[link] (a0) -- (a1); \draw[link] (a0) -- (a2);
+  \draw[link] (a1) -- (a3); \draw[link] (a2) -- (a4);
+  % cluster B: immigrant 2.5; child 3.2; grandchild 3.9
+  \node[two] (b0) at (2.5,-0.7) {};
+  \node[two] (b1) at (3.2,-1.35) {};
+  \node[one] (b2) at (3.9,-2.0) {};
+  \draw[link] (b0) -- (b1); \draw[link] (b1) -- (b2);
+  % cluster C: immigrant 5.6; children 6.1, 6.9, 7.3; grandchild 7.9 (of 6.9)
+  \node[one] (c0) at (5.6,-0.7) {};
+  \node[one] (c1) at (6.1,-1.35) {};
+  \node[two] (c2) at (6.9,-1.35) {};
+  \node[one] (c3) at (7.3,-1.35) {};
+  \node[two] (c4) at (7.9,-2.0) {};
+  \draw[link] (c0) -- (c1); \draw[link] (c0) -- (c2); \draw[link] (c0) -- (c3);
+  \draw[link] (c2) -- (c4);
+  % the observed path
+  \foreach \x in {0.6, 1.9, 3.0, 3.9, 5.6, 6.1, 7.3}
+    \draw[blue!60, thick] (\x,-0.12) -- (\x,0.12);
+  \foreach \x in {1.1, 2.3, 2.5, 3.2, 6.9, 7.9}
+    \draw[orange!80, thick] (\x,-0.12) -- (\x,0.12);
+\end{tikzpicture}
+\end{center}
+
+\pause
+
+Immigrants at rate $\baseIntensity$; offspring at the rate of the kernel
+
+\pause
+
+The trees are not observed; only the axis is
+\note{
+The cluster representation describes the same process as a family tree. Immigrants of each
+type arrive as a Poisson process of rate $\baseIntensity_e$; every event, immigrant or not,
+produces offspring of type $e$ as a Poisson process of intensity $\hawkesKernel\subscriptee$
+measured from its own time. Counted by generation, the descendants of one immigrant form a
+multitype Galton--Watson process with mean offspring matrix $\branchingMatrix$, which dies out
+with finite expected size precisely when $\branchingRatio < 1$.
+The shaded cluster interleaves with the next one on the axis. A cluster is a run with a common
+ancestor, and it need not be a run of events of one type.
+}
 \end{frame}
 
 \begin{frame}
-  \frametitle{The exponential kernel and its state}
-% 4 min. def.exponentialHawkes, eq.exponentialKernel, eq.decayedCounts, eq.GammaIsAOverBeta,
-% eq.intensityFromState, eq.stateDynamics. A SINGLE \decay shared by every pair. The strict
-% inequality in \decayedCounts is what makes the intensity predictable. One clause for
-% remark.countsAgainstRates: \branchingMatrix is dimensionless and \excitation is a rate.
+  \frametitle{The exponential kernel carries the past in $\numEventTypes$ numbers}
+\[
+\begin{gathered}
+ \hawkesKernel\subscriptee(t) = \excitation\subscriptee e^{-\decay t},
+ \qquad
+ \decayedCounts_e(t) = \sum_{j \, : \, \arrivalTimes_{j} < t} e^{-\decay(t - \arrivalTimes_{j})},
+ \\
+ \intensity[ ](t) = \baseIntensity + \excitation\decayedCounts(t)
+\end{gathered}
+\]
+
+\pause
+
+One decay $\decay$, shared by every pair
+
+\pause
+
+$\branchingMatrix = \excitation/\decay$: a count; $\excitation$: a rate
+\note{
+The decayed counts $\decayedCounts$ collect the whole past into one number per type, and the
+intensity is affine in them. The strict inequality in the sum makes $\decayedCounts$
+left-continuous, and therefore the intensity predictable.
+The column sum of $\branchingMatrix$ is the expected number of direct offspring of one event;
+the column sum of $\excitation$ is the jump that event produces in the total intensity,
+measured per unit of time. They differ by $\decay$, and quoting them as one number is a
+standard error.
+}
+\end{frame}
+
+\begin{frame}
+  \frametitle{The state decays, and gains a unit vector at each event}
+\begin{center}
+\begin{tikzpicture}[x=1.25cm, y=1.05cm, font=\scriptsize]
+  \draw[-{Stealth}, gray!70] (0,0) -- (6.3,0) node[right] {$t$};
+  \draw[-{Stealth}, gray!70] (0,0) -- (0,2.25);
+  \draw[gray!60] (-0.08,1) -- (0.08,1) node[left=3pt, gray!40!black] {$1$};
+  % Z_1: events at 0.8, 1.2, 3.5
+  \draw[blue!65, thick] (0,0) -- (0.8,0);
+  \draw[blue!65, thick, domain=0.8:1.2, samples=12] plot (\x, {exp(-(\x-0.8))});
+  \draw[blue!65, thick, domain=1.2:3.5, samples=30] plot (\x, {1.6703*exp(-(\x-1.2))});
+  \draw[blue!65, thick, domain=3.5:6.0, samples=30] plot (\x, {1.1676*exp(-(\x-3.5))});
+  \foreach \x/\lo/\hi in {0.8/0/1, 1.2/0.6703/1.6703, 3.5/0.1676/1.1676} {
+    \draw[blue!65, dotted] (\x,\lo) -- (\x,\hi);
+    \fill[blue!65] (\x,\lo) circle (1.6pt);
+    \draw[blue!65, fill=white] (\x,\hi) circle (1.6pt);
+  }
+  % Z_2: events at 2.0, 4.1, 4.4
+  \draw[orange!85, thick] (0,0.02) -- (2.0,0.02);
+  \draw[orange!85, thick, domain=2.0:4.1, samples=30] plot (\x, {exp(-(\x-2.0))});
+  \draw[orange!85, thick, domain=4.1:4.4, samples=8] plot (\x, {1.1225*exp(-(\x-4.1))});
+  \draw[orange!85, thick, domain=4.4:6.0, samples=20] plot (\x, {1.8316*exp(-(\x-4.4))});
+  \foreach \x/\lo/\hi in {2.0/0.02/1, 4.1/0.1225/1.1225, 4.4/0.8316/1.8316} {
+    \draw[orange!85, dotted] (\x,\lo) -- (\x,\hi);
+    \fill[orange!85] (\x,\lo) circle (1.6pt);
+    \draw[orange!85, fill=white] (\x,\hi) circle (1.6pt);
+  }
+  \node[blue!55!black, right] at (6.0,0.09) {$\decayedCounts_1$};
+  \node[orange!70!black, right] at (6.0,0.4) {$\decayedCounts_2$};
+\end{tikzpicture}
+\end{center}
+
+\pause
+
+$d\decayedCounts = -\decay\decayedCounts\,dt + d\multiCountingProc$
+
+\pause
+
+Filled dot: the value at an event, before its jump
+\note{
+Between events every component relaxes at the same rate $\decay$; at an event of type $e$ the
+state gains the unit vector $\unitVector_e$. The value \emph{at} the event time is the
+pre-jump one, the filled dot, because $\decayedCounts$ is left-continuous: it is the value that
+enters the intensity governing that event. The open circle is the post-jump value, the one
+carried forward. Confusing the two shifts every intensity by one event.
+}
+\end{frame}
+
+\begin{frame}
+  \frametitle{The compensator is available in closed form}
+\begin{prop}
+\label{prop.compensatorClosedForm}
+ Started at $\multiCountingProc(0) = 0$,
+ \[
+  \compensator_e(\timeHorizon) = \baseIntensity_e\timeHorizon
+  + \sum_{\eone} \frac{\excitation\subscriptee}{\decay}
+  \big( \countingProc[\eone](\timeHorizon-) - \decayedCounts_{\eone}(\timeHorizon) \big).
+ \]
+\end{prop}
+
+\pause
+
+The count read before $\timeHorizon$, the state at it
+
+\pause
+
+No numerical integration
+\note{
+The proof is Tonelli's theorem on the sum defining $\decayedCounts$: the integral of each
+summand is $(1 - e^{-\decay(\timeHorizon - \arrivalTimes_j)})/\decay$, and there are
+$\countingProc[\eone](\timeHorizon-)$ of them.
+The map $\timeHorizon \mapsto \countingProc[\eone](\timeHorizon-) -
+\decayedCounts_{\eone}(\timeHorizon)$ is continuous, since the two jumps cancel; the
+post-jump reading $\countingProc[\eone](\timeHorizon) - \decayedCounts_{\eone}(\timeHorizon)$
+is not the compensator, and overstates it by $\excitation\subscriptee/\decay$ at each arrival
+of type $\eone$.
+Now to notebook 04, sections 1 to 3: a Poisson process against the two-type process, and who
+triggers whom.
+}
 \end{frame}
 
 \begin{frame}
   \frametitle{The state is Markov}
-% 5 min. thm.markovState and eq.generatorOfDecayedCount. The integrability condition in
-% words, not symbols. Closing: the past enters through \numEventTypes numbers, so updating
-% costs O(1) per event against O(n^2), and a decay per pair would need a state of dimension
-% \numEventTypes squared -- exercise.eventDependentDecays as a clause, not a frame.
+\begin{thm}
+\label{thm.markovState}
+ $\decayedCounts$ is Markov, with generator
+ \[
+  \generatorL f(z) = -\decay\, z \cdot \nabla f(z)
+  + \sum_{e} \big( \baseIntensity_e + (\excitation z)_e \big)
+  \big( f(z + \unitVector_e) - f(z) \big).
+ \]
+\end{thm}
+
+\pause
+
+Nothing assumed about $\branchingRatio$
+
+\pause
+
+$O(1)$ per event, against $O(n^2)$ for the sum over the past
+\note{
+The flow is $z \mapsto e^{-\decay t}z$, the jump rate is the total intensity
+$\mathbf{1}^{\transpose}(\baseIntensity + \excitation z)$, and a jump of type $e$ adds
+$\unitVector_e$. The pair $(\multiCountingProc, \decayedCounts)$ is Markov too.
+The integrability the generator needs holds on every finite horizon at every branching ratio:
+the $k$-th convolution power of the exponential kernel carries $t^{k-1}/(k-1)!$.
+A decay per pair would need one decayed count per pair, a state of dimension
+$\numEventTypes^2$.
+}
 \end{frame}
 
 \begin{frame}
-  \frametitle{Stationarity and the mean intensity}
-% 4 min. def.stationaryHawkes then thm.stationarity and eq.stationaryIntensity. Stationary
-% iff \branchingRatio < 1. The one-line sketch: \stationaryIntensity = \baseIntensity +
-% \branchingMatrix\stationaryIntensity, and \branchingRatio < 1 inverts.
-% Introduce \totalRate and \bar\baseIntensity here.
+  \frametitle{Stationary exactly when $\branchingRatio < 1$}
+\begin{thm}[\citealp{BM96sta}]
+\label{thm.stationarity}
+ With $\baseIntensity > 0$: stationary if and only if $\branchingRatio < 1$, and then
+ $\stationaryIntensity = (I - \branchingMatrix)^{-1}\baseIntensity$.
+\end{thm}
+
+\pause
+
+$\branchingMatrix \geq 0$: $\branchingRatio$ an eigenvalue; irreducible $\Rightarrow$ $u, v > 0$, simple
+
+\pause
+
+$\totalRate = \mathbf{1}^{\transpose}\stationaryIntensity$,
+$\bar{\baseIntensity} = \mathbf{1}^{\transpose}\baseIntensity$
+\note{
+In a stationary version the mean intensity is constant and satisfies
+$\stationaryIntensity = \baseIntensity + \branchingMatrix\stationaryIntensity$; at
+$\branchingRatio < 1$ the Neumann series inverts $I - \branchingMatrix$, with non-negative
+entries.
+The caption is Perron--Frobenius, parts i and ii: a non-negative matrix has its spectral
+radius as an eigenvalue, with a right Perron vector $u$ and a left one $v$; under
+irreducibility both are strictly positive and the eigenvalue is simple. We use $v$ for
+supercritical growth and class 4 uses $u$.
+$\totalRate$ is the total event rate and $\bar{\baseIntensity}$ the total immigration rate.
+}
 \end{frame}
 
 \begin{frame}
-  \frametitle{Cluster size and the endogenous fraction}
-% 5 min. def.endogenousFraction, prop.clusterSize, remark.clusterBudget, all reusing their
-% labels. The cluster size COUNTS THE ANCESTOR. \bar\baseIntensity \bar C = \totalRate is the
-% cheapest consistency check an implementation admits.
-% \branchingRatio is neither the endogenous fraction nor 1 - 1/\bar C.
-% The two non-generic conditions in words: constant column sums, or \baseIntensity a right
-% Perron vector. The shipped numbers 0.682 against 0.60 and 3.15 against 2.5 come from the
-% package, not from the notes -- say so on the frame.
+  \frametitle{Same branching ratio, different structure}
+\begin{center}
+\begin{tikzpicture}[font=\scriptsize,
+    type/.style={circle, draw=gray!70, minimum size=6mm, inner sep=0pt},
+    heavy/.style={-{Stealth}, line width=1.8pt},
+    light/.style={-{Stealth}, line width=0.4pt}]
+  \node[type, fill=blue!20] (s1) at (0,0) {1};
+  \node[type, fill=orange!25] (s2) at (2.4,0) {2};
+  \draw[heavy, blue!60] (s1) edge[loop left, looseness=6] node[left] {$0.7$} (s1);
+  \draw[heavy, orange!80] (s2) edge[loop right, looseness=6] node[right] {$0.7$} (s2);
+  \draw[light, gray!70] (s1) to[bend left=25] node[above] {$0.05$} (s2);
+  \draw[light, gray!70] (s2) to[bend left=25] node[below] {$0.05$} (s1);
+  \node[below=6mm] at (1.2,0) {self-exciting};
+  \node[type, fill=blue!20] (c1) at (5.4,0) {1};
+  \node[type, fill=orange!25] (c2) at (7.8,0) {2};
+  \draw[light, blue!60] (c1) edge[loop left, looseness=6] node[left] {$0.05$} (c1);
+  \draw[light, orange!80] (c2) edge[loop right, looseness=6] node[right] {$0.05$} (c2);
+  \draw[heavy, gray!70] (c1) to[bend left=25] node[above] {$0.7$} (c2);
+  \draw[heavy, gray!70] (c2) to[bend left=25] node[below] {$0.7$} (c1);
+  \node[below=6mm] at (6.6,0) {cross-exciting};
+\end{tikzpicture}
+\end{center}
+
+\pause
+
+$\branchingRatio = 0.75$ and $\stationaryIntensity = (1,1)$ in both
+
+\pause
+
+Who triggers whom: not in $\branchingRatio$
+\note{
+The two specifications are the frozen pairs of the course package. The second is the row swap
+of the first, so the column sums of $\branchingMatrix$, and with them the branching ratio, the
+stationary intensity and the total flow, are shared. An arrow from $\eone$ to $e$ carries
+$\branchingMatrix\subscriptee$.
+Nothing scalar tells them apart: they differ in which type follows which, and the notebook
+shows it on the counts of each type and on their correlation.
+}
 \end{frame}
 
 \begin{frame}
-  \frametitle{The forward mean and the Hurwitz matrix}
-% 6 min. THE LOAD-BEARING FRAME OF THE CLASS. def.hurwitzMatrix, prop.hurwitzCriterion
-% (\hurwitzMatrix = \excitation - \decay I is Hurwitz iff \branchingRatio < 1), and
-% prop.forwardMean with both displays and \meanResponseIntegral(\forecastHorizon).
-% Say aloud that eq.forwardMeanCounts is the equation class 4's forecast is a contraction of.
-% One clause for remark.transientAgainstStationary.
+  \frametitle{The mean cluster size counts the ancestor}
+\begin{prop}
+\label{prop.clusterSize}
+ $C = \mathbf{1}^{\transpose}(I - \branchingMatrix)^{-1}$, and
+ $\bar C = \sum_{\eone}\frac{\baseIntensity_{\eone}}{\bar{\baseIntensity}}C_{\eone}
+ = \totalRate/\bar{\baseIntensity}$.
+\end{prop}
+
+\pause
+
+Endogenous fraction: $1 - \bar{\baseIntensity}/\totalRate = 1 - 1/\bar C$
+
+\pause
+
+$\branchingRatio = 1 - 1/\bar C$ in particular when
+$\mathbf{1}^{\transpose}\branchingMatrix = \branchingRatio\mathbf{1}^{\transpose}$
+\note{
+$C_{\eone}$ is the expected size of the cluster founded by an immigrant of type $\eone$,
+counting the immigrant: the $k=0$ term of the Neumann series. Its strict descendants number
+$C_{\eone} - 1$ on average.
+$\bar{\baseIntensity}\,\bar C = \totalRate$: immigrants arrive at rate
+$\bar{\baseIntensity}$, each founds a cluster of $\bar C$ events, and every event belongs to
+exactly one cluster. It is the cheapest check an implementation admits.
+In general $\branchingRatio$ is neither the endogenous fraction nor $1 - 1/\bar C$. Two
+conditions are sufficient and neither is generic: constant column sums, and $\baseIntensity$
+a right Perron vector. The asymmetric pair of the notebook has column sums $0.4$ and $1.4$ at
+$\branchingRatio = 0.6$, and an endogenous fraction of $11/15$.
+Now to notebook 04, section 4: reading the branching ratio.
+}
 \end{frame}
 
 \begin{frame}
-  \frametitle{The mean response and the relaxation time}
-% 4 min. corol.meanResponse and def.relaxationTime. PICTURE: the mean response against t for
-% two types, one decaying monotonically and one RISING BEFORE IT FALLS (a column sum of
-% \branchingMatrix exceeding one), with the relaxation time marked as a tangent intercept and
-% not as a half-life. The response integral ties back to the cluster size. First to cut.
+  \frametitle{The mean state is the stationary intensity over the decay}
+\begin{prop}
+\label{prop.meanState}
+ $m := \Expectation[\decayedCounts] = \stationaryIntensity/\decay$, and
+ $(\decay I - \excitation)\, m = \baseIntensity$.
+\end{prop}
+
+\pause
+
+The generator with $f(z) = z$:
+$\tfrac{d}{dt}\Expectation\decayedCounts = \baseIntensity
++ (\excitation - \decay I)\Expectation\decayedCounts$
+\note{
+Applying the generator to $f(z) = z$ gives a linear equation for the mean state; at
+stationarity its derivative vanishes, which is the identity.
+This is the first moment. The same equation, solved from a given state instead of at its fixed
+point, is the forward mean of the next part, and the matrix in it is the one on the next
+frame.
+}
 \end{frame}
 
 \begin{frame}
-  \frametitle{Two dimensionless groups}
-% 4 min. def.dimensionlessGroups and remark.dimensionlessGroups. \totalRate/\decay, events
-% per excitation timescale, decides whether self-excitation is visible at the rate the
-% process is sampled; \totalRate \ofiWindow decides whether a window sum is a statistic.
-% At \totalRate/\decay well below one a study measures a process in which there is
-% correctly nothing to find.
+  \frametitle{$\excitation - \decay I$ is Hurwitz exactly when $\branchingRatio < 1$}
+\begin{prop}
+\label{prop.hurwitzCriterion}
+ Let $\excitation \geq 0$ and $\decay > 0$. Then $\hurwitzMatrix := \excitation - \decay I$
+ is Hurwitz if and only if $\branchingRatio < 1$.
+\end{prop}
+
+\pause
+
+Eigenvalues of $\hurwitzMatrix$: $\decay(\gamma_i - 1)$, over those of $\branchingMatrix$
+\note{
+A matrix is Hurwitz when all of its eigenvalues have strictly negative real part; the solution
+of $\dot x = \hurwitzMatrix x$ then decays from every start.
+If $\branchingRatio < 1$, every real part is below one. Conversely, by Perron--Frobenius the
+spectral radius is itself a real eigenvalue of $\branchingMatrix$, and that needs
+$\excitation \geq 0$.
+}
 \end{frame}
 
 \begin{frame}
-  \frametitle{Ogata's thinning algorithm}
-% 5 min. algo.ogata as a bare algorithmic environment -- `algorithm' is a float and will not
-% place inside a frame. The bound is free: \excitation >= 0 makes \totalIntensity
-% non-increasing between events, so no separate majorant is constructed, and the dominating
-% value is the POST-JUMP one. Then eq.update_of_exponential_intensity, O(1) against O(n^2).
-% Closing beat as remark.prePostJump: the pre-jump value enters the intensity and the
-% post-jump value is carried forward; confusing them shifts every intensity by one event and
-% produces a path that is plausible and wrong.
+  \frametitle{The stationary covariance solves a Lyapunov equation}
+\begin{thm}
+\label{thm.lyapunov}
+ If $\branchingRatio < 1$ and $\baseIntensity > 0$, then $V := \CoVariance(\decayedCounts)$
+ is the unique solution of
+ $\hurwitzMatrix V + V\hurwitzMatrix^{\transpose} + \diag(\stationaryIntensity) = 0$,
+ and $\CoVariance(\intensity[ ]) = \excitation V \excitation^{\transpose}$.
+\end{thm}
+
+\pause
+
+$V = \int_0^\infty e^{\hurwitzMatrix s}\diag(\stationaryIntensity)
+e^{\hurwitzMatrix^{\transpose}s}\,ds$, positive definite
+
+\pause
+
+Unit jumps, no common jumps: a diagonal source
+\note{
+The generator with $f(z) = zz^{\transpose}$: at an arrival of type $e$ the product
+$\decayedCounts\decayedCounts^{\transpose}$ gains
+$\decayedCounts\unitVector_e^{\transpose} + \unitVector_e\decayedCounts^{\transpose} +
+\unitVector_e\unitVector_e^{\transpose}$. The last term is a unit because the jumps are unit
+vectors, and diagonal because no two components jump together.
+In practice the equation is one linear solve, in the $\numEventTypes(\numEventTypes+1)/2$
+distinct entries of $V$.
+}
 \end{frame}
 
 \begin{frame}
-  \frametitle{The exact scheme --- 1 of 2}
-% 4 min. eq.totalIntensityBetweenEvents and eq.dzSurvival: the common decay makes the excited
-% part of \totalIntensity one exponential, so the survival function is a PRODUCT and the wait
-% is a minimum of two independent clocks, one immigration and one defective excitation.
-% thm.dassiosZhao with eq.dzDraws. One clause of remark.commonDecay: with a decay per pair
-% the two-factor form fails and one clock per decay rate is needed.
+  \frametitle{The scalar formula needs constant column sums}
+\[
+ \mathbf{1}^{\transpose}\excitation \propto \mathbf{1}^{\transpose}
+ \quad\Longrightarrow\quad
+ \Variance\big(\mathbf{1}^{\transpose}\decayedCounts\big)
+ = \frac{\totalRate}{2\decay(1-\branchingRatio)}
+\]
+
+\pause
+
+A statement about $\mathbf{1}^{\transpose}\decayedCounts$, not about one component
+
+\pause
+
+$\Variance(\totalIntensity) = \decay\branchingRatio^{2}\totalRate/(2(1-\branchingRatio))$,
+in the same case
+\note{
+Contracting the Lyapunov equation with $\mathbf{1}$ closes it as soon as
+$\mathbf{1}^{\transpose}\excitation$ is proportional to $\mathbf{1}^{\transpose}$, and the
+constant is then $\decay\branchingRatio$. In one dimension this is the formula usually quoted.
+Constant column sums are not generic. Neither six-type parametrisation of class 4 has them, and
+on those two the scalar formula errs in opposite directions; the discrepancy does not depend on
+$\decay$.
+Now to notebook 05, sections 1 to 3: the first moment, $V$, and the intensity read at events.
+}
 \end{frame}
 
 \begin{frame}
-  \frametitle{The exact scheme --- 2 of 2}
-% 4 min. algo.dassiosZhao as bare algorithmic. Nothing is approximate and nothing is
-% rejected. remark.defectiveClock: the excited factor carries finite mass D/\decay, the
-% expected number of direct offspring the state still owes, and with probability
-% exp(-D/\decay) it expires and the next event is an immigrant -- clipping biases the
-% immigrant share. remark.typeDraw: the wait sees \excitation only through its column sums,
-% and the type draw is where the full matrix re-enters.
+  \frametitle{The forward mean}
+\begin{prop}
+\label{prop.forwardMean}
+ From $\decayedCounts(0+) = z$ and $\multiCountingProc(0) = 0$, with
+ $\meanResponseIntegral(\forecastHorizon) := \int_{0}^{\forecastHorizon} e^{\hurwitzMatrix s}ds$,
+ \[
+  m_t(z) = e^{\hurwitzMatrix t}z + \meanResponseIntegral(t)\,\baseIntensity,
+  \qquad
+  \Expectation_z\big[\multiCountingProc(\forecastHorizon)\big]
+  = \forecastHorizon\baseIntensity + \excitation\meanResponseIntegral(\forecastHorizon)z
+  + \excitation\Big(\int_0^{\forecastHorizon}\meanResponseIntegral\Big)\baseIntensity .
+ \]
+\end{prop}
+
+\pause
+
+Finite at every $\branchingRatio$, on every horizon
+\note{
+The generator with $f(z) = z$ gives $\dot m_t = \hurwitzMatrix m_t + \baseIntensity$ with
+$m_{0+} = z$, and variation of constants gives the first display; the compensator integrates
+the intensity, which gives the second.
+This is the equation the forecast of section 1.4 is a contraction of.
+If $\branchingRatio < 1$, then
+$\meanResponseIntegral(\forecastHorizon) = \hurwitzMatrix^{-1}(e^{\hurwitzMatrix
+\forecastHorizon} - I)$. The transient mean $m_t(z)$ is not the stationary mean $m$: the two
+meet at the fixed point of the same equation.
+}
 \end{frame}
 
 \begin{frame}
-  \frametitle{The residual test}
-% 5 min. prop.compensatorClosedForm -- the compensator exactly, from the state and the
-% counts, with no numerical integration; the count is read before T and the state at it
-% (remark.readPreJump, one clause). Then the test: rescaled inter-arrivals are Exp(1),
-% \cite{Oga88sta}. The three hypotheses, and which of them fails on a RECORDED path.
-% Closing: remark.marginsOnly. A suite of \numEventTypes passing tests has established
-% \numEventTypes margins.
+  \frametitle{In deviations from $m$, the state forgets at the rate of $e^{\hurwitzMatrix t}$}
+\[
+ m_t(z) - m = e^{\hurwitzMatrix t}(z - m),
+ \qquad
+ \Expectation_z\big[\multiCountingProc(\forecastHorizon)\big]
+ = \forecastHorizon\,\stationaryIntensity
+ + \excitation\meanResponseIntegral(\forecastHorizon)(z - m)
+\]
+
+\pause
+
+$\branchingRatio < 1$: the baseline enters only through $m$
+
+\pause
+
+$z = m$: nothing to forget
+\note{
+Both follow from the previous frame when $\branchingRatio < 1$. The first from
+$\meanResponseIntegral(t)\baseIntensity = (I - e^{\hurwitzMatrix t})m$, since
+$\hurwitzMatrix m = -\baseIntensity$. The second from
+$\excitation(\int_0^{\forecastHorizon}\meanResponseIntegral)\baseIntensity
+= \forecastHorizon\excitation m - \excitation\meanResponseIntegral(\forecastHorizon)m$ and
+$\baseIntensity + \excitation m = \stationaryIntensity$.
+The expected count is the stationary rate over the horizon, corrected by the excess of the
+state over its mean. A state at its mean forecasts the stationary rate, at every horizon.
+}
+\end{frame}
+
+\begin{frame}
+  \frametitle{One extra event: the mean response}
+\begin{corol}
+\label{corol.meanResponse}
+ An extra event of type $\eone$ at time $0$ moves the mean state by
+ $R_{\eone}(t) = e^{\hurwitzMatrix t}\unitVector_{\eone}$, and
+ $\int_0^\infty \mathbf{1}^{\transpose}\excitation R_{\eone}(t)\,dt = C_{\eone} - 1$.
+\end{corol}
+
+\pause
+
+Rates $\decay(1 - \Real\gamma_i)$; the slowest $\decay(1 - \branchingRatio)$
+\note{
+The two copies differ only in their initial state, and the inhomogeneity cancels in the
+difference. When $\branchingMatrix$ is diagonalisable the response is a combination of
+exponentials at the rates $\decay(1 - \Real\gamma_i)$; in general the modes carry polynomial
+factors as well.
+The integrated response of the total intensity is the expected number of strict descendants of
+the extra event, $C_{\eone} - 1$: the event itself sits in the state and not in the count.
+}
+\end{frame}
+
+\begin{frame}
+  \frametitle{A response can rise before it falls}
+\begin{center}
+\begin{tikzpicture}[x=3.1cm, y=2.6cm, font=\scriptsize]
+  \draw[-{Stealth}, gray!70] (0,0) -- (2.65,0) node[right] {$t$};
+  \draw[-{Stealth}, gray!70] (0,0) -- (0,1.3);
+  \draw[gray!60] (-0.03,1) -- (0.03,1) node[left=3pt, gray!40!black] {$1$};
+  \draw[gray!45, dashed] (0,1) -- (2.5,1);
+  \draw[orange!85, thick, domain=0:2.5, samples=80]
+       plot (\x, {2.1429*exp(-1.6*\x) - 1.1429*exp(-4.4*\x)});
+  \draw[blue!65, thick, domain=0:2.5, samples=80]
+       plot (\x, {0.7143*exp(-1.6*\x) + 0.2857*exp(-4.4*\x)});
+  \draw[orange!60, densely dotted, thick] (0,1) -- (0.22,1.352);
+  \node[orange!70!black, above right] at (0.25,1.08) {$\mathbf{1}^{\transpose}R_2$};
+  \node[blue!55!black, right] at (0.45,0.42) {$\mathbf{1}^{\transpose}R_1$};
+  \draw[gray!70, densely dashed, domain=0.9:2.5, samples=40]
+       plot (\x, {2.1429*exp(-1.6*\x)});
+  \node[gray!40!black, above] at (1.9,0.13) {$\propto e^{-\decay(1-\branchingRatio)t}$};
+\end{tikzpicture}
+\end{center}
+
+\pause
+
+Slope at $0$: $\decay\big((\mathbf{1}^{\transpose}\branchingMatrix)_j - 1\big)$
+
+\pause
+
+Relaxation time $1/(\decay(1-\branchingRatio))$: the slowest mode, asymptotically
+\note{
+The asymmetric pair of the notebooks: the second type has column sum $1.4$ and its response
+rises, the first has $0.4$ and its response falls from the start. The response to an event of
+type $j$ rises before it falls precisely when the $j$-th column sum of $\branchingMatrix$
+exceeds one. This is the total mean \emph{state}; the response of the total intensity to the
+same event falls monotonically here.
+The relaxation time is the time constant of the slowest mode and describes the response only
+asymptotically. It is not a half-life, which is $\log 2$ times it. For the response to be
+asymptotically proportional to $e^{-\decay(1-\branchingRatio)t}$ with a positive constant for
+every type, the Perron mode must appear in every response, which holds when
+$\branchingMatrix$ is irreducible.
+}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Two numbers decide what a window sees}
+\begin{defi}
+\label{def.dimensionlessGroups}
+ For a stationary process of total rate $\totalRate$ observed in windows of length $w$:
+ $\totalRate/\decay$ is the \emph{clustering number} and $\totalRate w$ the
+ \emph{window count}.
+\end{defi}
+
+\pause
+
+Invariant under $t \mapsto ct$, which leaves $\branchingMatrix$ alone
+
+\pause
+
+$\totalRate/\decay \ll 1$: excitation expired before the next event
+\note{
+These two numbers, and not $\decay$ or $\totalRate$ separately, are what a measurement made
+on window sums depends on. The clustering number is the number of events arriving within one
+excitation timescale, so it decides whether self-excitation is visible at the rate the
+process is sampled: well below one, a study measures a process in which there is correctly
+nothing to find. The window count decides whether a window sum is a statistic or a single
+event.
+Now to notebook 05, sections 4 to 6: the forward mean from one state, the response, the
+relaxation time, and a ladder in $\decay$.
+}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Above $\branchingRatio = 1$ the mean intensity grows exponentially}
+\begin{center}
+\begin{tikzpicture}[x=0.72cm, y=1.35cm, font=\scriptsize]
+  \draw[-{Stealth}, gray!70] (0,0) -- (10.6,0) node[right] {$t$};
+  \draw[-{Stealth}, gray!70] (0,0) -- (0,3.0);
+  \foreach \y/\lab in {0/1, 1/10, 2/100} {
+    \draw[gray!60] (-0.08,\y) -- (0.08,\y);
+    \node[left, gray!40!black] at (-0.08,\y) {$\lab$};
+  }
+  \node[above, gray!40!black, align=center] at (0,3.0)
+       {$v^{\transpose}\Expectation\intensity[ ](t)/v^{\transpose}\baseIntensity$, log scale};
+  \draw[blue!65, thick, domain=0:10, samples=60]
+       plot (\x, {log10(10 - 9*exp(-0.4*\x))});
+  \draw[gray!60!black, thick, domain=0:10, samples=60]
+       plot (\x, {log10(1 + 4*\x)});
+  \draw[orange!85, thick, domain=0:10, samples=60]
+       plot (\x, {log10(11*exp(0.4*\x) - 10)});
+  \node[blue!55!black, right] at (10,1.0) {$\branchingRatio = 0.9$};
+  \node[gray!40!black, right] at (10,1.61) {$\branchingRatio = 1$};
+  \node[orange!70!black, right] at (10,2.77) {$\branchingRatio = 1.1$};
+\end{tikzpicture}
+\end{center}
+
+\pause
+
+$v^{\transpose}\Expectation\intensity[ ](t) = v^{\transpose}\baseIntensity\,
+\frac{\branchingRatio e^{\decay(\branchingRatio-1)t} - 1}{\branchingRatio - 1}$
+
+\pause
+
+No blow-up in finite time: $\Expectation\multiCountingProc(\timeHorizon) < \infty$
+\note{
+Contract $\dot m_t = \hurwitzMatrix m_t + \baseIntensity$ with a left Perron vector $v$, using
+$v^{\transpose}\excitation = \decay\branchingRatio v^{\transpose}$: the result is a scalar
+linear equation. At $\branchingRatio = 1$ it gives $v^{\transpose}\baseIntensity(1 + \decay
+t)$; above, exponential growth at rate $\decay(\branchingRatio - 1)$; below, the saturation at
+the stationary value. The curves are drawn at $\decay = 4$.
+The expected count is finite on every finite horizon at every branching ratio, so a linear
+Hawkes process does not explode in finite time: supercritical means a mean that grows
+exponentially, not a path that ends.
+}
+\end{frame}
+
+\begin{frame}
+  \frametitle{What needs $\branchingRatio < 1$, and what does not}
+\begin{center}
+\footnotesize
+\begin{tabular}{@{}lc@{}}
+\toprule
+ & needs $\branchingRatio < 1$ \\
+\midrule
+$\multiCountingProc - \compensator$ a square-integrable martingale on $[0,\timeHorizon]$ & no \\
+the forward means, and $\Expectation\multiCountingProc(\timeHorizon)^2 < \infty$ & no \\
+the Markov state, and both simulators & no \\
+\midrule
+a stationary version & yes \\
+second moments of the state bounded in $\timeHorizon$ & yes \\
+time averages along one path estimate the stationary ones & yes \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\pause
+
+$\langle \martingale_e, \martingale_{\eone} \rangle \equiv 0$ for $e \neq \eone$: no common jumps
+\note{
+Subcriticality does not enter the first three rows. It buys a stationary version, second
+moments of the state bounded uniformly in the horizon, and ergodicity; each fails at
+$\branchingRatio \geq 1$ when $\baseIntensity > 0$.
+The martingale is not bounded in $L^2$ on $[0,\infty)$ even below one: its second moment is
+the expected compensator, which grows like $\stationaryIntensity[e]\timeHorizon$. What
+subcriticality bounds is the state.
+The simulators need $\excitation \geq 0$, a common $\decay$ and $\bar{\baseIntensity} > 0$.
+The notebook runs the exact scheme at $\branchingRatio = 1.1$.
+}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Thinning: propose at the bound, keep with the ratio}
+{\footnotesize
+\begin{algorithmic}
+ \REQUIRE $(\arrivalTimes[ ]_i, \event[i])_{i=1,\dots,n-1}$
+ \STATE set $t := \arrivalTimes[ ]_{n-1}$ and $\bar{\lambda} := \totalIntensity(\arrivalTimes[ ]_{n-1}+)$
+ \STATE set $\xi := 0$
+ \WHILE{$\xi = 0$}
+ \STATE draw $U \sim \mathrm{Exp}(\bar{\lambda})$
+ \STATE set $\xi := 1$ with probability $\totalIntensity(t+U)/\bar{\lambda}$
+ \STATE update $t \leftarrow t+U$ and $\bar{\lambda} \leftarrow \totalIntensity(t)$
+ \ENDWHILE
+ \STATE set $\arrivalTimes[ ]_n := t$
+ \STATE draw $\event[n]$ with probabilities proportional to
+        $\intensity[1](\arrivalTimes[ ]_n), \dots,
+        \intensity[\numEventTypes](\arrivalTimes[ ]_n)$
+ \RETURN $(\arrivalTimes[ ]_n, \event[n])$
+\end{algorithmic}
+}
+
+\pause
+
+$\excitation \geq 0$: $\totalIntensity$ non-increasing between events, so the bound is free
+\note{
+Ogata's algorithm, for any kernel. If the ground intensity were constant the next wait would be
+exponential; it is not, but between events it only decays, so its value just after the last
+event dominates it. Draw at the dominating rate and keep the candidate with the ratio of the
+true rate to the bound.
+The dominating value is the \emph{post}-jump one: $\decayedCounts$ is left-continuous, so the
+pre-jump value is smaller by the jump and does not dominate.
+The rejected candidates are work done and discarded. How many are rejected depends on how far
+the intensity decays during a wait, and the notebook measures it.
+}
+\end{frame}
+
+\begin{frame}
+  \frametitle{The state is carried from event to event, not recomputed}
+\[
+ \decayedCounts(\arrivalTimes[ ]_{n+1}-)
+ = \big( \decayedCounts(\arrivalTimes[ ]_{n}-) + \unitVector_{\event[n]} \big)
+ \, e^{-\decay(\arrivalTimes[ ]_{n+1} - \arrivalTimes[ ]_{n})}
+\]
+
+\pause
+
+$O(1)$ per event, against $O(n^2)$ for the direct sum
+
+\pause
+
+Pre-jump: enters the intensity. Post-jump: carried forward.
+\note{
+For the exponential kernel each of the three evaluations of $\totalIntensity$ in thinning reads
+$\decayedCounts$ instead of the history: $\totalIntensity = \mathbf{1}^{\transpose}
+(\baseIntensity + \excitation\decayedCounts)$, and the algorithm holds $\numEventTypes$ numbers
+in place of a list that grows with the path.
+The two values in the recursion are different objects and both are needed. Confusing them
+shifts every intensity by one event, and produces a path that is plausible and wrong.
+}
+\end{frame}
+
+\begin{frame}
+  \frametitle{A common decay makes the survival function a product}
+\[
+ \Prob\big( \arrivalTimes[ ]_{n+1} - \arrivalTimes[ ]_{n} > s \,\big|\,
+ \filtrationF_{\arrivalTimes[ ]_{n}} \big)
+ = e^{-\bar{\baseIntensity}s} \cdot
+ \exp\Big( -\frac{D}{\decay}\big(1 - e^{-\decay s}\big) \Big)
+\]
+
+\pause
+
+$D := \totalIntensity(\arrivalTimes[ ]_{n}+) - \bar{\baseIntensity} \geq 0$
+
+\pause
+
+A minimum of two independent clocks: immigration and excitation
+\note{
+Between events every component of $\decayedCounts$ decays by the same factor, because $\decay$
+is common to all pairs; hence so does the excited part of $\totalIntensity$, which is
+$D e^{-\decay(t - \arrivalTimes[ ]_n)}$. Substituting into the conditional survival function
+and integrating gives the product.
+Non-negativity of $\excitation$ enters separately, and gives $D \geq 0$.
+With a decay per pair the excited part is a sum of exponentials and the two-factor form fails;
+the survival function still factorises, over one clock per decay rate.
+}
+\end{frame}
+
+\begin{frame}
+  \frametitle{The excitation clock is defective}
+\begin{thm}[\citealp{DZ13exa}]
+\label{thm.dassiosZhao}
+ With $U_1, U_2$ independent uniforms, the next wait is $\tau_1 \wedge \tau_2$:
+ \[
+  \tau_1 = -\frac{\log U_1}{\bar{\baseIntensity}},
+  \qquad
+  \tau_2 = -\frac{1}{\decay}\log\Big(1 + \frac{\decay\log U_2}{D}\Big),
+ \]
+ and $\tau_2 = +\infty$ when the argument is not positive.
+\end{thm}
+
+\pause
+
+$\Prob(\tau_2 = \infty) = e^{-D/\decay}$: the next event an immigrant
+
+\pause
+
+The type drawn before the jump, with probabilities $\intensity/\totalIntensity$
+\note{
+The excited factor carries the finite total mass $D/\decay$, the expected number of direct
+offspring the current state still owes. With probability $e^{-D/\decay}$ it expires without
+firing. That is not a numerical edge case: an implementation that clips $\tau_2$ biases the
+immigrant share.
+The wait sees $\excitation$ only through $\mathbf{1}^{\transpose}\excitation$, so it is the
+type draw that makes the scheme multivariate, and it is there that the full matrix re-enters.
+}
+\end{frame}
+
+\begin{frame}
+  \frametitle{The exact scheme rejects nothing}
+{\footnotesize
+\begin{algorithmic}
+ \REQUIRE $\arrivalTimes[ ]_{n}$ and the post-jump state $\decayedCounts(\arrivalTimes[ ]_n+)$
+ \STATE set $D := \mathbf{1}^{\transpose}\excitation\decayedCounts(\arrivalTimes[ ]_n+)$
+ \STATE draw $U_1, U_2$ independent and uniform on $(0,1)$
+ \STATE set $\tau_1 := -\log U_1 / \bar{\baseIntensity}$
+ \IF{$D > 0$ and $1 + \decay\log U_2/D > 0$}
+ \STATE set $\tau_2 := -\decay^{-1}\log(1 + \decay\log U_2/D)$
+ \ELSE
+ \STATE set $\tau_2 := +\infty$
+ \ENDIF
+ \STATE set $\arrivalTimes[ ]_{n+1} := \arrivalTimes[ ]_{n} + \tau_1 \wedge \tau_2$
+ \STATE set $\decayedCounts(\arrivalTimes[ ]_{n+1}-) := \decayedCounts(\arrivalTimes[ ]_{n}+)
+        \, e^{-\decay(\arrivalTimes[ ]_{n+1} - \arrivalTimes[ ]_{n})}$
+ \STATE draw $\event[n+1]$ with probabilities
+        $\intensity(\arrivalTimes[ ]_{n+1}-)/\totalIntensity(\arrivalTimes[ ]_{n+1}-)$
+ \STATE set $\decayedCounts(\arrivalTimes[ ]_{n+1}+) := \decayedCounts(\arrivalTimes[ ]_{n+1}-)
+        + \unitVector_{\event[n+1]}$
+ \RETURN $(\arrivalTimes[ ]_{n+1}, \event[n+1])$
+\end{algorithmic}
+}
+\note{
+Nothing in the algorithm is approximate and nothing is rejected, at $O(1)$ per event.
+It needs $\excitation \geq 0$, a common $\decay$ and $\bar{\baseIntensity} > 0$, and nothing
+about the branching ratio, which is why the notebook can run it above criticality.
+Now to notebook 06, sections 1 to 4: both algorithms written out, the package's simulator
+reproduced draw for draw, and the process above $\branchingRatio = 1$.
+}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Three routes to one law}
+\begin{center}
+\begin{tikzpicture}[font=\scriptsize, node distance=6mm and 14mm,
+    box/.style={draw=gray!70, rounded corners=2pt, align=center, inner sep=4pt,
+                text width=2.5cm},
+    test/.style={box, fill=gray!8, text width=3.0cm}]
+  \node[box, fill=blue!15] (exact) {exact scheme};
+  \node[box, fill=blue!15, below=of exact] (thin) {thinning};
+  \node[box, fill=orange!20, above=of exact] (comp) {compensator,\\in closed form};
+  \node[test, right=of exact, yshift=-6.5mm] (law) {paths compared in law,\\over independent paths};
+  \node[test, right=of comp, yshift=-6.5mm] (meyer) {residuals against\\$\mathrm{Exp}(1)$};
+  \draw[-{Stealth}, gray!70] (exact.east) -- (law.west);
+  \draw[-{Stealth}, gray!70] (thin.east) -- (law.west);
+  \draw[-{Stealth}, gray!70] (exact.east) -- (meyer.west);
+  \draw[-{Stealth}, gray!70] (comp.east) -- (meyer.west);
+\end{tikzpicture}
+\end{center}
+
+\pause
+
+The two simulators share the type draw
+
+\pause
+
+The compensator shares nothing with either
+\note{
+Two routes to one number, with the disagreement read as a location. The two simulators are
+independent implementations of the waiting time, and comparing them in law tests that step;
+they share the type draw and the bookkeeping of the state, so the comparison cannot see an
+error there.
+The compensator is implemented independently of both on purpose. An accumulated compensator
+agrees with the path by construction; an independent one turns the time change into a test,
+and it is the test that sees the type draw.
+}
+\end{frame}
+
+\begin{frame}
+  \frametitle{A recorded path breaks the first hypothesis}
+\begin{center}
+\footnotesize
+\begin{tabular}{@{}lcc@{}}
+\toprule
+hypothesis of the time change & simulated path & recorded path \\
+\midrule
+no two components jump together & almost surely & no \\
+$\compensator$ continuous & by construction & by the model \\
+$\compensator_e(t) \to \infty$ & when $\baseIntensity > 0$ & when $\baseIntensity > 0$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\pause
+
+\cite{Oga88sta}: the test, for earthquake catalogues
+\note{
+If the path is a path of the model, rescaling each component's clock by its own compensator
+gives independent $\mathrm{Exp}(1)$ inter-arrival times. Both ingredients are in closed form:
+the compensator from the state and the counts, and the arrival times by construction.
+On recorded data the first hypothesis is the one that fails: a feed stamps many events with one
+time, and the time change then says nothing about the joint law.
+}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Quantiles against $\mathrm{Exp}(1)$}
+\begin{center}
+\begin{tikzpicture}[x=0.95cm, y=0.95cm, font=\scriptsize]
+  \fill[gray!18, domain=0:4.0, samples=30]
+       plot (\x, {\x - 0.04 - 0.045*\x*\x}) --
+       plot[domain=4.0:0] (\x, {\x + 0.04 + 0.045*\x*\x}) -- cycle;
+  \draw[-{Stealth}, gray!70] (0,0) -- (4.6,0) node[right] {$\mathrm{Exp}(1)$ quantile};
+  \draw[-{Stealth}, gray!70] (0,0) -- (0,4.6) node[above] {sample quantile};
+  \draw[gray!60!black, dashed] (0,0) -- (4.2,4.2);
+  \foreach \x/\d in {0.2/0.01, 0.5/-0.02, 0.9/0.03, 1.3/-0.01, 1.8/0.04, 2.3/-0.05,
+                     2.8/0.08, 3.3/-0.1, 3.9/0.2}
+    \fill[blue!65] (\x,\x+\d) circle (1.5pt);
+  \foreach \x in {0.2, 0.5, 0.9, 1.3, 1.8, 2.3, 2.8, 3.3}
+    \fill[orange!85] (\x,{0.62*\x}) circle (1.5pt);
+  \node[blue!55!black, left] at (3.3,3.9) {the model};
+  \node[orange!70!black, right] at (3.4,2.05) {a wrong decay};
+\end{tikzpicture}
+\end{center}
+
+\pause
+
+Band: pointwise, from the order statistics of a uniform sample
+
+\pause
+
+A wrong kernel bends the line
+\note{
+The $k$-th of $n$ order statistics of a uniform sample is $\mathrm{Beta}(k, n-k+1)$, and
+$-\log(1-u)$ carries it to the exponential; that gives an exact pointwise band, which widens
+in the tail. The notebook adds the simultaneous band of the Kolmogorov--Smirnov statistic.
+A transposed kernel or a wrong decay in the compensator bends the plot visibly. Reading the
+compensator post-jump does not: it shifts $\compensator_e$ by the constant
+$\branchingMatrix_{e,e}$ at every arrival of type $e$, and moves only the first residual of
+each type.
+}
+\end{frame}
+
+\begin{frame}
+  \frametitle{A passing test has established the margins}
+\begin{remark}
+\label{remark.marginsOnly}
+ A test of each component against $\mathrm{Exp}(1)$ tests the marginal law, and neither of the
+ two independences.
+\end{remark}
+
+\pause
+
+Serial, within a type: the autocorrelation of the residuals
+
+\pause
+
+Across types: $\langle \martingale_e, \martingale_{\eone}\rangle \equiv 0$
+\note{
+The time change asserts two independences beyond the marginal law: serial independence within
+a component, and joint independence across components. A comparison of margins tests neither,
+and the second is what a violation of the no-common-jumps hypothesis breaks. A suite of
+$\numEventTypes$ passing tests has established $\numEventTypes$ margins.
+Now to notebook 06, sections 5 to 7: one simulator against the other, the time change on a long
+path, and what it does not see.
+Section 1.4 next: the six types of an order book, the intensity contrast, and the forecast of
+the mid-price read off the forward mean of this class.
+}
 \end{frame}

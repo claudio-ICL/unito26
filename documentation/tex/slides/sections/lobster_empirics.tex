@@ -1,5 +1,6 @@
 % CLASS 4, part two -- the notes' section 1.5, sec.lobsterEmpirics.
-% The chapter's assignment, briefed and set. Planned 18 min over 5 frames.
+% What the generated setting lacks, and what recorded data settles, over 4 frames. The
+% assignment itself is set in the notes and not on a slide.
 % Under \includeonly this file builds alone, so it carries its own Outline.
 %
 % THE FRAME CONTRACT. These slides are projection material, not reference material: the
@@ -17,47 +18,129 @@
 % Open the class on the chapter roadmap, as classes 1 and 2 do. Do not close on a summary
 % frame: a slide that recites what the class just did is the spoken half written down.
 %
-% LABELS. eq.queueImbalance belongs to class 1 and remark.passiveDirection to class 2; both
-% are RESTATED HERE WITHOUT LABELS. Nobody remembers a formula from three weeks ago, and the
-% assignment turns on both of them.
+% LABELS. This file owns remark.asymmetricReading. eq.queueImbalance belongs to class 1 and
+% prop.signedExcitation to part one of this class; both are RESTATED HERE WITHOUT LABELS.
 
 \subsection{Assignment --- evidence from recorded data}
 
 \begin{frame}
   \frametitle{Outline}
-% 2 min. One \nocite per line -- a multi-key \nocite spanning lines breaks bibtex.
+% One \nocite per line -- a multi-key \nocite spanning lines breaks bibtex.
 \nocite{LPV22sho}
 \nocite{HP11lob}
-% The apparatus is developed on flow we generate, and a result obtained on generated flow is
-% a result about the generator.
+\begin{center}
+\begin{tikzpicture}[font=\scriptsize, node distance=3mm,
+    stage/.style={draw=gray!60, rounded corners=2pt, align=center, inner sep=4pt,
+                  text width=1.45cm, fill=gray!8},
+    past/.style={stage, fill=gray!20, draw=gray!70},
+    current/.style={stage, fill=blue!15, draw=blue!55}]
+  \node[past] (a) {1.1\\the book};
+  \node[past, right=of a] (b) {1.2\\the fold};
+  \node[past, right=of b] (c) {1.3\\point processes};
+  \node[past, right=of c] (d) {1.4\\price formation};
+  \node[current, right=of d] (e) {1.5\\recorded data};
+  \draw[-{Stealth}, gray!60] (a) -- (b);
+  \draw[-{Stealth}, gray!60] (b) -- (c);
+  \draw[-{Stealth}, gray!60] (c) -- (d);
+  \draw[-{Stealth}, gray!60] (d) -- (e);
+\end{tikzpicture}
+\end{center}
+
+\pause
+
+A result on generated flow: a result about the generator
+
+\pause
+
+Four absences, and what recorded data settles
+\note{
+The apparatus of sections 1.3 and 1.4 is developed on flow that we generate, and a result
+obtained on generated flow is a result about the generator. Four things are absent from the
+generated setting by construction, and each of them bounds what can be asked of it. Recorded
+data is what settles the questions it cannot.
+}
 \end{frame}
 
 \begin{frame}
   \frametitle{The intensities do not read the book}
-% 4 min. Redisplay eq.queueImbalance here, unlabelled. A resting limit order is short an
-% option: it is filled when someone wishes to trade against it, which is disproportionately
-% when trading against it is right, and the defence is to withdraw first. So a queue about to
-% be picked off is one whose own side pulls away from it, and depletion begets depletion.
-% That is what makes \queueImbalance[1] informative in a traded book -- a thin bid is thin
-% BECAUSE those posting on that side inferred something. A kernel built for replenishment
-% does the reverse, and the two cannot both be strong in one specification.
+\[
+ \queueImbalance[1]_t
+ = \frac{\nthBestBidSize[1]_t - \nthBestAskSize[1]_t}{\nthBestBidSize[1]_t + \nthBestAskSize[1]_t}
+\]
+
+\pause
+
+No queue-depletion feedback, and no adverse selection
+
+\pause
+
+A traded book: depletion begets depletion
+\note{
+The arrival rates are indifferent to whether a queue is about to empty; only the marks see the
+book. There is in particular no informed trading. In a traded market part of the flow is
+informed, and a resting limit order is then short an option: it is filled when someone wishes
+to trade against it, which is disproportionately when trading against it is right, and the
+defence available to whoever posted it is to withdraw first.
+A queue about to be picked off is therefore a queue whose own side pulls away from it. That is
+what makes the imbalance at the touch informative in a traded book: a thin bid is thin because
+those posting on that side inferred something. A kernel built for replenishment does the
+reverse, and the two cannot both be strong in one specification.
+}
 \end{frame}
 
 \begin{frame}
-  \frametitle{Three more absences}
-% 3 min. The marks are independent of the flow, and a generator whose withdrawals draw
-% against the size actually resting emits a THINNED process rather than the Hawkes process it
-% started from -- the hypothesis fails first on the withdrawal types. One excitation
-% timescale; no intraday non-stationarity; and no anchor for the price level, so the mean
-% price change over a session is a property of the seed.
+  \frametitle{What the generated setting also lacks}
+\begin{center}
+{\footnotesize
+\begin{tabular}{@{}ll@{}}
+\toprule
+absent by construction & what it bounds \\
+\midrule
+marks that depend on the flow & assumed away by the forecast \\
+a second excitation timescale & the kernel is one exponential \\
+intraday non-stationarity & a window tuned in one regime, untested in another \\
+an anchor for the price level & the mean price change: a property of the seed \\
+\bottomrule
+\end{tabular}
+}
+\end{center}
+
+\pause
+
+A dropped withdrawal: a thinned process, not the Hawkes one
+\note{
+The definition of the order flow asks the sizes to be independent of the arrival times and of
+the types, and the short-horizon forecast uses that. A generator whose withdrawals draw against
+the size actually resting, or which drops a withdrawal on an empty side, emits a thinned
+process rather than the Hawkes process it started from.
+There is a single excitation timescale, the kernel being one exponential; there is no intraday
+non-stationarity; and there is no anchor for the price level, so the level wanders.
+}
 \end{frame}
 
 \begin{frame}
   \frametitle{Read the comparison asymmetrically}
-% 4 min. remark.asymmetricReading. Whatever forecasting power \queueImbalance[1] retains in
-% the generated setting is MECHANICAL -- a depleted queue is one market order from clearing
-% -- and none of it is informational.
-% A result favourable to \queueImbalance[1] is the stronger finding.
-% Then what recorded data settles: whether \signedExcitation carries either sign in a traded
-% market, and over what window and horizon the sign of the forecast can be read at all.
+\begin{remark}
+\label{remark.asymmetricReading}
+ On generated flow, a result favourable to $\queueImbalance[1]$ is the stronger finding.
+\end{remark}
+
+\pause
+
+In a traded market: whether $\signedExcitation$ carries either sign
+
+\pause
+
+And at which window and horizon the sign can be read
+\note{
+Whatever forecasting power $\queueImbalance[1]$ retains in the generated setting is
+mechanical: a depleted queue is one market order from clearing, and clearing moves the mid.
+None of it is informational. A result favourable to $\OFI$ is therefore not evidence that it
+dominates $\queueImbalance[1]$ in a traded market.
+Recorded data settles what the generated setting cannot: whether the signed excitation of the
+last hour carries either sign in a traded market, and over what window and what horizon the
+sign of the forecast can be read from the order flow imbalance at all. That is the assignment
+of the chapter, set in section 1.5 of the notes: build the session from the LOBSTER pair,
+compute the two statistics, regress, and read the sign across a grid of windows and horizons.
+}
 \end{frame}
