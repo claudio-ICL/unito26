@@ -27,6 +27,7 @@ data/
 
 # Notebooks scratch
 notebooks/scratchbook.ipynb
+scratch/
 
 # Documentation build artifacts
 *.aux
