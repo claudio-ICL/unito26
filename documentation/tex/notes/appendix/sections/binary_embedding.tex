@@ -1,0 +1,111 @@
+Write $\neg \eventuallyZero$ for the \emph{eventually one} sequences,
+the complements of those in $\eventuallyZero$,
+and $\eventuallyConstant := \eventuallyZero \cup \neg\eventuallyZero$ for the eventually
+constant ones.
+
+\begin{defi}\label{def.twosComplementSequence}
+ Let $\twosComplement : \Z \to \bitSequences$ be
+ \begin{equation*}
+  \twosComplement(x) :=
+  \begin{cases}
+   \binaryRepresentation(x), & x \geq 0, \\
+   \neg\, \binaryRepresentation(-1 - x), & x < 0 .
+  \end{cases}
+ \end{equation*}
+\end{defi}
+
+\begin{prop}\label{prop.integersAsSequences}
+ $\twosComplement$ is injective, with image $\eventuallyConstant$, and for every $n$ and every
+ $x \in \Z$,
+ \begin{equation}\label{eq.integersAsSequences}
+  \truncation{n}\big(\twosComplement(x)\big) = \digitsOf{n}\big(\reduction{n}(x)\big) .
+ \end{equation}
+\end{prop}
+\begin{proof}
+ For $x \geq 0$, $\twosComplement(x) = \binaryRepresentation(x) \in \eventuallyZero$;
+ for $x < 0$, $-1 - x \geq 0$, so $\binaryRepresentation(-1-x)$ is eventually zero and
+ $\twosComplement(x)$ eventually one.
+ No sequence is both, so the two cases have disjoint images;
+ each is injective by Proposition \ref{prop.binaryRepresentation},
+ and together their images are $\eventuallyZero \cup \neg\eventuallyZero$.
+ For $x \geq 0$, \eqref{eq.integersAsSequences} is Proposition \ref{prop.truncationCommutes}.
+ For $x < 0$ put $m = -1 - x$.
+ Truncating $\neg\,\binaryRepresentation(m)$ complements the truncation of
+ $\binaryRepresentation(m)$,
+ whose value is $\reduction{n}(m)$ by Proposition \ref{prop.truncationCommutes};
+ by Proposition \ref{prop.twosComplement} the complement has the value
+ $(2^{n+1} - 1) - \reduction{n}(m) \equiv -1 - m = x$ modulo $2^{n+1}$,
+ and a value of $n+1$ bits congruent to $x$ is $\reduction{n}(x)$.
+\end{proof}
+
+$\twosComplement$ is not onto $\bitSequences$:
+the alternating sequence $0, 1, 0, 1, \dots$ is not eventually constant.
+
+The set $\eventuallyConstant$ is closed under $\neg$, $\wedge$, $\vee$ and $\oplus$,
+since beyond the position where both arguments have become constant each of them returns a
+constant bit.
+So the four operators carry over to the integers,
+and on the integers they are the bitwise operators of Python:
+\codehl{\textasciitilde x} is $\twosComplement^{-1}(\neg\,\twosComplement(x))$,
+\codehl{x \& y} is $\twosComplement^{-1}(\twosComplement(x) \wedge \twosComplement(y))$,
+and so on.
+We write $x \bitAnd y$ and $x \bitOr y$ for the two that Chapter \ref{chap.microstructure}
+could misread, since there $\wedge$ and $\vee$ between two integers are their minimum and
+maximum;
+$\neg x$ and $x \oplus y$ carry no such meaning, and keep their symbols.
+By Definition \ref{def.twosComplementSequence}, $\neg x = -x - 1$ on the whole of $\Z$.
+Python computes each operator in one pass over the digits it stores:
+nothing infinite is built,
+and \codehl{bits \&= \textasciitilde bit} of Listing \ref{listing.tickArrayWrite},
+which meets the leading ones of $\neg\,$\codehl{bit} with the leading zeros of \codehl{bits},
+returns a non-negative integer.
+
+Bit $k$ of an integer $x$ is \codehl{x >> k \& 1}, negative $x$ included,
+because \codehl{x >> k} is $\lfloor x / 2^k \rfloor$:
+this is $\twosComplement$, computed.
+Listing \ref{listing.bitsOfIntegers} checks both facts on a thousand integers of either sign.
+
+\begin{lstlisting}[caption={$\neg x = -x-1$, and the bits of an integer of either sign.}, label=listing.bitsOfIntegers]
+import random
+
+for _ in range(1000):
+    x = random.randint(-(2**64), 2**64)
+    assert ~x == -x - 1
+    assert all((x >> k & 1) == (x // 2**k) % 2 for k in range(70))
+\end{lstlisting}
+
+For $b = 360$ the shifts reach a fixed point on either sign, as Table \ref{tab.shiftsOf360}
+shows: $0$ for $b$, whose bits are all zero beyond position $8$, and $-1$ for $-b$, whose bits
+are all one beyond position $8$.
+So the infinite tails are generated rather than stored,
+\begin{equation*}
+ \twosComplement(360) = \dots 0000\,101101000,
+ \qquad
+ \twosComplement(-360) = \dots 1111\,010011000 ,
+\end{equation*}
+written with position $0$ on the right.
+Position $3$ is the only one where both have a $1$,
+and the next section shows that this is always so.
+
+\begin{table}[h!]
+ \centering
+ \begin{tabular}{@{}rrcrc@{}}
+  \toprule
+  $k$ & $\lfloor 360/2^k \rfloor$ & bit & $\lfloor -360/2^k \rfloor$ & bit \\
+  \midrule
+  $0$ & $360$ & $0$ & $-360$ & $0$ \\
+  $1$ & $180$ & $0$ & $-180$ & $0$ \\
+  $2$ & $90$ & $0$ & $-90$ & $0$ \\
+  $3$ & $45$ & $1$ & $-45$ & $1$ \\
+  $4$ & $22$ & $0$ & $-23$ & $1$ \\
+  $5$ & $11$ & $1$ & $-12$ & $0$ \\
+  $6$ & $5$ & $1$ & $-6$ & $0$ \\
+  $7$ & $2$ & $0$ & $-3$ & $1$ \\
+  $8$ & $1$ & $1$ & $-2$ & $0$ \\
+  $9$ & $0$ & $0$ & $-1$ & $1$ \\
+  $10$ & $0$ & $0$ & $-1$ & $1$ \\
+  \bottomrule
+ \end{tabular}
+ \caption{The shifts of $360$ and of $-360$, and the bit each leaves at position $0$.}
+ \label{tab.shiftsOf360}
+\end{table}

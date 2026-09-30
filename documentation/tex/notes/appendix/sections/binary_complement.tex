@@ -1,0 +1,24 @@
+Let $c_n : \remainders{n} \to \remainders{n}$, $c_n(x) := -x - 1$.
+
+\begin{prop}\label{prop.twosComplement}
+ For every $x \in \remainders{n}$,
+ $\digitsOf{n}(c_n(x)) = \neg\, \digitsOf{n}(x)$:
+ complementing the $n+1$ digits of $x$ computes $-x-1$ modulo $2^{n+1}$.
+\end{prop}
+\begin{proof}
+ Write $\digitsOf{n}(x) = (f_0, \dots, f_n)$, so that $x = \sum_{k=0}^{n} f_k 2^k$.
+ The complemented digits have the value
+ $\sum_{k=0}^{n} (1 - f_k) 2^k = (2^{n+1} - 1) - x$,
+ which is $-x - 1$ modulo $2^{n+1}$.
+\end{proof}
+
+Equivalently, $\neg x + 1 = -x$ in $\remainders{n}$,
+which is all that the rule ``invert the digits and add one'' says.
+Listing \ref{listing.twosComplement} checks it on every remainder of ten moduli.
+
+\begin{lstlisting}[caption={Complementing the digits computes $-x-1$.}, label=listing.twosComplement]
+for n in range(10):
+    m = 2 ** (n + 1)
+    for x in range(m):
+        assert (-x - 1) % m == (~x) % m == (m - 1) - x
+\end{lstlisting}

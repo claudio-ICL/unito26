@@ -301,8 +301,8 @@ gap. It counts trailing zeros as a gap, so it wants the window odd, which the cu
 | --- | --- |
 | `1 << k`, `\|= bit`, `&= ~bit` | `BitmapBook.set_size`, `TickArrayBook.set_size` |
 | `bit_length() - 1` | `best_price` on both sides in `TickArrayBook`, the $d = +1$ branch in `BitmapBook` |
-| `(bits & -bits).bit_length() - 1` | the $d = -1$ branch of `BitmapBook.best_price` |
-| `bits ^= 1 << k` | walking the occupied levels in both |
+| `(bits & -bits).bit_length() - 1` | the $d = -1$ branch of `BitmapBook.best_price`; and `count_trailing_zeros`, which the cut of the gap window reaches through `discard_trailing_zeros` in both books |
+| `bits ^= 1 << k` | walking the occupied levels in `TickArrayBook` (`levels_map`, `occupied_levels`); `BitmapBook` keeps its dicts and walks them |
 | `(bits >> k).bit_count()` | the cut of the gap window: both sides in `TickArrayBook`, the bids in `BitmapBook` |
 | `m &= m - 1` | the cut of the gap window for the asks in `BitmapBook` |
 | `b & ~(b << 1)` | `count_binary_gaps` |

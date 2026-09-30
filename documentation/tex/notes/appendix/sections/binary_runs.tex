@@ -1,0 +1,55 @@
+The gap statistics of a side are read on a window of its occupancy:
+the bits from the touch down to the deepest reported level,
+shifted so that the deepest one is bit $0$.
+Two properties cut that window and count it.
+Write $\popcount{b}$ for the number of set bits of $b \in \N$, which is \codehl{b.bit\_count()}.
+
+\begin{prop}\label{prop.rankByShift}
+ For $b \in \N$ and $k \in \N$, $\popcount{\lfloor b / 2^{k} \rfloor}$ is the number of set bits
+ of $b$ at positions $k$ and above.
+ As a function of $k$ it is non-increasing, and it falls by one exactly where bit $k$ of $b$ is
+ set.
+\end{prop}
+\begin{proof}
+ The digits of $\lfloor b/2^k \rfloor$ are those of $b$ from position $k$ upwards, moved down by
+ $k$, so its count is the count of the set bits of $b$ from $k$ up.
+ Passing from $k$ to $k+1$ discards exactly bit $k$.
+\end{proof}
+
+So the $L$-th highest set bit of $b$ is at the largest $k$ where
+$\popcount{\lfloor b/2^k \rfloor} \geq L$.
+The predicate is monotone in $k$, so bisection over $0 \leq k \leq \deg b$ finds that position
+with $O(\log \bandWidth)$ counts, whatever $L$,
+rather than with $L$ steps down the bits.
+
+\begin{prop}\label{prop.runsOfOnes}
+ For $b \in \N$ with $b > 0$, $b \bitAnd \neg(2b)$ has exactly one set bit in each maximal run
+ of ones of $\binaryRepresentation(b)$, at the lowest position of the run.
+ Hence the number of gaps of $b$, the maximal runs of zeros lying between two ones, is
+ $\popcount{\big(b \bitAnd \neg(2b)\big)} - 1$.
+\end{prop}
+\begin{proof}
+ Bit $k$ of $2b$ is bit $k-1$ of $b$, and $0$ at $k = 0$.
+ So bit $k$ of $b \bitAnd \neg(2b)$ is set exactly when bit $k$ of $b$ is set and bit $k-1$ is
+ not, that is, when $k$ is the lowest position of a run of ones.
+ Between the lowest and the highest set bit of $b$, runs of ones and gaps alternate,
+ beginning and ending with a run of ones, so there is one gap fewer than there are runs.
+\end{proof}
+
+Listing \ref{listing.runsOfOnes} checks both propositions on a thousand integers,
+the gaps counted by splitting the string of binary digits.
+
+\begin{lstlisting}[caption={Counting above a position, and counting the gaps.}, label=listing.runsOfOnes]
+import random
+
+
+def gaps(b):
+    return len([run for run in bin(b)[2:].strip("0").split("1") if run])
+
+
+for _ in range(1000):
+    b = random.randint(1, 2**200)
+    assert (b & ~(b << 1)).bit_count() - 1 == gaps(b)
+    for k in range(0, 201, 7):
+        assert (b >> k).bit_count() == sum(b >> j & 1 for j in range(k, 201))
+\end{lstlisting}

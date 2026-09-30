@@ -1,0 +1,41 @@
+Read by its binary digits rather than by its magnitude,
+a non-negative integer $b$ is a finite set of positions:
+bit $k$ of $b$ is set exactly when $k$ belongs to the set.
+In the book of Section \ref{sec.fasterBook} the position of a price is its distance from an
+edge of the band,
+and one integer is the set of prices occupied on one side.
+Table \ref{tab.bitsAsSets} lists the operations of Python that act on the integer as on the set.
+
+\begin{table}[h!]
+ \centering
+ \begin{tabular}{@{}ll@{}}
+  \toprule
+  Python & on the set \\
+  \midrule
+  \codehl{1 << k} & the singleton $\lbrace k \rbrace$ \\
+  \codehl{b | (1 << k)} & $k$ added \\
+  \codehl{b \& \textasciitilde(1 << k)} & $k$ removed \\
+  \codehl{b >> k \& 1} & $1$ if $k$ belongs to it, $0$ otherwise \\
+  \codehl{b.bit\_count()} & the number of its elements \\
+  \bottomrule
+ \end{tabular}
+ \caption{An integer as a set of positions.}
+ \label{tab.bitsAsSets}
+\end{table}
+
+The integer $360 = 2^{8} + 2^{6} + 2^{5} + 2^{3}$ is the set $\lbrace 3, 5, 6, 8 \rbrace$,
+and Listing \ref{listing.bitsAsSets} builds it and edits it.
+Python's integers are unbounded, so the set is as large as the band;
+where an integer is a machine word, a wider set is an array of words,
+with the arithmetic of the indices written out.
+
+\begin{lstlisting}[caption={The integer $360$ as the set $\lbrace 3, 5, 6, 8 \rbrace$.}, label=listing.bitsAsSets]
+b = 0
+for k in (3, 5, 6, 8):
+    b |= 1 << k
+assert b == 360
+assert [k for k in range(10) if b >> k & 1] == [3, 5, 6, 8]
+assert b.bit_count() == 4
+b &= ~(1 << 5)
+assert [k for k in range(10) if b >> k & 1] == [3, 6, 8]
+\end{lstlisting}

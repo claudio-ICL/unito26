@@ -1,0 +1,68 @@
+Let $\bitSequences := \lbrace 0, 1 \rbrace^{\N}$ be the infinite sequences of bits,
+indexed from $0$,
+and let $\neg$, $\wedge$, $\vee$ and $\oplus$ act on them position by position:
+on a bit, $\neg f = 1 - f$, $\wedge$ is the minimum, $\vee$ the maximum,
+and $\oplus$ the addition modulo $2$.
+For $f \in \bitSequences$ and $n \in \N$,
+write $\truncation{n}(f) := (f_0, \dots, f_n)$ for its first $n+1$ bits.
+
+Two sets stand beside $\bitSequences$.
+The first is $\truncatedSequences{n} := \Ftwo^{n+1}$, the tuples $(f_0, \dots, f_n)$,
+read as polynomials of degree at most $n$ over the field $\Ftwo$ of two elements.
+For $f \neq 0$ its \emph{degree} $\deg f$ is the largest $k$ with $f_k \neq 0$,
+and $\deg 0 := -1$.
+Position by position, $\oplus$ makes $\truncatedSequences{n}$ the abelian group
+$(\Z/2\Z)^{n+1}$.
+The second is $\remainders{n} := \Z/2^{n+1}\Z$, the remainders of the division by $2^{n+1}$,
+with $\reduction{n} : \Z \to \remainders{n}$ the reduction taking the least non-negative
+representative.
+Notice that $\Ftwo = \remainders{0}$.
+
+\begin{prop}\label{prop.binaryDigits}
+ The map $\digitsOf{n} : \remainders{n} \to \truncatedSequences{n}$ sending
+ $x \in \lbrace 0, \dots, 2^{n+1} - 1 \rbrace$ to its binary digits is a bijection.
+\end{prop}
+\begin{proof}
+ Every $x$ in the range has a binary expansion $x = \sum_{k=0}^{n} f_k 2^k$ with
+ $f_k \in \lbrace 0, 1 \rbrace$, and it is unique.
+\end{proof}
+
+The bijection is one of sets only.
+Transported through $\digitsOf{n}$, the addition of $\remainders{n}$ makes
+$\truncatedSequences{n}$ the cyclic group of order $2^{n+1}$,
+which is not the group of $\oplus$ as soon as $n \geq 1$:
+$1 + 1 = 2$ carries a digit, where $1 \oplus 1 = 0$ does not.
+
+Write $\eventuallyZero := \bigcup_{n} \truncatedSequences{n} \subset \bitSequences$ for the
+\emph{eventually zero} sequences, those with $f_k = 0$ for every $k$ beyond some $n$,
+the least such $n$ being $\deg f$;
+and let $\binaryValue : \eventuallyZero \to \N$, $\binaryValue(f) := \sum_{k} f_k 2^k$,
+the sum being finite.
+
+\begin{prop}\label{prop.binaryRepresentation}
+ $\binaryValue$ is a bijection.
+ We call its inverse $\binaryRepresentation : \N \to \eventuallyZero$ the binary
+ representation.
+\end{prop}
+\begin{proof}
+ Injectivity is the uniqueness of binary digits.
+ Surjectivity is their existence, by strong induction on $m \in \N$:
+ $m = 0$ is $\binaryValue(0)$,
+ and for $m > 0$, writing $m = 2c + r$ with $r \in \lbrace 0, 1 \rbrace$,
+ the digit $r$ followed by the digits of $c < m$ is a sequence whose value is $m$.
+\end{proof}
+
+The binary representation does not extend $\digitsOf{n}$:
+$\N$ is not $\remainders{n}$, and only the second is a group.
+The two commute with truncation instead.
+
+\begin{prop}\label{prop.truncationCommutes}
+ $\truncation{n} \circ \binaryRepresentation = \digitsOf{n} \circ \reduction{n}$ on $\N$.
+\end{prop}
+\begin{proof}
+ Write $\binaryRepresentation(m) = (f_k)_k$ and split the sum at $n$:
+ $m = \sum_{k \leq n} f_k 2^k + \sum_{k > n} f_k 2^k$.
+ The second sum is a multiple of $2^{n+1}$ and the first lies in
+ $\lbrace 0, \dots, 2^{n+1} - 1 \rbrace$, so the first is $\reduction{n}(m)$,
+ and its digits are $\truncation{n}(\binaryRepresentation(m))$.
+\end{proof}

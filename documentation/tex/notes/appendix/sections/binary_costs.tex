@@ -1,0 +1,29 @@
+The two formulae for the highest and the lowest set bit look alike, and they do not cost the
+same.
+CPython stores a non-negative integer as its digits in base $2^{30}$,
+together with their number.
+\codehl{bit\_length} reads that number and the highest digit, so it costs $O(1)$.
+An operator such as $\bitAnd$, $\bitOr$, $\oplus$ or a shift builds a new integer digit by
+digit, and so does the negation $b \mapsto -b$;
+on an integer of $\bandWidth$ bits each costs $O(\bandWidth)$,
+and so does \codehl{bit\_count}, which counts the set bits of every digit.
+Integers are immutable, so an update in place such as \codehl{b |= bit} builds a new integer
+too, and costs $O(\bandWidth)$ as well.
+
+So on a set held as an integer of $\bandWidth$ bits,
+the largest element costs $O(1)$ and the smallest costs $O(\bandWidth)$.
+The asymmetry belongs to the unbounded integers of Python and not to the algorithm:
+on a machine word, both are a single instruction of the processor.
+Listing \ref{listing.bitCosts} measures both on two widths a hundred times apart;
+the first time does not grow with the width and the second does.
+
+\begin{lstlisting}[caption={The highest set bit against the lowest, on two widths.}, label=listing.bitCosts]
+import timeit
+
+repeats = 20_000
+for width in (10**3, 10**5):
+    b = 1 << width
+    highest = timeit.timeit(lambda: b.bit_length(), number=repeats) / repeats
+    lowest = timeit.timeit(lambda: b & -b, number=repeats) / repeats
+    print(f"{width:>6} bits: {highest * 1e9:7.1f} ns against {lowest * 1e9:9.1f} ns")
+\end{lstlisting}

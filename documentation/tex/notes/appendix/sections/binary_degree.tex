@@ -1,0 +1,80 @@
+\begin{lemma}\label{lemma.bitLengthIsDegree}
+ For $b \in \N$, \codehl{b.bit\_length()} $= \deg \binaryRepresentation(b) + 1$.
+\end{lemma}
+\begin{proof}
+ For $b > 0$, \codehl{bit\_length} returns one more than the position of the highest set bit,
+ which is $\deg \binaryRepresentation(b)$ by definition.
+ For $b = 0$ it returns $0 = \deg 0 + 1$, by the convention $\deg 0 = -1$.
+\end{proof}
+
+So \codehl{b.bit\_length() - 1} is the degree of $b$, the position of its highest set bit.
+The lowest set bit takes one step more.
+For $b > 0$ write $\trailingZeros(b)$ for the number of zeros below the lowest set bit of $b$.
+
+\begin{prop}\label{prop.lowestSetBit}
+ For $b \in \N$ with $b > 0$, $b \bitAnd (-b) = 2^{\trailingZeros(b)}$.
+ Hence $\trailingZeros(b)$ is \codehl{(b \& -b).bit\_length() - 1}.
+\end{prop}
+\begin{proof}
+ Let $n = \trailingZeros(b)$, so that bit $k$ of $b$ is $0$ for $k < n$ and $1$ for $k = n$.
+ Subtracting $1$ from $b$ flips exactly its trailing zeros and its lowest one:
+ bit $k$ of $b - 1$ is $1$ for $k < n$, $0$ for $k = n$, and bit $k$ of $b$ for $k > n$.
+ By Definition \ref{def.twosComplementSequence},
+ $\twosComplement(-b) = \neg\,\binaryRepresentation(b-1)$,
+ so bit $k$ of $-b$ is $0$ for $k < n$, $1$ for $k = n$,
+ and the complement of bit $k$ of $b$ for $k > n$.
+ Taking the minimum position by position gives $0$ below $n$, $1$ at $n$,
+ and $f_k \wedge (1 - f_k) = 0$ above it:
+ $b \bitAnd (-b)$ has exactly one set bit, at position $n$.
+ The second claim is Lemma \ref{lemma.bitLengthIsDegree} applied to $2^{n}$.
+\end{proof}
+
+For $b = 360$, with the thirteen lowest bits written out and position $0$ on the right,
+\begin{equation*}
+ \begin{array}{rl}
+  b & 0000101101000 \\
+  \neg b & 1111010010111 \\
+  -b = \neg b + 1 & 1111010011000 \\
+  b \bitAnd (-b) & 0000000001000
+ \end{array}
+\end{equation*}
+and $\trailingZeros(360) = 3$.
+The two reverse steps clear a bit.
+$b \oplus 2^{\trailingZeros(b)}$ clears the lowest set bit, since $x \oplus x = 0$;
+and $b \oplus 2^{\deg b}$ clears the highest,
+which is the step \codehl{bits \^{}= 1 << index} of the walk of
+Listing \ref{listing.tickArrayWalk}.
+Listing \ref{listing.lowestSetBit} checks the proposition on a thousand integers of two hundred
+bits, against a count of the trailing zeros one bit at a time.
+
+\begin{lstlisting}[caption={$b \bitAnd (-b) = 2^{\trailingZeros(b)}$.}, label=listing.lowestSetBit]
+import random
+
+
+def degree(b):
+    return b.bit_length() - 1
+
+
+def trailing_zeros(b):
+    count = 0
+    while b & 1 == 0:
+        count += 1
+        b >>= 1
+    return count
+
+
+for _ in range(1000):
+    b = random.randint(1, 2**200)
+    assert b & -b == 2 ** trailing_zeros(b)
+    assert degree(b & -b) == trailing_zeros(b)
+    assert (b ^ (b & -b)).bit_count() == b.bit_count() - 1
+    assert (b ^ 1 << degree(b)).bit_length() < b.bit_length()
+\end{lstlisting}
+
+The case $b = 0$ is excluded, and it matters.
+Then $b \bitAnd (-b) = 0$ and \codehl{(0).bit\_length()} is $0$,
+so both formulae return $-1$:
+in a book, a position below the edge of the band,
+and so a plausible price returned without an error.
+An empty side has to be tested for before either formula is applied,
+which is the test \codehl{if not bits} opening the lookup of Listing \ref{listing.tickArrayWrite}.

@@ -15,6 +15,8 @@
     {./microstructure/sections/}
     {./options/}
     {./options/sections/}
+    {./appendix/}
+    {./appendix/sections/}
 }
 \makeatother
 
