@@ -165,7 +165,7 @@ repository of Section \ref{sec.theCourse}.
 Three of its modules carry it, and Table \ref{tab.foldModules} says what each holds.
 The stream of messages is taken as given throughout:
 the fold is the same whether the stream is generated, as in Section \ref{sec.pointProcesses},
-or read from a file, as in the subsection that follows the next.
+or read from a message file.
 
 \begin{table}[h!]
  \centering
@@ -190,8 +190,8 @@ Prices are integer counts of ticks, converted to currency only at the boundary,
 and $d$ is the integer $\pm 1$, so that the single product $pd$ serves both sides.
 A market order is a submission carrying the sentinel price of
 Proposition \ref{prop.decompositionOfLimitOrder}:
-$0$ for a sell, and for a buy the largest representable integer in place of $\infty$.
-A deletion is the withdrawal of everything resting at its price.
+$0$ for a sell, and for a buy \codehl{sys.maxsize} in place of $\infty$.
+A deletion is the withdrawal of the whole of one order.
 
 The accumulator is the class \codehl{AggregateBook}.
 It holds the configuration of Section \ref{sec.orderDrivenMarkets} as two dictionaries from
@@ -313,8 +313,8 @@ its shares are then reported in \codehl{SubmitResult.unfilled} and rest nowhere.
 The cancellation branch of Algorithm \ref{algo.bookFold} is \codehl{withdraw}:
 it subtracts $q$ at $p$ on the side $d$ through \codehl{set\_size}.
 It removes at most the size resting there,
-unless the book was built with \codehl{strict=True},
-since a recorded feed begins with withdrawals of orders posted before the file did.
+since a recorded feed begins with withdrawals of orders posted before the file did;
+a book built with \codehl{strict=True} raises instead.
 Each branch is exercised on a catalogue of worked transitions in
 \codehl{tests/lob/test\_aggregate\_book.py}.
 
@@ -346,7 +346,7 @@ So a session has one row per message, whatever produced the stream.
 
 The three tables are the fields of a \codehl{MarketSession}.
 \codehl{lobster\_book} is the aggregated book truncated at $L$,
-in the column layout of the LOBSTER orderbook file of the next subsection:
+in the column layout of the LOBSTER orderbook file:
 the price and the size of each side, outward from the touch.
 \codehl{stats} holds the statistics of one or two consecutive configurations:
 the spread, the mid-price, the micro-price, the queue imbalance \eqref{eq.queueImbalance},
