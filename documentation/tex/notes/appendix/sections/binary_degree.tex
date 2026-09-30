@@ -2,8 +2,10 @@
  For $b \in \N$, \codehl{b.bit\_length()} $= \deg \binaryRepresentation(b) + 1$.
 \end{lemma}
 \begin{proof}
- For $b > 0$, \codehl{bit\_length} returns one more than the position of the highest set bit,
- which is $\deg \binaryRepresentation(b)$ by definition.
+ For $b > 0$, \codehl{b.bit\_length()} is the $k$ with $2^{k-1} \leq b < 2^{k}$.
+ With $d = \deg \binaryRepresentation(b)$,
+ bit $d$ of $b$ is set, no bit above it is, and the bits below it add up to at most $2^d - 1$,
+ so $2^d \leq b < 2^{d+1}$ and $k = d + 1$.
  For $b = 0$ it returns $0 = \deg 0 + 1$, by the convention $\deg 0 = -1$.
 \end{proof}
 
@@ -39,13 +41,13 @@ For $b = 360$, with the thirteen lowest bits written out and position $0$ on the
  \end{array}
 \end{equation*}
 and $\trailingZeros(360) = 3$.
-The two reverse steps clear a bit.
+An exclusive or clears either bit:
 $b \oplus 2^{\trailingZeros(b)}$ clears the lowest set bit, since $x \oplus x = 0$;
 and $b \oplus 2^{\deg b}$ clears the highest,
 which is the step \codehl{bits \^{}= 1 << index} of the walk of
 Listing \ref{listing.tickArrayWalk}.
-Listing \ref{listing.lowestSetBit} checks the proposition on a thousand integers of two hundred
-bits, against a count of the trailing zeros one bit at a time.
+Listing \ref{listing.lowestSetBit} checks the proposition on a thousand integers
+of two hundred bits, against a count of the trailing zeros one bit at a time.
 
 \begin{lstlisting}[caption={$b \bitAnd (-b) = 2^{\trailingZeros(b)}$.}, label=listing.lowestSetBit]
 import random
@@ -71,7 +73,7 @@ for _ in range(1000):
     assert (b ^ 1 << degree(b)).bit_length() < b.bit_length()
 \end{lstlisting}
 
-The case $b = 0$ is excluded, and it matters.
+The case $b = 0$ is excluded.
 Then $b \bitAnd (-b) = 0$ and \codehl{(0).bit\_length()} is $0$,
 so both formulae return $-1$:
 in a book, a position below the edge of the band,

@@ -5,10 +5,11 @@ Two properties cut that window and count it.
 Write $\popcount{b}$ for the number of set bits of $b \in \N$, which is \codehl{b.bit\_count()}.
 
 \begin{prop}\label{prop.rankByShift}
- For $b \in \N$ and $k \in \N$, $\popcount{\lfloor b / 2^{k} \rfloor}$ is the number of set bits
- of $b$ at positions $k$ and above.
- As a function of $k$ it is non-increasing, and it falls by one exactly where bit $k$ of $b$ is
- set.
+ For $b \in \N$ and $k \in \N$,
+ $\popcount{\lfloor b / 2^{k} \rfloor}$ is the number of set bits of $b$ at positions $k$
+ and above.
+ As a function of $k$ it is non-increasing,
+ and it falls by one exactly where bit $k$ of $b$ is set.
 \end{prop}
 \begin{proof}
  The digits of $\lfloor b/2^k \rfloor$ are those of $b$ from position $k$ upwards, moved down by
@@ -30,8 +31,8 @@ rather than with $L$ steps down the bits.
 \end{prop}
 \begin{proof}
  Bit $k$ of $2b$ is bit $k-1$ of $b$, and $0$ at $k = 0$.
- So bit $k$ of $b \bitAnd \neg(2b)$ is set exactly when bit $k$ of $b$ is set and bit $k-1$ is
- not, that is, when $k$ is the lowest position of a run of ones.
+ So bit $k$ of $b \bitAnd \neg(2b)$ is set exactly when bit $k$ of $b$ is set
+ and bit $k-1$ is not, that is, when $k$ is the lowest position of a run of ones.
  Between the lowest and the highest set bit of $b$, runs of ones and gaps alternate,
  beginning and ending with a run of ones, so there is one gap fewer than there are runs.
 \end{proof}

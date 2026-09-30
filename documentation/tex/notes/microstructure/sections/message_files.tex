@@ -160,8 +160,8 @@ and compare the implementations on the time and the memory they take.
 \subsection{The fold in the course repository}
 \label{sec.foldImplementation}
 
-The fold \eqref{eq.bookFold} is implemented in the package \codehl{unito26} of the course
-repository of Section \ref{sec.theCourse}.
+The fold \eqref{eq.bookFold} is implemented in the package \codehl{unito26}
+of the course repository of Section \ref{sec.theCourse}.
 Three of its modules carry it, and Table \ref{tab.foldModules} says what each holds.
 The stream of messages is taken as given throughout:
 the fold is the same whether the stream is generated, as in Section \ref{sec.pointProcesses},
@@ -229,8 +229,8 @@ at a cost that grows with the number of prices occupied.
 
 A message reaches the book through \codehl{apply},
 which passes a submission to \codehl{submit} and a withdrawal to \codehl{withdraw}.
-Listing \ref{listing.submit} is \codehl{submit} with the recording of fills and of level
-changes cut,
+Listing \ref{listing.submit} is \codehl{submit}
+with the recording of fills and of level changes cut,
 and what remains is the submission branch of Algorithm \ref{algo.bookFold}.
 Table \ref{tab.foldToCode} pairs the steps of the algorithm with the lines of the listing.
 
@@ -279,14 +279,13 @@ Table \ref{tab.foldToCode} pairs the steps of the algorithm with the lines of th
  \label{tab.foldToCode}
 \end{table}
 
-The code departs from the algorithm in three places, each of them a branch of
-Proposition \ref{prop.lobUpdate}.
+The code departs from the algorithm in three places.
 
 The first is that $\marketOrderSize$ is not computed before the matching.
 The loop starts from the whole size $q$,
 and stops at the first best price that fails the test $\pi d \leq p d$,
-which is written \codehl{best * direction > limit\_price * direction} so that one line serves
-both sides.
+which is written \codehl{best * direction > limit\_price * direction}
+so that one line serves both sides.
 By Proposition \ref{prop.decompositionOfLimitOrder} the shares it has matched when it stops
 are $\marketOrderSize$,
 and the shares left in \codehl{remaining} are $q - \marketOrderSize$.
@@ -302,8 +301,8 @@ The test \codehl{best is None} breaks the loop exactly as a price failing the el
 does, and no best price is invented for the empty side.
 
 The third is the resting part of a market order.
-Its sentinel is a price specification and not a point of the grid, so its remainder cannot rest
-at it:
+Its sentinel is a price specification and not a point of the grid,
+so its remainder cannot rest at it:
 \codehl{resting\_price} returns the price of the last fill instead,
 which is the \emph{market-to-limit} rule of the venues that accept market orders.
 A market order that matched nothing has no price to inherit,
@@ -350,25 +349,27 @@ in the column layout of the LOBSTER orderbook file:
 the price and the size of each side, outward from the touch.
 \codehl{stats} holds the statistics of one or two consecutive configurations:
 the spread, the mid-price, the micro-price, the queue imbalance \eqref{eq.queueImbalance},
-and the contribution $\orderFlowContribution$ of Definition \ref{def.orderFlowImbalance} with
-its window sums.
-\codehl{trades} holds what each message traded, and volume-weighted average prices over
-windows.
+and the contribution $\orderFlowContribution$
+of Definition \ref{def.orderFlowImbalance} with its window sums.
+\codehl{trades} holds what each message traded, and volume-weighted average prices over windows.
 The three share an index, the time of the message, named \codehl{TimeStamp};
 it is non-decreasing and not unique, since several messages may carry one time.
-Each table is validated against a schema when the session is assembled,
-and the schemas are declared by \codehl{SessionStatistics}, in \codehl{unito26.lob.statistics},
-which fixes which statistics a session carries.
+Each table is validated against a schema when the session is assembled:
+the schema of \codehl{lobster\_book} is in \codehl{unito26.lob.frames},
+and those of \codehl{stats} and \codehl{trades} are declared by \codehl{SessionStatistics},
+in \codehl{unito26.lob.statistics}, which fixes which statistics a session carries.
 
-Two other drivers complete the module.
+Three other drivers complete the module.
+\codehl{MarketSession.from\_top\_of\_book} reads the touch alone after each message,
+which is a session of reported depth $L = 1$.
 \codehl{run} folds a stream through a book and records no configuration:
 it returns the number of messages, fills and shares traded,
 which is enough to tell that two books did the same work.
 And \codehl{MarketSession.from\_delta\_log} rebuilds a session from a \codehl{DeltaLog},
 in \codehl{unito26.lob.delta\_log},
 which records for each message the prices whose size it changed and the new size at each.
-A change stored as the new absolute size is idempotent, so a repeated or a lost one is
-corrected by the next change at that price;
+A change stored as the new absolute size is idempotent,
+so a repeated or a lost one is corrected by the next change at that price;
 and since a size changes by cancellation as well as by execution,
 a session rebuilt from the changes has no table of trades,
 as Remark \ref{remark.sizeVersusVolume} requires.
@@ -376,27 +377,26 @@ as Remark \ref{remark.sizeVersusVolume} requires.
 \subsection{A faster book}
 \label{sec.fasterBook}
 
-The matching of Listing \ref{listing.submit} is written against the four operations of the
-storage,
+The matching of Listing \ref{listing.submit}
+is written against the four operations of the storage,
 and of the four only \codehl{best\_price} does work that grows with the book.
 It is called at the top of every pass of the loop,
-and after the message every statistic of the session calls it again,
-since the spread, the mid-price and the micro-price read both touches,
+and after the message four statistics of the session call it again:
+the spread, the mid-price and the micro-price read both touches,
 and the queue imbalance reads the levels counted from them.
 Write $\occupiedLevels$ for the number of occupied prices on a side.
 In \codehl{AggregateBook} a best price costs $O(\occupiedLevels)$,
 the scan of Listing \ref{listing.aggregateStorage}.
 
-A faster lookup bounds what it can gain.
+The gain of a faster lookup is bounded.
 Let $f$ be the share of the time of a fold spent finding best prices.
-A book that found them at no cost would leave the rest of the fold as it is,
-so no book runs the fold more than $1/(1-f)$ times faster.
-And $f$ is a property of the market, through $\occupiedLevels$, rather than of the code:
+A lookup at no cost would leave the rest of the fold as it is,
+so a faster lookup alone runs the fold at most $1/(1-f)$ times faster.
+And $f$ depends on the market, through $\occupiedLevels$:
 where the flow stays within a few ticks of the touch, $\occupiedLevels$ is small,
 the scan is cheap, and $f$ is small with it;
 where resting size spreads over many prices, the scan dominates and there is time to gain.
-So the same implementation pays on one instrument and not on another,
-and a speed-up quoted without $\occupiedLevels$ says nothing.
+So the same implementation pays on one instrument and not on another.
 
 \subsubsection{The tick is the subscript}
 
@@ -409,9 +409,9 @@ and it keeps the prices occupied on each side as one integer,
 read as a set of positions in the sense of Appendix \ref{chap.integersInBinary}:
 a price is occupied exactly when its bit is set.
 Listing \ref{listing.tickArrayInit} is the constructor.
-It keeps no dictionary at all,
-and deletes the two it inherits, so that code reaching past the four operations fails
-rather than reading an empty book.
+It keeps no map from price to size,
+and deletes the two it inherits,
+so that code reaching past the four operations fails rather than reading an empty book.
 
 \begin{lstlisting}[caption={\protect\codehl{unito26.lob.orderbook.TickArrayBook.\_\_init\_\_}, with its comments elided.}, label=listing.tickArrayInit]
     def __init__(self, floor: int, width: int, strict: bool = False):
@@ -466,7 +466,7 @@ which by Lemma \ref{lemma.bitLengthIsDegree} is the position of the highest set 
         return self.floor + index if direction == BUY else self.ceiling - index
 \end{lstlisting}
 
-The reversal of the ask side is what makes both lookups the same operation.
+Reversing the ask side makes both lookups the same operation.
 Counted from the floor, the best ask would be the \emph{lowest} set bit,
 which Python finds as \codehl{(bits \& -bits).bit\_length() - 1}
 (Proposition \ref{prop.lowestSetBit}).
@@ -479,7 +479,7 @@ Counting the asks from the ceiling spares the ask side that scan at every lookup
 The reported levels are read by walking the bits from the touch,
 in Listing \ref{listing.tickArrayWalk}:
 take the highest set bit, record its price and its size, clear the bit, and repeat,
-$L$ times for the reported depth $L$.
+at most $L$ times for the reported depth $L$.
 The walk is what \codehl{side\_statistics} calls after every message of a session,
 and it visits the occupied prices only, however wide the band.
 
@@ -533,9 +533,9 @@ and the write that empties $101$ clears bit $5$ of the asks;
 it takes $50$ at $102$ and leaves $30$ there.
 The ask integer is now $2^4 + 2^1 = 18$,
 and its highest set bit, $4$, is the new best ask $106 - 4 = 102$.
-Listing \ref{listing.tickArrayExample} builds this book with the package and checks each of
-these numbers, reading the two integers from the field \codehl{\_bits} where the book keeps
-them.
+Listing \ref{listing.tickArrayExample} builds this book with the package
+and checks each of these numbers,
+reading the two integers from the field \codehl{\_bits} where the book keeps them.
 
 \begin{lstlisting}[caption={The worked example, built and checked.}, label=listing.tickArrayExample]
 from unito26.lob.messages import BUY, SELL, market_order
@@ -560,24 +560,26 @@ assert book.size_at(SELL, 102) == 30
 
 \subsubsection{What is inherited, and what it costs}
 
-\codehl{TickArrayBook} overrides the four operations of the storage and the walk.
+\codehl{TickArrayBook} overrides the four operations of the storage and the walk,
+and reads the queue imbalance and the gaps off its own storage.
 The matching of Listing \ref{listing.submit}, the withdrawal, \codehl{apply} and
 \codehl{side\_statistics} are inherited from \codehl{AggregateBook} unchanged,
 and run on the new storage as written.
-Two books that share their matching and differ in their storage pass through the same sequence
-of configurations on every stream,
+Two books that share their matching and differ in their storage
+pass through the same sequence of configurations on every stream,
 so they can be compared configuration by configuration,
 and any difference locates an error in the storage.
-\codehl{tests/lob/test\_axis\_b\_variants.py} folds a catalogue of worked transitions and a
-simulated stream through both, and compares them after every message.
+\codehl{tests/lob/test\_axis\_b\_variants.py}
+folds a catalogue of worked transitions and a stretch of a simulated stream through both,
+and compares their configurations after every message.
 
 The cheaper lookup is paid for on the writes.
-Python's integers are immutable, so \codehl{|=} and \codehl{\&= \textasciitilde bit} do not flip one
-bit in place:
+Python's integers are immutable,
+so \codehl{|=} and \codehl{\&= \textasciitilde bit} do not flip one bit in place:
 each builds a new integer as wide as the band, and costs $O(\bandWidth)$,
 where a write to a dictionary costs $O(1)$ on average.
-A message writes a size once for each price it trades against and once for its resting
-part, and it looks a best price up on every pass and for every statistic,
+A message writes a size once for each price it trades against and once for its resting part,
+and it looks a best price up on every pass and for each of those four statistics,
 so the trade favours the array exactly where $f$ is large.
 Table \ref{tab.fasterBookCosts} collects the costs, with $L$ the reported depth;
 a walk costs $O(\occupiedLevels\log L)$ in \codehl{AggregateBook},
@@ -600,9 +602,8 @@ which selects the $L$ best keys of its dictionary with a heap.
  \label{tab.fasterBookCosts}
 \end{table}
 
-The band is the price of the design.
-It is fixed in advance: \codehl{TickArrayBook.for\_prices} sizes it to the prices a stream will
-visit, with a margin of 64 ticks on either side.
+The band is fixed in advance: \codehl{TickArrayBook.for\_prices} sizes it
+to the prices a stream will visit, with a margin of 64 ticks on either side.
 A write outside it is refused with an error,
 while a read outside it returns zero, which is true, since nothing rests there.
 Its memory is $O(\bandWidth)$ whether the prices are occupied or not,
@@ -613,7 +614,7 @@ The sizes are a plain Python list and not an array of \codehl{numpy}:
 the book reads and writes one entry at a time,
 and one entry at a time is where a list is the faster of the two.
 
-Whether the array is faster on a given stream is measured, and not assumed.
+Whether the array is faster on a given stream is measured.
 The stream is materialised first, so that both books fold the identical messages;
 each fold is timed through \codehl{run}, which records nothing;
 and $f$ is read off a profile of the fold of \codehl{AggregateBook}, as the share of the
@@ -623,12 +624,10 @@ and a profiler bills the time of a builtin to the builtin, not to the method tha
 so the own time of \codehl{best\_price} understates $f$.
 The harness is \codehl{unito26.lob.benchmark}.
 
-The module \codehl{unito26.lob.orderbook} holds three further books between the two,
+Between the two, \codehl{unito26.lob.orderbook} holds three further books,
 \codehl{CachedBestBook}, \codehl{HeapBook} and \codehl{BitmapBook},
-each of which keeps the dictionaries and adds an index of the best price beside them.
-We do not discuss them;
-the docstring of each class states what it changes and what that costs,
-and the test module above checks all five against one another.
+each keeping the dictionaries and adding an index of the best price beside them;
+the test module above checks all five against one another.
 
 \subsection{LOBSTER}
 
@@ -676,8 +675,8 @@ and \cite{LPV22sho} is the same question asked of them at scale.
 
 The package reads a LOBSTER pair into a \codehl{LobsterMarketSession},
 in \codehl{unito26.lob.lobster\_session}.
-Its constructor \codehl{from\_files} takes the pair, a window of the trading day and the tick
-grid of the instrument, and does three things.
+Its constructor \codehl{from\_files} takes the pair,
+a window of the trading day and the tick grid of the instrument, and does three things.
 It cuts both files to the window on the clock of the message file,
 the only clock the pair carries,
 and parses only the rows of the orderbook file inside it.
@@ -696,12 +695,13 @@ the configuration after it.
 \codehl{LobsterMarketSession.coarsened} removes the difference,
 and it is the only route in the package from a pair to a \codehl{MarketSession}.
 It groups the executions into \emph{market orders}:
-a market order is a maximal contiguous block of executions of visible orders sharing a time
-and a direction,
+a market order is a maximal contiguous block of executions of visible orders
+sharing a time and a direction,
 together with the executions of hidden orders lying strictly between two of them.
 Each market order keeps its last row, the configuration after the whole order,
-and the sizes and values of its fills are summed onto that row;
-every other message keeps its row.
+and the sizes and values of its visible fills are summed onto that row;
+every other message keeps its row,
+except a hidden execution outside any market order, which is dropped.
 The aggressor of each trade is the direction opposite to the one the file carries,
 by Remark \ref{remark.passiveDirection}.
 The result is a \codehl{MarketSession}, with the tables of
@@ -710,23 +710,23 @@ Section \ref{sec.foldImplementation}.
 The coarsening preserves two kinds of statistic exactly.
 A statistic of one configuration is preserved, since each row kept is a row of the file.
 So are the volume, the traded value and the volume-weighted average price over a window,
-since they add over the fills,
+since they are sums over the fills, or a ratio of two,
 and the fills of one market order share a time, so that a window holds all of them or none.
 The statistics are then computed on the rows kept as on a folded session,
 reading the levels by their prices on the grid and never by their columns,
 as Remark \ref{remark.gridAgainstOccupied} requires;
 and since a file is truncated at $L$,
-a statistic that needs a price beyond the reported levels is flagged as not covered rather
-than computed.
+a statistic that needs a price beyond the reported levels is flagged as not covered
+rather than computed.
 The contribution $\orderFlowContribution$ reads two consecutive configurations,
 and it is preserved only in part.
 
 \begin{remark}\label{remark.coarseContribution}
  Let the fills of one market order be the rows $j+1, \dots, j+K$ of the file,
- so that the coarse session keeps the row $j+K$ and its contribution is that of the
- transition from the configuration of row $j$ to that of row $j+K$.
+ so that the coarse session keeps the row $j+K$ and its contribution is that
+ of the transition from the configuration of row $j$ to that of row $j+K$.
  This equals $\sum_{n=j+1}^{j+K} \orderFlowContribution$
- when every fill is at the best price facing the order on arrival.
+ when every visible fill is at the best price facing the order on arrival.
  When the order walks the book, the row kept registers the size at that best price alone,
  which is what a fold of the order registers.
 \end{remark}

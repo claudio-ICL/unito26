@@ -42,22 +42,22 @@ $\twosComplement$ is not onto $\bitSequences$:
 the alternating sequence $0, 1, 0, 1, \dots$ is not eventually constant.
 
 The set $\eventuallyConstant$ is closed under $\neg$, $\wedge$, $\vee$ and $\oplus$,
-since beyond the position where both arguments have become constant each of them returns a
-constant bit.
+since beyond the position where both arguments have become constant
+each of them returns a constant bit.
 So the four operators carry over to the integers,
 and on the integers they are the bitwise operators of Python:
 \codehl{\textasciitilde x} is $\twosComplement^{-1}(\neg\,\twosComplement(x))$,
 \codehl{x \& y} is $\twosComplement^{-1}(\twosComplement(x) \wedge \twosComplement(y))$,
 and so on.
-We write $x \bitAnd y$ and $x \bitOr y$ for the two that Chapter \ref{chap.microstructure}
-could misread, since there $\wedge$ and $\vee$ between two integers are their minimum and
-maximum;
-$\neg x$ and $x \oplus y$ carry no such meaning, and keep their symbols.
+We write $x \bitAnd y$ and $x \bitOr y$ for the transported $\wedge$ and $\vee$, as Python does,
+since in Chapter \ref{chap.microstructure} $\wedge$ between two integers is their minimum;
+$\neg x$ and $x \oplus y$ keep their symbols.
 By Definition \ref{def.twosComplementSequence}, $\neg x = -x - 1$ on the whole of $\Z$.
 Python computes each operator in one pass over the digits it stores:
 nothing infinite is built,
-and \codehl{bits \&= \textasciitilde bit} of Listing \ref{listing.tickArrayWrite},
-which meets the leading ones of $\neg\,$\codehl{bit} with the leading zeros of \codehl{bits},
+and \codehl{self.\_bits[direction] \&= \textasciitilde bit}
+of Listing \ref{listing.tickArrayWrite},
+which meets the leading ones of $\neg\,$\codehl{bit} with the leading zeros of the occupancy,
 returns a non-negative integer.
 
 Bit $k$ of an integer $x$ is \codehl{x >> k \& 1}, negative $x$ included,
@@ -75,8 +75,8 @@ for _ in range(1000):
 \end{lstlisting}
 
 For $b = 360$ the shifts reach a fixed point on either sign, as Table \ref{tab.shiftsOf360}
-shows: $0$ for $b$, whose bits are all zero beyond position $8$, and $-1$ for $-b$, whose bits
-are all one beyond position $8$.
+shows: $0$ for $b$, whose bits are all zero beyond position $8$,
+and $-1$ for $-b$, whose bits are all one beyond position $8$.
 So the infinite tails are generated rather than stored,
 \begin{equation*}
  \twosComplement(360) = \dots 0000\,101101000,

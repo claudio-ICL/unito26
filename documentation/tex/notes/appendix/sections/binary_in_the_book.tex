@@ -1,5 +1,5 @@
-Table \ref{tab.bitsInTheBook} lists each operation of this appendix against the code of the
-book that uses it.
+Table \ref{tab.bitsInTheBook} lists each operation of this appendix
+against the code of the book that uses it.
 The first three rows are on the path of every session:
 a write after every change of a size, a lookup on every pass of the matching loop,
 and the walk to the reported depth after every message.
@@ -22,7 +22,7 @@ and reads each gap as the difference of two consecutive occupied prices less one
   \codehl{(n >> k).bit\_count()} & the cut, by bisection & \codehl{keep\_highest\_set\_bits} \\
   \codehl{(n \& -n).bit\_length() - 1} & the trailing zeros & \codehl{count\_trailing\_zeros} \\
   \codehl{n \& \textasciitilde(n << 1)} & one bit per run & \codehl{count\_binary\_gaps} \\
-  \codehl{n |= n >> 1}, repeated & a gap filled per pass & \codehl{measure\_largest\_binary\_gap} \\
+  \codehl{n |= n >> 1}, repeated & gaps narrowed by one & \codehl{measure\_largest\_binary\_gap} \\
   \bottomrule
  \end{tabular}
  \caption{The operations of this appendix in the book: methods of \codehl{TickArrayBook} above
@@ -33,18 +33,20 @@ and reads each gap as the difference of two consecutive occupied prices less one
 
 \codehl{TickArrayBook} reaches the last four rows from three methods.
 \codehl{span\_bits} cuts the window with \codehl{keep\_highest\_set\_bits},
-which reaches the lowest set bit through \codehl{count\_trailing\_zeros}
-when it shifts the window down to an odd integer;
+which, when the side holds at most $L$ levels,
+reaches the lowest set bit through \codehl{count\_trailing\_zeros}
+to shift the window down to an odd integer;
 \codehl{gap\_count} counts it with \codehl{count\_binary\_gaps};
 and \codehl{largest\_gap\_size\_between\_non\_empty\_levels} measures its widest gap with
 \codehl{measure\_largest\_binary\_gap},
 which floods every gap by one bit a pass until the window is a solid block of ones,
 so that the number of passes is the width of the widest gap.
 
-The lowest set bit appears in no row on the path of a session, and that is by design.
-Counting its asks down from the ceiling of the band,
+The lowest set bit appears in no row on the path of a session.
+Counting the asks down from the ceiling of the band,
 Section \ref{sec.fasterBook},
 makes the best price the highest set bit on both sides,
 so no lookup pays the $O(\bandWidth)$ of Section \ref{sec.binaryCosts}.
-The same reversal puts the levels beyond the reported depth at the low end of the integer on
-both sides, so the window of the gap statistics is one cut for either.
+The same reversal puts the levels beyond the reported depth at the low end of the integer
+on both sides,
+so the window of the gap statistics is one cut for either.

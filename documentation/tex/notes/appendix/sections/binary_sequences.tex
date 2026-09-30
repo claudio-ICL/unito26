@@ -23,8 +23,12 @@ Notice that $\Ftwo = \remainders{0}$.
  $x \in \lbrace 0, \dots, 2^{n+1} - 1 \rbrace$ to its binary digits is a bijection.
 \end{prop}
 \begin{proof}
- Every $x$ in the range has a binary expansion $x = \sum_{k=0}^{n} f_k 2^k$ with
- $f_k \in \lbrace 0, 1 \rbrace$, and it is unique.
+ The map $f \mapsto \sum_{k \leq n} f_k 2^k$ takes $\truncatedSequences{n}$ into
+ $\lbrace 0, \dots, 2^{n+1} - 1 \rbrace$, and it is injective:
+ at the highest $k$ where two tuples differ, their values differ by at least
+ $2^k - \sum_{i < k} 2^i = 1$.
+ Both sets have $2^{n+1}$ elements,
+ so the map is a bijection, and $\digitsOf{n}$ is its inverse.
 \end{proof}
 
 The bijection is one of sets only.
@@ -33,7 +37,8 @@ $\truncatedSequences{n}$ the cyclic group of order $2^{n+1}$,
 which is not the group of $\oplus$ as soon as $n \geq 1$:
 $1 + 1 = 2$ carries a digit, where $1 \oplus 1 = 0$ does not.
 
-Write $\eventuallyZero := \bigcup_{n} \truncatedSequences{n} \subset \bitSequences$ for the
+Identifying a tuple of $\truncatedSequences{n}$ with its extension by zeros,
+write $\eventuallyZero := \bigcup_{n} \truncatedSequences{n} \subset \bitSequences$ for the
 \emph{eventually zero} sequences, those with $f_k = 0$ for every $k$ beyond some $n$,
 the least such $n$ being $\deg f$;
 and let $\binaryValue : \eventuallyZero \to \N$, $\binaryValue(f) := \sum_{k} f_k 2^k$,
@@ -41,20 +46,16 @@ the sum being finite.
 
 \begin{prop}\label{prop.binaryRepresentation}
  $\binaryValue$ is a bijection.
- We call its inverse $\binaryRepresentation : \N \to \eventuallyZero$ the binary
- representation.
+ We call its inverse $\binaryRepresentation : \N \to \eventuallyZero$ the binary representation.
 \end{prop}
 \begin{proof}
- Injectivity is the uniqueness of binary digits.
- Surjectivity is their existence, by strong induction on $m \in \N$:
- $m = 0$ is $\binaryValue(0)$,
- and for $m > 0$, writing $m = 2c + r$ with $r \in \lbrace 0, 1 \rbrace$,
- the digit $r$ followed by the digits of $c < m$ is a sequence whose value is $m$.
+ Two eventually zero sequences lie in a common $\truncatedSequences{n}$,
+ on which $\binaryValue$ is injective by Proposition \ref{prop.binaryDigits};
+ and every $m \in \N$ lies below $2^{n+1}$ for some $n$,
+ so it is the value of a sequence of $\truncatedSequences{n}$, by the same proposition.
 \end{proof}
 
-The binary representation does not extend $\digitsOf{n}$:
-$\N$ is not $\remainders{n}$, and only the second is a group.
-The two commute with truncation instead.
+The two are related by truncation.
 
 \begin{prop}\label{prop.truncationCommutes}
  $\truncation{n} \circ \binaryRepresentation = \digitsOf{n} \circ \reduction{n}$ on $\N$.
