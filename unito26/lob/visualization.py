@@ -196,13 +196,13 @@ def snapshots_figure(books: dict, depth: int = 10, title: str = "") -> "object":
                              for i in range(total)],
                  "showlegend": [starts[slot] <= i < starts[slot] + counts[slot]
                                 for i in range(total)]},
-                {"title": f"{title} &mdash; {label}" if title else label},
+                {"title": f"{title} — {label}" if title else label},
             ],
         )
         for slot, label in enumerate(books)
     ]
     figure.update_layout(
-        title=f"{title} &mdash; {next(iter(books))}" if title else next(iter(books)),
+        title=f"{title} — {next(iter(books))}" if title else next(iter(books)),
         updatemenus=[dict(buttons=buttons, active=0, x=1.0, xanchor="right", y=1.16,
                           yanchor="top", showactive=True)],
         xaxis_title="size",
@@ -237,7 +237,7 @@ def example_figure(example, depth: int = 8) -> "object":
             trace.showlegend = column == 1
             figure.add_trace(trace, row=1, col=column)
     figure.update_layout(
-        title=f"{example.name} &mdash; {describe_message(example.message)}",
+        title=f"{example.name} — {describe_message(example.message)}",
         template="simple_white",
         barmode="overlay",
         height=440,
