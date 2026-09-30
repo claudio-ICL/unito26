@@ -518,6 +518,33 @@ complete, plausible answer, and most of them pass a test suite written from the 
 - **mean execution size as mean trade size.** LOBSTER records executions against resting
   orders, not trades; its own demo says so and it is still the easiest number to get wrong.
 
+From the lectures on point processes and price formation (classes 3 and 4). Each runs and
+returns a plausible number:
+
+- **the best ask as `floor + bits.bit_length() - 1`** on an occupancy counted up from the
+  floor. It returns the *highest* ask, a price on the right side of the book and the wrong end
+  of it. "Which price is this, and what does `TickArrayBook` do instead?" — it counts the asks
+  down from the ceiling, so that the best price is the highest set bit on both sides;
+- **the compensator read post-jump** at the arrivals, `N(T) - Z(T)` in place of
+  `N(T-) - Z(T)`. It is not the compensator, and yet the per-type residual test passes: the
+  error at an arrival of type $e$ is the constant $\Gamma_{ee}$, which cancels in every
+  difference but the first. "What does the test see?" is the question;
+- **the mean of `intensities_at_events` offered as $\lambda^*$.** Sampling at events
+  overstates the intensity by $AVA^\top\mathbf 1/\bar\lambda$: 3.25 per type against 1 on the
+  self-exciting pair at $\beta = 4$. Ask what it estimates, not whether it is biased;
+- **$\tau_2$ clipped** — `remaining = max(remaining, 1e-12)` before the logarithm. The
+  excited clock then fires late instead of never, and the share of immigrants falls with no
+  error anywhere;
+- **`ks_2samp` on the gaps of one path of each simulator.** It rejects a correct sampler
+  about 13% of the time at the 1% level, the gaps of one path being serially dependent. What
+  would an honest comparison compare? One statistic per independent path;
+- **a kernel transposed at a fixed baseline.** It passes every stability check; at fixed
+  $\mu$ the total rate moves (2 against 3 on the asymmetric pair), and with $\mu$ solved from
+  a target $\lambda^*$ it does not. "Which check could catch it?";
+- **"the order flow imbalance predicts continuation"**, with no regime named. Under the example
+  specification the same statistic forecasts reversal: the sign of $\theta_a(h)$ belongs to
+  the kernel.
+
 ## References
 
 - [`documentation/order-driven-markets-notation.md`](../documentation/order-driven-markets-notation.md)

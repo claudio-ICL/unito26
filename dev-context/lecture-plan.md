@@ -4,8 +4,11 @@ Teaching starts Monday 28 September 2026, two classes a week, three hours each. 
 four cover `chap.microstructure` in full. This file is the plan and the checklist for the
 material that delivers it.
 
-**The lecture notes are not changed.** Everything here is shaped around them. Where this file
-and the `.tex` disagree, the `.tex` wins.
+**The lecture notes change only by addition.** After class 2 they gained the implementation
+subsections of §1.2, a subsubsection on the session read from a LOBSTER pair, and Appendix A,
+under the scoped exception of rule 8 of the `writing-in-tex` skill, together with three
+clause-level corrections of fact; nothing else in them changed. Where this file and the `.tex`
+disagree, the `.tex` wins.
 
 One notes section per class, and slides and a notebook in every class.
 
@@ -13,8 +16,8 @@ One notes section per class, and slides and a notebook in every class.
 | --- | --- | --- | --- |
 | Class 1 | §1.1 `sec.orderDrivenMarkets` | 1h45 | `01-the-limit-order-book` 1h |
 | Class 2 | §1.2 `sec.messageFiles` | 1h | `02-the-fold` 1h05 · `03-the-book-made-faster` 55m |
-| Class 3 | §1.3 `sec.pointProcesses` | 1h15 | `04-simulating-self-excitation` 1h45 |
-| Class 4 | §1.4 `sec.priceFormation`, §1.5 `sec.lobsterEmpirics` | 1h45 | `05-price-formation` 1h15 |
+| Class 3 | §1.3 `sec.pointProcesses` | 34 frames | `04-simulating-self-excitation` · `05-moments-and-timescales` · `06-simulation-and-goodness-of-fit`, interleaved with the deck |
+| Class 4 | §1.4 `sec.priceFormation`, §1.5 `sec.lobsterEmpirics` | 25 + 4 frames | `07-the-order-flow-imbalance` · `08-forecasting-the-mid`, interleaved with the deck |
 
 ---
 
@@ -36,9 +39,13 @@ slide of the course was "Two market infrastructures".
 | `sections/` × 5 (Welcome) | day one | 6 | 10m | ☑ 25 Sep |
 | `sections/order_driven_markets.tex` | 1 | 27 | 112m | ☑ 22 Sep, revised 25 Sep |
 | `sections/message_files.tex` | 2 | 16 | 58m | ☑ 25 Sep |
-| `sections/point_processes.tex` | 3 | 18 | 76m | ☐ |
-| `sections/price_formation.tex` | 4 | 20 | 90m | ☐ |
-| `sections/lobster_empirics.tex` | 4 | 4 | 13m | ☐ |
+| `sections/point_processes.tex` | 3 | 34 | — | ☑ 30 Sep |
+| `sections/price_formation.tex` | 4 | 25 | — | ☑ 30 Sep |
+| `sections/lobster_empirics.tex` | 4 | 4 | — | ☑ 30 Sep |
+
+The lecturer runs through frames faster than the budgets of classes 1 and 2 assumed, so the
+decks of classes 3 and 4 carry the frames their sections require, and each header records a
+cut order and the switch points to its notebooks rather than a budget in minutes.
 
 **No assignment and no sample examination questions.** The closing exam-format frame is out
 of all five files, and `lobster_empirics.tex` keeps the four frames that teach what the
@@ -190,15 +197,14 @@ The cut order lives in each file's header, so it is read where it is needed. In 
 | --- | --- | --- |
 | 1 | the elementary-stream reduction, recoverable in class 2 | the `Sto18mic` beat on the micro-price |
 | 2 | the consolidated tape — Regulation NMS is background and plays no part in the assignment | the nomenclature frame, the vendor names surviving under the schematic; then hand the fold's termination argument to the notebook |
-| 3 | the mean response, folding the relaxation time into the frame before it | the conditional survival function, asserted inline in the two algorithms |
-| 4 | the total response, as a closing clause on the residual frame | a minute each from two frames; then hand the three weightings to the notebook |
+| 3 | the Markov state, its generator spoken over the $Z$ path | the index order, said over the definition; then the three routes, said over the QQ schematic |
+| 4 | the total response, as a clause on the frame before it | the position of the bid in shares; then the schematic of the residual absorbing the flow |
 
-**Class 3 has no headroom and `prop.forwardMean` may not be cut**, `prop.shortHorizonForecast`
-in class 4 being built on it. Class 3 is already compressed to the judgment content: dropped
-are `lemma.perronFrobenius`, the whole second-order block (`thm.lyapunov`,
-`lemma.lyapunovUniqueness`, `eq.stationaryCovariance`), the scalar case, and sub- and
-supercriticality. Perron–Frobenius survives as a subordinate clause in two places and gets no
-statement.
+**Class 3 carries the second-order block, the scalar case and sub- and supercriticality**,
+which the brief for lectures 3 and 4 asked for, on one two-type process with abstract types.
+`prop.forwardMean` and its deviation form may not be cut, `prop.shortHorizonForecast` in class
+4 being built on them. Perron–Frobenius parts i and ii survive as one caption, and no proof is
+on a slide.
 
 ### The 25 September review, and what it changed
 
@@ -265,8 +271,9 @@ them had been named.
   against the **spread**; it is the **half**-spread, and with the full spread only one direction
   survives. The same two lines read *"if an only if"*, *"larget"*, *"sprad"*. Rewritten as one
   edit, with the clause that makes the equivalence checkable from `eq.sweepCost`
-  (commit `ad4053a`). **The only change ever made to the lecture notes**, and authorised as a
-  typo fix.
+  (commit `ad4053a`). The first change made to the lecture notes, authorised as a typo fix.
+  The second came with the auxiliary material for §1.2: additions only, and three
+  clause-level corrections of fact, each listed in the pull request that carried it.
 - The residual of Case B described as resting *inside the old spread* when it rests a tick
   *below the old best bid*. The phrase had been copied into four files —
   `documentation/order-driven-markets-notation.md`, `documentation/order-flow-to-order-book.md`,
@@ -286,12 +293,14 @@ notebook is built so that one of them is what the class practises:
 | habit | notebook |
 | --- | --- |
 | invariants, round trips, and alternative routes that must reach the same value | `02` — our fold against the exchange's own |
-| the property written as a test before the implementation | `04` — the compensator and the random time change |
-| what defines an object is written with the object | `01` — the LOBSTER row round trip; `04` — a frozen parametrisation |
+| the property written as a test before the implementation | `06` — one simulator against the other, and the compensator against both |
+| what defines an object is written with the object | `01` — the LOBSTER row round trip; `04` — the frozen two-type parametrisations |
 | the clear implementation first, then one shown to beat it | `03` — the whole notebook |
 
-`05` practises the first at the level of a study: the contemporaneous identity is the route
-that must agree, and the pre-registration is the property written down before the run.
+`05` and `08` practise the first on formulae: each formula of §1.3.4 and §1.4.3 is set against
+a Monte Carlo, along one long path or across a fan from a fixed state, with its standard
+error. `07` checks the identity of §1.4 in integers on the package's own session of an
+idealised book.
 
 Notebooks use LOBSTER wherever the notes use it. `data/` is git-ignored, so each states which
 files it wants and fails readably when they are absent.
@@ -312,8 +321,9 @@ what Sunday's plan promised, so the question is what to finish rather than what 
 | Thu 24 | nothing for class 2: the evening went to reviewing class 1 | | ☒ |
 | Fri 25 | the class-1 review applied, both errata fixed, then class 2 in full: the deck at 16 frames and notebooks `02` and `03`, written and executed | **class 2 teachable end to end** | ☑ |
 
-Classes 3 and 4 keep their skeletons and are built in the week of 28 September; they are
-taught on 5 and 8 October. **The gate: nothing for class 2 begins until class 1 is teachable.**
+Classes 3 and 4 were built on 29 and 30 September, unsupervised, and reach the lecturer as a
+pull request; they are taught on 5 and 8 October. **The gate: nothing for class 2 begins until
+class 1 is teachable.**
 
 ### Artefacts
 
@@ -324,16 +334,21 @@ cannot read anything before teaching, so a checklist gated on it could never clo
 | --- | --- | --- | --- | --- |
 | `slides/sections/order_driven_markets.tex` | ☑ | ☑ | ☑ | ☑ |
 | `slides/sections/message_files.tex` | ☑ | ☑ | ☑ | ☑ |
-| `slides/sections/point_processes.tex` | ☑ | ☐ | ☑ | ☐ |
-| `slides/sections/price_formation.tex` | ☑ | ☐ | ☑ | ☐ |
-| `slides/sections/lobster_empirics.tex` | ☑ | ☐ | ☑ | ☐ |
+| `slides/sections/point_processes.tex` | ☑ | ☑ | ☑ | ☐ |
+| `slides/sections/price_formation.tex` | ☑ | ☑ | ☑ | ☐ |
+| `slides/sections/lobster_empirics.tex` | ☑ | ☑ | ☑ | ☐ |
 | `notebooks/lectures/01-the-limit-order-book.ipynb` | ☑ | ☑ | ☑ | ☑ |
 | `notebooks/lectures/02-the-fold.ipynb` | ☑ | ☑ | ☑ | ☑ |
 | `notebooks/lectures/03-the-book-made-faster.ipynb` | ☑ | ☑ | ☑ | ☑ |
-| `notebooks/lectures/04-simulating-self-excitation.ipynb` | ☑ | ☐ | ☐ | ☐ |
-| `notebooks/lectures/05-price-formation.ipynb` | ☑ | ☐ | ☐ | ☐ |
+| `notebooks/lectures/04-simulating-self-excitation.ipynb` | ☑ | ☑ | ☑ | ☐ |
+| `notebooks/lectures/05-moments-and-timescales.ipynb` | ☑ | ☑ | ☑ | ☐ |
+| `notebooks/lectures/06-simulation-and-goodness-of-fit.ipynb` | ☑ | ☑ | ☑ | ☐ |
+| `notebooks/lectures/07-the-order-flow-imbalance.ipynb` | ☑ | ☑ | ☑ | ☐ |
+| `notebooks/lectures/08-forecasting-the-mid.ipynb` | ☑ | ☑ | ☑ | ☐ |
 | `unito26slides.cls` and `slide_formatting.tex` | ☑ | ☑ | ☑ | ☑ |
-| `config.TWO_TYPE_PARAMS` and its test | ☐ | ☐ | ☐ | ☐ |
+| the three two-type pairs of `config`, and their tests | ☑ | ☑ | ☑ | ☐ |
+| `hawkes`: the timescales, the covariance, simulation from a state | ☑ | ☑ | ☑ | ☐ |
+| `idealised`: the idealised book, and its tests | ☑ | ☑ | ☑ | ☐ |
 | `visualization.use_template` | ☑ | ☑ | ☑ | ☑ |
 | `sections/microstructure.tex` deleted | ☐ | | | |
 

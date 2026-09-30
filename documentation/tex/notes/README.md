@@ -51,8 +51,13 @@ only one that names the repository. That is a URL, like the exchanges of §1.1 a
 
 `stability.tex` carries four `\subsubsection`s of its own — second-order structure, the
 scalar case, timescales, sub- and supercriticality — and `sec.secondOrder` labels the first
-of them. It is the one leaf file with nested sectioning; everything else opens straight into
-prose.
+of them.
+
+`message_files.tex` carries its own `\subsection`s: what an exchange disseminates, the book as
+a fold, the fold in the course repository (`sec.foldImplementation`), a faster book
+(`sec.fasterBook`), and LOBSTER, whose last `\subsubsection` reads a LOBSTER pair into a
+session. The two implementation subsections and that subsubsection walk the reader through the
+package, under the exception stated below.
 
 Price formation is what the chapter is for. It runs from the order flow imbalance, through
 the marked point process that generates it, to a forecast of the mid-price. The last section
@@ -64,6 +69,14 @@ is the chapter's assignment: it carries the four things the generated setting la
 `options/options.tex`, a placeholder: the chapter title and one line saying when the
 material arrives. `options/sections/` is registered in `\input@path` and is empty.
 
+## Appendix A — Integers in binary
+
+Back matter: `\appendix`, then `\include{appendix/appendix}`, after the two chapters. It is
+lettered and is not a subject chapter; it serves `sec.fasterBook`, proving the properties of
+the binary representation that the array-backed book is written in.
+`appendix/appendix.tex` carries the sectioning and each section is one file in
+`appendix/sections/`, named `binary_*` so that no name clashes on the shared input path.
+
 **No measured figure appears in the notes.** Coefficients, windows and goodness-of-fit numbers
 live in `notebooks/`, which is where they can be re-derived; the notes carry the mechanism and
 the signs.
@@ -71,6 +84,13 @@ the signs.
 **The notes reference nothing outside themselves** — no notebook, no markdown document, no
 module. They are self-contained: it is the notebooks and the documentation that cite the notes,
 not the other way round.
+
+The one exception is scoped: `sec.foldImplementation`, `sec.fasterBook`, the LOBSTER-session
+subsubsection of §1.2 and Appendix A name the package's modules, classes, functions and test
+modules, and quote its code. A quote names its source in its caption as `\codehl{unito26.…}`
+and marks each cut with a line reading `# ...`; `tests/test_notes_quote_the_package.py` keeps
+every quote verbatim and runs every other listing. Notebooks and markdown documents are never
+named.
 
 ## Building
 

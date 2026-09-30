@@ -1,11 +1,16 @@
 % CLASS 4, part one -- the notes' section 1.4, sec.priceFormation.
-% The chapter's destination, and the one section covered IN DETAIL.
-% Budget 105 min for the whole class, shared with lobster_empirics; planned 93 here over 20
-% frames and 18 there, so 111 against 105.
-% Overrunning, cut F4.18 (remark.totalResponse, which is a refinement of F4.16 and can close
-% it as a clause), then take a minute each from F4.2 and F4.17. That lands at 106.
-% Next after that is F4.20, which is the best frame in the deck to hand to the notebook: the
-% three weightings are three columns of a frame.
+% The chapter's destination, covered statement by statement. Every statement here is made
+% concrete in notebook 07 or 08, and the decks switch to them three times.
+%
+% SWITCH POINTS, each signposted in the \note of the frame before it:
+%   after "The contribution is the signed size"        -> 07, the whole notebook
+%   after "Signed excitation"                          -> 08, sections 1-5
+%   after "Three statistics of the same past flow"     -> 08, section 6 to the end
+% Then lobster_empirics.tex, four frames.
+%
+% Overrunning, cut in this order: the total response (a clause on the frame before it),
+% then the position of the bid in shares (the exercise is set in words), then the schematic
+% of the residual absorbing the flow (said over the forecast frame).
 %
 % THE FRAME CONTRACT. These slides are projection material, not reference material: the
 % students read the notes, and they only ever see a frame while it is being talked over.
@@ -23,172 +28,816 @@
 % frame: a slide that recites what the class just did is the spoken half written down.
 %
 % LABELS. A label is defined once across the five class files, and a cross-file \ref prints
-% ?? under \includeonly. prop.lobUpdate, prop.decompositionOfLimitOrder, prop.forwardMean,
-% thm.markovState, eq.queueImbalance and def.relaxationTime all belong to earlier classes and
-% are RESTATED HERE WITHOUT LABELS.
+% ?? under \includeonly. Class 4 owns: assumption.idealisedBook, def.orderFlowImbalance,
+% prop.idealisedUpdate, remark.residualIsQueueFlow, def.orderFlowProcess,
+% prop.signedSizeContribution, def.directionSymmetry, prop.directionSymmetry,
+% def.intensityContrast, prop.signedExcitation, prop.shortHorizonForecast,
+% corol.priceForecast, remark.residualAgainstForecast, corol.contrastAsDrift,
+% remark.totalResponse, corol.regimeSign, remark.imbalanceAsProxy.
+% prop.lobUpdate, prop.forwardMean, thm.markovState, eq.queueImbalance and
+% def.relaxationTime belong to earlier classes and are RESTATED HERE WITHOUT LABELS.
+%
+% A frame holds 218pt of body -- eighteen 12pt lines, or seven two-line paragraphs.
 
 \subsection{Price formation}
 
 \begin{frame}
   \frametitle{Outline}
-% 3 min. One \nocite per line -- a multi-key \nocite spanning lines breaks bibtex.
+% One \nocite per line -- a multi-key \nocite spanning lines breaks bibtex.
 \nocite{CKS14pri}
 \nocite{CDJ18enh}
 \nocite{Bou18tra}
-% Which features of the order flow reverberate into the movements of the mid-price. Name the
-% three things we want: one number off the aggregated book, a model of the flow that produces
-% it, and a forecast.
+\begin{center}
+\begin{tikzpicture}[font=\scriptsize, node distance=3mm,
+    stage/.style={draw=gray!60, rounded corners=2pt, align=center, inner sep=4pt,
+                  text width=2.1cm, fill=gray!8},
+    past/.style={stage, fill=gray!20, draw=gray!70},
+    current/.style={stage, fill=blue!15, draw=orange!70, line width=1pt}]
+  \node[past] (a) {1.1\\the book};
+  \node[past, right=of a] (b) {1.2\\the fold};
+  \node[past, right=of b] (c) {1.3\\point processes};
+  \node[current, right=of c] (d) {1.4\\price formation};
+  \draw[-{Stealth}, gray!60] (a) -- (b);
+  \draw[-{Stealth}, gray!60] (b) -- (c);
+  \draw[-{Stealth}, gray!60] (c) -- (d);
+\end{tikzpicture}
+\end{center}
+
+\pause
+
+One number off the aggregated book
+
+\pause
+
+A model of the flow that produces it
+
+\pause
+
+A forecast of where the flow takes the mid-price
+\note{
+The question the chapter exists to answer: which features of the order flow reverberate into
+the movements of the mid-price, and how the apparatus of the last class captures them.
+The mid-price is the statistic we track. The update rule of section 1.1 says exactly how an
+order moves it, but it needs the whole message stream and the whole book. We look instead for
+a coarser description in three steps: a single number read off the aggregated book, a model of
+the flow that produces it, and a forecast of where the flow takes the mid-price next.
+}
 \end{frame}
 
 \begin{frame}
-  \frametitle{Too fine, and too expensive}
-% 4 min. prop.lobUpdate tracks the whole book and needs the whole tape -- restate in one
-% line, no label. We want a statistic of the observed aggregated book alone, whose only job
-% is to track the mid-price.
+  \frametitle{The exact update is too fine for the mid-price}
+\begin{center}
+\begin{tabular}{@{}ll@{}}
+\toprule
+the update rule of 1.1 & what we look for \\
+\midrule
+the whole message stream & the aggregated book \\
+every level of both sides & the two touches \\
+the next configuration & the mid-price \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\pause
+
+A statistic whose only job is to track the mid-price
+\note{
+The update of section 1.1 is exact, and it tracks the whole aggregated book; to run it we need
+the whole tape of orders. The order flow imbalance of \cite{CKS14pri} is computed from the
+aggregated book alone, and it is introduced through a book simplified until the mid-price
+becomes an explicit function of the flow.
+We state the simplification as an assumption, and the consequence as a proposition.
+}
 \end{frame}
 
 \begin{frame}
   \frametitle{The idealised book}
-% 5 min. assumption.idealisedBook, four parts, in the notes' own list syntax now that
-% enumitem is loaded. PICTURE: the grid with every queue behind both touches holding exactly
-% \uniformDepth and the two touches holding less, and an arrow for part iv -- the next bid
-% limit order arriving one tick ABOVE the best bid once the touch reaches \uniformDepth.
-% Closing: parts i, iii and iv are the stylised book of \cite{CKS14pri}; part ii is ours, and
-% it is what prop.signedSizeContribution costs.
+\begin{assumption}
+\label{assumption.idealisedBook}
+ For a fixed $\uniformDepth > 0$:
+ \begin{enumerate}[label={\emph{\roman{*}}.}]
+  \item no event occurs behind the best quote of its side;
+  \item no order reaches past the quote it acts on;
+  \item every queue holds at most $\uniformDepth$, and every queue behind a touch exactly
+        $\uniformDepth$;
+  \item at a full best bid, the next bid limit order arrives one tick above it.
+ \end{enumerate}
+\end{assumption}
+\note{
+Part iv is written for the bid; for the ask, the next ask limit order arrives one tick below
+a full best ask.
+Parts i, iii and iv are the stylised book of \cite{CKS14pri}. Part ii is not: there the flows
+are totalled at whichever quote is best when each order arrives, so an order reaching past the
+touch is split across the levels it crosses. We ask instead that the contribution of an event
+be the size of that event, and part ii is what that costs.
+}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Behind each touch, every queue holds $\uniformDepth$}
+\begin{center}
+\begin{tikzpicture}[x=0.62cm, y=1.6cm, font=\scriptsize]
+  \draw[gray!55] (0.3,0) -- (13.2,0);
+  \draw[gray!45, dashed] (0.3,1) -- (13.2,1);
+  \node[left, gray!40!black] at (0.3,1) {$\uniformDepth$};
+  \foreach \x in {1,2,3,4}
+    \draw[fill=blue!45, draw=blue!65] (\x-0.32,0) rectangle (\x+0.32,1);
+  \draw[fill=blue!70, draw=blue!80] (5-0.32,0) rectangle (5+0.32,0.6);
+  \foreach \x in {9,10,11,12}
+    \draw[fill=orange!45, draw=orange!70] (\x-0.32,0) rectangle (\x+0.32,1);
+  \draw[fill=orange!75, draw=orange!85] (8-0.32,0) rectangle (8+0.32,0.35);
+  \draw[gray!65, dashed] (6-0.32,0) rectangle (6+0.32,0.25);
+  \draw[-{Stealth}, gray!70] (5,0.75) to[bend left=35] (6,0.35);
+  \node[above, align=center, gray!40!black] at (6.1,1.05) {iv.\ once the bid touch is full};
+  \node[below] at (5,-0.05) {$\bestBidPrice$};
+  \node[below] at (8,-0.05) {$\bestAskPrice$};
+\end{tikzpicture}
+\end{center}
+
+\pause
+
+At a touch: at most $\uniformDepth$
+
+\pause
+
+Every event at a touch, and no gap behind it
+\note{
+The bid side is blue and the ask side orange. The touches are the only queues whose size
+moves; every queue behind them holds exactly $\uniformDepth$, so a touch that empties
+uncovers a full queue one tick away, and a limit order at a full touch opens a new queue one
+tick inside the spread.
+The mid-price then moves only by half a tick at a time, and only when a touch empties or a
+new one opens. That is what makes it an explicit function of the flow.
+}
 \end{frame}
 
 \begin{frame}
   \frametitle{The order flow imbalance}
-% 5 min. def.orderFlowImbalance with eq.orderFlowContribution and eq.orderFlowImbalance.
-% Fix the convention explicitly -- the size at the best bid AFTER the n-th event -- because
-% it is the thing that is got wrong.
+\begin{defi}[\citealp{CKS14pri}]
+\label{def.orderFlowImbalance}
+ \[
+ \begin{aligned}
+  \orderFlowContribution
+  = {}& \indicator{\bestBidPrice_{\arrivalTimes[]_n} \geq \bestBidPrice_{\arrivalTimes[]_{n-1}}}
+  \nthBestBidSize[1]_{\arrivalTimes[]_n}
+  - \indicator{\bestBidPrice_{\arrivalTimes[]_n} \leq \bestBidPrice_{\arrivalTimes[]_{n-1}}}
+  \nthBestBidSize[1]_{\arrivalTimes[]_{n-1}} \\
+  & - \indicator{\bestAskPrice_{\arrivalTimes[]_n} \leq \bestAskPrice_{\arrivalTimes[]_{n-1}}}
+  \nthBestAskSize[1]_{\arrivalTimes[]_n}
+  + \indicator{\bestAskPrice_{\arrivalTimes[]_n} \geq \bestAskPrice_{\arrivalTimes[]_{n-1}}}
+  \nthBestAskSize[1]_{\arrivalTimes[]_{n-1}},
+ \end{aligned}
+ \]
+ and $\OFI_{t,\ofiWindow} = \sum_{t-\ofiWindow < \arrivalTimes[]_n \leq t}
+ \orderFlowContribution$.
+\end{defi}
+
+\pause
+
+$\nthBestBidSize[1]_{\arrivalTimes[]_n}$: the size at the best bid \emph{after} the $n$-th
+event
+\note{
+The convention is the one that is got wrong: the size at the best bid after the $n$-th event,
+so that $\nthBestBidSize[1]_{\arrivalTimes[]_{n-1}}$ is the size standing just before it.
+Both bid indicators fire when the best bid does not move, so an event that leaves it in place
+contributes the change in the size resting there. An event that moves it contributes a whole
+queue.
+}
 \end{frame}
 
 \begin{frame}
   \frametitle{What each event contributes}
-% 5 min. PICTURE, three panels. (a) the best bid does not move: both indicators fire and the
-% event contributes the CHANGE in the size resting there; (b) the bid improves: only the
-% first fires, and the event contributes the whole new queue; (c) the bid is cleared: only
-% the second fires, and it contributes minus the whole old queue.
+\begin{center}
+\begin{tikzpicture}[x=0.5cm, y=0.28cm, font=\scriptsize,
+    before/.style={draw=gray!70, dashed},
+    after/.style={fill=blue!45, draw=blue!65}]
+  % (a) the best bid does not move
+  \draw[gray!55] (0.2,0) -- (3.8,0);
+  \draw[after] (1.7,0) rectangle (2.3,5);
+  \draw[before] (1.7,0) rectangle (2.3,3);
+  \node[below] at (2,-0.2) {$\bestBidPrice$};
+  \node[align=center] at (2,-3.3) {unchanged\\
+       $\orderFlowContribution = \nthBestBidSize[1]_{\arrivalTimes[]_n}
+       - \nthBestBidSize[1]_{\arrivalTimes[]_{n-1}}$};
+  % (b) the best bid improves
+  \begin{scope}[xshift=4.3cm]
+  \draw[gray!55] (0.2,0) -- (3.8,0);
+  \draw[fill=blue!25, draw=blue!45] (1.2,0) rectangle (1.8,3);
+  \draw[after] (2.2,0) rectangle (2.8,2);
+  \node[below] at (2.5,-0.2) {new $\bestBidPrice$};
+  \node[align=center] at (2,-3.3) {improved\\
+       $\orderFlowContribution = \nthBestBidSize[1]_{\arrivalTimes[]_n}$};
+  \end{scope}
+  % (c) the best bid is cleared
+  \begin{scope}[xshift=8.6cm]
+  \draw[gray!55] (0.2,0) -- (3.8,0);
+  \draw[fill=blue!25, draw=blue!45] (1.2,0) rectangle (1.8,5);
+  \draw[before] (2.2,0) rectangle (2.8,3);
+  \node[below] at (1.5,-0.2) {new $\bestBidPrice$};
+  \node[align=center] at (2,-3.3) {cleared\\
+       $\orderFlowContribution = -\nthBestBidSize[1]_{\arrivalTimes[]_{n-1}}$};
+  \end{scope}
+\end{tikzpicture}
+\end{center}
+
+\pause
+
+Dashed: before the event. Filled: after.
+
+\pause
+
+The ask side, with the signs reversed
+\note{
+Three cases on the bid side. When the best bid does not move, both indicators fire and the
+event contributes the change in the size resting there. When the bid improves, only the first
+fires and the event contributes the whole new queue. When the bid is cleared, only the second
+fires and it contributes minus the whole old queue.
+}
 \end{frame}
 
 \begin{frame}
   \frametitle{The mid-price moves with the flow}
-% 5 min. prop.idealisedUpdate with eq.idealisedUpdate, then exercise.idealisedUpdate: measure
-% the position of the bid in shares, show each event moves it by its own signed bid-side
-% flow, sum over the window, and say where each part of the assumption is used.
+\begin{prop}
+\label{prop.idealisedUpdate}
+ Under the idealised book,
+ $\Delta\midPrice_{t,\ofiWindow}
+ = \frac{\tickSizeOfLOB}{2\uniformDepth}\OFI_{t,\ofiWindow} + \residual_{t,\ofiWindow}$,
+ with $\vert\residual_{t,\ofiWindow}\vert \leq \tickSizeOfLOB$.
+\end{prop}
+
+\pause
+
+$\residual_{t,\ofiWindow} = -\frac{\tickSizeOfLOB}{2\uniformDepth}\big[
+(\nthBestBidSize[1]_t - \nthBestBidSize[1]_{t-\ofiWindow})
+- (\nthBestAskSize[1]_t - \nthBestAskSize[1]_{t-\ofiWindow}) \big]$
+
+\pause
+
+Exact when the two touches change by the same amount
+\note{
+The residual depends only on the sizes resting at the two touches at the ends of the window.
+In particular the identity is exact whenever the bid and the ask touches change by the same
+amount over the window, and so whenever all four sizes equal $\uniformDepth$.
+The proof is the update rule of section 1.1 specialised to the assumption, and it is the
+exercise on the next frame.
+}
+\end{frame}
+
+\begin{frame}
+  \frametitle{The position of the bid, in shares}
+\begin{center}
+\begin{tikzpicture}[x=0.72cm, y=0.5cm, font=\scriptsize]
+  \draw[-{Stealth}, gray!70] (0,0) -- (11.2,0) node[right] {$s$};
+  \draw[-{Stealth}, gray!70] (0,0) -- (0,4.6);
+  \foreach \y/\lab in {1.5/\uniformDepth, 3.0/2\uniformDepth} {
+    \draw[gray!45, dashed] (0,\y) -- (11,\y);
+    \node[left, gray!40!black] at (0,\y) {$\lab$};
+  }
+  \draw[blue!65, thick] (0,0.9) -- (1,0.9) -- (1,1.2) -- (2.2,1.2) -- (2.2,1.5)
+    -- (3.1,1.5) -- (3.1,1.8) -- (4.4,1.8) -- (4.4,1.5) -- (5.3,1.5) -- (5.3,1.2)
+    -- (6.1,1.2) -- (6.1,1.5) -- (7.0,1.5) -- (7.0,1.8) -- (7.8,1.8) -- (7.8,2.1)
+    -- (8.9,2.1) -- (8.9,2.4) -- (10.0,2.4) -- (10.0,2.7) -- (11,2.7);
+  \node[above, blue!55!black] at (9.4,2.8)
+       {$\nthBestBidSize[1]_s + \uniformDepth\,
+        (\bestBidPrice_s - \bestBidPrice_{t-\ofiWindow})/\tickSizeOfLOB$};
+  \node[below] at (0,-0.05) {$t-\ofiWindow$};
+  \node[below] at (11,-0.05) {$t$};
+\end{tikzpicture}
+\end{center}
+
+\pause
+
+Each event: a step of its own signed bid-side flow
+
+\pause
+
+A multiple of $\uniformDepth$ crossed: the bid moves a tick
+\note{
+This is the exercise that proves the proposition. Measure the position of the bid in shares
+by the size at the touch plus $\uniformDepth$ for every tick the bid has moved since the
+start of the window. Each event moves it by its own signed bid-side flow: a limit buy at a
+full touch opens a queue of its own size one tick up, which adds exactly its size; a market
+sell that clears the touch uncovers a full queue one tick down, which removes exactly the size
+it took. Sum over the window, do the same for the ask, and say where each part of the
+assumption is used.
+}
 \end{frame}
 
 \begin{frame}
   \frametitle{The residual is the flow that went into the queues}
-% 5 min. eq.idealisedResidual, then remark.residualIsQueueFlow. On a window over which
-% neither quote moves the mid-price change is zero while the imbalance is not, and the two
-% terms cancel EXACTLY. The residual is bounded by one tick and does not grow with
-% \ofiWindow, which is what makes the identity useful over windows whose flow term is larger.
+\begin{center}
+\begin{tikzpicture}[x=0.55cm, y=0.55cm, font=\scriptsize]
+  \fill[gray!15] (-5.5,-4.75) -- (5.5,0.75) -- (5.5,4.75) -- (-5.5,-0.75) -- cycle;
+  \draw[-{Stealth}, gray!70] (-5.8,0) -- (6.1,0) node[right] {$\OFI_{t,\ofiWindow}$};
+  \draw[-{Stealth}, gray!70] (0,-3.6) -- (0,3.8) node[above] {$\Delta\midPrice_{t,\ofiWindow}$};
+  \draw[gray!60!black] (-5.5,-2.75) -- (5.5,2.75);
+  \foreach \x/\y in {-4.5/-2.5, -3.6/-1.5, -2.8/-1.5, -1.9/-0.5, 1.4/1.0, 2.2/1.0,
+                     3.1/1.5, 3.9/2.5, 4.6/2.0}
+    \fill[blue!65] (\x,\y) circle (2pt);
+  \foreach \x in {-1.3, -0.7, -0.2, 0.4, 0.9}
+    \fill[orange!85] (\x,0) circle (2pt);
+  \node[gray!40!black, right] at (5.5,2.75) {slope $\tickSizeOfLOB/(2\uniformDepth)$};
+\end{tikzpicture}
+\end{center}
+
+\pause
+
+\begin{remark}
+\label{remark.residualIsQueueFlow}
+ If neither quote moves over the window,
+ $\residual_{t,\ofiWindow} = -\tickSizeOfLOB\,\OFI_{t,\ofiWindow}/(2\uniformDepth)$.
+\end{remark}
+\note{
+Each dot is a window. The shaded band is the residual's bound, one tick either side of the
+line. The orange dots are windows over which neither quote moved: the mid-price change is zero
+while the imbalance is not, and the two terms of the identity cancel exactly.
+The residual is the part of the flow that went into the queues rather than into the quotes. It
+is bounded by one tick and does not grow with $\ofiWindow$, which is what makes the identity
+useful over windows whose flow term is larger than that.
+}
 \end{frame}
 
 \begin{frame}
   \frametitle{The order flow is a marked Hawkes process}
-% 5 min. def.orderFlowProcess, two parts, and the booktabs table of the six types with
-% \pressure underneath. The reading: a market buy consumes the ask and a withdrawal from the
-% bid removes support, so the first pushes up and the second down.
+\begin{center}
+\begin{tabular}{@{}lcccccc@{}}
+\toprule
+$e$ & market & market & limit & limit & withdraw & withdraw \\
+    & buy & sell & buy & sell & bid & ask \\
+\midrule
+$\pressure_e$ & $+1$ & $-1$ & $+1$ & $-1$ & $-1$ & $+1$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\pause
+
+\begin{defi}
+\label{def.orderFlowProcess}
+ $(\arrivalTimes[]_n, \event[n])$ an exponential-kernel Hawkes process of dimension
+ $6$; sizes $\orderSize_n$ i.i.d.\ with mean $\meanSize$, independent of both.
+\end{defi}
+\note{
+The six types are the market, limit and withdrawal orders on each side. The vector $\pressure$
+records the pressure each type exerts on the mid-price: a market buy consumes the ask and a
+withdrawal from the bid removes support, so the first pushes up and the second down.
+A specification of the order flow is a triple $(\baseIntensity, \excitation, \decay)$ for the
+Hawkes process, exactly as in the last class.
+}
 \end{frame}
 
 \begin{frame}
   \frametitle{The contribution is the signed size}
-% 4 min. prop.signedSizeContribution and eq.signedSizeContribution. This is the frame where
-% assumption.idealisedBook part ii pays for itself: no order reaches past the quote it acts
-% on, so each event changes one queue by its own size.
+\begin{prop}
+\label{prop.signedSizeContribution}
+ Under the idealised book, $\orderFlowContribution = \pressure_{\event[n]}\orderSize_n$, so
+ $\OFI_{t,\ofiWindow} = \sum_{t-\ofiWindow < \arrivalTimes[]_n \leq t}
+ \pressure_{\event[n]}\orderSize_n$.
+\end{prop}
+
+\pause
+
+Part ii: each event changes one queue, by its own size
+\note{
+The first two terms of the contribution are the signed flow on the bid side, the last two
+minus the signed flow on the ask side. No order reaches past the quote it acts on, so each
+event changes one queue by its own size: a limit buy adds its size to the bid, a withdrawal
+from the bid removes it, a market buy removes it from the ask; in each case with the sign
+$\pressure_{\event[n]}$.
+On a general book an order that reaches past the touch registers only what the touch held.
+Now to notebook 07: the idealised book made real, what each event contributes, and the
+identity checked to the last digit on the package's own session.
+}
 \end{frame}
 
 \begin{frame}
   \frametitle{Direction symmetry}
-% 5 min. def.directionSymmetry and prop.directionSymmetry, with eq.baselineSymmetry.
-% Closing: the swap-invariant matrices are closed under products and limits, so they contain
-% the matrix exponential, \meanResponseIntegral and the resolvent, and every expression of
-% the next subsection contracted with \pressure loses its baseline term.
+\begin{defi}
+\label{def.directionSymmetry}
+ With $\swapMatrix$ the permutation exchanging the two members of each pair, the
+ specification is \emph{direction-symmetric} if
+ $\swapMatrix\excitation\swapMatrix = \excitation$ and
+ $\swapMatrix\baseIntensity = \baseIntensity$.
+\end{defi}
+
+\pause
+
+$\swapMatrix\pressure = -\pressure$
+
+\pause
+
+A hypothesis on the kernel, not only on the baseline
+\note{
+Swapping buy for sell leaves the specification alone. This is the hypothesis every forecast of
+this class rests on.
+Stating $\pressure^{\transpose}\baseIntensity = 0$ as the assumption instead would not do: it
+does not give a zero stationary drift, and the forecast needs the full symmetry to lose every
+baseline term.
+}
 \end{frame}
 
 \begin{frame}
-  \frametitle{Choosing a specification}
-% 4 min. def.orderFlowSpecification, then the replenishment mechanism: the two kinds of
-% depleting event must beget the limit orders that refill the side they emptied, so such a
-% kernel has large column sums on the market-order and withdrawal types, a small one on the
-% limit types, and its mass off the diagonal blocks \pressure separates.
-% Then eq.baselineFromTarget, chosen so that \branchingRatio < 1 and \baseIntensity > 0.
+  \frametitle{Contracted with $\pressure$, the baseline drops out}
+\begin{prop}
+\label{prop.directionSymmetry}
+ Under direction symmetry, $\pressure^{\transpose}Mv = 0$ whenever
+ $\swapMatrix M\swapMatrix = M$ and $\swapMatrix v = v$. In particular
+ $\pressure^{\transpose}\baseIntensity = 0$, and $\pressure^{\transpose}\stationaryIntensity =
+ 0$ if $\branchingRatio < 1$.
+\end{prop}
+
+\pause
+
+$M$: $e^{\hurwitzMatrix\forecastHorizon}$, $\meanResponseIntegral(\forecastHorizon)$,
+$(I-\branchingMatrix)^{-1}$, and their products
+\note{
+$\pressure^{\transpose}Mv = (\swapMatrix\pressure)^{\transpose}(\swapMatrix M\swapMatrix)
+(\swapMatrix v)\cdot(-1)$, which is minus itself.
+The matrices fixed by $M \mapsto \swapMatrix M\swapMatrix$ form a closed subspace, closed under
+products, so they contain $\excitation$ and $\hurwitzMatrix$ together with the limits and
+integrals of their polynomials. Every expression of the forecast built from these and
+contracted with $\pressure$ therefore loses its baseline term.
+}
+\end{frame}
+
+\begin{frame}
+  \frametitle{The kernel carries the mechanism of replenishment}
+\begin{center}
+\begin{tikzpicture}[x=0.36cm, y=0.36cm, font=\scriptsize]
+  \foreach \panel/\shift/\across/\within in {replenishment/0/60/10, continuation/13/10/60} {
+    \begin{scope}[xshift=\shift cm*0.36]
+      \fill[orange!\across] (3,3) rectangle (6,6);
+      \fill[orange!\across] (0,0) rectangle (3,3);
+      \fill[blue!\within] (0,3) rectangle (3,6);
+      \fill[blue!\within] (3,0) rectangle (6,3);
+      \draw[gray!55] (0,0) grid (6,6);
+      \draw[gray!80, thick] (0,0) rectangle (6,6);
+      \draw[gray!80, thick] (3,0) -- (3,6);
+      \draw[gray!80, thick] (0,3) -- (6,3);
+      \node[below] at (3,-0.2) {\panel};
+      \node[above] at (1.5,6) {$\pressure = +1$};
+      \node[above] at (4.5,6) {$\pressure = -1$};
+    \end{scope}
+  }
+  \node[left, align=right] at (0,4.5) {$+1$};
+  \node[left, align=right] at (0,1.5) {$-1$};
+\end{tikzpicture}
+\end{center}
+
+\pause
+
+Columns: the exciting type. Rows: the excited one.
+
+\pause
+
+Replenishment: mass across the partition
+\note{
+The two kinds of event that deplete a queue, an aggression against it and a withdrawal from
+it, must beget successors, and what they chiefly beget must be the limit orders that refill the
+side they emptied. A kernel that does this has large column sums on the market-order and
+withdrawal types, a small one on the limit types, and its mass concentrated off the diagonal
+blocks that $\pressure$ separates.
+The package ships two specifications at the same branching ratio and the same total rate: the
+example regime excites across the partition, as on the left, and the trending regime within it,
+as on the right. The diagonal blocks are exchanged by $\swapMatrix$, and so are the
+off-diagonal ones.
+}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Choose the structure and the rate; the baseline follows}
+\[
+ \baseIntensity = (I - \branchingMatrix)\stationaryIntensity
+\]
+
+\pause
+
+$\branchingRatio < 1$ and $\baseIntensity > 0$: the hypotheses of stationarity
+
+\pause
+
+$\baseIntensity_e < 0$ exactly where $(\branchingMatrix\stationaryIntensity)_e > \stationaryIntensity[e]$
+\note{
+When specifying a parametrisation we choose the excitation structure $\branchingMatrix$ and
+the stationary intensity at which the flow is to run, and let the baseline follow. The pair
+should be chosen with $\branchingRatio < 1$ and so that the baseline is strictly positive.
+Where it would be negative the target is unreachable at that branching ratio, and the
+constructor in the package refuses it and names the component.
+}
 \end{frame}
 
 \begin{frame}
   \frametitle{The intensity contrast}
-% 5 min. def.intensityContrast, eq.intensityContrast, eq.contrastFromState. Under direction
-% symmetry the baseline term vanishes and the contrast is a function of the STATE ALONE.
+\begin{defi}
+\label{def.intensityContrast}
+ $\intensityContrast(t) := \upIntensity(t) - \downIntensity(t)
+ = \pressure^{\transpose}\intensity[ ](t)
+ = \pressure^{\transpose}\baseIntensity + \pressure^{\transpose}\excitation\decayedCounts(t)$.
+\end{defi}
+
+\pause
+
+Under direction symmetry: $\intensityContrast(t) =
+\pressure^{\transpose}\excitation\decayedCounts(t)$, a function of the state
+\note{
+$\upIntensity$ sums the intensities of the three types that push the mid-price up, and
+$\downIntensity$ those of the three that push it down. The contrast says in which direction
+the flow is currently leaning.
+Under direction symmetry the baseline term vanishes, and the contrast is a function of the
+state alone.
+}
 \end{frame}
 
 \begin{frame}
   \frametitle{Signed excitation}
-% 5 min. prop.signedExcitation, eq.signedExcitation, eq.contrastFromSignedExcitation.
-% \signedExcitation positive begets its own pressure, negative the opposite, zero neither --
-% and the sign is a property of the KERNEL and not of the type: the same six types carry
-% either sign under different specifications.
+\begin{prop}
+\label{prop.signedExcitation}
+ Under direction symmetry,
+ $\signedExcitation_{\eone} := (\pressure^{\transpose}\excitation)_{\eone}/\pressure_{\eone}$
+ takes one value on each pair, and
+ $\intensityContrast(t) = \sum_{\eone}\pressure_{\eone}\signedExcitation_{\eone}
+ \decayedCounts_{\eone}(t)$.
+\end{prop}
+
+\pause
+
+$\signedExcitation > 0$: begets its own pressure. $\signedExcitation < 0$: the opposite.
+
+\pause
+
+A property of the kernel, not of the type
+\note{
+One event of type $\eone$ raises the intensity of the types that push its own way, relative to
+those that push the other way, by $\signedExcitation_{\eone}$. A type with a positive value
+begets its own pressure, one with a negative value begets the opposite, and one with zero
+begets neither. The same six types carry either sign under different specifications.
+Now to notebook 08, sections 1 to 5: the two shipped regimes, their symmetry, their baselines,
+the contrast along a path, and $\signedExcitation$ pair by pair.
+}
 \end{frame}
 
 \begin{frame}
   \frametitle{The short-horizon forecast}
-% 6 min. THE FRAME THE CHAPTER EXISTS FOR. prop.shortHorizonForecast with
-% eq.shortHorizonForecast. First beat: recall prop.forwardMean and \meanResponseIntegral as a
-% PLAIN UNLABELLED DISPLAY -- the label belongs to class 3 and a cross-file \ref would print
-% ?? under \includeonly. Second: the marks are independent with mean \meanSize. Third:
-% \pressure annihilates the two baseline terms by direction symmetry, and what remains is the
-% forecast.
+\begin{prop}
+\label{prop.shortHorizonForecast}
+ For a direction-symmetric specification and every $\forecastHorizon \geq 0$,
+ \[
+  \Expectation\Big[ \sum_{t < \arrivalTimes[]_n \leq t+\forecastHorizon}
+  \pressure_{\event[n]}\orderSize_n \,\Big|\, \sigmaAlgebra_t \Big]
+  = \meanSize\,\pressure^{\transpose}\excitation\,
+  \meanResponseIntegral(\forecastHorizon)\,\decayedCounts(t+).
+ \]
+\end{prop}
+
+\pause
+
+$\meanResponseIntegral(\forecastHorizon) = \int_0^{\forecastHorizon}
+e^{\hurwitzMatrix s}ds$, from the forward mean of 1.3
+
+\pause
+
+Under the idealised book, the left side is $\OFI_{t+\forecastHorizon,\forecastHorizon}$
+\note{
+The frame the chapter exists for. The marks are independent of the arrival times and the
+types, with mean $\meanSize$, so the left side is $\meanSize$ times the pressure-weighted
+expected count over the horizon. By the forward mean of the last class that expected count is
+$\forecastHorizon\baseIntensity + \excitation\meanResponseIntegral(\forecastHorizon)
+\decayedCounts(t+) + \excitation(\int_0^{\forecastHorizon}\meanResponseIntegral)
+\baseIntensity$.
+The first and third terms are $\swapMatrix$-invariant matrices applied to the baseline, and
+$\pressure^{\transpose}$ annihilates them. What remains is the forecast.
+$\decayedCounts(t+)$ is the state read \emph{after} the event at $t$, if there is one.
+}
 \end{frame}
 
 \begin{frame}
   \frametitle{The forecast of the mid-price}
-% 5 min. corol.priceForecast and eq.priceForecast: conditional expectation in
-% eq.idealisedUpdate with the forecast substituted. The residual is carried, not absorbed.
+\begin{corol}
+\label{corol.priceForecast}
+ Under the idealised book,
+ \[
+  \Expectation\big[\midPrice_{t+\forecastHorizon} - \midPrice_t \,\big|\, \sigmaAlgebra_t\big]
+  = \frac{\tickSizeOfLOB\meanSize}{2\uniformDepth}\,
+  \pressure^{\transpose}\excitation\,\meanResponseIntegral(\forecastHorizon)\,
+  \decayedCounts(t+)
+  + \Expectation\big[\residual_{t+\forecastHorizon,\forecastHorizon} \,\big|\,
+  \sigmaAlgebra_t\big].
+ \]
+\end{corol}
+
+\pause
+
+$\vert\residual\vert \leq \tickSizeOfLOB$: carried, not absorbed
+\note{
+Take conditional expectations in the identity over the window $(t, t+\forecastHorizon]$ and
+substitute the forecast of the flow.
+The residual is carried rather than absorbed, for two reasons, which are the next two frames:
+it is not independent of the first term, and it does not shrink as the forecast grows.
+}
 \end{frame}
 
 \begin{frame}
-  \frametitle{The residual bounds the forecast}
-% 5 min. remark.residualAgainstForecast. Two reasons it is carried: it is not independent of
-% the first term, since along a path on which neither quote moves the two cancel exactly; and
-% it does not shrink as the horizon grows, the first term being bounded in \forecastHorizon
-% while the residual is bounded by one tick at every horizon.
-% A long horizon does not buy a forecast that exceeds the residual.
-% So the empirical question is about the SIGN and not the magnitude.
+  \frametitle{The residual absorbs the flow until a quote moves}
+\begin{center}
+\begin{tikzpicture}[x=2.4cm, y=1.35cm, font=\scriptsize]
+  \fill[gray!15] (0,-1) rectangle (3.1,1);
+  \draw[-{Stealth}, gray!70] (0,0) -- (3.3,0) node[right] {$\forecastHorizon$};
+  \draw[-{Stealth}, gray!70] (0,-1.6) -- (0,2.3);
+  \draw[gray!60] (-0.03,1) -- (0.03,1) node[left=3pt, gray!40!black] {$\tickSizeOfLOB$};
+  \draw[gray!60] (-0.03,-1) -- (0.03,-1) node[left=3pt, gray!40!black] {$-\tickSizeOfLOB$};
+  \draw[gray!60!black, thick, dashed, domain=0:3.1, samples=50]
+       plot (\x, {2.0*(1 - exp(-1.2*\x))});
+  \draw[blue!65, thick, domain=0:3.1, samples=50]
+       plot (\x, {2.0*(1 - exp(-1.2*\x)) - 2.0*(1 - exp(-1.2*\x))*exp(-2.2*\x)});
+  \draw[orange!85, thick, domain=0:3.1, samples=50]
+       plot (\x, {-2.0*(1 - exp(-1.2*\x))*exp(-2.2*\x)});
+  \node[gray!40!black, right] at (3.1,1.95) {flow term};
+  \node[blue!55!black, right] at (3.1,1.5) {$\Expectation\Delta\midPrice$};
+  \node[orange!70!black, right] at (3.1,-0.1) {$\Expectation\residual$};
+\end{tikzpicture}
+\end{center}
+
+\pause
+
+Short horizons: the flow goes into the queues
+
+\pause
+
+Grey: the residual's bound
+\note{
+A schematic of the two terms of the forecast. The flow term grows from the first event; the
+mid-price moves only when a touch empties or a new one opens, so at short horizons most of the
+expected flow sits in the queues and the expected residual is close to minus the flow term.
+That is the remark on queue flow read in expectation: along a path on which neither quote
+moves, the two terms cancel exactly. The residual always stays within a tick.
+The notebook draws the three curves by Monte Carlo on an idealised book.
+}
+\end{frame}
+
+\begin{frame}
+  \frametitle{The residual bounds what the forecast can say}
+\begin{center}
+\begin{tikzpicture}[x=2.4cm, y=1.1cm, font=\scriptsize]
+  \fill[gray!15, domain=0:3.1, samples=50]
+       plot (\x, {2.4*(1 - exp(-1.3*\x)) + 1}) --
+       plot[domain=3.1:0] (\x, {2.4*(1 - exp(-1.3*\x)) - 1}) -- cycle;
+  \draw[-{Stealth}, gray!70] (0,0) -- (3.3,0) node[right] {$\forecastHorizon$};
+  \draw[-{Stealth}, gray!70] (0,-1.2) -- (0,3.8);
+  \draw[gray!60!black, dashed] (0,2.4) -- (3.1,2.4);
+  \draw[blue!65, thick, domain=0:3.1, samples=50] plot (\x, {2.4*(1 - exp(-1.3*\x))});
+  \node[gray!40!black, right, align=left] at (3.1,2.45)
+       {$\frac{\tickSizeOfLOB\meanSize}{2\uniformDepth}\pressure^{\transpose}
+        \branchingMatrix(I-\branchingMatrix)^{-1}\decayedCounts(t+)$};
+\end{tikzpicture}
+\end{center}
+
+\pause
+
+$\meanResponseIntegral(\forecastHorizon) \to -\hurwitzMatrix^{-1}$: the flow term is bounded
+
+\pause
+
+Informative only where the limit reaches a tick
+\note{
+The residual is carried for a second reason: it does not shrink as the forecast grows. When
+$\branchingRatio < 1$ the flow term tends to a finite limit, the whole expected progeny of the
+present state, while the residual is bounded by one tick at every horizon. A long horizon
+therefore does not buy a forecast that exceeds the residual: the forecast carries information
+about the mid-price only where $\meanSize\,\vert\pressure^{\transpose}\branchingMatrix
+(I-\branchingMatrix)^{-1}\decayedCounts(t+)\vert$ is itself of the order of $\uniformDepth$.
+So the empirical question of section 1.5 is about the sign of the forecast, and not about its
+magnitude.
+}
 \end{frame}
 
 \begin{frame}
   \frametitle{The contrast is the drift of the imbalance}
-% 4 min. corol.contrastAsDrift and eq.contrastAsDrift: the expansion of
-% \meanResponseIntegral gives the leading term. The contrast is the drift OF THE FLOW; the
-% price inherits it only through the forecast.
+\begin{corol}
+\label{corol.contrastAsDrift}
+ Under the idealised book,
+ $\Expectation\big[\OFI_{t+\forecastHorizon,\forecastHorizon}\,\big|\,\sigmaAlgebra_t\big]
+ = \meanSize\,\intensityContrast(t+)\,\forecastHorizon + O(\forecastHorizon^2)$
+ as $\forecastHorizon \to 0$.
+\end{corol}
+
+\pause
+
+$\meanResponseIntegral(\forecastHorizon) = \forecastHorizon I
++ \tfrac{1}{2}\forecastHorizon^2\hurwitzMatrix + O(\forecastHorizon^3)$
+
+\pause
+
+The drift of the flow; the price inherits it through the forecast
+\note{
+Up to the mean size, the intensity contrast is the drift of the order flow imbalance, to leading
+order in the horizon. It is the drift of the flow; the price inherits it only through the
+forecast of the mid-price, residual included.
+}
 \end{frame}
 
 \begin{frame}
-  \frametitle{The long horizon}
-% 3 min. remark.totalResponse: the whole expected progeny of the present state, and it
-% finishes STRICTLY SOONER than the relaxation time, the slowest mode being annihilated by
-% the contraction with \pressure. First to cut.
+  \frametitle{The forecast finishes before the relaxation time}
+\begin{remark}
+\label{remark.totalResponse}
+ $\excitation\meanResponseIntegral(\infty) = \branchingMatrix(I-\branchingMatrix)^{-1}$, and
+ $\pressure^{\transpose}\excitation u = 0$ for the right Perron vector $u$.
+\end{remark}
+
+\pause
+
+The timescale: the slowest mode that survives the contraction with $\pressure$
+\note{
+At the other end, $\excitation\meanResponseIntegral(\infty)$ is the whole expected progeny of
+the present state: direct offspring composed with all descendants. So the state-dependent part
+of the forecast has finished at horizons long against the relaxation time.
+It finishes strictly sooner. Let $\branchingMatrix$ be irreducible with right Perron vector
+$u$. Direction symmetry makes $\swapMatrix u$ a Perron vector as well, and simplicity with
+$u > 0$ forces $\swapMatrix u = u$, so that
+$\pressure^{\transpose}\excitation u = \decay\branchingRatio\,\pressure^{\transpose}u = 0$.
+The slowest mode is absent from the forecast at every horizon. On the two shipped regimes the
+surviving rate differs from pair to pair, and the notebook reads it off.
+}
 \end{frame}
 
 \begin{frame}
   \frametitle{The sign belongs to the kernel}
-% 5 min. corol.regimeSign and eq.signedExcitationAtHorizon. PICTURE:
-% \signedExcitation_a(\forecastHorizon) against \forecastHorizon for the two shipped
-% specifications -- one curve above zero and one below, at the SAME branching ratio and the
-% same stationary intensity. Then:
-% No statement of the form ``the order flow imbalance predicts continuation'' is made
-% without naming the specification it is made in.
-% With the honest caveat: at a general state two specifications of opposite sign need not
-% disagree.
+\begin{center}
+\begin{tikzpicture}[x=2.3cm, y=1.0cm, font=\scriptsize]
+  \draw[-{Stealth}, gray!70] (0,0) -- (3.3,0) node[right] {$\forecastHorizon$};
+  \draw[-{Stealth}, gray!70] (0,-2.0) -- (0,2.3)
+       node[above] {$\signedExcitation_a(\forecastHorizon)$};
+  \draw[orange!85, thick, domain=0:3.1, samples=50]
+       plot (\x, {1.9*(1 - exp(-1.1*\x))});
+  \draw[blue!65, thick, domain=0:3.1, samples=50]
+       plot (\x, {-1.5*(1 - exp(-2.0*\x))});
+  \node[orange!70!black, right] at (3.1,1.85) {continuation};
+  \node[blue!55!black, right] at (3.1,-1.5) {reversal};
+\end{tikzpicture}
+\end{center}
+
+\pause
+
+\begin{corol}
+\label{corol.regimeSign}
+ An extra event of type $a$, with $\pressure_a = +1$, against one fewer of its mirror moves
+ the forecast by $2\meanSize\signedExcitation_a(\forecastHorizon)$, where
+ $\signedExcitation_{\eone}(\forecastHorizon) := (\pressure^{\transpose}\excitation
+ \meanResponseIntegral(\forecastHorizon))_{\eone}/\pressure_{\eone}$.
+\end{corol}
+\note{
+$\signedExcitation(\forecastHorizon)$ takes one value on each pair, and
+$\signedExcitation(\forecastHorizon)/\forecastHorizon \to \signedExcitation$ as the horizon
+shrinks. Its sign decides whether an excess of type $a$ over its mirror is forecast to push
+the flow further in its own direction or to reverse it, and that sign belongs to the kernel.
+Two specifications with the same branching ratio and the same stationary intensity can carry
+opposite signs, and then forecast opposite displacements from such a state, while the identity
+of the idealised book holds identically in both. At a general state the forecast is
+$\meanSize\sum_{\eone}\pressure_{\eone}\signedExcitation_{\eone}(\forecastHorizon)
+\decayedCounts_{\eone}(t+)$, and two specifications of opposite sign need not disagree on it.
+No statement of the form ``the order flow imbalance predicts continuation'' is made without
+naming the specification it is made in.
+}
 \end{frame}
 
 \begin{frame}
   \frametitle{Three statistics of the same past flow}
-% 5 min. remark.imbalanceAsProxy. The signed count weights equally and ignores sizes; the
-% decayed count weights by age and ignores sizes; the imbalance weights equally and by sizes.
-% The forecast is driven by none of the three. The weighting gap closes exactly when
-% \pressure is a left eigenvector of \excitation; the mark gap does not close at all, since
-% no function of \decayedCounts recovers a size.
+\begin{center}
+{\footnotesize
+\begin{tabular}{@{}lccc@{}}
+\toprule
+statistic & weight by age & weight by size & weight by type \\
+\midrule
+$\pressure^{\transpose}\big(\multiCountingProc(t) - \multiCountingProc(t-\ofiWindow)\big)$
+ & equal & none & $\pressure$ \\
+$\pressure^{\transpose}\decayedCounts(t)$ & $e^{-\decay\,\mathrm{age}}$ & none & $\pressure$ \\
+$\OFI_{t,\ofiWindow}$ & equal & the size & $\pressure$ \\
+\midrule
+the forecast & through $\excitation\meanResponseIntegral(\forecastHorizon)$ & none
+ & $\signedExcitation(\forecastHorizon)$ \\
+\bottomrule
+\end{tabular}
+}
+\end{center}
+
+\pause
+
+\begin{remark}
+\label{remark.imbalanceAsProxy}
+ The gap in the weighting closes exactly when $\pressure$ is a left eigenvector of
+ $\excitation$; the gap in the marks does not close.
+\end{remark}
+\note{
+The forecast is driven by none of the three statistics, but by
+$\pressure^{\transpose}\excitation\meanResponseIntegral(\forecastHorizon)\decayedCounts(t+)$,
+which weights the events by age and by $\signedExcitation(\forecastHorizon)$. When
+$\signedExcitation$ is constant across the six types, $\pressure^{\transpose}\excitation
+\meanResponseIntegral(\forecastHorizon)$ is a multiple of $\pressure^{\transpose}$ at every
+horizon, and the forecast is a multiple of the decayed signed count. No function of the state
+recovers a size.
+So the imbalance is a statistic of the flow that needs no parameters, and estimates the
+forecast only up to those two gaps; how much is lost to each is a question about a particular
+specification.
+Now to notebook 08, section 6 to the end: the forecast against simulation, the price on an
+idealised book, and the three weightings. Then section 1.5.
+}
 \end{frame}

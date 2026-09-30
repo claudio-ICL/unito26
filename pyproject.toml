@@ -21,7 +21,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-test = ["pytest"]
+test = ["pytest", "plotly"]
 
 [tool.setuptools.packages.find]
 where = ["."]

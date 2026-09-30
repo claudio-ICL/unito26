@@ -5,7 +5,7 @@ stated entirely on that state, which is the whole content of holding it: the agg
 book is closed under the arrival of an order, so the queue inside a level never has to
 be represented.  What it cannot do is answer a question about a *named* order -- how
 much size is ahead of mine, whose fill was that -- and that is the order-level book,
-which lives elsewhere.
+which this package does not implement.
 
 Every class here is a **mutable fold accumulator**: one state, the current one, with no
 history and no time index.  The time series is the business of :mod:`unito26.lob.session`.
@@ -1184,7 +1184,7 @@ class TickArrayBook(AggregateBook):
         return self.floor + index if direction == BUY else self.ceiling - index
 
     def levels_map(self, direction: int) -> dict[int, int]:
-        """Built on demand, by walking the occupancy bits from the bottom up.
+        """Built on demand, by walking the occupancy bits from the touch outward.
 
         Nothing on the hot path calls this -- matching reads single sizes and the
         best price -- so the cost lands only where a caller genuinely wants the whole

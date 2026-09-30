@@ -32,6 +32,11 @@ already name, and never rename a concept on the way into Python.
 | $\Lambda$ | `\compensator` | `compensators_at_events` |
 | $\varpi$ | `\pressure` | `EventType.pressure` |
 | $\Delta\lambda = p^\top\lambda$ | `\intensityContrast` | the flow-only oracle |
+| $K = A - \beta I$ | `\hurwitzMatrix` | `hurwitz_matrix` |
+| $V = \mathrm{Cov}(Z)$ | — | `stationary_covariance()` |
+| $e^{Kh}$, $\Phi(h) = \int_0^h e^{Ks}ds$ | `\meanResponseIntegral` | `mean_response`, `mean_response_integral` |
+| $m_h(z)$, $\mathbb E_z N(h)$ | — | `forward_mean_state`, `forward_mean_counts` |
+| $\theta$, $\theta(h)$ | `\signedExcitation` | `signed_excitation`, `signed_excitation_at_horizon` |
 
 **$\Lambda$ is the compensator and nothing else.** The total intensity is $\lambda_{\mathfrak g}$.
 **$\kappa$ is the kernel.** The pressure contrast is $\Delta\lambda$, never $\kappa$.
@@ -41,9 +46,10 @@ already name, and never rename a concept on the way into Python.
 - **$A_{e,e'}$ is the influence of $e'$ on $e$** — row excited, column exciting. This makes
   $\lambda = \mu + AZ$ and $\lambda^* = (I-\Gamma)^{-1}\mu$ plain products on column
   vectors, and makes the **column** sums of $\Gamma$ the readable quantity. Because
-  $\rho(\Gamma) = \rho(\Gamma^\top)$, a transposed kernel passes every stability check and
-  produces a stationary path of the right rate. It is a bug that still runs, and the
-  convention is the only defence.
+  $\rho(\Gamma) = \rho(\Gamma^\top)$, a transposed kernel passes every stability check and,
+  when $\mu$ is solved from a target $\lambda^*$, produces a stationary path of the right
+  rate. It is a bug that still runs, and the convention is the only defence. At fixed $\mu$
+  the rate does change: 2 against 3 on `config.asymmetric_pair_params()`.
 - **$A \ge 0$ and a scalar $\beta$ do different jobs.** The common $\beta$ is what makes
   $\lambda_{\mathfrak g}$ decay as a single exponential *between events*; $A \ge 0$ is what makes the
   excess over $\bar\mu$ non-negative. The exact scheme needs both, for different reasons,

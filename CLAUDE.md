@@ -67,6 +67,10 @@ cross-reference in the book is written against that. Sections: `sec.theCourse`,
 fundamental theorem of derivative trading, SABR. On disk as a placeholder —
 `options/options.tex` carries the title and one line saying when the material arrives.
 
+**Appendix A — Integers in binary** (`chap.integersInBinary`) is back matter: lettered, after
+the two chapters, and not a subject chapter. It proves the properties of the binary
+representation that the faster book of `sec.messageFiles` is written in.
+
 The notes live in `documentation/tex/notes/`, one directory per chapter, one file per
 section under `sections/`, with the sectioning in the chapter file. See
 [`documentation/tex/notes/README.md`](documentation/tex/notes/README.md).

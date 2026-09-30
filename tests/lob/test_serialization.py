@@ -284,3 +284,50 @@ class TestFrozenExamples:
             > config.example_mark_params().depth_decay
             > config.deep_mark_params().depth_decay
         )
+
+
+class TestTheFrozenPairs:
+    """The two-type flows of the point-process lectures, asserted as what they were chosen
+    to show."""
+
+    PAIRS = [
+        (config.self_exciting_pair_params, config.SELF_EXCITING_PAIR_PARAMS),
+        (config.cross_exciting_pair_params, config.CROSS_EXCITING_PAIR_PARAMS),
+        (config.asymmetric_pair_params, config.ASYMMETRIC_PAIR_PARAMS),
+    ]
+
+    @pytest.mark.parametrize("loader, records", PAIRS)
+    def test_each_reserialises_to_its_frozen_records(self, loader, records):
+        assert loader().to_records() == records
+
+    def test_self_and_cross_differ_only_in_who_excites_whom(self):
+        """The cross-exciting kernel is the row swap of the self-exciting one, at the same
+        baseline, so the branching ratio and the stationary intensity are shared."""
+        own = config.self_exciting_pair_params()
+        other = config.cross_exciting_pair_params()
+        swap = np.array([[0.0, 1.0], [1.0, 0.0]])
+        assert np.array_equal(swap @ own.excitation, other.excitation)
+        assert np.array_equal(own.baseline, other.baseline)
+        for params in (own, other):
+            assert params.decay == 4.0
+            assert params.branching_ratio == pytest.approx(0.75)
+            assert params.stationary_intensity() == pytest.approx([1.0, 1.0])
+
+    @pytest.mark.parametrize(
+        "params", [config.self_exciting_pair_params(), config.cross_exciting_pair_params()]
+    )
+    def test_constant_column_sums_make_the_scalar_readings_exact(self, params):
+        column_sums = params.branching_matrix.sum(axis=0)
+        assert column_sums == pytest.approx([0.75, 0.75])
+        assert params.endogenous_fraction() == pytest.approx(params.branching_ratio)
+        assert params.mean_cluster_size() == pytest.approx(1 / (1 - params.branching_ratio))
+
+    def test_the_asymmetric_pair_parts_them(self):
+        params = config.asymmetric_pair_params()
+        assert params.decay == 4.0
+        assert params.branching_ratio == pytest.approx(0.6)
+        assert params.stationary_intensity() == pytest.approx([2.0, 1.0])
+        assert params.branching_matrix.sum(axis=0) == pytest.approx([0.4, 1.4])
+        assert params.endogenous_fraction() == pytest.approx(11 / 15)
+        assert params.mean_cluster_size() == pytest.approx(3.75)
+        assert 1 / (1 - params.branching_ratio) == pytest.approx(2.5)

@@ -20,11 +20,14 @@ $\bar\lambda = 30.19$ events/s — unless another parametrization is named.
 | chapter | statement | code | tests |
 | --- | --- | --- | --- |
 | §1 `sec.countingProcesses` | compensator, intensity, Meyer's time change | — | — |
-| §2 `sec.hawkesProcesses` | the definition, $\Gamma$, the cluster representation | `hawkes.HawkesParams` | `test_hawkes.py::TestParameterValidation` |
-| §3 `sec.exponentialKernels` | $\lambda = \mu + AZ$, the $O(1)$ recursion, the compensator display | `hawkes.intensities_at_events`, `hawkes.compensators_at_events` | `test_hawkes.py::TestTheReplayedIntensity` |
-| §4 `sec.stability` | $\rho$, $\lambda^*$, cluster sizes, the endogenous fraction, the Lyapunov equation, the forward mean | `HawkesParams.branching_matrix`, `.branching_ratio`, `.stationary_intensity`, `.endogenous_fraction`, `.mean_cluster_size` | `test_hawkes.py::TestTheBranchingStructure` |
+| §2 `sec.hawkesProcesses` | the definition, $\Gamma$, the cluster representation | `hawkes.HawkesParams`; the two-type pairs of `config` | `test_hawkes.py::TestParameterValidation`; `test_serialization.py::TestTheFrozenPairs` |
+| §3 `sec.exponentialKernels` | $\lambda = \mu + AZ$, the $O(1)$ recursion, the compensator display, $Z$ on a clock | `hawkes.intensities_at_events`, `hawkes.compensators_at_events`, `hawkes.decayed_counts_at` | `test_hawkes.py::TestTheReplayedIntensity`, `::TestTheStateOnAClock` |
+| §4 `sec.stability` | $\rho$, $\lambda^*$, cluster sizes, the endogenous fraction | `HawkesParams.branching_matrix`, `.branching_ratio`, `.stationary_intensity`, `.endogenous_fraction`, `.mean_cluster_size` | `test_hawkes.py::TestTheBranchingStructure` |
+| §4, `sec.secondOrder` | $K$, the Lyapunov equation, $\mathrm{Cov}(\lambda) = AVA^\top$, the scalar case | `HawkesParams.hurwitz_matrix`, `.stationary_covariance` | `test_hawkes.py::TestTheSecondOrder` |
+| §4, timescales | $e^{Kh}$, $\Phi(h)$, the forward mean of the state and of the counts, the mean response, the relaxation time | `hawkes.mean_response`, `hawkes.mean_response_integral` (every $\rho$); `HawkesParams.forward_mean_state`, `.forward_mean_counts`, `.relaxation_time`; `ExponentialHawkes.from_state` | `test_hawkes.py::TestTheMeanResponse`, `::TestStartingFromAState` |
 | §5 `sec.simulation` | Dassios–Zhao, Ogata thinning, the residual test | `hawkes.ExponentialHawkes`, `hawkes.OgataThinningHawkes` | `test_hawkes.py::TestExactSimulation`, `::TestAgreementAndClustering` |
-| `sec.orderFlowModel`, `sec.forecastingTheMid` (both under `sec.priceFormation`) | $\varpi$, $\Delta\lambda$, $\theta$, the forecast and the comparison with $\mathrm{OFI}$ | `HawkesParams.signed_endogenous_fraction`, `imbalance_regression` | `test_hawkes.py::TestTheSignedContrasts` |
+| `sec.orderFlowImbalance` (under `sec.priceFormation`) | the idealised book, $e_n = \varpi_{E_n} q_n$, the identity with its residual | `idealised.IdealisedFlow`, `idealised.idealised_book` | `test_idealised_flow.py` |
+| `sec.orderFlowModel`, `sec.forecastingTheMid` (both under `sec.priceFormation`) | $\varpi$, $\Delta\lambda$, $\theta$ and $\theta(h)$, the forecast and the comparison with $\mathrm{OFI}$ | `HawkesParams.signed_endogenous_fraction`, `.signed_excitation`, `.signed_excitation_at_horizon`, `imbalance_regression` | `test_hawkes.py::TestTheSignedContrasts`, `::TestTheSignedExcitation` |
 
 Three invariants any implementation must respect, all of them load-bearing:
 
@@ -37,8 +40,8 @@ Three invariants any implementation must respect, all of them load-bearing:
   Nothing downstream re-checks it.
 - **$\Gamma$ is read column-exciting, row-excited.** `excitation @ decayed_counts` and
   `excitation.sum(axis=0)` are the two places this shows. A transposed kernel passes every
-  stability check and produces a stationary path of the right total rate, so the convention
-  is the only defence.
+  stability check and, when $\mu$ is solved from a target $\lambda^*$, produces a stationary
+  path of the right total rate, so the convention is the only defence.
 
 The compensator is implemented independently of the simulator **on purpose**. An accumulated
 compensator would agree with the path by construction; an independently computed one turns

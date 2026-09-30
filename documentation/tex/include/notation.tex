@@ -207,3 +207,31 @@
 % The signed excitation strength of a type: (\pressure^T\excitation)_e / \pressure_e,
 % positive when a type begets its own pressure.
 \newcommand{\signedExcitation}{\theta}
+
+%% THE FASTER BOOK %%
+% The occupied prices of a side, and the band of ticks an array-backed book indexes:
+% its width, and its lowest price.
+\newcommand{\occupiedLevels}{\ell}
+\newcommand{\bandWidth}{W}
+\newcommand{\bandFloor}{p_0}
+
+%% INTEGERS IN BINARY %%
+% The appendix reads an integer as a sequence of bits.  The letters of chapter 1 are taken
+% (S a size, P a price, R a response, B a book), so the sets here are calligraphic, and
+% integers carry Python's & and | because between integers the wedge is a minimum.
+\newcommand{\Ftwo}{\mathbb{F}_{2}}
+\newcommand{\bitSequences}{\mathcal{S}}
+\newcommand{\eventuallyZero}{\mathcal{P}}
+\newcommand{\eventuallyConstant}{\bar{\mathcal{P}}}
+\newcommand{\truncatedSequences}[1]{\mathcal{P}_{#1}}
+\newcommand{\remainders}[1]{\mathcal{R}_{#1}}
+\newcommand{\reduction}[1]{\mathrm{mod}_{#1}}
+\newcommand{\digitsOf}[1]{\iota_{#1}}
+\newcommand{\truncation}[1]{\mathrm{tr}_{#1}}
+\newcommand{\binaryValue}{\mathrm{val}}
+\newcommand{\binaryRepresentation}{\mathrm{bin}}
+\newcommand{\twosComplement}{\mathrm{bits}}
+\newcommand{\trailingZeros}{\nu}
+\newcommand{\bitAnd}{\mathbin{\&}}
+\newcommand{\bitOr}{\mathbin{|}}
+\newcommand{\popcount}[1]{\#{#1}}

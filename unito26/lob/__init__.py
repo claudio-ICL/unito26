@@ -5,8 +5,8 @@ The strand is built as a ladder of increasing complexity, and the modules follow
 ``messages``
     the order tuple ``(t, q, p, d)``, event types, and tick/currency conversion.
 ``orderbook``
-    both representations of the book -- the aggregate ``{price: size}`` one and the
-    order-level, identity-carrying one, in a single file.
+    the aggregate ``{price: size}`` book, and the ladder of faster ways to find its best
+    price.  The order-level, identity-carrying book is not implemented here.
 ``delta_log``
     a session recorded as the level changes rather than as the states, and the book
     rebuilt from them.
@@ -27,6 +27,9 @@ The strand is built as a ladder of increasing complexity, and the modules follow
     multivariate Hawkes order flow: the timing and type of events.
 ``simulate``
     marks -- turning an event type into an actual order, given the book.
+``idealised``
+    the idealised book of section 1.4: a flow of unit orders at the touches that keeps
+    its assumption true, so that the identity of the order flow imbalance holds exactly.
 ``imbalance_regression``
     the two regressions of the mid-price change on the imbalances -- the contemporaneous
     one, which is a statement about price formation, and the predictive one, which is a
