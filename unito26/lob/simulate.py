@@ -83,7 +83,7 @@ class MarkParams(FrameSerializable):
     @classmethod
     def schema(cls) -> pa.DataFrameSchema:
         """One row.  ``DepthDecay`` is a geometric parameter, so ``1`` is admissible and
-        means every order at the touch; ``0`` is not."""
+        means every limit order one tick from the opposite touch; ``0`` is not."""
         return pa.DataFrameSchema(
             {
                 "DepthDecay": pa.Column(

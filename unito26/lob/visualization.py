@@ -37,6 +37,7 @@ __all__ = [
     "band_width_figure",
     "intensity_figure",
     "raster_figure",
+    "counting_figure",
     "monte_carlo_figure",
     "exponential_qq_figure",
 ]
@@ -653,6 +654,43 @@ def raster_figure(paths: dict, labels, title: str = ""):
     figure.update_xaxes(title_text="time (s)")
     figure.update_layout(
         title=title, height=120 + 70 * len(names), legend=dict(orientation="h", y=1.1, x=0)
+    )
+    return figure
+
+
+def counting_figure(paths: dict, interval, labels, title: str = ""):
+    """The counting process of every type along several paths, one row per path.
+
+    ``paths`` maps a row name to the ``(times, types)`` of its path, and ``interval`` is
+    ``(a, b)``.  Each line is N_e(t) - N_e(a) on (a, b]: zero at ``a``, a step of one at each
+    event of the type, and held to ``b`` after the last.  The rows share both axes, so the
+    slopes are compared by eye.
+    """
+    import numpy as np
+    from plotly.subplots import make_subplots
+
+    start, end = interval
+    names = list(paths)
+    figure = make_subplots(
+        rows=len(names), cols=1, shared_xaxes=True, shared_yaxes="all", vertical_spacing=0.04
+    )
+    for row, name in enumerate(names, start=1):
+        times, types = (np.asarray(array) for array in paths[name])
+        for slot, label in enumerate(labels):
+            mine = times[(types == slot) & (times > start) & (times <= end)]
+            figure.add_trace(
+                _steps(
+                    np.r_[start, mine, end], np.r_[np.arange(mine.size + 1), mine.size],
+                    label, PALETTE[slot % len(PALETTE)], legendgroup=label,
+                    showlegend=row == 1,
+                    hovertemplate="%{x:.3f} s: %{y}<extra>" + label + "</extra>",
+                ),
+                row=row, col=1,
+            )
+        figure.update_yaxes(title_text=name, rangemode="tozero", row=row, col=1)
+    figure.update_xaxes(title_text="time (s)", row=len(names), col=1)
+    figure.update_layout(
+        title=title, height=120 + 130 * len(names), legend=dict(orientation="h", y=1.06, x=0)
     )
     return figure
 

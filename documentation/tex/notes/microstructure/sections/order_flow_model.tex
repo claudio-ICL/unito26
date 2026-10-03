@@ -1,6 +1,16 @@
 We now specialise the apparatus of Section \ref{sec.pointProcesses} to the order flow of
 Section \ref{sec.orderDrivenMarkets}.
 
+An order is the tuple $(t,q,p,d)$ of Section \ref{sec.orderDrivenMarkets},
+and we simulate the flow by sampling its components one event at a time.
+The times and the types carry the structure of the model:
+the times are the arrival times of a Hawkes process,
+and the type of each arrival says whether it is a market order, a limit order or a
+withdrawal, and on which side.
+The sizes are drawn independently of both.
+The price is drawn last, against the book as the event finds it,
+by the rule of Definition \ref{def.geometricPlacement}.
+
 \begin{defi}\label{def.orderFlowProcess}
  The \emph{order flow} is a marked point process $(\arrivalTimes[]_n, \event[n], \orderSize_n)$
  in which
@@ -33,6 +43,83 @@ so the first pushes up and the second down.
  for the Hawkes process of Definition \ref{def.orderFlowProcess}.
 \end{defi}
 
+The sizes $\orderSize_n$ of Definition \ref{def.orderFlowProcess} are drawn from a
+lognormal law, rounded to a whole number of lots and to at least one,
+a lot being a fixed number of shares.
+For the prices,
+write $\bestAskPrice_{t-}$ and $\bestBidPrice_{t-}$ for the best prices immediately before
+time $t$,
+and $\size^{b}_{t-}(p)$ and $\size^{a}_{t-}(p)$ for the sizes resting then at the price $p$
+on the bid and on the ask.
+
+\begin{defi}\label{def.geometricPlacement}
+ Let $\offsetParameter \in (0,1]$,
+ and let $(\priceOffset_n)_n$ be independent and identically distributed,
+ independent of the order flow, with the geometric law
+ \begin{equation}\label{eq.priceOffset}
+  \Prob(\priceOffset_n = k) = \offsetParameter \, (1-\offsetParameter)^{k},
+  \qquad k = 0, 1, 2, \dots
+ \end{equation}
+ Let both sides of the book be occupied immediately before
+ $\arrivalTimes[]_n$.\footnote{When
+ the ask is empty a limit buy is priced at $p_0 - \tickSizeOfLOB\priceOffset_n$,
+ for a fixed reference price $p_0$,
+ and when the bid is empty a limit sell at $p_0 + \tickSizeOfLOB\priceOffset_n$;
+ a withdrawal from an empty side has no message;
+ and no price is placed below one tick.}
+ Under the \emph{geometric placement} the message of the $n$-th event of the order flow is
+ \begin{enumerate}[label={\emph{\roman{*}}.}]
+  \item for a market buy, the submission of
+        $(\arrivalTimes[]_n, \orderSize_n, \infty, +1)$,
+        and for a market sell, of $(\arrivalTimes[]_n, \orderSize_n, 0, -1)$;
+  \item for a limit buy, the submission of $(\arrivalTimes[]_n, \orderSize_n, p_n, +1)$,
+        and for a limit sell, of $(\arrivalTimes[]_n, \orderSize_n, p_n, -1)$, where
+        \begin{equation}\label{eq.limitPrice}
+         p_n = \bestAskPrice_{\arrivalTimes[]_n-}
+         - \tickSizeOfLOB \, (1 + \priceOffset_n)
+         \quad \text{for a buy,}
+         \qquad
+         p_n = \bestBidPrice_{\arrivalTimes[]_n-}
+         + \tickSizeOfLOB \, (1 + \priceOffset_n)
+         \quad \text{for a sell;}
+        \end{equation}
+  \item for a withdrawal from the bid, the cancellation of the size
+        $\orderSize_n \wedge \size^{b}_{\arrivalTimes[]_n-}(p_n)$
+        from the queue at $p_n$,
+        where $p_n$ is drawn among the occupied prices of the bid
+        with probability proportional to the size resting at each,
+        and otherwise independently of the past;
+        and likewise for a withdrawal from the ask.
+ \end{enumerate}
+\end{defi}
+
+By \eqref{eq.limitPrice} a limit order is priced strictly on its own side of the opposite
+best quote,
+so its market part in Proposition \ref{prop.decompositionOfLimitOrder} is null
+and it rests in full.
+Every transaction of the simulated epoch is therefore initiated by one of the two market
+types.
+
+At $\priceOffset_n = 0$ the order is priced one tick from the opposite best quote:
+it improves the best quote of its side when
+$\LOBspread_{\arrivalTimes[]_n-} > \tickSizeOfLOB$,
+and joins it when $\LOBspread_{\arrivalTimes[]_n-} = \tickSizeOfLOB$.
+It arrives behind the best quote of its side when
+$\priceOffset_n \geq \LOBspread_{\arrivalTimes[]_n-}/\tickSizeOfLOB$,
+which by \eqref{eq.priceOffset} has probability
+$(1-\offsetParameter)^{\LOBspread_{\arrivalTimes[]_n-}/\tickSizeOfLOB}$ given the book;
+it then changes neither best price nor the size resting at either,
+and its contribution \eqref{eq.orderFlowContribution} is zero.
+At a spread of one tick,
+$\offsetParameter$ is the probability that a limit order joins the best quote of its side.
+
+The placement follows \cite{CST10sto},
+where a limit order arrives $i \geq 1$ ticks from the opposite best quote
+at a rate fitted there as a decreasing power of $i$,
+and a level loses orders at a rate proportional to the size resting at it.
+Here $i = 1 + \priceOffset_n$ has a geometric law,
+and the times of the cancellations are those of the Hawkes process.
+
 \begin{prop}\label{prop.signedSizeContribution}
  Under Assumption \ref{assumption.idealisedBook},
  the contribution \eqref{eq.orderFlowContribution} of the $n$-th event is
@@ -55,6 +142,45 @@ so the first pushes up and the second down.
  terms, and mutatis mutandis for the three sell-side types.
  In each case the sign is $\pressure_{\event[n]}$.
 \end{proof}
+
+\begin{example}[A placement under which Assumption \ref{assumption.idealisedBook} holds]
+\label{example.idealisedPlacement}
+ Let $\orderSize_n = 1$ for every $n$,
+ and let the book before the first event have both sides occupied and satisfy part
+ \emph{iii.} of Assumption \ref{assumption.idealisedBook}.
+ Let a market order trade one share at the opposite best quote,
+ a withdrawal remove one share from the best quote of its side,
+ and a limit order join the best quote of its side,
+ or, once the size there has reached $\uniformDepth$,
+ arrive one tick above (below, resp.) it.
+ Then Assumption \ref{assumption.idealisedBook} holds
+ up to the first event that would empty a side
+ or place a limit order inside a spread of one tick.
+ Up to that event $\orderFlowContribution = \pressure_{\event[n]}$
+ by Proposition \ref{prop.signedSizeContribution},
+ and \eqref{eq.idealisedUpdate} holds along the path.
+ The sizes are units because a larger order may reach past a queue that holds one share,
+ against part \emph{ii.}
+\end{example}
+
+\begin{remark}\label{remark.depthBehindTheQuotes}
+ The geometric placement satisfies Assumption \ref{assumption.idealisedBook}
+ at no $\offsetParameter$.
+ A limit order arrives behind the best quote of its side with probability
+ $(1-\offsetParameter)^{\LOBspread_{\arrivalTimes[]_n-}/\tickSizeOfLOB}$,
+ against part \emph{i.},
+ and a withdrawal falls behind it whenever the price drawn is not the best.
+ At $\offsetParameter = 1$ the first failure disappears and the second does not,
+ and no limit order then arrives behind a quote,
+ where part \emph{iii.} asks every queue to hold $\uniformDepth$:
+ the assumption takes that depth as given,
+ and a book generated by the flow holds behind its quotes only what the flow has left
+ there.
+ We therefore keep $\offsetParameter < 1$,
+ and \eqref{eq.signedSizeContribution} then holds,
+ with the size the message carries in place of $\orderSize_n$,
+ for the events that satisfy parts \emph{i.} and \emph{ii.}
+\end{remark}
 
 \begin{defi}\label{def.directionSymmetry}
  Let $\swapMatrix$ be the permutation matrix exchanging the two members of each pair of
