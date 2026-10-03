@@ -198,6 +198,10 @@
 % The marks of the order flow: the size an order carries, and its mean.
 \newcommand{\orderSize}{q}
 \newcommand{\meanSize}{\bar{\orderSize}}
+% The number of ticks, beyond one, between a limit order and the opposite best quote, and
+% the parameter of its geometric law. Not "depth", which is a size, and not \decay.
+\newcommand{\priceOffset}{\zeta}
+\newcommand{\offsetParameter}{\eta}
 % The swap of the two members of each buy/sell pair, under which \swapMatrix\pressure
 % = -\pressure. A specification invariant under it has \pressure^T\baseIntensity = 0.
 \newcommand{\swapMatrix}{\Sigma}

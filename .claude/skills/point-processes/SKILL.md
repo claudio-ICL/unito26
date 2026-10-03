@@ -31,6 +31,8 @@ already name, and never rename a concept on the way into Python.
 | $\lambda_{\mathfrak g}$ | `\totalIntensity` | `total_intensity` |
 | $\Lambda$ | `\compensator` | `compensators_at_events` |
 | $\varpi$ | `\pressure` | `EventType.pressure` |
+| $\eta$ | `\offsetParameter` | `MarkParams.depth_decay` |
+| $\zeta_n$ | `\priceOffset` | `OrderFlowSimulator._offset` |
 | $\Delta\lambda = p^\top\lambda$ | `\intensityContrast` | the flow-only oracle |
 | $K = A - \beta I$ | `\hurwitzMatrix` | `hurwitz_matrix` |
 | $V = \mathrm{Cov}(Z)$ | — | `stationary_covariance()` |

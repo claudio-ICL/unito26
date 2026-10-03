@@ -37,7 +37,8 @@ class TestMarkParams:
             MarkParams.from_frame(frame)
 
     def test_certainty_at_the_touch_is_allowed(self):
-        # p = 1 puts every order at the touch, which is a parametrisation, not an error.
+        # p = 1 puts every limit order one tick from the opposite touch: a parametrisation,
+        # not an error.
         marks = MarkParams(1.0, 4.0, 0.8, 10)
         assert MarkParams.from_frame(marks.to_frame()) == marks
 
