@@ -31,7 +31,7 @@ with probability $e^{-D/\beta}$; clipping instead of returning infinity biases t
 share.
 
 Then draw the type on the **pre-jump** intensities,
-$\mathbb P(E_{n+1} = e) = \lambda_e(T_{n+1}-)/\lambda_{\mathfrak g}(T_{n+1}-)$. This step is where the
+$\mathbb P(E_{n+1} = e) = \lambda_e(T_{n+1})/\lambda_{\mathfrak g}(T_{n+1})$. This step is where the
 full matrix $A$ re-enters — the wait saw only its column sums — and the scheme is not
 defined without it.
 

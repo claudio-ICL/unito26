@@ -70,8 +70,8 @@ The state is carried from event to event by a recursion, not recomputed.
 Between $\arrivalTimes[ ]_{n}$ and $\arrivalTimes[ ]_{n+1}$ it merely decays,
 so from \eqref{eq.decayedCounts},
 \begin{equation}\label{eq.update_of_exponential_intensity}
- \decayedCounts(\arrivalTimes[ ]_{n+1}-)
- = \Big( \decayedCounts(\arrivalTimes[ ]_{n}-) + \unitVector_{\event[n]} \Big)
+ \decayedCounts(\arrivalTimes[ ]_{n+1})
+ = \Big( \decayedCounts(\arrivalTimes[ ]_{n}) + \unitVector_{\event[n]} \Big)
  \, e^{-\decay (\arrivalTimes[ ]_{n+1} - \arrivalTimes[ ]_{n})} .
 \end{equation}
 Evaluating \eqref{eq.decayedCounts} directly at each of $n$ arrival times costs $O(n^2)$,
@@ -80,10 +80,11 @@ where \eqref{eq.update_of_exponential_intensity} costs $O(1)$ per event.
 \begin{remark}\label{remark.prePostJump}
  The two values in \eqref{eq.update_of_exponential_intensity} are different objects and both
  are needed.
- The pre-jump value $\decayedCounts(\arrivalTimes[ ]_{n+1}-)$ is the one that enters the
+ The pre-jump value $\decayedCounts(\arrivalTimes[ ]_{n+1})$ is the one that enters the
  intensity, by predictability;
  the post-jump value
- $\decayedCounts(\arrivalTimes[ ]_{n+1}-) + \unitVector_{\event[n+1]}$
+ $\decayedCounts(\arrivalTimes[ ]_{n+1}+)
+ = \decayedCounts(\arrivalTimes[ ]_{n+1}) + \unitVector_{\event[n+1]}$
  is the one carried forward as the state.
  Confusing them shifts every intensity by one event,
  and produces a path that is plausible and wrong.
@@ -159,7 +160,7 @@ with probability $e^{-D/\decay} > 0$ no excitation occurs at all.
  The type is drawn at the arrival time, before the jump:
  \begin{equation}\label{eq.dzType}
   \Prob \big( \event[n+1] = e \, \vert \, \filtrationF_{\arrivalTimes[]_{n+1}-} \big)
-  = \frac{\intensity(\arrivalTimes[]_{n+1}-)}{\totalIntensity(\arrivalTimes[]_{n+1}-)} .
+  = \frac{\intensity(\arrivalTimes[]_{n+1})}{\totalIntensity(\arrivalTimes[]_{n+1})} .
  \end{equation}
 \end{thm}
 \begin{proof}
@@ -191,13 +192,13 @@ with probability $e^{-D/\decay} > 0$ no excitation occurs at all.
   \STATE set $\tau_2 := +\infty$
   \ENDIF
   \STATE set $\arrivalTimes[]_{n+1} := \arrivalTimes[]_{n} + \tau_1 \wedge \tau_2$
-  \STATE set $\decayedCounts(\arrivalTimes[]_{n+1}-) :=
+  \STATE set $\decayedCounts(\arrivalTimes[]_{n+1}) :=
          \decayedCounts(\arrivalTimes[]_{n}+) \,
          e^{-\decay(\arrivalTimes[]_{n+1}-\arrivalTimes[]_{n})}$
   \STATE draw $\event[n+1]$ in $\lbrace 1,\dots,\numEventTypes\rbrace$ with probabilities
          \eqref{eq.dzType}
   \STATE set $\decayedCounts(\arrivalTimes[]_{n+1}+) :=
-         \decayedCounts(\arrivalTimes[]_{n+1}-) + \unitVector_{\event[n+1]}$
+         \decayedCounts(\arrivalTimes[]_{n+1}) + \unitVector_{\event[n+1]}$
   \RETURN $(\arrivalTimes[]_{n+1}, \event[n+1])$
  \end{algorithmic}
 \end{algorithm}

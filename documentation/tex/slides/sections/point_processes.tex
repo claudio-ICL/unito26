@@ -642,52 +642,60 @@ Now to notebook 05, sections 1 to 3: the first moment, $V$, and the intensity re
   \frametitle{The forward mean}
 \begin{prop}
 \label{prop.forwardMean}
- From $\decayedCounts(0+) = z$ and $\multiCountingProc(0) = 0$, with
- $\meanResponseIntegral(\forecastHorizon) := \int_{0}^{\forecastHorizon} e^{\hurwitzMatrix s}ds$,
- \[
-  m_t(z) = e^{\hurwitzMatrix t}z + \meanResponseIntegral(t)\,\baseIntensity,
-  \qquad
-  \Expectation_z\big[\multiCountingProc(\forecastHorizon)\big]
+ With $m_{s,t}(z) := \Expectation[\decayedCounts(t) \mid \decayedCounts(s+) = z]$,
+ $\forecastHorizon = t - s$ and
+ $\meanResponseIntegral(\forecastHorizon) := \int_{0}^{\forecastHorizon} e^{\hurwitzMatrix u}du$,
+ \begin{gather*}
+  m_{s,t}(z) = e^{\hurwitzMatrix \forecastHorizon}z
+  + \meanResponseIntegral(\forecastHorizon)\,\baseIntensity, \\
+  \Expectation\big[\multiCountingProc(t) - \multiCountingProc(s)
+  \mid \decayedCounts(s+) = z\big]
   = \forecastHorizon\baseIntensity + \excitation\meanResponseIntegral(\forecastHorizon)z
   + \excitation\Big(\int_0^{\forecastHorizon}\meanResponseIntegral\Big)\baseIntensity .
- \]
+ \end{gather*}
 \end{prop}
 
 \pause
 
-Finite at every $\branchingRatio$, on every horizon
+Finite at every $\branchingRatio$, on every horizon; a function of $t - s$ alone
 \note{
-The generator with $f(z) = z$ gives $\dot m_t = \hurwitzMatrix m_t + \baseIntensity$ with
-$m_{0+} = z$, and variation of constants gives the first display; the compensator integrates
+The pair $(\multiCountingProc, \decayedCounts)$ is Markov and its generator does not depend on
+time, so given the past up to $s$ only the state $\decayedCounts(s+)$ and the elapsed time matter.
+The generator with $f(z) = z$ gives
+$\partial_t m_{s,t} = \hurwitzMatrix m_{s,t} + \baseIntensity$ with $m_{s,t}(z) \to z$ as
+$t \downarrow s$, and variation of constants gives the first display; the compensator integrates
 the intensity, which gives the second.
 This is the equation the forecast of section 1.4 is a contraction of.
 If $\branchingRatio < 1$, then
 $\meanResponseIntegral(\forecastHorizon) = \hurwitzMatrix^{-1}(e^{\hurwitzMatrix
-\forecastHorizon} - I)$. The transient mean $m_t(z)$ is not the stationary mean $m$: the two
+\forecastHorizon} - I)$. The transient mean $m_{s,t}(z)$ is not the stationary mean $m$: the two
 meet at the fixed point of the same equation.
 }
 \end{frame}
 
 \begin{frame}
-  \frametitle{In deviations from $m$, the state forgets at the rate of $e^{\hurwitzMatrix t}$}
-\[
- m_t(z) - m = e^{\hurwitzMatrix t}(z - m),
- \qquad
- \Expectation_z\big[\multiCountingProc(\forecastHorizon)\big]
+  \frametitle{In deviations from $m$, the state forgets at the rate of
+  $e^{\hurwitzMatrix \forecastHorizon}$}
+\begin{gather*}
+ m_{s,t}(z) - m = e^{\hurwitzMatrix \forecastHorizon}(z - m), \\
+ \Expectation\big[\multiCountingProc(t) - \multiCountingProc(s)
+ \mid \decayedCounts(s+) = z\big]
  = \forecastHorizon\,\stationaryIntensity
  + \excitation\meanResponseIntegral(\forecastHorizon)(z - m)
-\]
+\end{gather*}
 
 \pause
 
-$\branchingRatio < 1$: the baseline enters only through $m$
+$\branchingRatio < 1$: the baseline enters only through $m$, and $m_{s,t}(z) \to m$ as
+$t \to \infty$
 
 \pause
 
 $z = m$: nothing to forget
 \note{
 Both follow from the previous frame when $\branchingRatio < 1$. The first from
-$\meanResponseIntegral(t)\baseIntensity = (I - e^{\hurwitzMatrix t})m$, since
+$\meanResponseIntegral(\forecastHorizon)\baseIntensity
+= (I - e^{\hurwitzMatrix \forecastHorizon})m$, since
 $\hurwitzMatrix m = -\baseIntensity$. The second from
 $\excitation(\int_0^{\forecastHorizon}\meanResponseIntegral)\baseIntensity
 = \forecastHorizon\excitation m - \excitation\meanResponseIntegral(\forecastHorizon)m$ and
@@ -701,17 +709,20 @@ state over its mean. A state at its mean forecasts the stationary rate, at every
   \frametitle{One extra event: the mean response}
 \begin{corol}
 \label{corol.meanResponse}
- An extra event of type $\eone$ at time $0$ moves the mean state by
- $R_{\eone}(t) = e^{\hurwitzMatrix t}\unitVector_{\eone}$, and
- $\int_0^\infty \mathbf{1}^{\transpose}\excitation R_{\eone}(t)\,dt = C_{\eone} - 1$.
+ One more event of type $\eone$ in the state displaces the mean state $\forecastHorizon$ later
+ by $R_{\eone}(\forecastHorizon) = e^{\hurwitzMatrix \forecastHorizon}\unitVector_{\eone}$,
+ whatever the state, and
+ $\int_0^\infty \mathbf{1}^{\transpose}\excitation R_{\eone}(\forecastHorizon)
+ \,d\forecastHorizon = C_{\eone} - 1$.
 \end{corol}
 
 \pause
 
 Rates $\decay(1 - \Real\gamma_i)$; the slowest $\decay(1 - \branchingRatio)$
 \note{
-The two copies differ only in their initial state, and the inhomogeneity cancels in the
-difference. When $\branchingMatrix$ is diagonalisable the response is a combination of
+The response is $m_{s,s+\forecastHorizon}(z + \unitVector_{\eone})
+- m_{s,s+\forecastHorizon}(z)$: the two means differ only through the state at $s$, and the term
+in $\baseIntensity$ cancels in the difference. When $\branchingMatrix$ is diagonalisable the response is a combination of
 exponentials at the rates $\decay(1 - \Real\gamma_i)$; in general the modes carry polynomial
 factors as well.
 The integrated response of the total intensity is the expected number of strict descendants of
@@ -723,7 +734,7 @@ the extra event, $C_{\eone} - 1$: the event itself sits in the state and not in 
   \frametitle{A response can rise before it falls}
 \begin{center}
 \begin{tikzpicture}[x=3.1cm, y=2.6cm, font=\scriptsize]
-  \draw[-{Stealth}, gray!70] (0,0) -- (2.65,0) node[right] {$t$};
+  \draw[-{Stealth}, gray!70] (0,0) -- (2.65,0) node[right] {$\forecastHorizon$};
   \draw[-{Stealth}, gray!70] (0,0) -- (0,1.3);
   \draw[gray!60] (-0.03,1) -- (0.03,1) node[left=3pt, gray!40!black] {$1$};
   \draw[gray!45, dashed] (0,1) -- (2.5,1);
@@ -736,7 +747,7 @@ the extra event, $C_{\eone} - 1$: the event itself sits in the state and not in 
   \node[blue!55!black, right] at (0.45,0.42) {$\mathbf{1}^{\transpose}R_1$};
   \draw[gray!70, densely dashed, domain=0.9:2.5, samples=40]
        plot (\x, {2.1429*exp(-1.6*\x)});
-  \node[gray!40!black, above] at (1.9,0.13) {$\propto e^{-\decay(1-\branchingRatio)t}$};
+  \node[gray!40!black, above] at (1.9,0.13) {$\propto e^{-\decay(1-\branchingRatio)\forecastHorizon}$};
 \end{tikzpicture}
 \end{center}
 
@@ -755,7 +766,7 @@ exceeds one. This is the total mean \emph{state}; the response of the total inte
 same event falls monotonically here.
 The relaxation time is the time constant of the slowest mode and describes the response only
 asymptotically. It is not a half-life, which is $\log 2$ times it. For the response to be
-asymptotically proportional to $e^{-\decay(1-\branchingRatio)t}$ with a positive constant for
+asymptotically proportional to $e^{-\decay(1-\branchingRatio)\forecastHorizon}$ with a positive constant for
 every type, the Perron mode must appear in every response, which holds when
 $\branchingMatrix$ is irreducible.
 }
@@ -905,8 +916,8 @@ the intensity decays during a wait, and the notebook measures it.
 \begin{frame}
   \frametitle{The state is carried from event to event, not recomputed}
 \[
- \decayedCounts(\arrivalTimes[ ]_{n+1}-)
- = \big( \decayedCounts(\arrivalTimes[ ]_{n}-) + \unitVector_{\event[n]} \big)
+ \decayedCounts(\arrivalTimes[ ]_{n+1})
+ = \big( \decayedCounts(\arrivalTimes[ ]_{n}) + \unitVector_{\event[n]} \big)
  \, e^{-\decay(\arrivalTimes[ ]_{n+1} - \arrivalTimes[ ]_{n})}
 \]
 
@@ -998,11 +1009,11 @@ type draw that makes the scheme multivariate, and it is there that the full matr
  \STATE set $\tau_2 := +\infty$
  \ENDIF
  \STATE set $\arrivalTimes[ ]_{n+1} := \arrivalTimes[ ]_{n} + \tau_1 \wedge \tau_2$
- \STATE set $\decayedCounts(\arrivalTimes[ ]_{n+1}-) := \decayedCounts(\arrivalTimes[ ]_{n}+)
+ \STATE set $\decayedCounts(\arrivalTimes[ ]_{n+1}) := \decayedCounts(\arrivalTimes[ ]_{n}+)
         \, e^{-\decay(\arrivalTimes[ ]_{n+1} - \arrivalTimes[ ]_{n})}$
  \STATE draw $\event[n+1]$ with probabilities
-        $\intensity(\arrivalTimes[ ]_{n+1}-)/\totalIntensity(\arrivalTimes[ ]_{n+1}-)$
- \STATE set $\decayedCounts(\arrivalTimes[ ]_{n+1}+) := \decayedCounts(\arrivalTimes[ ]_{n+1}-)
+        $\intensity(\arrivalTimes[ ]_{n+1})/\totalIntensity(\arrivalTimes[ ]_{n+1})$
+ \STATE set $\decayedCounts(\arrivalTimes[ ]_{n+1}+) := \decayedCounts(\arrivalTimes[ ]_{n+1})
         + \unitVector_{\event[n+1]}$
  \RETURN $(\arrivalTimes[ ]_{n+1}, \event[n+1])$
 \end{algorithmic}

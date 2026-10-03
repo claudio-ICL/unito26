@@ -38,12 +38,42 @@ The intensity of an exponential-kernel Hawkes process can be written as
 Notice that it is the strict inequality in the sum of \eqref{eq.decayedCounts} that makes
 $\decayedCounts$ left-continuous, and therefore makes \eqref{eq.intensityFromState}
 predictable, as Definition \ref{def.compensator} requires of an intensity.
+At an arrival time $\arrivalTimes_{j}$,
+$\decayedCounts(\arrivalTimes_{j})$ is therefore the value before the jump,
+and $\decayedCounts(\arrivalTimes_{j}+)
+= \decayedCounts(\arrivalTimes_{j}) + \unitVector_e$
+the value after it.
 
 Between events $\decayedCounts$ solves $d\decayedCounts = -\decay \decayedCounts \, dt$,
 and at an event of type $e$ it gains the unit vector $\unitVector_e$, so that
 \begin{equation}\label{eq.stateDynamics}
  d\decayedCounts(t) = -\decay \decayedCounts(t) \, dt + d\multiCountingProc(t).
 \end{equation}
+
+\begin{remark}[The unit of time]\label{remark.timeRescaling}
+ Let $c > 0$.
+ The process $t \mapsto \multiCountingProc(t/c)$,
+ whose arrival times are $c\,\arrivalTimes_{j}$,
+ is an exponential-kernel Hawkes process with baselines $\baseIntensity/c$,
+ excitation matrix $\excitation/c$ and decay $\decay/c$,
+ and its decayed counts are $\decayedCounts(t/c)$.
+ Indeed, its compensator with respect to the history $(\filtrationF_{t/c})_{t}$ is
+ \begin{equation*}
+  \compensator(t/c)
+  = \int_{0}^{t} \Big( \frac{\baseIntensity}{c}
+  + \frac{\excitation}{c} \, \decayedCounts(u/c) \Big) \, du ,
+ \end{equation*}
+ by \eqref{eq.intensityFromState} and the change of variable $u \mapsto u/c$, and
+ \begin{equation*}
+  \decayedCounts_e(u/c) = \sum_{j \, : \, c\,\arrivalTimes_{j} < u}
+  e^{-\frac{\decay}{c} (u - c\,\arrivalTimes_{j})}
+ \end{equation*}
+ is the decayed count of the times $c\,\arrivalTimes_{j}$ at the decay $\decay/c$.
+ The three parameters are rates and scale together,
+ so the branching matrix \eqref{eq.GammaIsAOverBeta},
+ and with it the branching ratio, is unchanged.
+ In particular, the decay can be set to one by the choice of the unit of time.
+\end{remark}
 
 \begin{prop}\label{prop.compensatorClosedForm}
  Let $\multiCountingProc$ be an exponential-kernel Hawkes process started at

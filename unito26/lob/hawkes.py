@@ -257,8 +257,8 @@ class HawkesParams(FrameSerializable):
         )
 
     def mean_response(self, horizon: Horizon) -> np.ndarray:
-        """``e^{K h}``.  Column ``j`` is ``R_j(h)``, the difference made to the mean state
-        after ``h`` by one extra event of type ``j`` at time 0."""
+        """``e^{K h}``.  Column ``j`` is ``R_j(h)``, the displacement of the mean state ``h``
+        later by one more event of type ``j`` in the state."""
         return mean_response(self.excitation, self.decay, horizon)
 
     def mean_response_integral(self, horizon: Horizon) -> np.ndarray:
@@ -266,14 +266,14 @@ class HawkesParams(FrameSerializable):
         return mean_response_integral(self.excitation, self.decay, horizon)
 
     def forward_mean_state(self, state: np.ndarray, horizon: Horizon) -> np.ndarray:
-        """``m_h(z) = e^{K h} z + Phi(h) mu``: the mean state ``h`` after starting from
-        ``Z(0+) = z``."""
+        """``m_{s,s+h}(z) = e^{K h} z + Phi(h) mu``: the mean state ``h`` after a time ``s``
+        at which ``Z(s+) = z``."""
         exponential, integral, _ = _mean_response_blocks(self.excitation, self.decay, horizon)
         return exponential @ np.asarray(state, dtype=float) + integral @ self.baseline
 
     def forward_mean_counts(self, state: np.ndarray, horizon: Horizon) -> np.ndarray:
-        """``E_z N(h) = h mu + A Phi(h) z + A (int_0^h Phi) mu``, per type, counting the
-        events of ``(0, h]`` after starting from ``Z(0+) = z`` and ``N(0) = 0``."""
+        """``h mu + A Phi(h) z + A (int_0^h Phi) mu``: the expected number of events of
+        each type in ``(s, s+h]``, given ``Z(s+) = z``."""
         _, integral, double = _mean_response_blocks(self.excitation, self.decay, horizon)
         state = np.asarray(state, dtype=float)
         return float(horizon) * self.baseline + self.excitation @ (
@@ -421,7 +421,8 @@ class _HawkesState:
         state: np.ndarray,
         rng: np.random.Generator | int | None = None,
     ) -> Self:
-        """Started from ``Z(0+) = z`` and ``N(0) = 0`` rather than from empty.
+        """Continued from the state ``Z(0+) = z`` rather than started empty: the path after
+        a time at which the state is ``z``, with the clock moved to zero.
 
         The first event then arrives at intensity ``mu + A e^{-beta T_1} z``.  ``z`` is
         copied, because the state is decayed in place as the path runs, and a fan of paths

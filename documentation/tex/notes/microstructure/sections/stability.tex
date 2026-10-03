@@ -440,88 +440,119 @@ Section \ref{sec.priceFormation} reads the price off the first of these.
 
 \begin{prop}\label{prop.forwardMean}
  Let $\multiCountingProc$ be an exponential-kernel Hawkes process,
- and write $m_{t}(z) := \Expectation_{z}\big[\decayedCounts(t)\big]$
- for the mean state at time $t$ of the process started from $\decayedCounts(0+) = z$
- and $\multiCountingProc(0) = 0$.
+ and for $0 \leq s < t$ write
+ \begin{equation*}
+  m_{s,t}(z) := \Expectation\big[ \decayedCounts(t)
+  \,\big\vert\, \decayedCounts(s+) = z \big]
+ \end{equation*}
+ for the mean state at time $t$ given the state after time $s$.
  Then
  \begin{equation}\label{eq.forwardMeanState}
-  m_{t}(z) = e^{\hurwitzMatrix t} z
-  + \Big( \int_{0}^{t} e^{\hurwitzMatrix s} \, ds \Big) \baseIntensity ,
+  m_{s,t}(z) = e^{\hurwitzMatrix (t-s)} z
+  + \meanResponseIntegral(t-s) \, \baseIntensity ,
+  \qquad
+  \meanResponseIntegral(\forecastHorizon)
+  := \int_{0}^{\forecastHorizon} e^{\hurwitzMatrix u} \, du ,
  \end{equation}
- and, writing $\meanResponseIntegral(\forecastHorizon)
- := \int_{0}^{\forecastHorizon} e^{\hurwitzMatrix s} \, ds$,
+ and
  \begin{equation}\label{eq.forwardMeanCounts}
-  \Expectation_{z}\big[ \multiCountingProc(\forecastHorizon) \big]
-  = \forecastHorizon \, \baseIntensity
-  + \excitation \, \meanResponseIntegral(\forecastHorizon) \, z
-  + \excitation \Big( \int_{0}^{\forecastHorizon} \meanResponseIntegral(s) \, ds \Big)
+  \Expectation\big[ \multiCountingProc(t) - \multiCountingProc(s)
+  \,\big\vert\, \multiCountingProc(s) = n , \, \decayedCounts(s+) = z \big]
+  = (t-s) \, \baseIntensity
+  + \excitation \, \meanResponseIntegral(t-s) \, z
+  + \excitation \Big( \int_{0}^{t-s} \meanResponseIntegral(u) \, du \Big)
   \baseIntensity .
  \end{equation}
+ Both depend on $s$ and $t$ only through $t-s$,
+ and the second does not depend on $n$.
  If $\branchingRatio < 1$, then
  $\meanResponseIntegral(\forecastHorizon)
- = \hurwitzMatrix^{-1}\big( e^{\hurwitzMatrix \forecastHorizon} - I \big)$.
+ = \hurwitzMatrix^{-1}\big( e^{\hurwitzMatrix \forecastHorizon} - I \big)$ and,
+ with $m$ the stationary mean of Proposition \ref{prop.meanState},
+ \begin{equation}\label{eq.forwardMeanDeviation}
+  m_{s,t}(z) - m = e^{\hurwitzMatrix (t-s)} (z - m) ,
+ \end{equation}
+ so that $m_{s,t}(z) \to m$ as $t \to \infty$, for every $z$,
+ and the right-hand side of \eqref{eq.forwardMeanCounts} is
+ \begin{equation}\label{eq.forwardMeanCountsDeviation}
+  (t-s) \, \stationaryIntensity
+  + \excitation \, \meanResponseIntegral(t-s) \, (z - m) .
+ \end{equation}
 \end{prop}
 \begin{proof}
+ By Theorem \ref{thm.markovState} the pair $(\multiCountingProc, \decayedCounts)$ is Markov,
+ and its generator \eqref{eq.generatorOfHawkesProcess} does not depend on time.
+ Conditionally on $\filtrationF_{s}$,
+ the law of the increments after $s$ is therefore a function of
+ $\decayedCounts(s+)$ and of the time elapsed since $s$.
  Both means are finite at every $\branchingRatio$ and every finite horizon, by
  Remark \ref{remark.noSubcriticality}.
  Theorem \ref{thm.markovState} with $f(z) = z$, together with
  \eqref{eq.intensityFromState}, gives
- $\dot m_{t} = \hurwitzMatrix m_{t} + \baseIntensity$ with $m_{0+} = z$,
+ $\partial_t m_{s,t} = \hurwitzMatrix m_{s,t} + \baseIntensity$ for $t > s$,
+ with $m_{s,t}(z) \to z$ as $t \downarrow s$,
  and variation of constants gives \eqref{eq.forwardMeanState}.
  The compensator of $\multiCountingProc$ integrates the intensity, so
- $\Expectation_{z}[\multiCountingProc(\forecastHorizon)]
- = \int_{0}^{\forecastHorizon}
- \big( \baseIntensity + \excitation m_{s}(z) \big) \, ds$,
- which is \eqref{eq.forwardMeanCounts}.
+ the left-hand side of \eqref{eq.forwardMeanCounts} is
+ $\int_{s}^{t} \big( \baseIntensity + \excitation m_{s,u}(z) \big) \, du$,
+ which is the right-hand side.
  The closed form of $\meanResponseIntegral$ needs $\hurwitzMatrix$ invertible,
  which Proposition \ref{prop.hurwitzCriterion} supplies.
+ By \eqref{eq.meanStateIdentity}, $\baseIntensity = -\hurwitzMatrix m$, so
+ $\meanResponseIntegral(\forecastHorizon)\baseIntensity
+ = \big( I - e^{\hurwitzMatrix \forecastHorizon} \big) m$,
+ which turns \eqref{eq.forwardMeanState} into \eqref{eq.forwardMeanDeviation};
+ the limit holds because $\hurwitzMatrix$ is Hurwitz.
+ Integrating once more,
+ $\excitation \big( \int_{0}^{\forecastHorizon} \meanResponseIntegral(u) \, du \big)
+ \baseIntensity
+ = \forecastHorizon \, \excitation m
+ - \excitation \, \meanResponseIntegral(\forecastHorizon) \, m$,
+ and $\baseIntensity + \excitation m = \stationaryIntensity$ by \eqref{eq.meanState},
+ which gives \eqref{eq.forwardMeanCountsDeviation}.
 \end{proof}
 
 \begin{remark}\label{remark.transientAgainstStationary}
- Notice that $m_{t}(z)$ is the \emph{transient} mean and is not the stationary mean $m$ of
+ Notice that $m_{s,t}(z)$ is the \emph{transient} mean and is not the stationary mean $m$ of
  Proposition \ref{prop.meanState}, which does not depend on $t$.
  The two meet at the fixed point of the same equation:
- $\dot m_{t} = 0$ exactly at
+ $\partial_t m_{s,t} = 0$ exactly at
  $m = -\hurwitzMatrix^{-1}\baseIntensity = \stationaryIntensity/\decay$,
- and when $\branchingRatio < 1$ the matrix $\hurwitzMatrix$ is Hurwitz, so $m_t(z)$
- converges to $m$ from every $z$.
+ and when $\branchingRatio < 1$ the matrix $\hurwitzMatrix$ is Hurwitz, so $m_{s,t}(z)$
+ converges to $m$ as $t \to \infty$ from every $z$,
+ by \eqref{eq.forwardMeanDeviation}.
 \end{remark}
 
 \begin{corol}\label{corol.meanResponse}
- Let $\branchingRatio < 1$.
- Consider two copies of the process differing at time $0$ only in that the state of the
- second carries one extra event of type $\eone$, and write
- $R_{\eone}(t)$ for the difference of their mean states at time $t$.
+ For a type $\eone$ and $\forecastHorizon > 0$, let
+ \begin{equation*}
+  R_{\eone}(\forecastHorizon)
+  := m_{s,s+\forecastHorizon}(z + \unitVector_{\eone})
+  - m_{s,s+\forecastHorizon}(z)
+ \end{equation*}
+ be the displacement of the mean state at time $s + \forecastHorizon$
+ by one more event of type $\eone$ in the state at time $s$.
+ We call it the \emph{mean response} to an event of type $\eone$.
  Then
  \begin{equation}\label{eq.meanResponse}
-  R_{\eone}(t) = e^{\hurwitzMatrix t}\unitVector_{\eone} ,
-  \qquad
-  \mathbf{1}^{\transpose}R_{\eone}(t)
-  = \mathbf{1}^{\transpose} e^{\hurwitzMatrix t}\unitVector_{\eone} ,
+  R_{\eone}(\forecastHorizon) = e^{\hurwitzMatrix \forecastHorizon}\unitVector_{\eone} ,
  \end{equation}
- a combination of exponentials at the rates $\decay(1 - \Real\gamma_i)$ when
- $\branchingMatrix$ is diagonalisable, $\gamma_i$ running over its eigenvalues,
- of which the slowest rate is $\decay(1-\branchingRatio)$.
- In general the modes carry polynomial factors as well.
- The corresponding response of the mean intensity is
- $\excitation e^{\hurwitzMatrix t}\unitVector_{\eone}$, and
+ whatever $s$ and $z$,
+ and the mean intensity is displaced by $\excitation R_{\eone}(\forecastHorizon)$.
+ If $\branchingRatio < 1$, then
  \begin{equation}\label{eq.responseIntegral}
-  \int_{0}^{\infty} \mathbf{1}^{\transpose}\excitation e^{\hurwitzMatrix t}
-  \unitVector_{\eone} \, dt
+  \int_{0}^{\infty} \mathbf{1}^{\transpose}\excitation R_{\eone}(\forecastHorizon)
+  \, d\forecastHorizon
   = \mathbf{1}^{\transpose}\big[ (I - \branchingMatrix)^{-1} - I \big] \unitVector_{\eone}
-  = C_{\eone} - 1 .
+  = C_{\eone} - 1 ,
  \end{equation}
+ the expected number of strict descendants of Proposition \ref{prop.clusterSize}.
 \end{corol}
 \begin{proof}
- By \eqref{eq.forwardMeanState} the two mean states are
- $m_{t}(z)$ and $m_{t}(z + \unitVector_{\eone})$,
- whose difference is $e^{\hurwitzMatrix t}\unitVector_{\eone}$:
- the inhomogeneity is the same for both copies and cancels.
- The eigenvalues of $\hurwitzMatrix$ are $\decay(\gamma_i - 1)$, giving the stated rates;
- by Lemma \ref{lemma.perronFrobenius}~\emph{i.} the spectral radius $\branchingRatio$ is
- itself an eigenvalue of $\branchingMatrix$ and dominates the others in modulus,
- so $\decay(1-\branchingRatio)$ is the smallest of them.
- The intensity response follows from
+ By \eqref{eq.forwardMeanState} the two mean states differ by
+ $e^{\hurwitzMatrix \forecastHorizon}\unitVector_{\eone}$,
+ the term in $\baseIntensity$ being common to both.
+ The displacement of the mean intensity follows from
  $\intensity[ ] = \baseIntensity + \excitation\decayedCounts$ with $\baseIntensity$
  constant.
  For \eqref{eq.responseIntegral}, $\meanResponseIntegral(\infty) = -\hurwitzMatrix^{-1}
@@ -531,6 +562,17 @@ Section \ref{sec.priceFormation} reads the price off the first of these.
  contracting with $\mathbf{1}^{\transpose}$ and using \eqref{eq.clusterSize} gives
  $C_{\eone}-1$.
 \end{proof}
+
+The eigenvalues of $\hurwitzMatrix$ are $\decay(\gamma_i - 1)$,
+$\gamma_i$ running over the eigenvalues of $\branchingMatrix$.
+The entries of $e^{\hurwitzMatrix \forecastHorizon}$ are therefore combinations of
+exponentials at the rates $\decay(1 - \Real\gamma_i)$,
+with polynomial factors when $\branchingMatrix$ is not diagonalisable.
+By Lemma \ref{lemma.perronFrobenius}~\emph{i.} the spectral radius $\branchingRatio$ is
+itself an eigenvalue of $\branchingMatrix$,
+and $\Real\gamma_i \leq \branchingRatio$ for every $i$,
+so the slowest of these rates is $\decay(1-\branchingRatio)$.
+This justifies the following definition.
 
 \begin{defi}\label{def.relaxationTime}
  The \emph{relaxation time} of a subcritical Hawkes process is
@@ -546,12 +588,14 @@ Section \ref{sec.priceFormation} reads the price off the first of these.
  It is not a half-life; the half-life of the slowest mode is
  $\log 2 / (\decay(1-\branchingRatio))$.
  Nor need the response be monotone: by \eqref{eq.meanResponse},
- $\frac{d}{dt}\big\vert_{t=0}\mathbf{1}^{\transpose}R_j(t)
- = \decay\big( (\mathbf{1}^{\transpose}\branchingMatrix)_j - 1 \big)$,
- so the response to an event of type $j$ rises before it falls precisely when the $j$-th
- column sum of $\branchingMatrix$ exceeds one.
+ $\frac{d}{d\forecastHorizon}\big\vert_{\forecastHorizon=0}
+ \mathbf{1}^{\transpose}R_{\eone}(\forecastHorizon)
+ = \decay\big( (\mathbf{1}^{\transpose}\branchingMatrix)_{\eone} - 1 \big)$,
+ so the response of the total state to an event of type $\eone$ rises before it falls
+ precisely when the $\eone$-th column sum of $\branchingMatrix$ exceeds one.
  For \eqref{eq.meanResponse} to be asymptotically \emph{proportional} to
- $e^{-\decay(1-\branchingRatio)t}$, with a strictly positive constant for every $j$,
+ $e^{-\decay(1-\branchingRatio)\forecastHorizon}$,
+ with a strictly positive constant for every $\eone$,
  the Perron mode must appear in every response, which holds when $\branchingMatrix$ is
  irreducible; otherwise $\decay(1-\branchingRatio)$ only bounds the decay.
 \end{remark}
@@ -572,10 +616,8 @@ Section \ref{sec.priceFormation} reads the price off the first of these.
  nothing to find.
  The window count is the number of events falling in one window,
  and it decides whether a window sum is a statistic or a single event.
- Both are invariant under the rescaling $t \mapsto ct$,
- $(\baseIntensity,\excitation,\decay,w) \mapsto
- (\baseIntensity/c, \excitation/c, \decay/c, cw)$,
- which leaves $\branchingMatrix$ and hence $\branchingRatio$ unchanged.
+ Both are invariant under the rescaling of Remark \ref{remark.timeRescaling},
+ the window scaling as $w \mapsto cw$.
 \end{remark}
 
 \subsubsection{Sub- and supercriticality}
