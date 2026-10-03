@@ -35,7 +35,7 @@ already name, and never rename a concept on the way into Python.
 | $K = A - \beta I$ | `\hurwitzMatrix` | `hurwitz_matrix` |
 | $V = \mathrm{Cov}(Z)$ | — | `stationary_covariance()` |
 | $e^{Kh}$, $\Phi(h) = \int_0^h e^{Ks}ds$ | `\meanResponseIntegral` | `mean_response`, `mean_response_integral` |
-| $m_h(z)$, $\mathbb E_z N(h)$ | — | `forward_mean_state`, `forward_mean_counts` |
+| $m_{s,s+h}(z)$, $\mathbb E[N(s+h) - N(s) \mid Z(s+) = z]$ | — | `forward_mean_state`, `forward_mean_counts` |
 | $\theta$, $\theta(h)$ | `\signedExcitation` | `signed_excitation`, `signed_excitation_at_horizon` |
 
 **$\Lambda$ is the compensator and nothing else.** The total intensity is $\lambda_{\mathfrak g}$.
@@ -78,7 +78,12 @@ already name, and never rename a concept on the way into Python.
 - **$Z$ is left-continuous**, $S_e(t) = \sum_{T^e_j < t}e^{-\beta(t-T^e_j)}$, with a strict
   inequality, because Definition `def.compensator` requires a predictable intensity. Name
   the pre-jump and post-jump values separately; confusing them shifts every intensity by one
-  event and produces a plausible path.
+  event and produces a plausible path. The pre-jump value is $Z(T)$ and the post-jump one
+  $Z(T+)$; never write $Z(T-)$ or $\lambda(T-)$, which are $Z(T)$ and $\lambda(T)$.
+- **A statement about the future is conditional on $Z(s+) = z$**, on increments over
+  $(s, t]$. A process with $N(0) = 0$ and no past has $Z(0+) = 0$, so "started from
+  $Z(0+) = z$ and $N(0) = 0$" describes nothing; `ExponentialHawkes.from_state` continues
+  a path from a state, with the clock moved to zero.
 - **The compensator is implemented independently of the simulator on purpose.** An
   accumulated compensator agrees with the path by construction; an independent one turns
   Meyer's theorem into a test.
