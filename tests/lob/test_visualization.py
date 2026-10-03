@@ -6,6 +6,7 @@ import pytest
 from unito26.lob import config
 from unito26.lob.hawkes import Clock, ExponentialHawkes
 from unito26.lob.visualization import (
+    counting_figure,
     exponential_qq_figure,
     intensity_figure,
     monte_carlo_figure,
@@ -44,6 +45,17 @@ def test_the_raster_has_a_row_per_path_and_every_event(path):
     figure = raster_figure({"first": path, "second": path}, LABELS)
     assert len(figure.data) == 4
     assert sum(trace.x.size for trace in figure.data) == 2 * path[0].size
+
+
+def test_the_counting_steps_rise_by_one_at_each_event(path):
+    times, types = path
+    figure = counting_figure({"first": path, "second": path}, (5.0, 15.0), LABELS)
+    assert len(figure.data) == 4
+    for slot, trace in enumerate(figure.data[:2]):
+        mine = times[(types == slot) & (times > 5.0) & (times <= 15.0)]
+        assert trace.line.shape == "hv"
+        assert np.array_equal(trace.x, np.r_[5.0, mine, 15.0])
+        assert np.array_equal(trace.y, np.r_[np.arange(mine.size + 1), mine.size])
 
 
 def test_the_monte_carlo_band_straddles_the_mean():
