@@ -19,11 +19,11 @@ Why the exponential kernel.  Writing
 
 .. math::
 
-    S_j(t) = \\sum_{t^j_k < t} e^{-\\beta(t - t^j_k)},
-    \\qquad \\lambda(t) = \\mu + A \\, S(t),
+    Z_j(t) = \\sum_{t^j_k < t} e^{-\\beta(t - t^j_k)},
+    \\qquad \\lambda(t) = \\mu + A \\, Z(t),
 
-the vector ``S`` decays deterministically between events and jumps by one in
-coordinate ``j`` when a type-``j`` event occurs.  So ``(N, S)`` is a
+the vector ``Z`` decays deterministically between events and jumps by one in
+coordinate ``j`` when a type-``j`` event occurs.  So ``(N, Z)`` is a
 piecewise-deterministic Markov process and the whole history is carried in ``d`` floats.
 Recomputing the intensity by summing over all past events would be O(n^2) over a run;
 the recursion is O(1) per event.  This is the aggregate order book's idea -- carry the
@@ -396,7 +396,7 @@ class HawkesParams(FrameSerializable):
 
 
 class _HawkesState:
-    """The Markov state ``(t, S)`` shared by both simulation schemes.
+    """The Markov state ``(t, Z)`` shared by both simulation schemes.
 
     Subclasses differ only in :meth:`step`: the state and the bookkeeping are the
     model, the step is the algorithm.
@@ -406,7 +406,7 @@ class _HawkesState:
         self.params = params
         self.rng = rng if isinstance(rng, np.random.Generator) else np.random.default_rng(rng)
         self.time = 0.0
-        self.decayed_counts = np.zeros(params.dimension)  # S
+        self.decayed_counts = np.zeros(params.dimension)  # Z
         # The event that crossed the last horizon: drawn, so it has already excited the
         # state, and owed to whoever asks for the next stretch.
         self._crossing: tuple[float, int] | None = None
@@ -439,7 +439,7 @@ class _HawkesState:
 
     @property
     def intensities(self) -> np.ndarray:
-        """``lambda(t) = mu + A S(t)`` at the current time."""
+        """``lambda(t) = mu + A Z(t)`` at the current time."""
         return self.params.baseline + self.params.excitation @ self.decayed_counts
 
     @property
@@ -473,7 +473,7 @@ class _HawkesState:
         downstream needs it materialised.
 
         Stopping costs one draw: the event that ends the loop is the first past
-        ``horizon``, and drawing it has already advanced the state and incremented ``S``.
+        ``horizon``, and drawing it has already advanced the state and incremented ``Z``.
         It is held rather than discarded, so a warm-up to ``W`` followed by a run to
         ``T`` yields every event of ``(0, T]`` exactly once.  Discarding it instead loses
         one event per call, silently and only at the seam.
@@ -620,7 +620,7 @@ def intensities_at_events(
     towards ``mu`` while the process waits, so
 
         P(+) - P(-) = dlambda * int_0^inf e^{-beta s} e^{-Lambda(s)} ds,
-        dlambda = p' A S,
+        dlambda = p' A Z,
 
     a strictly shrunk version of it.  The *sign* survives the shrinkage, but only
     because ``p' mu = 0``; on an asymmetric specification even that fails.  So
@@ -656,10 +656,10 @@ def compensators_at_events(
     .. math::
 
         \\Lambda_i(T) = \\mu_i T
-            + \\sum_j \\frac{\\alpha_{ij}}{\\beta} \\big(N_j(T-) - S_j(T)\\big),
+            + \\sum_j \\frac{\\alpha_{ij}}{\\beta} \\big(N_j(T-) - Z_j(T)\\big),
 
-    because ``int_0^T S_j = (N_j(T-) - S_j(T)) / beta``.  Both terms are read
-    pre-jump.  ``N`` is right-continuous and ``S`` left-continuous, so ``N - S``
+    because ``int_0^T Z_j = (N_j(T-) - Z_j(T)) / beta``.  Both terms are read
+    pre-jump.  ``N`` is right-continuous and ``Z`` left-continuous, so ``N - Z``
     jumps by one at every arrival and the two readings disagree exactly at arrival
     times -- which is where the residual test evaluates this.  The same two summary
     statistics that drive the simulation also close the compensator in one line.
@@ -674,7 +674,7 @@ def compensators_at_events(
     d = params.dimension
     beta = params.decay
 
-    decayed = np.zeros(d)  # S, decayed to just before the current event
+    decayed = np.zeros(d)  # Z, decayed to just before the current event
     counts = np.zeros(d)  # N, events strictly before the current one
     previous_time = 0.0
     out = np.empty((times.size, d))
