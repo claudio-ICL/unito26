@@ -5,7 +5,7 @@ raise and does not look wrong: it turns the predictive regression into the
 contemporaneous one, which fits far better, so the failure mode is a *good* result.
 
 Fixtures are constructed rather than simulated wherever a branch has to be exercised.
-At the example parametrization no side of the book ever empties, so the study's own data
+At the resilient parametrization no side of the book ever empties, so the study's own data
 never reaches the segment-masking code at all, and a test that sampled it would certify
 nothing.
 """

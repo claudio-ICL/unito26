@@ -17,7 +17,7 @@ Two regimes, at the same branching ratio and the same total rate, differing in w
 excitation follows the pressure partition. `sec.priceFormation` develops the distinction and
 [`point-processes-and-hawkes.md`](point-processes-and-hawkes.md) §2 tabulates it.
 
-| | resilient (`EXAMPLE_`) | trending (`TRENDING_`) |
+| | resilient (`RESILIENT_`) | trending (`TRENDING_`) |
 | --- | --- | --- |
 | `ρ`, `ν` | 0.6, 30.19 events/s | 0.6, 30.19 events/s |
 | `β` | 4 s⁻¹ | 4 s⁻¹ |

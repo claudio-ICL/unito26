@@ -63,7 +63,7 @@ class Session:
 def session(name: str, marks: MarkParams, horizon: float, seed: int) -> Session:
     """Simulate one stream and materialise it."""
     simulator = OrderFlowSimulator(
-        config.example_order_flow_params(), marks, REFERENCE_PRICE, rng=seed
+        config.resilient_order_flow_params(), marks, REFERENCE_PRICE, rng=seed
     )
     book = AggregateBook()
     simulator.warm_up(book, horizon=30.0, journal=None)

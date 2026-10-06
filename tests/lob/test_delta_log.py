@@ -10,8 +10,8 @@ REFERENCE_PRICE = 10000
 
 def simulator(seed):
     return OrderFlowSimulator(
-        config.example_order_flow_params(),
-        config.example_mark_params(),
+        config.resilient_order_flow_params(),
+        config.resilient_mark_params(),
         REFERENCE_PRICE,
         rng=seed,
     )

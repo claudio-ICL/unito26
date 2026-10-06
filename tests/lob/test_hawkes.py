@@ -514,7 +514,7 @@ class TestTheSignedExcitation:
     """Statements of section 1.4 of the notes, on the two shipped six-type regimes."""
 
     PRESSURE = np.array([event.pressure for event in EventType], dtype=float)
-    REGIMES = [config.example_order_flow_params(), config.trending_order_flow_params()]
+    REGIMES = [config.resilient_order_flow_params(), config.trending_order_flow_params()]
 
     @pytest.mark.parametrize("params", REGIMES)
     def test_it_takes_one_value_on_each_pair(self, params):
@@ -546,10 +546,10 @@ class TestTheSignedExcitation:
         assert abs(self.PRESSURE @ params.excitation @ perron) < 1e-10
 
     def test_the_two_regimes_carry_opposite_signs_on_the_market_pair(self):
-        example, trending = self.REGIMES
+        resilient, trending = self.REGIMES
         market = EventType.MARKET_BUY
         for horizon in (0.05, 1.0, 5.0):
-            assert example.signed_excitation_at_horizon(self.PRESSURE, horizon)[market] < 0
+            assert resilient.signed_excitation_at_horizon(self.PRESSURE, horizon)[market] < 0
             assert trending.signed_excitation_at_horizon(self.PRESSURE, horizon)[market] > 0
 
 

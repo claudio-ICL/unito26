@@ -569,7 +569,7 @@ $$\mathbb{E}[\lambda] = (I - \Gamma)^{-1}\mu .$$
 
 $\rho$ is homogeneous of degree one in $A$,
 so the *shape* of the excitation matrix and the overall endogeneity are independent choices;
-the example parameters fix the shape by hand and rescale to $\rho(\Gamma) = 0.6$.
+the resilient parameters fix the shape by hand and rescale to $\rho(\Gamma) = 0.6$.
 
 ### What $\rho$ tells us
 
@@ -582,7 +582,7 @@ here.
 
 Two things are worth having at the call site, because both are misread often enough to be
 worth a line. $\rho$ is not the endogenous fraction and $1/(1-\rho)$ is not the mean
-cluster size: at the example parametrization those are $0.6$ against $0.682$ and $3.149$.
+cluster size: at the resilient parametrization those are $0.6$ against $0.682$ and $3.149$.
 And the column sums of $\Gamma$ count offspring while those of $A$ are jumps in intensity,
 the two differing by $\beta$.
 

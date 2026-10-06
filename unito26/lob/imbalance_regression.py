@@ -67,7 +67,7 @@ class AlignedSeries:
     array to be forgotten: a difference that spans a boundary is undefined, not zero.
 
     A segment ends wherever a side of the book empties, since ``P^m`` does not exist there
-    and neither does ``e_n``.  At the example parametrization no side ever empties, so
+    and neither does ``e_n``.  At the resilient parametrization no side ever empties, so
     there is one segment and the mask removes nothing -- which is why it is written and
     asserted rather than omitted.  It costs one comparison per row, and it is what fails
     loudly if a rung of a ladder wanders out of the regime.
@@ -354,7 +354,7 @@ class RegressionResults(FrameSerializable):
     set at all.
 
     ``SurvivingRows`` is a gate rather than a diagnostic: away from the opening ``w`` of a
-    session it is 1 by construction at the example parametrization, since no ``e_n`` is
+    session it is 1 by construction at the resilient parametrization, since no ``e_n`` is
     undefined there.  A rung reporting less has left the regime, and the run says so
     instead of quietly conditioning on a two-sided book.
     """
@@ -583,7 +583,7 @@ def tune_window(
     A criterion whose evaluation set moves with its argument is not well posed: the longest
     window loses the most opening rows, so a criterion scored on each candidate's own rows
     compares different samples.  Scoring on the common set costs a prefix and nothing else
-    at the example parametrization, where the row sets differ only in the opening ``w``.
+    at the resilient parametrization, where the row sets differ only in the opening ``w``.
 
     Returns the whole curve and its argmax, never the argmax alone.  The surface is
     quadratically flat near its optimum, so a point estimate is noisy and a regression on

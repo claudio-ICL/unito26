@@ -56,7 +56,7 @@ class TestTheTwoRoutesAgree:
 
     def test_on_a_simulated_session(self, book_cls):
         simulator = OrderFlowSimulator(
-            config.example_order_flow_params(), config.example_mark_params(), 10000, rng=5
+            config.resilient_order_flow_params(), config.resilient_mark_params(), 10000, rng=5
         )
         book = AggregateBook()
         simulator.warm_up(book, horizon=20.0, journal=None)

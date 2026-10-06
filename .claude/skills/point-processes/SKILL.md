@@ -111,12 +111,12 @@ already name, and never rename a concept on the way into Python.
 ## The two regimes, and the sign
 
 The package ships two flow parametrizations at the same $\rho$ and the same $\bar\lambda$. Pressure
-partitions the six event types; `EXAMPLE_ORDER_FLOW_PARAMS` excites **across** the partition
+partitions the six event types; `RESILIENT_ORDER_FLOW_PARAMS` excites **across** the partition
 (what depletes a side calls forth what refills it) and `TRENDING_ORDER_FLOW_PARAMS` excites
 **within** it. Signed endogenous fraction $-0.351$ against $+0.554$.
 
 **Contemporaneously $\mathrm{OFI}$ is the mechanical update of the mid in both** ($+0.41$,
-$+0.36$). Forward, the example predicts **reversal** and the trending one **continuation**.
+$+0.36$). Forward, the resilient one predicts **reversal** and the trending one **continuation**.
 The sign belongs to the kernel, not to $\mathrm{OFI}$: never write that $\mathrm{OFI}$
 predicts continuation without naming the regime.
 
