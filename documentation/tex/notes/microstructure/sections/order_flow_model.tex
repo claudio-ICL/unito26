@@ -227,6 +227,35 @@ $\meanResponseIntegral(\forecastHorizon)$ and $(I - \branchingMatrix)^{-1}$.
 Every expression of Section \ref{sec.forecastingTheMid} built from these and contracted with
 $\pressure$ therefore loses its baseline term.
 
+Section \ref{sec.forecastingTheMid} states its forecasts for direction-symmetric
+specifications.
+A specification with $\branchingRatio < 1$ that is not direction-symmetric has in general
+$\pressure^{\transpose}\stationaryIntensity \neq 0$,
+and by \eqref{eq.forwardMeanCountsDeviation} the signed count it expects over a horizon
+$\forecastHorizon$, from a time $t$ at which the state is $z$, is
+\begin{equation*}
+ \pressure^{\transpose} \, \Expectation \big[
+ \multiCountingProc(t+\forecastHorizon) - \multiCountingProc(t)
+ \,\big\vert\, \decayedCounts(t+) = z \big]
+ = \forecastHorizon \, \pressure^{\transpose}\stationaryIntensity
+ + \pressure^{\transpose}\excitation \, \meanResponseIntegral(\forecastHorizon) \, (z - m) ,
+\end{equation*}
+with $m$ the stationary mean of Proposition \ref{prop.meanState}.
+The second term is bounded in $\forecastHorizon$ and the first grows linearly:
+it is a drift that the parameters carry whatever the state,
+and under Assumption \ref{assumption.idealisedBook} the mid-price inherits it through
+Propositions \ref{prop.idealisedUpdate} and \ref{prop.signedSizeContribution}.
+Under direction symmetry the drift is zero by Proposition \ref{prop.directionSymmetry},
+and so is $\pressure^{\transpose}\excitation\meanResponseIntegral(\forecastHorizon) m$,
+the vector $m$ being fixed by $\swapMatrix$.
+What the specification forecasts about the direction of the flow is then a function of
+$z - m$, the deviation of the state from its mean, and so of the recent events alone.
+The condition $\pressure^{\transpose}\baseIntensity = 0$ does not replace the hypothesis,
+as it leaves
+$\pressure^{\transpose}\stationaryIntensity
+= \pressure^{\transpose}(I - \branchingMatrix)^{-1}\baseIntensity$
+free.
+
 By Proposition \ref{prop.clusterRepresentation},
 $\branchingMatrix\subscriptee$ is the expected number of direct offspring of type $e$
 born of one event of type $\eone$,

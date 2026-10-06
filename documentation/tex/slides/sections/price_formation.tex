@@ -32,7 +32,8 @@
 % prop.idealisedUpdate, remark.residualIsQueueFlow, def.orderFlowProcess,
 % prop.signedSizeContribution, def.directionSymmetry, prop.directionSymmetry,
 % def.intensityContrast, prop.signedExcitation, prop.shortHorizonForecast,
-% corol.priceForecast, remark.residualAgainstForecast, corol.contrastAsDrift,
+% corol.priceForecast, remark.residualAgainstForecast, prop.forecastAtLongHorizons,
+% corol.contrastAsDrift,
 % remark.totalResponse, corol.regimeSign, remark.imbalanceAsProxy.
 % prop.lobUpdate, prop.forwardMean, thm.markovState, eq.queueImbalance and
 % def.relaxationTime belong to earlier classes and are RESTATED HERE WITHOUT LABELS.
@@ -635,9 +636,19 @@ $\swapMatrix\pressure = -\pressure$
 \pause
 
 A hypothesis on the kernel, not only on the baseline
+
+\pause
+
+Without it: a drift $\forecastHorizon\,\pressure^{\transpose}\stationaryIntensity$ in every forecast
 \note{
 Swapping buy for sell leaves the specification alone. This is the hypothesis every forecast of
-this class rests on.
+this class rests on, and each statement that uses it says so.
+We ask it because every other specification carries a drift. Its expected signed flow over a
+horizon $\forecastHorizon$ contains $\forecastHorizon\,\pressure^{\transpose}\stationaryIntensity$,
+which the parameters carry whatever the state and which grows with the horizon, while the part
+that depends on the state stays bounded. Under the idealised book the mid-price inherits that
+drift. Under direction symmetry it is zero, and what the model forecasts about direction comes
+from the recent events alone.
 Stating $\pressure^{\transpose}\baseIntensity = 0$ as the assumption instead would not do: it
 does not give a zero stationary drift, and the forecast needs the full symmetry to lose every
 baseline term.
@@ -822,7 +833,7 @@ $\decayedCounts(t+)$ is the state read \emph{after} the event at $t$, if there i
   \frametitle{The forecast of the mid-price}
 \begin{corol}
 \label{corol.priceForecast}
- Under the idealised book,
+ For a direction-symmetric specification, under the idealised book,
  \[
   \Expectation\big[\midPrice_{t+\forecastHorizon} - \midPrice_t \,\big|\, \sigmaAlgebra_t\big]
   = \frac{\tickSizeOfLOB\meanSize}{2\uniformDepth}\,
@@ -919,10 +930,61 @@ magnitude.
 \end{frame}
 
 \begin{frame}
+  \frametitle{The forecast is bounded; its error grows like $\sqrt{\forecastHorizon}$}
+\begin{center}
+\begin{tikzpicture}[x=2.4cm, y=0.42cm, font=\scriptsize]
+  \fill[gray!15, domain=0:3.1, samples=50]
+       plot (\x, {1.2*(1 - exp(-1.6*\x)) + 2.3*sqrt(\x)}) --
+       plot[domain=3.1:0] (\x, {1.2*(1 - exp(-1.6*\x)) - 2.3*sqrt(\x)}) -- cycle;
+  \draw[-{Stealth}, gray!70] (0,0) -- (3.3,0) node[right] {$\forecastHorizon$};
+  \draw[-{Stealth}, gray!70] (0,-3.6) -- (0,5.6);
+  \draw[blue!65, thick, domain=0:3.1, samples=50] plot (\x, {1.2*(1 - exp(-1.6*\x))});
+  \node[blue!55!black, right] at (3.1,1.2) {the forecast};
+  \node[gray!40!black, right] at (3.1,4.9)
+       {$\pm\,\frac{\tickSizeOfLOB}{2\uniformDepth}\,\flowVolatility\sqrt{\forecastHorizon}$};
+\end{tikzpicture}
+\end{center}
+
+\pause
+
+\begin{prop}
+\label{prop.forecastAtLongHorizons}
+ For a direction-symmetric specification with $\branchingRatio < 1$, stationary, under the
+ idealised book:
+ $\Variance(\midPrice_{t+\forecastHorizon} - \midPrice_t)
+ = \big(\frac{\tickSizeOfLOB}{2\uniformDepth}\big)^{2}\flowVolatility^{2}\,\forecastHorizon
+ + O(\sqrt{\forecastHorizon})$,
+ and the forecast has bounded variance.
+\end{prop}
+
+\pause
+
+$\flowVolatility^{2} = \meanSize^{2}\,\pressure^{\transpose}(I-\branchingMatrix)^{-1}
+\mathrm{diag}(\stationaryIntensity)(I-\branchingMatrix)^{-\transpose}\pressure
++ \Variance(\orderSize)\,\totalRate$: set by the kernel
+\note{
+The last frames said that the forecast is bounded in the horizon. This one says what it is
+bounded against. In the stationary regime the variance of the mid-price change grows linearly
+with the horizon, at a rate we can write down, while the variance of the forecast stops growing
+once the state has been forgotten. The share of the variance that the forecast accounts for
+therefore falls like one over the horizon: about the next hour the state says nothing beyond
+what it says about the next seconds.
+Together with the short horizons of two frames ago, the forecast is informative over a range of
+horizons bounded on both sides.
+The rate belongs to the kernel, as the sign does. Without excitation it is one unit of variance
+per event. A kernel whose events beget their own pressure raises it, and one whose events beget
+the opposite pressure lowers it: at the same rate of events and the same branching ratio, the
+two shipped specifications differ by a factor of ten.
+The proof is one identity: the count over a window is its mean, plus a martingale increment,
+plus a bounded term in the state. The notebook measures the share at every horizon.
+}
+\end{frame}
+
+\begin{frame}
   \frametitle{The contrast is the drift of the imbalance}
 \begin{corol}
 \label{corol.contrastAsDrift}
- Under the idealised book,
+ For a direction-symmetric specification, under the idealised book,
  $\Expectation\big[\OFI_{t+\forecastHorizon,\forecastHorizon}\,\big|\,\sigmaAlgebra_t\big]
  = \meanSize\,\intensityContrast(t+)\,\forecastHorizon + O(\forecastHorizon^2)$
  as $\forecastHorizon \to 0$.
@@ -948,7 +1010,8 @@ forecast of the mid-price, residual included.
 \begin{remark}
 \label{remark.totalResponse}
  $\excitation\meanResponseIntegral(\infty) = \branchingMatrix(I-\branchingMatrix)^{-1}$, and
- $\pressure^{\transpose}\excitation u = 0$ for the right Perron vector $u$.
+ under direction symmetry $\pressure^{\transpose}\excitation u = 0$ for the right Perron vector
+ $u$.
 \end{remark}
 
 \pause
@@ -987,7 +1050,8 @@ surviving rate differs from pair to pair, and the notebook reads it off.
 
 \begin{corol}
 \label{corol.regimeSign}
- An extra event of type $a$, with $\pressure_a = +1$, against one fewer of its mirror moves
+ Under direction symmetry,
+ an extra event of type $a$, with $\pressure_a = +1$, against one fewer of its mirror moves
  the forecast by $2\meanSize\signedExcitation_a(\forecastHorizon)$, where
  $\signedExcitation_{\eone}(\forecastHorizon) := (\pressure^{\transpose}\excitation
  \meanResponseIntegral(\forecastHorizon))_{\eone}/\pressure_{\eone}$.

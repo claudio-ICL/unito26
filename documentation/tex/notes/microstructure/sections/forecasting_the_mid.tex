@@ -44,9 +44,11 @@ and $\decayedCounts(t+)$ is the state read after the event at $t$, if there is o
 \end{proof}
 
 \begin{corol}\label{corol.priceForecast}
- Under the hypotheses of Proposition \ref{prop.shortHorizonForecast},
- and with Assumption \ref{assumption.idealisedBook} in force,
- the time-$t$ expectation of the mid-price change over $(t, t+\forecastHorizon]$ is
+ Let the order flow be as in Definition \ref{def.orderFlowProcess},
+ with a direction-symmetric specification,
+ and let Assumption \ref{assumption.idealisedBook} be in force.
+ Then the time-$t$ expectation of the mid-price change over
+ $(t, t+\forecastHorizon]$ is
  \begin{equation}\label{eq.priceForecast}
   \Expectation \big[ \midPrice_{t+\forecastHorizon} - \midPrice_{t}
   \,\big|\, \sigmaAlgebra_t \big]
@@ -82,8 +84,10 @@ and $\decayedCounts(t+)$ is the state read after the event at $t$, if there is o
 \end{remark}
 
 \begin{corol}\label{corol.contrastAsDrift}
- Under the hypotheses of Proposition \ref{prop.shortHorizonForecast},
- and with Assumption \ref{assumption.idealisedBook} in force,
+ Let the order flow be as in Definition \ref{def.orderFlowProcess},
+ with a direction-symmetric specification,
+ and let Assumption \ref{assumption.idealisedBook} be in force.
+ Then
  \begin{equation}\label{eq.contrastAsDrift}
   \Expectation \big[ \OFI_{t+\forecastHorizon, \forecastHorizon}
   \,\big|\, \sigmaAlgebra_t \big]
@@ -116,7 +120,8 @@ the price inheriting it only through \eqref{eq.priceForecast}.
  horizons long against the relaxation time \eqref{eq.relaxationTime}.
 
  It finishes strictly sooner.
- Let $\branchingMatrix$ be irreducible, with right Perron vector $u$.
+ Let the specification be direction-symmetric,
+ and let $\branchingMatrix$ be irreducible, with right Perron vector $u$.
  Then \eqref{eq.directionSymmetry} makes $\swapMatrix u$ a Perron vector as well,
  and simplicity together with $u > 0$ forces $\swapMatrix u = u$, so that
  $\pressure^{\transpose}\excitation u
@@ -128,7 +133,8 @@ the price inheriting it only through \eqref{eq.priceForecast}.
 \end{remark}
 
 \begin{corol}\label{corol.regimeSign}
- Under the hypotheses of Proposition \ref{prop.shortHorizonForecast}, set
+ Let the order flow be as in Definition \ref{def.orderFlowProcess},
+ with a direction-symmetric specification, and set
  \begin{equation}\label{eq.signedExcitationAtHorizon}
   \signedExcitation_{\eone}(\forecastHorizon)
   := \frac{\big( \pressure^{\transpose}\excitation
@@ -178,7 +184,8 @@ notes without naming the specification it is made in.
  the exponentially weighted count $\pressure^{\transpose}\decayedCounts(t)$
  weights them by age and ignores their sizes;
  and $\OFI_{t,\ofiWindow}$ weights them equally and by their sizes.
- The forecast \eqref{eq.shortHorizonForecast} is driven by none of the three,
+ The forecast \eqref{eq.shortHorizonForecast} of a direction-symmetric specification
+ is driven by none of the three,
  but by $\pressure^{\transpose}\excitation
  \meanResponseIntegral(\forecastHorizon)\decayedCounts(t+)$,
  which weights them by age and by $\signedExcitation(\forecastHorizon)$.
@@ -193,4 +200,142 @@ notes without naming the specification it is made in.
  So $\OFI$ is a statistic of the flow that needs no parameters and estimates the forecast
  only up to those two gaps, and how much is lost to each is a question about a particular
  specification.
+\end{remark}
+
+\begin{prop}\label{prop.forecastAtLongHorizons}
+ Let the order flow be as in Definition \ref{def.orderFlowProcess},
+ with a direction-symmetric specification with $\branchingRatio < 1$,
+ in its stationary version,
+ and let the sizes have finite variance.
+ Write
+ \begin{equation}\label{eq.signedFlow}
+  \signedFlow_{t,\forecastHorizon}
+  := \sum_{n \, : \, t < \arrivalTimes[]_n \leq t+\forecastHorizon}
+  \pressure_{\event[n]} \orderSize_n
+ \end{equation}
+ for the signed flow forecast by \eqref{eq.shortHorizonForecast}, and set
+ \begin{equation}\label{eq.flowVolatility}
+  \countCovarianceRate
+  := (I - \branchingMatrix)^{-1} \,
+  \mathrm{diag}(\stationaryIntensity) \,
+  (I - \branchingMatrix)^{-\transpose} ,
+  \qquad
+  \flowVolatility^{2}
+  := \meanSize^{2} \, \pressure^{\transpose} \countCovarianceRate \, \pressure
+  + \Variance(\orderSize) \, \totalRate .
+ \end{equation}
+ Then, as $\forecastHorizon \to \infty$,
+ \begin{enumerate}[label={\emph{\roman{*}}.}]
+  \item $\Variance(\signedFlow_{t,\forecastHorizon})
+        = \flowVolatility^{2} \, \forecastHorizon + O(\sqrt{\forecastHorizon})$;
+  \item $\Variance\big( \Expectation[ \signedFlow_{t,\forecastHorizon}
+        \mid \sigmaAlgebra_t ] \big)$ is bounded in $\forecastHorizon$.
+ \end{enumerate}
+ The forecast therefore accounts for a share of the variance of the flow that is
+ $O(1/\forecastHorizon)$.
+ Under Assumption \ref{assumption.idealisedBook} the same holds of the mid-price:
+ $\Variance(\midPrice_{t+\forecastHorizon} - \midPrice_{t})
+ = (\tickSizeOfLOB / 2\uniformDepth)^{2} \, \flowVolatility^{2} \, \forecastHorizon
+ + O(\sqrt{\forecastHorizon})$,
+ and the variance of its forecast \eqref{eq.priceForecast} is bounded in $\forecastHorizon$.
+\end{prop}
+\begin{proof}
+ Let $\martingale = \multiCountingProc - \compensator$.
+ By \eqref{eq.stateDynamics} and \eqref{eq.intensityFromState},
+ $d\decayedCounts = (\hurwitzMatrix\decayedCounts + \baseIntensity) \, dt + d\martingale$.
+ Almost surely no event falls at $t$ or at $t+\forecastHorizon$,
+ so integrating this equation and \eqref{eq.stateDynamics} over
+ $(t, t+\forecastHorizon]$ gives
+ \begin{equation*}
+ \begin{aligned}
+  \decayedCounts(t+\forecastHorizon) - \decayedCounts(t)
+  & = \hurwitzMatrix \int_{t}^{t+\forecastHorizon} \decayedCounts(s) \, ds
+  + \forecastHorizon \, \baseIntensity
+  + \martingale(t+\forecastHorizon) - \martingale(t) , \\
+  \multiCountingProc(t+\forecastHorizon) - \multiCountingProc(t)
+  & = \decayedCounts(t+\forecastHorizon) - \decayedCounts(t)
+  + \decay \int_{t}^{t+\forecastHorizon} \decayedCounts(s) \, ds .
+ \end{aligned}
+ \end{equation*}
+ Eliminating the integral, with $\hurwitzMatrix = -\decay(I - \branchingMatrix)$ and
+ \eqref{eq.stationaryIntensity},
+ \begin{equation}\label{eq.countIncrementIdentity}
+  \multiCountingProc(t+\forecastHorizon) - \multiCountingProc(t)
+  = \forecastHorizon \, \stationaryIntensity
+  + (I - \branchingMatrix)^{-1}
+  \big( \martingale(t+\forecastHorizon) - \martingale(t) \big)
+  - \branchingMatrix (I - \branchingMatrix)^{-1}
+  \big( \decayedCounts(t+\forecastHorizon) - \decayedCounts(t) \big) .
+ \end{equation}
+ By \eqref{eq.noCommonJumps} no two components of $\martingale$ jump together,
+ so their increments are uncorrelated,
+ and the increment of $\martingale_e$ has variance
+ $\Expectation[\compensator_e(t+\forecastHorizon) - \compensator_e(t)]
+ = \stationaryIntensity[e] \, \forecastHorizon$:
+ the martingale term of \eqref{eq.countIncrementIdentity} has covariance
+ $\forecastHorizon \, \countCovarianceRate$.
+ The state term has covariance bounded in $\forecastHorizon$, by $4$ times that of
+ $\branchingMatrix (I - \branchingMatrix)^{-1} \decayedCounts(t)$,
+ which is finite by Theorem \ref{thm.lyapunov}.
+ By the Cauchy--Schwarz inequality the covariance of the two terms is
+ $O(\sqrt{\forecastHorizon})$, hence
+ $\Variance\big( \pressure^{\transpose}
+ ( \multiCountingProc(t+\forecastHorizon) - \multiCountingProc(t) ) \big)
+ = \forecastHorizon \, \pressure^{\transpose}\countCovarianceRate\,\pressure
+ + O(\sqrt{\forecastHorizon})$.
+ Given the arrival times and the types,
+ $\signedFlow_{t,\forecastHorizon}$ has mean
+ $\meanSize \, \pressure^{\transpose}
+ ( \multiCountingProc(t+\forecastHorizon) - \multiCountingProc(t) )$
+ and variance $\Variance(\orderSize)$ times the number of events in
+ $(t, t+\forecastHorizon]$, whose expectation is $\totalRate \, \forecastHorizon$.
+ This is \emph{i.}
+
+ By Proposition \ref{prop.shortHorizonForecast} the forecast is
+ $\meanSize \, \pressure^{\transpose} \excitation \,
+ \meanResponseIntegral(\forecastHorizon) \, \decayedCounts(t)$,
+ a linear function of the state with coefficients that converge as
+ $\forecastHorizon \to \infty$, by Remark \ref{remark.totalResponse},
+ and the state has the finite covariance $V$ of \eqref{eq.stationaryCovariance}.
+ This is \emph{ii.}
+
+ Under Assumption \ref{assumption.idealisedBook},
+ $\midPrice_{t+\forecastHorizon} - \midPrice_{t}
+ = (\tickSizeOfLOB / 2\uniformDepth) \, \signedFlow_{t,\forecastHorizon}
+ + \residual_{t+\forecastHorizon,\forecastHorizon}$
+ by Propositions \ref{prop.idealisedUpdate} and \ref{prop.signedSizeContribution},
+ with a residual bounded by $\tickSizeOfLOB$,
+ and both statements pass to the mid-price.
+\end{proof}
+
+\begin{remark}\label{remark.threeRangesOfHorizon}
+ The forecast \eqref{eq.priceForecast} is informative about the mid-price over a range of
+ horizons bounded on both sides.
+ At horizons short against the time a best quote takes to move,
+ the flow goes into the queues and the residual cancels it,
+ by Remark \ref{remark.residualIsQueueFlow}.
+ At horizons of the order of the timescale of Remark \ref{remark.totalResponse},
+ the mid-price has inherited the forecast.
+ At horizons long against that timescale the forecast has finished,
+ while by Proposition \ref{prop.forecastAtLongHorizons} its error has a standard deviation
+ of order
+ $(\tickSizeOfLOB / 2\uniformDepth) \, \flowVolatility \sqrt{\forecastHorizon}$:
+ the state at $t$ says nothing about the events of the following hour
+ beyond what it says about those of the following seconds.
+
+ The constant $(\tickSizeOfLOB / 2\uniformDepth) \, \flowVolatility$ is the volatility of the
+ mid-price of the idealised book, and it belongs to the kernel as the sign of the forecast
+ does.
+ When $\pressure$ is a left eigenvector of $\excitation$,
+ with $\pressure^{\transpose}\excitation = \signedExcitation \, \pressure^{\transpose}$
+ as in Remark \ref{remark.imbalanceAsProxy},
+ \begin{equation}\label{eq.flowVolatilityAtConstantSignedExcitation}
+  \pressure^{\transpose} \countCovarianceRate \, \pressure
+  = \frac{\totalRate}{(1 - \signedExcitation/\decay)^{2}} .
+ \end{equation}
+ A flow without excitation has $\pressure^{\transpose}\countCovarianceRate\,\pressure
+ = \totalRate$.
+ At the same total rate,
+ a kernel whose events beget their own pressure raises the volatility above that value,
+ and one whose events beget the opposite pressure lowers it.
 \end{remark}
