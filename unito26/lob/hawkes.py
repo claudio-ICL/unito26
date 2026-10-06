@@ -256,6 +256,17 @@ class HawkesParams(FrameSerializable):
             self.hurwitz_matrix, -np.diag(self.stationary_intensity())
         )
 
+    def count_covariance_rate(self) -> np.ndarray:
+        """``(I - Gamma)^{-1} diag(lambda*) (I - Gamma)^{-T}``: the rate at which the
+        covariance of the counts grows with the horizon.
+
+        In the stationary regime ``Cov(N(t+h) - N(t)) = h C + O(sqrt h)``, so ``v' C v`` is
+        the variance per unit time of ``v' N`` over long horizons.  With no excitation it
+        is ``diag(lambda*)``, the Poisson value.
+        """
+        descendants = np.linalg.inv(np.eye(self.dimension) - self.branching_matrix)
+        return descendants @ np.diag(self.stationary_intensity()) @ descendants.T
+
     def mean_response(self, horizon: Horizon) -> np.ndarray:
         """``e^{K h}``.  Column ``j`` is ``R_j(h)``, the displacement of the mean state ``h``
         later by one more event of type ``j`` in the state."""

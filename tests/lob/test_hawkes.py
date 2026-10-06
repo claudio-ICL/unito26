@@ -414,6 +414,52 @@ class TestTheSecondOrder:
         )
 
 
+class TestTheCovarianceRateOfTheCounts:
+    """``C = (I - Gamma)^{-1} diag(lambda*) (I - Gamma)^{-T}``, the growth rate of
+    ``Cov(N(t+h) - N(t))``."""
+
+    def test_without_excitation_it_is_the_poisson_value(self):
+        rates = np.array([0.5, 2.0, 1.5])
+        poisson = HawkesParams(baseline=rates, excitation=np.zeros((3, 3)), decay=1.0)
+        assert poisson.count_covariance_rate() == pytest.approx(np.diag(rates))
+
+    def test_in_one_dimension_it_is_the_rate_over_one_minus_rho_squared(self):
+        params = HawkesParams(
+            baseline=np.array([1.2]), excitation=np.array([[1.5]]), decay=2.5
+        )
+        rho = params.branching_ratio
+        rate = params.stationary_intensity()[0]
+        assert params.count_covariance_rate()[0, 0] == pytest.approx(rate / (1 - rho) ** 2)
+
+    def test_it_is_symmetric_and_positive_definite(self):
+        rate = four_type_params().count_covariance_rate()
+        assert np.allclose(rate, rate.T)
+        assert np.linalg.eigvalsh(rate).min() > 0
+
+    def test_one_long_path_meets_it(self):
+        """The counts over disjoint windows of 50 s, long against the relaxation time."""
+        params = asymmetric()
+        horizon, window = 20_000.0, 50.0
+        times, types = event_arrays(ExponentialHawkes(params, rng=3), horizon)
+        edges = np.arange(50.0, horizon, window)
+        counts = np.stack(
+            [np.diff(np.searchsorted(times[types == e], edges)) for e in range(2)], axis=1
+        )
+        measured = np.cov(counts.T) / window
+        assert measured == pytest.approx(params.count_covariance_rate(), rel=0.2)
+
+    def test_the_kernel_sets_the_variance_of_the_signed_flow(self):
+        """At one event rate and one branching ratio, the signed flow is less dispersed
+        than a Poisson flow in the resilient regime and more in the trending one."""
+        pressure = np.array([event.pressure for event in EventType], dtype=float)
+        resilient = config.resilient_order_flow_params()
+        trending = config.trending_order_flow_params()
+        total = resilient.stationary_intensity().sum()
+        assert trending.stationary_intensity().sum() == pytest.approx(total)
+        assert pressure @ resilient.count_covariance_rate() @ pressure < total
+        assert pressure @ trending.count_covariance_rate() @ pressure > total
+
+
 class TestTheMeanResponse:
     def test_phi_is_the_closed_form_where_k_is_invertible(self):
         params = four_type_params()
