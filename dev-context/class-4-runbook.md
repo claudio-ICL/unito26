@@ -8,7 +8,7 @@ colorlinks: true
 
 # Before the class
 
-**The class in five sentences.**
+**The class in six sentences.**
 
 1. The update rule of section 1.1 is exact but needs the whole message stream; we want one
    number, read off the two best quotes, that tracks the mid-price.
@@ -23,13 +23,16 @@ colorlinks: true
 5. Whether the forecast says *continuation* or *reversal* is decided by the kernel $A$, and
    not by the imbalance. Two specifications with the same branching ratio and the same rate
    forecast opposite signs.
+6. The forecast is bounded in the horizon while the mid-price diffuses, at a rate the kernel
+   also sets. So the forecast is informative over a range of horizons bounded on both sides:
+   past the absorption at the best quotes, and before it is drowned.
 
 **The two questions.** Keep them apart all class, and say which one is on the table.
 
 - *Does the imbalance account for the move that just happened?* Yes, by an identity
   (Proposition 1.4.3). Steps 1 to 20.
 - *Does it forecast the next one?* That depends on the kernel (Proposition 1.4.16,
-  Corollary 1.4.21). Steps 21 to 50.
+  Corollary 1.4.21). Steps 21 to 52.
 
 **The two regimes.** The package ships two specifications of the flow, `resilient` and
 `trending`. Same six types, same branching ratio $0.6$, same total rate $30.19$ events a
@@ -49,12 +52,12 @@ second. They differ in where the excitation goes.
 | 1:05 -- 1:20 | break | |
 | 1:20 -- 1:40 | slides, part B: the model of the flow | 21 -- 26 |
 | 1:40 -- 2:00 | notebook 08, sections 1 to 5 | 27 -- 31 |
-| 2:00 -- 2:25 | slides, part C: the forecast | 32 -- 39 |
-| 2:25 -- 2:45 | notebook 08, sections 6 to 12 | 40 -- 46 |
-| 2:45 -- 2:55 | slides, section 1.5 | 47 -- 50 |
+| 2:00 -- 2:27 | slides, part C: the forecast | 32 -- 40 |
+| 2:27 -- 2:47 | notebook 08, sections 6 to 13 | 41 -- 48 |
+| 2:47 -- 2:57 | slides, section 1.5 | 49 -- 52 |
 
-**If late, cut in this order.** Step 37 (the total response: say its one sentence over step
-36). Step 9 (the position of the bid: set it as the exercise, in words). Step 34 (the residual
+**If late, cut in this order.** Step 38 (the total response: say its one sentence over step
+37). Step 9 (the position of the bid: set it as the exercise, in words). Step 34 (the residual
 absorbing the flow: say it over step 33). In notebook 08: sections 3, 9 and 10.
 
 **Practical.**
@@ -329,9 +332,13 @@ sell leaves it unchanged: $\Sigma A \Sigma = A$ and $\Sigma\mu = \mu$.
 **Say, in plain words.** The market has no built-in direction. Whatever it does to buys, it
 does to sells. Every forecast of today rests on this.
 
-**Why we assume it.** Without it the model has a drift built into its parameters, and a
-forecast would mostly report that drift. With it, anything the model forecasts about direction
-comes from what just happened.
+**Why we assume it.** Without it the model has a drift built into its parameters: the expected
+signed flow over a horizon $h$ contains $h\,\varpi^\top\lambda^*$, whatever the state, and it
+grows with the horizon while the part that depends on the state stays bounded. A forecast
+would mostly report that drift. With the symmetry, anything the model forecasts about direction
+comes from what just happened. That is the last caption of the slide.
+
+**Say.** From here on every statement that uses the symmetry says so in its own text.
 
 ## 22. Slide: *Contracted with $\varpi$, the baseline drops out*
 
@@ -474,7 +481,8 @@ a forecast of the imbalance.
 
 ## 33. Slide: *The forecast of the mid-price*
 
-**Say.** Corollary 1.4.17. Take the identity of step 8 over the window $(t, t+h]$ and take
+**Say.** Corollary 1.4.17, for a direction-symmetric specification under the idealised book.
+Take the identity of step 8 over the window $(t, t+h]$ and take
 expectations. The expected mid-price change is the forecast of the flow times
 $\tau/(2\bar S)$, plus the expected residual.
 
@@ -501,16 +509,39 @@ the mid-price only when the state is loaded enough for the limit to reach a tick
 **Say.** That is why the empirical question of section 1.5 is about the *sign* of the
 forecast, and not about its size.
 
-## 36. Slide: *The contrast is the drift of the imbalance*
+## 36. Slide: *The forecast is bounded; its error grows like $\sqrt{h}$*
 
-**Say.** Corollary 1.4.19. For a small horizon, $\Phi(h)$ is about $h$ times the identity. So
+**Say.** The forecast is bounded in the horizon. Now, what it is bounded against. Proposition
+1.4.23: for a direction-symmetric specification, in the stationary regime, under the idealised
+book, the variance of the mid-price change grows linearly with the horizon, and the variance
+of the forecast does not grow.
+
+**Show.** The blue curve is the forecast: it flattens. The grey cone is one standard deviation
+of the mid-price either side of it: it opens like $\sqrt h$.
+
+**Say.** So the share of the variance that the forecast accounts for falls like $1/h$. About
+the next hour, the state now says no more than it says about the next few seconds.
+
+**Say.** Put this with step 34. At very short horizons the flow sits in the queues. At long
+horizons the forecast is drowned. It is informative in between.
+
+**Show.** The last line, $\sigma_Y^2$. It is set by the kernel, as the sign is. With no
+excitation it is one unit of variance per event. Events that beget their own pressure raise
+it. Events that beget the opposite pressure lower it.
+
+**If asked for the proof.** One identity: the count over a window is its mean, plus a
+martingale increment times $(I-\Gamma)^{-1}$, minus a bounded term in the state.
+
+## 37. Slide: *The contrast is the drift of the imbalance*
+
+**Say.** Corollary 1.4.19, again for a direction-symmetric specification. For a small horizon, $\Phi(h)$ is about $h$ times the identity. So
 the forecast of the imbalance is $\bar q\,\Delta\lambda(t+)\,h$: the intensity contrast is the
 drift of the imbalance.
 
-**If step 37 is cut, add.** At the other end, as $h$ grows, the forecast settles at the whole
+**If step 38 is cut, add.** At the other end, as $h$ grows, the forecast settles at the whole
 expected progeny of the present state, and it settles faster than the relaxation time.
 
-## 37. Slide: *The forecast finishes before the relaxation time*  (cut first if late)
+## 38. Slide: *The forecast finishes before the relaxation time*  (cut first if late)
 
 **Say.** Remark 1.4.20. As $h \to \infty$, $A\Phi(h)$ tends to $\Gamma(I-\Gamma)^{-1}$: the
 direct offspring and all their descendants.
@@ -519,12 +550,12 @@ direct offspring and all their descendants.
 between buys and sells, so $\varpi$ does not see it. The forecast decays at the next rate,
 which is faster.
 
-## 38. Slide: *The sign belongs to the kernel*
+## 39. Slide: *The sign belongs to the kernel*
 
 **Show.** Two curves of $\theta_a(h)$ against the horizon: one positive, *continuation*; one
 negative, *reversal*.
 
-**Say.** Corollary 1.4.21. $\theta(h)$ is the signed excitation carried over a horizon $h$.
+**Say.** Corollary 1.4.21, under direction symmetry. $\theta(h)$ is the signed excitation carried over a horizon $h$.
 One extra event of type $a$ against one fewer of its mirror moves the forecast by
 $2\bar q\,\theta_a(h)$.
 
@@ -536,7 +567,7 @@ both.
 **Say.** So we never say "the order flow imbalance predicts continuation" without naming the
 specification.
 
-## 39. Slide: *Three statistics of the same past flow*
+## 40. Slide: *Three statistics of the same past flow*
 
 **Show.** The table. Three ways to summarise the recent flow, and how each weights a past
 event: by age, by size, by type.
@@ -556,11 +587,11 @@ types. The second never closes: the state does not know the sizes.
 
 \newpage
 
-# Notebook 08, sections 6 to 12 — the forecast against simulation
+# Notebook 08, sections 6 to 13 — the forecast against simulation
 
 **Reminder.** Do not re-run. Scroll the stored output.
 
-## 40. Section 6: *The short-horizon forecast against Monte Carlo*
+## 41. Section 6: *The short-horizon forecast against Monte Carlo*
 
 **Say what is tested.** The formula of step 32, against 20,000 simulated paths from one fixed
 state, in each regime.
@@ -586,7 +617,7 @@ regime buying pressure. Same event, opposite forecasts.
 **Show.** The last print of the section: read *before* the market buy, the forecast would be
 zero. The Monte Carlo is 8 to 22 standard errors from zero. Which state is read matters.
 
-## 41. Section 7: *The forecast of the mid-price, on an idealised book*
+## 42. Section 7: *The forecast of the mid-price, on an idealised book*
 
 **Say.** The same paths, now folded into an idealised book with $\bar S = 3$. Each path
 records the mid-price.
@@ -604,7 +635,7 @@ exactly minus the flow term.
 **Show.** The second figure, $\bar S = 12$: *the price inherits the flow late*. On a thicker
 book the mid-price lags the flow for longer. This is the slide of step 34, measured.
 
-## 42. Section 8: *The residual bounds the forecast*
+## 43. Section 8: *The residual bounds the forecast*
 
 **Show.** The print. From one extra market buy, the flow term settles at $-0.113$ ticks
 (resilient) and $+0.266$ ticks (trending). Well inside one tick.
@@ -615,18 +646,18 @@ the trending one.
 **Show.** The figure: the dotted curves, one market buy, stay inside the grey band. The solid
 curves, the burst, reach its edge, and the simulated mid-price follows.
 
-## 43. Section 9: *The contrast is the drift of the imbalance*  (skip if late)
+## 44. Section 9: *The contrast is the drift of the imbalance*  (skip if late)
 
 **Show.** Left panel: the forecast and its tangent at $h = 0$. The slope of the tangent is the
 contrast, $-1.90$ and $+2.66$: the $\theta_{\text{MB}}$ of step 31.
 
-## 44. Section 10: *The total response*  (skip if late)
+## 45. Section 10: *The total response*  (skip if late)
 
 **Show.** The last table of the section: the forecast decays at rates $2.79$ and $4.00$ per
 second (resilient) and $1.68$ (trending). The relaxation rate is $1.6$. Every pair finishes
 faster.
 
-## 45. Section 11: *The sign belongs to the kernel*
+## 46. Section 11: *The sign belongs to the kernel*
 
 **Show.** The figure of $\theta(h)$: three curves per regime. Resilient at or below zero,
 trending above zero, at every horizon.
@@ -640,7 +671,7 @@ the other.
 **Say also.** At a general state the two need not disagree. The notebook exhibits a state from
 which both forecast upward flow. Along an ordinary path they agree in sign at 9 of 41 events.
 
-## 46. Section 12: *Three statistics of the same past flow*
+## 47. Section 12: *Three statistics of the same past flow*
 
 **Show.** The five numbers at one instant of the path.
 
@@ -661,19 +692,46 @@ $-1250$ to $+60$ while the state and the forecast do not move at all.
 
 **Say.** Only the imbalance sees the sizes. No function of the state recovers them.
 
-**Show.** *What to take away*, the last cell. Read its four paragraphs as the summary of the
+## 48. Section 13: *The forecast against the horizon*
+
+**Show.** The first table. Total rate $30.19$ in both regimes. Variance rate of the signed
+flow: $15.8$ (resilient) and $163.9$ (trending); as a ratio to the rate of events, $0.52$ and
+$5.43$.
+
+**Say.** The same number of events a second, the same branching ratio, and the variance of the
+signed flow differs by a factor of ten. The kernel sets the volatility.
+
+**Show.** The long table, one per regime. Column *Var(Y)/h* settles on that rate. Column
+*Var(forecast)* stops growing after about two seconds. Column *share* peaks near half a
+second, at about $7\%$ (resilient) and $14\%$ (trending), and then halves each time the
+horizon doubles.
+
+**Show.** The figure, on logarithmic axes: the share against the horizon. Lines: the flow.
+Diamonds: the mid-price on an idealised book. Dashed: the $1/h$ formula.
+
+**Say.** The mid-price sits below the flow at the shortest horizons: there the residual is a
+large part of its variance. From about a second on the two fall together.
+
+**Show.** The last print, the next hour. Standard deviation of the mid-price: about $40$ ticks
+(resilient) and $128$ ticks (trending). Forecast from one extra market buy: $-0.11$ and
+$+0.27$ ticks.
+
+**Say.** At its best, near half a second, the forecast accounts for about a tenth of the
+variance. Over an hour, for a few parts in a hundred thousand.
+
+**Show.** *What to take away*, the last cell. Read its paragraphs as the summary of the
 notebook.
 
 \newpage
 
 # Section 1.5 — what the generated setting cannot settle (slides)
 
-## 47. Slide: *Outline*
+## 49. Slide: *Outline*
 
 **Say.** Everything today was on flow that we generate. A result on generated flow is a result
 about the generator. Four things are absent by construction.
 
-## 48. Slide: *The intensities do not read the book*
+## 50. Slide: *The intensities do not read the book*
 
 **Say.** In our model the arrival rates do not look at the queues. In a traded market they do.
 A resting limit order is filled when someone wants to trade against it, which is more often
@@ -683,12 +741,12 @@ when that trade is right. Those who posted it defend themselves by withdrawing f
 depletion. That is the opposite of replenishment. The queue imbalance at the best quotes,
 $I^1$, carries that information in a traded book. Here it cannot.
 
-## 49. Slide: *What the generated setting also lacks*
+## 51. Slide: *What the generated setting also lacks*
 
 **Show.** The table, four rows: sizes that depend on the flow; a second timescale; intraday
 patterns; an anchor for the price level.
 
-## 50. Slide: *Read the comparison asymmetrically*
+## 52. Slide: *Read the comparison asymmetrically*
 
 **Say.** On generated flow, whatever the queue imbalance forecasts is mechanical. So a result
 that favours it is the stronger finding, and a result that favours the order flow imbalance
@@ -717,6 +775,10 @@ section 6, shows the Monte Carlo telling the two apart.
 
 **Why does the forecast stop growing with the horizon?** At $\rho < 1$ an event has a finite
 expected number of descendants, $\Gamma(I-\Gamma)^{-1}$ in all.
+
+**Can we forecast the next hour?** No better than the next few seconds. The forecast stops
+growing after a couple of seconds, and the mid-price goes on diffusing with a standard
+deviation that grows like $\sqrt h$. Step 36 and notebook 08, section 13.
 
 **Which regime is the real market?** The model does not say. Both are admissible at the same
 branching ratio and the same rate. It is the question of the assignment.
