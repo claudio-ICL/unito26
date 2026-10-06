@@ -173,15 +173,15 @@ class TestBookFrame:
 
 class TestFrozenExamples:
     def test_the_flow_reserialises_to_the_frozen_records(self):
-        assert config.example_order_flow_params().to_records() == config.EXAMPLE_ORDER_FLOW_PARAMS
+        assert config.resilient_order_flow_params().to_records() == config.RESILIENT_ORDER_FLOW_PARAMS
 
     def test_the_marks_reserialise_to_the_frozen_records(self):
-        assert config.example_mark_params().to_records() == config.EXAMPLE_MARK_PARAMS
+        assert config.resilient_mark_params().to_records() == config.RESILIENT_MARK_PARAMS
 
     def test_the_documented_properties_survive_the_freezing(self):
         """The construction that produced these numbers is gone, so what it was built to
         achieve is asserted here instead."""
-        params = config.example_order_flow_params()
+        params = config.resilient_order_flow_params()
         assert params.branching_ratio == pytest.approx(0.6)
         replenishment = params.excitation[EventType.LIMIT_SELL, EventType.MARKET_BUY]
         reverse = params.excitation[EventType.MARKET_BUY, EventType.LIMIT_SELL]
@@ -206,7 +206,7 @@ class TestFrozenExamples:
         composition is global and slow; it is the reason no side empties in two million
         rows.  Both sides, and both kinds of depleting event.
         """
-        excitation = config.example_order_flow_params().excitation
+        excitation = config.resilient_order_flow_params().excitation
         assert excitation[replenisher, depleting] > 10 * excitation[further, depleting]
 
     def test_the_flow_composition_is_the_declared_one(self):
@@ -217,7 +217,7 @@ class TestFrozenExamples:
         which is not the same as balancing it in size: a truncated withdrawal is removal
         capacity thrown away, so at one the depth grows without bound, ever more slowly.
         One is the critical point; 0.965 is where twenty seeds show no detectable drift."""
-        stationary = config.example_order_flow_params().stationary_intensity()
+        stationary = config.resilient_order_flow_params().stationary_intensity()
         limit = stationary[[EventType.LIMIT_BUY, EventType.LIMIT_SELL]].sum()
         consuming = stationary.sum() - limit
         assert stationary.sum() == pytest.approx(30.1878, abs=1e-3)
@@ -227,19 +227,19 @@ class TestFrozenExamples:
         """The two shipped flows differ in one structural property, and it is the one that
         decides the sign of what OFI predicts.
 
-        The example excites *across* the pressure partition -- what depletes a side calls
+        The resilient flow excites *across* the pressure partition -- what depletes a side calls
         forth what refills it -- so offspring carry the opposite pressure to their parent
         and a burst predicts reversal.  The trending flow excites *within* it, so offspring
         carry the parent's pressure and a burst predicts continuation.  Both hold the same
         branching ratio and the same total rate, so nothing else can be the cause.
         """
         pressure = np.array([event.pressure for event in EventType], dtype=float)
-        example = config.example_order_flow_params()
+        resilient = config.resilient_order_flow_params()
         trending = config.trending_order_flow_params()
-        assert example.signed_endogenous_fraction(pressure) < -0.3
+        assert resilient.signed_endogenous_fraction(pressure) < -0.3
         assert trending.signed_endogenous_fraction(pressure) > +0.5
-        assert example.branching_ratio == pytest.approx(trending.branching_ratio)
-        assert example.stationary_intensity().sum() == pytest.approx(
+        assert resilient.branching_ratio == pytest.approx(trending.branching_ratio)
+        assert resilient.stationary_intensity().sum() == pytest.approx(
             trending.stationary_intensity().sum()
         )
 
@@ -255,7 +255,7 @@ class TestFrozenExamples:
             swap[i, i + 1] = swap[i + 1, i] = 1.0
         pressure = np.array([event.pressure for event in EventType], dtype=float)
         assert np.array_equal(swap @ pressure, -pressure)
-        for params in (config.example_order_flow_params(), config.trending_order_flow_params()):
+        for params in (config.resilient_order_flow_params(), config.trending_order_flow_params()):
             assert np.allclose(swap @ params.excitation @ swap, params.excitation)
             assert np.allclose(swap @ params.baseline, params.baseline)
             assert pressure @ params.baseline == pytest.approx(0.0, abs=1e-12)
@@ -275,14 +275,14 @@ class TestFrozenExamples:
         accident: tying their arrival to the depleting rates makes them overwhelmingly
         endogenous, so little of their rate is left for immigration.  It is also what caps
         how far the composition can be pushed towards a flat depth."""
-        params = config.example_order_flow_params()
+        params = config.resilient_order_flow_params()
         assert (params.baseline > 0).all()
         assert params.baseline.argmin() in (EventType.LIMIT_BUY, EventType.LIMIT_SELL)
 
     def test_the_three_depth_regimes_are_distinct(self):
         assert (
             config.shallow_mark_params().depth_decay
-            > config.example_mark_params().depth_decay
+            > config.resilient_mark_params().depth_decay
             > config.deep_mark_params().depth_decay
         )
 

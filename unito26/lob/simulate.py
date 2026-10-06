@@ -130,7 +130,7 @@ class EventJournal:
     messages has a strictly coarser filtration than the Hawkes state does.  Nothing
     downstream of the messages can recover the drop rate, and the drop rate is a property
     of the *book* rather than of the model -- which is why it is worth a record rather
-    than an estimate.  At the example parametrization the drops are confined to the
+    than an estimate.  At the resilient parametrization the drops are confined to the
     warm-up, where the book fills from cold: 0.04% to 0.13% there, and none at all over
     an hour of sample.
 

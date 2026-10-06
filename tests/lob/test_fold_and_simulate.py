@@ -13,8 +13,8 @@ REFERENCE_PRICE = 10000
 
 def simulator(seed, marks=None):
     return OrderFlowSimulator(
-        config.example_order_flow_params(),
-        marks or config.example_mark_params(),
+        config.resilient_order_flow_params(),
+        marks or config.resilient_mark_params(),
         REFERENCE_PRICE,
         rng=seed,
     )
@@ -62,8 +62,8 @@ class TestSimulatedFlow:
 
         assert session() == session()
 
-    def test_the_example_flow_sits_in_the_documented_regime(self):
-        params = config.example_order_flow_params()
+    def test_the_resilient_flow_sits_in_the_documented_regime(self):
+        params = config.resilient_order_flow_params()
         assert params.branching_ratio == pytest.approx(0.6)
         # Market orders excite the limit-order flow far more than the reverse.
         replenishment = params.excitation[EventType.LIMIT_SELL, EventType.MARKET_BUY]

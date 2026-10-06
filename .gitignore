@@ -48,6 +48,9 @@ documentation/**/*.fls
 documentation/**/*.fdb_latexmk
 documentation/**/*.synctex.gz
 
+# The lecturer's script is generated from the slides' main.tex.
+documentation/tex/slides/script.tex
+
 # Large binaries: kept out of the repository wherever they turn up.
 *.pdf
 *.jpg

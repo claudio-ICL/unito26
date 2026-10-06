@@ -10,7 +10,7 @@ code-facing half: it maps each section of the chapter onto the module and the te
 carry it, and adds the facts that belong to this package rather than to the theory.
 **If this file and the `.tex` ever disagree, the `.tex` wins** — fix this file.
 
-Numbers are at `config.example_order_flow_params()` — $\rho = 0.6$, $\beta = 4\ \mathrm{s}^{-1}$,
+Numbers are at `config.resilient_order_flow_params()` — $\rho = 0.6$, $\beta = 4\ \mathrm{s}^{-1}$,
 $\bar\lambda = 30.19$ events/s — unless another parametrization is named.
 
 ---
@@ -58,18 +58,18 @@ a different $(I-\Gamma)^{-1}$ --- and differ in one structural property, which i
 $\mathrm{OFI}$ predicts.
 
 Pressure partitions the six event types: $\varpi = +1$ on
-$\{$market buy, limit buy, withdraw ask$\}$ and $-1$ on the mirror. `EXAMPLE_ORDER_FLOW_PARAMS`
+$\{$market buy, limit buy, withdraw ask$\}$ and $-1$ on the mirror. `RESILIENT_ORDER_FLOW_PARAMS`
 excites **across** that partition — what depletes a side calls forth what refills it —
 so an offspring tends to carry the opposite pressure to its parent.
 `TRENDING_ORDER_FLOW_PARAMS` excites **within** it, so an offspring tends to carry the same.
 
-| | `EXAMPLE_` | `TRENDING_` |
+| | `RESILIENT_` | `TRENDING_` |
 | --- | --- | --- |
 | signed endogenous fraction | $-0.351$ | $+0.554$ |
 | $\theta = (\varpi^\top A)_e/\varpi_e$ | $(-1.90,\,0,\,-3.11)$ per pair | $(2.66,\,1.77,\,2.66)$ per pair |
 | unsigned endogenous fraction | $0.682$ | $0.574$ |
 | $\Gamma$ column sums | $(1.42, 1.42, 0.20, 0.20, 1.04, 1.04)$ | $(0.69, 0.69, 0.46, 0.46, 0.69, 0.69)$ |
-| marks | `EXAMPLE_MARK_PARAMS`, `DepthDecay` 0.08 | `TRENDING_MARK_PARAMS`, `DepthDecay` 0.15 |
+| marks | `RESILIENT_MARK_PARAMS`, `DepthDecay` 0.08 | `TRENDING_MARK_PARAMS`, `DepthDecay` 0.15 |
 | empty-side rows | none in $2.17\times10^{6}$ | $1.7\times10^{-3}$ |
 | largest single-event mid move | 6.5 ticks | 14.5 ticks |
 
@@ -79,7 +79,7 @@ forward mid change:
 | $h$ | 0.03 s | 0.1 s | 0.325 s | 1 s | 3 s | 10 s |
 | --- | --- | --- | --- | --- | --- | --- |
 | `TRENDING_` | $+0.025$ | $+0.033$ | $+0.044$ | $+0.024$ | $-0.015$ | $-0.039$ |
-| `EXAMPLE_` | $-0.024$ | $-0.035$ | $-0.054$ | $-0.071$ | $-0.094$ | $-0.105$ |
+| `RESILIENT_` | $-0.024$ | $-0.035$ | $-0.054$ | $-0.071$ | $-0.094$ | $-0.105$ |
 
 The sign of $\theta$ is the regime, and the notes derive it rather than measure it:
 `corol.regimeSign` in `sec.forecastingTheMid` says the forecast of the mid-price moves by
@@ -103,7 +103,7 @@ negative after, is impact giving way to resilience, and is a result rather than 
 | leg | where |
 | --- | --- |
 | statement | this entry, and `sec.priceFormation` |
-| code | `unito26.lob.config` — `example_order_flow_params`, `trending_order_flow_params`, `trending_mark_params` |
+| code | `unito26.lob.config` — `resilient_order_flow_params`, `trending_order_flow_params`, `trending_mark_params` |
 | tests | `test_serialization.py::TestFrozenExamples::test_the_two_regimes_have_opposite_signed_endogeneity` |
 
 ---
@@ -117,7 +117,7 @@ each event into a message against the live book: a limit order is priced relativ
 opposite touch, and a withdrawal must name size that actually rests. A withdrawal drawn on
 an empty side is *dropped*, so the realised withdrawal process is a state-dependent thinning
 of a Hawkes process and not a Hawkes process. The rate at which this bites is therefore a
-reportable quantity and not a nuisance: it is zero on `EXAMPLE_` and $1.7\times10^{-3}$ on
+reportable quantity and not a nuisance: it is zero on `RESILIENT_` and $1.7\times10^{-3}$ on
 `TRENDING_`.
 
 This is also why the intensities never read the book. Coupling them to resting size — the

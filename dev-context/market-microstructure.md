@@ -96,10 +96,10 @@ than the fold recording fills, and that the sweep costs reuse `SideStatistics.le
 of the tests and against hand-rolled property tests. It is the prerequisite for sections 6–7
 of `03-the-book-made-faster`.
 
-## The example parametrization changed
+## The resilient parametrization changed
 
-`example_order_flow_params()` moved from a branching ratio of 0.8 to 0.6, its composition
-from `lambda_L / (lambda_M + lambda_W) = 0.9956` to exactly 1, and `example_mark_params()`
+`resilient_order_flow_params()` moved from a branching ratio of 0.8 to 0.6, its composition
+from `lambda_L / (lambda_M + lambda_W) = 0.9956` to exactly 1, and `resilient_mark_params()`
 from a depth decay of 0.45 to 0.15; `config.py` carries the construction and the reasons.
 The total stationary rate is held at 30.19 events per second, so **message counts are
 unchanged** — 107,853 and 108,162 over an hour against the 16.7k and 34.8k runs' unchanged
@@ -112,7 +112,7 @@ Everything that reads the *book* moved, and the re-measured shape is:
 | `benchmark.session(shallow, 3600s, seed 0)`, `L` | ~12 | **25** |
 | `benchmark.session(deep, 3600s, seed 0)`, `L` | ~966 | **459** |
 | gap regimes (seed 3, 120s warm-up), levels a side | 18 / 241 | **13 / 106** |
-| `example_mark_params` (seed 11, 300s), levels a side | 13 | **30** |
+| `resilient_mark_params` (seed 11, 300s), levels a side | 13 | **30** |
 | `deep_mark_params` (seed 11, 300s), levels a side | 136 | **140** |
 
 The direction is uniform: the book is thinner in shares and wider in levels, which is what
@@ -207,7 +207,7 @@ the session fold and ended up retiring two findings above
   maximum and raises `MemoryError`, the sell one is the minimum and silently widens — so a
   filter written for one lets the other through, which is the same trap as the padding
   sentinels. `for_prices` now drops both itself, so no caller can repeat it;
-- **the regime measured was the one where no index can win.** `example_mark_params` gives
+- **the regime measured was the one where no index can win.** `resilient_mark_params` gives
   about 13 occupied levels a side; `max()` over 13 dict keys is one C loop. With
   `deep_mark_params` (136 a side) the dict rungs double and the tick array barely moves;
 - **bare `apply` is 0.005s of a 0.276s fold.** The matching the ladder was built to time is
@@ -541,7 +541,7 @@ returns a plausible number:
 - **a kernel transposed at a fixed baseline.** It passes every stability check; at fixed
   $\mu$ the total rate moves (2 against 3 on the asymmetric pair), and with $\mu$ solved from
   a target $\lambda^*$ it does not. "Which check could catch it?";
-- **"the order flow imbalance predicts continuation"**, with no regime named. Under the example
+- **"the order flow imbalance predicts continuation"**, with no regime named. Under the resilient
   specification the same statistic forecasts reversal: the sign of $\theta_a(h)$ belongs to
   the kernel.
 

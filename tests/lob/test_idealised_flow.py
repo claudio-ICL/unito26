@@ -19,14 +19,14 @@ from unito26.lob.statistics import SessionStatistics
 DEPTH = UniformDepth(5)
 SPEC = SessionStatistics((GridDepth(1),), (), (1,))
 PRESSURE = np.array([event.pressure for event in EventType])
-REGIMES = [config.example_order_flow_params(), config.trending_order_flow_params()]
+REGIMES = [config.resilient_order_flow_params(), config.trending_order_flow_params()]
 WIDE = {BUY: (1000, 5), SELL: (1020, 5)}
 
 
 class Scripted:
     """A source of events in the place of a Hawkes process, for the corner cases."""
 
-    params = config.example_order_flow_params()
+    params = config.resilient_order_flow_params()
 
     def __init__(self, events):
         self._events = [(float(time), int(event)) for time, event in events]

@@ -288,7 +288,7 @@ class TestRecordingIsOptional:
 
     def test_the_book_ends_in_the_same_state(self, book_cls):
         simulator = OrderFlowSimulator(
-            config.example_order_flow_params(), config.example_mark_params(), 10000, rng=13
+            config.resilient_order_flow_params(), config.resilient_mark_params(), 10000, rng=13
         )
         driver = AggregateBook()
         messages = []
@@ -377,7 +377,7 @@ def submissions() -> list[tuple[AggregateBook, Message]]:
     ]
 
     simulator = OrderFlowSimulator(
-        config.example_order_flow_params(), config.example_mark_params(), 10000, rng=7
+        config.resilient_order_flow_params(), config.resilient_mark_params(), 10000, rng=7
     )
     driver = AggregateBook()
     simulator.warm_up(driver, horizon=30.0, journal=None)

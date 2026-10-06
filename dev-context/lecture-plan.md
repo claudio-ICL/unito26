@@ -17,7 +17,7 @@ One notes section per class, and slides and a notebook in every class.
 | Class 1 | §1.1 `sec.orderDrivenMarkets` | 1h45 | `01-the-limit-order-book` 1h |
 | Class 2 | §1.2 `sec.messageFiles` | 1h | `02-the-fold` 1h05 · `03-the-book-made-faster` 55m |
 | Class 3 | §1.3 `sec.pointProcesses` | 34 frames | `04-simulating-self-excitation` · `05-moments-and-timescales` · `06-simulation-and-goodness-of-fit`, interleaved with the deck |
-| Class 4 | §1.4 `sec.priceFormation`, §1.5 `sec.lobsterEmpirics` | 27 + 4 frames | `07-the-order-flow-imbalance` · `08-forecasting-the-mid`, interleaved with the deck |
+| Class 4 | §1.4 `sec.priceFormation`, §1.5 `sec.lobsterEmpirics` | 29 + 4 frames | `07-the-order-flow-imbalance` · `08-forecasting-the-mid`, interleaved with the deck |
 
 ---
 
@@ -40,7 +40,7 @@ slide of the course was "Two market infrastructures".
 | `sections/order_driven_markets.tex` | 1 | 27 | 112m | ☑ 22 Sep, revised 25 Sep |
 | `sections/message_files.tex` | 2 | 16 | 58m | ☑ 25 Sep |
 | `sections/point_processes.tex` | 3 | 34 | — | ☑ 30 Sep |
-| `sections/price_formation.tex` | 4 | 27 | — | ☑ 30 Sep |
+| `sections/price_formation.tex` | 4 | 29 | — | ☑ 30 Sep |
 | `sections/lobster_empirics.tex` | 4 | 4 | — | ☑ 30 Sep |
 
 The lecturer runs through frames faster than the budgets of classes 1 and 2 assumed, so the

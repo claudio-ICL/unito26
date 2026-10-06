@@ -51,7 +51,7 @@ show no detectable drift: the slope of the depth profile across the six tenths o
 is +0.8% per tenth with ``t = 0.98``, ``p = 0.34``, and the last-tenth-to-first-tenth ratio
 has a 95% interval of [0.97, 1.16].
 
-``EXAMPLE_MARK_PARAMS`` then sets how far the resting size spreads, and it is the parameter
+``RESILIENT_MARK_PARAMS`` then sets how far the resting size spreads, and it is the parameter
 that decides how the book fails.  Concentration, non-emptiness and a moving mid are three
 corners of one trade: with the spread pinned at a tick the mid moves only by clearing a
 touch queue, which is also how a side empties, and only occupied depth *behind* the touch
@@ -74,16 +74,16 @@ from unito26.lob.hawkes import HawkesParams
 from unito26.lob.simulate import MarkParams
 
 __all__ = [
-    "EXAMPLE_ORDER_FLOW_PARAMS",
+    "RESILIENT_ORDER_FLOW_PARAMS",
     "TRENDING_ORDER_FLOW_PARAMS",
     "TRENDING_MARK_PARAMS",
-    "EXAMPLE_MARK_PARAMS",
+    "RESILIENT_MARK_PARAMS",
     "SHALLOW_MARK_PARAMS",
     "DEEP_MARK_PARAMS",
-    "example_order_flow_params",
+    "resilient_order_flow_params",
     "trending_order_flow_params",
     "trending_mark_params",
-    "example_mark_params",
+    "resilient_mark_params",
     "shallow_mark_params",
     "deep_mark_params",
     "SELF_EXCITING_PAIR_PARAMS",
@@ -96,7 +96,7 @@ __all__ = [
 
 #: A six-type flow with the asymmetry described above, at a branching ratio of 0.6.
 #: ``Component`` is the type being excited, ``Cause`` the type exciting it.
-EXAMPLE_ORDER_FLOW_PARAMS: list[dict] = [
+RESILIENT_ORDER_FLOW_PARAMS: list[dict] = [
     {"Component": 0, "Cause": 0, "BaseIntensity": 0.5126447854,
      "Kernel": 1.5541514008, "Decay": 4.0},
     {"Component": 0, "Cause": 1, "BaseIntensity": None,
@@ -175,7 +175,7 @@ EXAMPLE_ORDER_FLOW_PARAMS: list[dict] = [
 
 #: The same flow, in the regime where excitation follows the *pressure* partition instead
 #: of the queue: an event excites the types that push the price the same way it did.
-#: Signed endogenous fraction +0.554 against the example's -0.351.
+#: Signed endogenous fraction +0.554 against the resilient regime's -0.351.
 TRENDING_ORDER_FLOW_PARAMS: list[dict] = [
     {"Component": 0, "Cause": 0, "BaseIntensity": 0.4591361692,
      "Kernel": 0.9001807356, "Decay": 4.0},
@@ -251,15 +251,15 @@ TRENDING_ORDER_FLOW_PARAMS: list[dict] = [
      "Kernel": 0.9001807356, "Decay": 4.0},
 ]
 
-#: The trending regime is studied with a sharper offset than the example uses.  That is not
+#: The trending regime is studied with a sharper offset than the resilient one uses.  That is not
 #: a free choice: a book flat enough to be resilient is resilient mechanically too, and
-#: flattening this one drives its predictive sign back to the example's.
+#: flattening this one drives its predictive sign back to the resilient regime's.
 TRENDING_MARK_PARAMS: list[dict] = [
     {"DepthDecay": 0.15, "MeanLogSize": 4.0,
      "SigmaLogSize": 0.8, "Lot": 10},
 ]
 
-EXAMPLE_MARK_PARAMS: list[dict] = [
+RESILIENT_MARK_PARAMS: list[dict] = [
     {"DepthDecay": 0.08, "MeanLogSize": 4.0,
      "SigmaLogSize": 0.8, "Lot": 10},
 ]
@@ -311,12 +311,12 @@ ASYMMETRIC_PAIR_PARAMS: list[dict] = [
 ]
 
 
-def example_order_flow_params() -> HawkesParams:
-    return HawkesParams.from_records(EXAMPLE_ORDER_FLOW_PARAMS)
+def resilient_order_flow_params() -> HawkesParams:
+    return HawkesParams.from_records(RESILIENT_ORDER_FLOW_PARAMS)
 
 
-def example_mark_params() -> MarkParams:
-    return MarkParams.from_records(EXAMPLE_MARK_PARAMS)
+def resilient_mark_params() -> MarkParams:
+    return MarkParams.from_records(RESILIENT_MARK_PARAMS)
 
 
 def shallow_mark_params() -> MarkParams:

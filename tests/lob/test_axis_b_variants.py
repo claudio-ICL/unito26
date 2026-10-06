@@ -42,7 +42,7 @@ DEPTH = 6
 def stream():
     """A realistic message stream, materialised once so every variant sees it identically."""
     simulator = OrderFlowSimulator(
-        config.example_order_flow_params(), config.example_mark_params(), 10000, rng=0
+        config.resilient_order_flow_params(), config.resilient_mark_params(), 10000, rng=0
     )
     book = AggregateBook()
     simulator.warm_up(book, horizon=30.0, journal=None)
