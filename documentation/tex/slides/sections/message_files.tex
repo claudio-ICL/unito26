@@ -65,15 +65,9 @@
 \end{tikzpicture}
 \end{center}
 
-\pause
-
 Where the sequence of configurations comes from.
 
-\pause
-
 Why a participant computes it rather than receiving it.
-
-\pause
 
 Then LOBSTER: the same pair of feeds, recorded.
 \note{
@@ -102,11 +96,7 @@ Section 1.4 computes its statistics from exactly the files we meet at the end of
 \end{tikzpicture}
 \end{center}
 
-\pause
-
 One engine, one stream of events, two products.
-
-\pause
 
 Everything in this class is that orange box.
 \note{
@@ -130,15 +120,9 @@ Interface; CME carries both in MDP 3.0; Nasdaq's stream is TotalView-ITCH.
  \!\!\!\! q
 \]
 
-\pause
-
 The exchange runs this fold before publishing.
 
-\pause
-
 A sum does not record its summands.
-
-\pause
 
 The summand reached first decides who is filled.
 \note{
@@ -177,11 +161,7 @@ imbalance of section 1.4 are computed from.
 \end{tikzpicture}
 \end{center}
 
-\pause
-
 Message: written. Level update: netted first.
-
-\pause
 
 Folding it yourself: sooner, and deeper than the feed publishes.
 \note{
@@ -210,8 +190,6 @@ the publication path & $\delta$ & yes \\
 \bottomrule
 \end{tabular}
 \end{center}
-
-\pause
 
 Only the last row is a delay.
 \note{
@@ -245,11 +223,7 @@ published.
 \end{tikzpicture}
 \end{center}
 
-\pause
-
 Fill probability is a function of the discarded split.
-
-\pause
 
 No latency buys it back.
 \note{
@@ -279,8 +253,6 @@ also called & order by order & depth of book \\
 \end{tabular}
 \end{center}
 
-\pause
-
 Three names on a line are one product.
 \note{
 Eurex publishes the aggregated book twice over: the Enhanced Market Data Interface is
@@ -309,14 +281,10 @@ rather than the product name.
 \end{tikzpicture}
 \end{center}
 
-\pause
-
 \begin{remark}
 \label{remark.aggregatedAsCheck}
  A check on the reconstruction, not a substitute for it.
 \end{remark}
-
-\pause
 
 One dropped message: every statistic still in range.
 \note{
@@ -350,11 +318,7 @@ disagreement read as a location.
 \end{tikzpicture}
 \end{center}
 
-\pause
-
 Rule 603(c) of Regulation NMS \cite{SEC05reg}: display consolidated data.
-
-\pause
 
 The obligation is to display it, not to trade on it.
 \note{
@@ -374,11 +338,7 @@ display the consolidated tape, not to trade on it.
  \qquad \mathcal{B}_0 = \varnothing .
 \end{equation}
 
-\pause
-
 The book is the accumulator: one state, the current one.
-
-\pause
 
 The sequence $(\mathcal{B}_k)_k$ belongs to whatever drives the fold.
 \note{
@@ -401,11 +361,7 @@ F\big(\mathcal{B},\,(t,q,p,d)\big)
  \underbrace{\text{rest } q - \marketOrderSize \text{ at } p}_{\text{resting part}}
 \]
 
-\pause
-
 No separate branch for a marketable order.
-
-\pause
 
 Two code paths where the mathematics has one.
 \note{
@@ -444,8 +400,6 @@ submission, read on the passive side.
 \end{algorithmic}
 }
 
-\pause
-
 Finite, because the book is.
 \note{
 The loop is the reduction of the update rule to its elementary pieces, and it is the
@@ -475,8 +429,6 @@ they take --- which is the whole of the second notebook.
   \draw[<->, gray] (1,-64) -- node[below, inner sep=1pt] {$2\tickSizeOfLOB$} (3,-64);
 \end{tikzpicture}
 \end{center}
-
-\pause
 
 \begin{remark}
 \label{remark.gridAgainstOccupied}
@@ -520,11 +472,7 @@ $0.54$ where $\queueImbalance[2]$ reads $0.14$, and both lie in $[-1,1]$.
 \end{tikzpicture}
 \end{center}
 
-\pause
-
 Orderbook row $k$: the configuration \emph{after} message $k$.
-
-\pause
 
 Sentinels pad a side with fewer than $L$ occupied prices.
 \note{
@@ -555,11 +503,7 @@ type & & effect on the book \\
 \end{tabular}
 \end{center}
 
-\pause
-
 Two words in the book's vocabulary: submit, withdraw.
-
-\pause
 
 A type 4 and a type 3 look the same.
 \note{
@@ -590,15 +534,11 @@ and that is exactly why the pair of files is read together.
 \end{tikzpicture}
 \end{center}
 
-\pause
-
 \begin{remark}
 \label{remark.passiveDirection}
  There is no event for an aggressive order, so the aggressor's direction is the opposite of
  the one the execution carries.
 \end{remark}
-
-\pause
 
 Exact and free --- and inverted if read as the trade's direction.
 \note{

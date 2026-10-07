@@ -1,0 +1,42 @@
+Every value of a Python program is an object:
+an integer, a dictionary, a function, a book.
+
+\begin{defi}\label{def.object}
+ An \emph{object} has an \emph{identity}, a \emph{type} and a \emph{value}
+ \citep[Section 3.1]{PSF26lan}.
+ The identity and the type are fixed when the object is created.
+ The object is \emph{mutable} if its value can change afterwards,
+ and \emph{immutable} otherwise.
+ The expression \codehl{a is b} compares identities,
+ and \codehl{a == b} compares values.
+\end{defi}
+
+Integers, floats, strings and tuples are immutable;
+lists and dictionaries are mutable.
+A \emph{name} refers to an object.
+An assignment \emph{binds} a name to an object,
+as the statements \codehl{def} and \codehl{class} do,
+and it copies nothing:
+after \codehl{b = a}, the names \codehl{a} and \codehl{b} refer to one object.
+A change made to a mutable object through one name is read through every other,
+and the parameters of a function are names of the objects that the caller passed.
+In Listing \ref{listing.namesAndObjects}
+a side of the book of Section \ref{sec.foldImplementation},
+which is a dictionary from price to size,
+is written through one name and read through another;
+a second dictionary with the same entries is equal to it, and at no time identical.
+
+\begin{lstlisting}[caption={Two names of one dictionary, and two equal dictionaries.}, label=listing.namesAndObjects]
+bids = {99: 100, 98: 60}
+same = bids
+bids[99] = 40
+assert same is bids and same[99] == 40
+
+copy = dict(bids)
+assert copy == bids and copy is not bids
+bids[99] = 10
+assert copy[99] == 40 and copy != bids
+\end{lstlisting}
+
+An immutable object needs no such care, since no name can change it;
+Section \ref{sec.dataClasses} makes the messages of the stream immutable for that reason.

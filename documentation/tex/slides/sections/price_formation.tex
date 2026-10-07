@@ -64,15 +64,9 @@
 \end{tikzpicture}
 \end{center}
 
-\pause
-
 One number off the aggregated book
 
-\pause
-
 A model of the flow that produces it
-
-\pause
 
 A forecast of where the flow takes the mid-price
 \note{
@@ -98,8 +92,6 @@ the next configuration & the mid-price \\
 \bottomrule
 \end{tabular}
 \end{center}
-
-\pause
 
 A statistic whose only job is to track the mid-price
 \note{
@@ -155,11 +147,7 @@ be the size of that event, and part ii is what that costs.
 \end{tikzpicture}
 \end{center}
 
-\pause
-
 At a touch: at most $\uniformDepth$
-
-\pause
 
 Every event at a touch, and no gap behind it
 \note{
@@ -192,8 +180,6 @@ new one opens. That is what makes it an explicit function of the flow.
  and $\OFI_{t,\ofiWindow} = \sum_{t-\ofiWindow < \arrivalTimes[]_n \leq t}
  \orderFlowContribution$.
 \end{defi}
-
-\pause
 
 $\nthBestBidSize[1]_{\arrivalTimes[]_n}$: the size at the best bid \emph{after} the $n$-th
 event
@@ -241,11 +227,7 @@ queue.
 \end{tikzpicture}
 \end{center}
 
-\pause
-
 Dashed: before the event. Filled: after.
-
-\pause
 
 The ask side, with the signs reversed
 \note{
@@ -354,8 +336,6 @@ fires and it contributes minus the whole old queue.
 \end{tikzpicture}
 \end{center}
 
-\pause
-
 One session of the idealised book, one window length
 \note{
 Before the statement, the picture. Above, the change of the mid-price over a trailing window;
@@ -376,13 +356,9 @@ tick. The next frame says how far the agreement goes.
  with $\vert\residual_{t,\ofiWindow}\vert \leq \tickSizeOfLOB$.
 \end{prop}
 
-\pause
-
 $\residual_{t,\ofiWindow} = -\frac{\tickSizeOfLOB}{2\uniformDepth}\big[
 (\nthBestBidSize[1]_t - \nthBestBidSize[1]_{t-\ofiWindow})
 - (\nthBestAskSize[1]_t - \nthBestAskSize[1]_{t-\ofiWindow}) \big]$
-
-\pause
 
 Exact when the two touches change by the same amount
 \note{
@@ -416,11 +392,7 @@ exercise on the next frame.
 \end{tikzpicture}
 \end{center}
 
-\pause
-
 Each event: a step of its own signed bid-side flow
-
-\pause
 
 A multiple of $\uniformDepth$ crossed: the bid moves a tick
 \note{
@@ -466,8 +438,6 @@ assumption is used.
 \end{tikzpicture}
 \end{center}
 
-\pause
-
 \begin{remark}
 \label{remark.residualIsQueueFlow}
  If neither quote moves over the window,
@@ -498,8 +468,6 @@ $p$ & price & the book before $\arrivalTimes[]_n$, and an offset $\priceOffset_n
 \end{tabular}
 \end{center}
 
-\pause
-
 structure of the model: the first two rows
 \note{
 An order is the tuple of the first class, and we simulate the flow by sampling its components
@@ -523,8 +491,6 @@ $\pressure_e$ & $+1$ & $-1$ & $+1$ & $-1$ & $-1$ & $+1$ \\
 \bottomrule
 \end{tabular}
 \end{center}
-
-\pause
 
 \begin{defi}
 \label{def.orderFlowProcess}
@@ -570,8 +536,6 @@ Hawkes process, exactly as in the last class.
 \end{tikzpicture}
 \end{center}
 
-\pause
-
 $p_n = \bestAskPrice_{\arrivalTimes[]_n-} - \tickSizeOfLOB\,(1 + \priceOffset_n)$,
 \quad
 $\Prob(\priceOffset_n = k) = \offsetParameter\,(1-\offsetParameter)^{k}$
@@ -604,8 +568,6 @@ placement is heavy-tailed where this law is not.
  \pressure_{\event[n]}\orderSize_n$.
 \end{prop}
 
-\pause
-
 Part ii: each event changes one queue, by its own size
 \note{
 The first two terms of the contribution are the signed flow on the bid side, the last two
@@ -629,15 +591,9 @@ identity checked to the last digit on the package's own session.
  $\swapMatrix\baseIntensity = \baseIntensity$.
 \end{defi}
 
-\pause
-
 $\swapMatrix\pressure = -\pressure$
 
-\pause
-
 A hypothesis on the kernel, not only on the baseline
-
-\pause
 
 Without it: a drift $\forecastHorizon\,\pressure^{\transpose}\stationaryIntensity$ in every forecast
 \note{
@@ -664,8 +620,6 @@ baseline term.
  $\pressure^{\transpose}\baseIntensity = 0$, and $\pressure^{\transpose}\stationaryIntensity =
  0$ if $\branchingRatio < 1$.
 \end{prop}
-
-\pause
 
 $M$: $e^{\hurwitzMatrix\forecastHorizon}$, $\meanResponseIntegral(\forecastHorizon)$,
 $(I-\branchingMatrix)^{-1}$, and their products
@@ -703,11 +657,7 @@ contracted with $\pressure$ therefore loses its baseline term.
 \end{tikzpicture}
 \end{center}
 
-\pause
-
 Columns: the exciting type. Rows: the excited one.
-
-\pause
 
 Replenishment: mass across the partition
 \note{
@@ -729,11 +679,7 @@ off-diagonal ones.
  \baseIntensity = (I - \branchingMatrix)\stationaryIntensity
 \]
 
-\pause
-
 $\branchingRatio < 1$ and $\baseIntensity > 0$: the hypotheses of stationarity
-
-\pause
 
 $\baseIntensity_e < 0$ exactly where $(\branchingMatrix\stationaryIntensity)_e > \stationaryIntensity[e]$
 \note{
@@ -753,8 +699,6 @@ constructor in the package refuses it and names the component.
  = \pressure^{\transpose}\intensity[ ](t)
  = \pressure^{\transpose}\baseIntensity + \pressure^{\transpose}\excitation\decayedCounts(t)$.
 \end{defi}
-
-\pause
 
 Under direction symmetry: $\intensityContrast(t) =
 \pressure^{\transpose}\excitation\decayedCounts(t)$, a function of the state
@@ -778,11 +722,7 @@ state alone.
  \decayedCounts_{\eone}(t)$.
 \end{prop}
 
-\pause
-
 $\signedExcitation > 0$: begets its own pressure. $\signedExcitation < 0$: the opposite.
-
-\pause
 
 A property of the kernel, not of the type
 \note{
@@ -808,12 +748,8 @@ the contrast along a path, and $\signedExcitation$ pair by pair.
  \]
 \end{prop}
 
-\pause
-
 $\meanResponseIntegral(\forecastHorizon) = \int_0^{\forecastHorizon}
 e^{\hurwitzMatrix s}ds$, from the forward mean of 1.3
-
-\pause
 
 Under the idealised book, the left side is $\OFI_{t+\forecastHorizon,\forecastHorizon}$
 \note{
@@ -843,8 +779,6 @@ $\decayedCounts(t+)$ is the state read \emph{after} the event at $t$, if there i
   \sigmaAlgebra_t\big].
  \]
 \end{corol}
-
-\pause
 
 $\vert\residual\vert \leq \tickSizeOfLOB$: carried, not absorbed
 \note{
@@ -876,11 +810,7 @@ it is not independent of the first term, and it does not shrink as the forecast 
 \end{tikzpicture}
 \end{center}
 
-\pause
-
 Short horizons: the flow goes into the queues
-
-\pause
 
 Grey: the residual's bound
 \note{
@@ -910,11 +840,7 @@ The notebook draws the three curves by Monte Carlo on an idealised book.
 \end{tikzpicture}
 \end{center}
 
-\pause
-
 $\meanResponseIntegral(\forecastHorizon) \to -\hurwitzMatrix^{-1}$: the flow term is bounded
-
-\pause
 
 Informative only where the limit reaches a tick
 \note{
@@ -945,8 +871,6 @@ magnitude.
 \end{tikzpicture}
 \end{center}
 
-\pause
-
 \begin{prop}
 \label{prop.forecastAtLongHorizons}
  For a direction-symmetric specification with $\branchingRatio < 1$, stationary, under the
@@ -956,8 +880,6 @@ magnitude.
  + O(\sqrt{\forecastHorizon})$,
  and the forecast has bounded variance.
 \end{prop}
-
-\pause
 
 $\flowVolatility^{2} = \meanSize^{2}\,\pressure^{\transpose}(I-\branchingMatrix)^{-1}
 \mathrm{diag}(\stationaryIntensity)(I-\branchingMatrix)^{-\transpose}\pressure
@@ -990,12 +912,8 @@ plus a bounded term in the state. The notebook measures the share at every horiz
  as $\forecastHorizon \to 0$.
 \end{corol}
 
-\pause
-
 $\meanResponseIntegral(\forecastHorizon) = \forecastHorizon I
 + \tfrac{1}{2}\forecastHorizon^2\hurwitzMatrix + O(\forecastHorizon^3)$
-
-\pause
 
 The drift of the flow; the price inherits it through the forecast
 \note{
@@ -1013,8 +931,6 @@ forecast of the mid-price, residual included.
  under direction symmetry $\pressure^{\transpose}\excitation u = 0$ for the right Perron vector
  $u$.
 \end{remark}
-
-\pause
 
 The timescale: the slowest mode that survives the contraction with $\pressure$
 \note{
@@ -1045,8 +961,6 @@ surviving rate differs from pair to pair, and the notebook reads it off.
   \node[blue!55!black, right] at (3.1,-1.5) {reversal};
 \end{tikzpicture}
 \end{center}
-
-\pause
 
 \begin{corol}
 \label{corol.regimeSign}
@@ -1090,8 +1004,6 @@ the forecast & through $\excitation\meanResponseIntegral(\forecastHorizon)$ & no
 \end{tabular}
 }
 \end{center}
-
-\pause
 
 \begin{remark}
 \label{remark.imbalanceAsProxy}

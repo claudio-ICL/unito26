@@ -1,0 +1,58 @@
+An attribute of an instance may refer to an instance of another class of the package.
+We say that the first \emph{holds} the second.
+By Section \ref{sec.namesAndObjects} it may share it:
+\codehl{OrderFlowSimulator} builds an \codehl{ExponentialHawkes} in its constructor
+and passes it its own random generator, which the two then hold in common;
+\codehl{IdealisedFlow} is handed the source of events it holds,
+and the caller keeps a name of it.
+
+Inheriting and holding are two ways for a class to use another,
+and they assert different things.
+A subclass is bound by Definition \ref{def.substitution}:
+what holds of its base class has to hold of it.
+A class that holds an instance asserts nothing of the kind,
+and what it holds can be replaced by any object with the attributes it reads,
+as in Listing \ref{listing.scriptedSource}.
+So a class inherits where its instances are to stand in the place of those of its base class,
+as the five books do in the fold, and it holds otherwise \citep[Chapter 1]{GHJV94des}.
+A simulator of the order flow is not a point process:
+its events are messages and not arrivals,
+and it holds a process.
+Table \ref{tab.classesOfThePackage} lists the classes
+through which the fold and the simulation of Chapter \ref{chap.microstructure} pass,
+with the class each inherits from and the classes it holds.
+
+\begin{table}[h!]
+ \centering
+ \begin{tabular}{@{}llll@{}}
+  \toprule
+  class & declared in & inherits from & holds \\
+  \midrule
+  \makecell[tl]{\codehl{Message}, \codehl{Fill}, \\ \codehl{LevelDelta}}
+   & \codehl{messages} & & \\
+  \codehl{SubmitResult} & \codehl{orderbook} & &
+   \makecell[tl]{\codehl{Fill}, \codehl{LevelDelta}} \\
+  \codehl{AggregateBook} & \codehl{orderbook} & & \\
+  \makecell[tl]{\codehl{CachedBestBook}, \\ \codehl{HeapBook}, \codehl{BitmapBook}, \\ \codehl{TickArrayBook}}
+   & \codehl{orderbook} & \codehl{AggregateBook} & \\
+  \codehl{SessionStatistics} & \codehl{statistics} & & \codehl{RowLayout} \\
+  \codehl{MarketSession} & \codehl{session} & & \codehl{SessionStatistics} \\
+  \codehl{LobsterFiles} & \codehl{lobster} & & \\
+  \codehl{LobsterMarketSession} & \codehl{lobster\_session} & &
+   \makecell[tl]{\codehl{LobsterFiles}, \\ \codehl{SessionStatistics}} \\
+  \midrule
+  \codehl{FrameSerializable} & \codehl{frames} & \codehl{ABC} & \\
+  \codehl{HawkesParams} & \codehl{hawkes} & \codehl{FrameSerializable} & \\
+  \codehl{MarkParams} & \codehl{simulate} & \codehl{FrameSerializable} & \\
+  \codehl{\_HawkesState} & \codehl{hawkes} & & \codehl{HawkesParams} \\
+  \makecell[tl]{\codehl{ExponentialHawkes}, \\ \codehl{OgataThinningHawkes}}
+   & \codehl{hawkes} & \codehl{\_HawkesState} & \\
+  \codehl{OrderFlowSimulator} & \codehl{simulate} & &
+   \makecell[tl]{\codehl{HawkesParams}, \\ \codehl{MarkParams}, \\ \codehl{ExponentialHawkes}} \\
+  \codehl{IdealisedFlow} & \codehl{idealised} & & its source of events \\
+  \bottomrule
+ \end{tabular}
+ \caption{Classes of \codehl{unito26.lob}: the fold above the rule, the simulation below it.
+ A subclass also holds what the constructor of its base class binds.}
+ \label{tab.classesOfThePackage}
+\end{table}

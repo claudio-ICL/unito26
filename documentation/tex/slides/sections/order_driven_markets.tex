@@ -90,8 +90,6 @@ venues & --- & Euronext, Swiss, Tokyo, \\
 \end{tabular}
 \end{center}
 
-\pause
-
 Third row: a high-frequency record of every commitment.
 \note{
 Market infrastructures fall in two categories. An order-driven market is transparent: every
@@ -108,11 +106,7 @@ chapter is about what can be read off it.
 \qquad p \in \tickSizeOfLOB \mathbb{Z} .
 \]
 
-\pause
-
 $p$: the \emph{worst} price accepted --- highest to buy, lowest to sell.
-
-\pause
 
 \emph{Cancelling}: withdrawing the commitment.
 \note{
@@ -129,8 +123,6 @@ By regulation $p$ is an integer multiple of a fixed tick size $\tickSizeOfLOB > 
 \[
 \lbrace (q,p,d) : \, q \geq 0, \; p \geq 0, \; d = \pm 1 \rbrace .
 \]
-
-\pause
 
 A function: no two orders share a timestamp.
 \note{
@@ -149,8 +141,6 @@ the hypothesis connexity needs on the next frame.
 \qquad
 (t,q - \rho \wedge q, p, d).
 \]
-
-\pause
 
 $\rho \wedge q$ shares at $\pi$ --- never at $p$.
 \note{
@@ -171,14 +161,10 @@ price, which is the fact the sweep cost and the VWAP are both built on later.
  d\pi < d\pi' , \; \text{ or } \; \pi = \pi' \text{ and } s < s' .
 \end{equation}
 
-\pause
-
 \begin{lemma}
 \label{lemma.orderingOfOrders}
  The ordering \eqref{eq.orderingOfLimitOrders} is total on each side of a trading epoch.
 \end{lemma}
-
-\pause
 
 \begin{defi}
 \label{def.orderQueue}
@@ -220,8 +206,6 @@ must differ in timestamp, and that is exactly what the previous frame bought.
 \end{tikzpicture}
 \end{center}
 
-\pause
-
 Level $i$ is a \emph{position on the grid}, occupied or not.
 \note{
 Prices increase to the right, spaced $\tickSizeOfLOB$ apart, buy offers on the left and sell
@@ -246,11 +230,7 @@ now charges a tick for it.
 \lbrace (\nthBestAskSize[i]_t, \nthBestBidSize[i]_t) : i = 1,2,\dots \rbrace \Big).
 \]
 
-\pause
-
 In our course, a limit order book always means this \emph{aggregated} book.
-
-\pause
 
 No route back from a size to the orders under it.
 \note{
@@ -270,8 +250,6 @@ in terms of it, which is what makes it enough.
  \emph{Volume}: the shares transacted over an interval.
 \end{remark}
 
-\pause
-
 Volume is not a change in size.
 \note{
 A level has a size at every instant; volume accumulates between two instants. So no
@@ -290,14 +268,10 @@ read off the tape, and sections 1.2 and 1.4 both turn on that.
  $\midPrice_t = (\bestAskPrice_t + \bestBidPrice_t)/2$ the \emph{mid-price}.
 \end{defi}
 
-\pause
-
 \[
 \LOBspread_t \geq \tickSizeOfLOB
 \qquad\text{whenever both sides are non-empty.}
 \]
-
-\pause
 
 $\midPrice_t$: ``fundamental'' price? The reference for mark-to-market.
 \note{
@@ -321,11 +295,7 @@ and it is a derived quantity rather than a price at which anything can rest.
  \end{equation}
 \end{defi}
 
-\pause
-
 Bid-heavy is positive.
-
-\pause
 
 $i$ runs over the \emph{grid}, not over the occupied prices.
 \note{
@@ -349,8 +319,6 @@ file is a different statistic that also lies in $[-1,1]$.
          { \nthBestBidSize[1]_t + \nthBestAskSize[1]_t } .
  \end{equation}
 \end{defi}
-
-\pause
 
 $\microPrice_t \in [\bestBidPrice_t, \bestAskPrice_t]$; bid-heavy carries it to the ask.
 \note{
@@ -378,8 +346,6 @@ does not always keep them apart --- so when a paper says micro-price, check whic
    + \underbrace{\frac{1}{\quantityToLiquidate}\sum_{i\geq1} q_i (i - 1)\tickSizeOfLOB}
      _{\text{its own distance, in ticks of the \emph{grid}}}
 \end{equation}
-
-\pause
 
 Fewer than $\quantityToLiquidate$ shares on the side: undefined, so branch.
 \note{
@@ -426,16 +392,12 @@ on is about.
 \end{tikzpicture}
 \end{center}
 
-\pause
-
 \[
  \sweepCost_t(250)
  = \frac{120 \cdot 1 + 130 \cdot 2}{250} \, \tickSizeOfLOB
  = \underbrace{1}_{\LOBspread_t / 2} + \underbrace{0.52}_{\text{the walk}}
    \quad \text{ticks} .
 \]
-
-\pause
 
 One tick of spread; $130$ shares one tick further.
 \note{
@@ -475,11 +437,7 @@ occupied level pay the extra tick, and they pay it because of where that level s
 \end{tikzpicture}
 \end{center}
 
-\pause
-
 Shaded: what a buy order for $\quantityToLiquidate$ shares takes.
-
-\pause
 
 The third level pays two ticks, not one.
 \note{
@@ -506,8 +464,6 @@ written with $(i-1)\tickSizeOfLOB$ rather than with a running index over occupie
  $\nthBestAskPrice[i]_{t-} \leq p$.
 \end{prop}
 
-\pause
-
 One code path: consume, then rest the remainder.
 \note{
 The first component is the market order: the price $0$ for a sell, $\infty$ for a buy, is a
@@ -529,11 +485,7 @@ where the mathematics has one, and the two will drift.
 \sweepCost_t(\quantityToLiquidate) > \frac{\LOBspread_t}{2} .
 \]
 
-\pause
-
 The walk term of \eqref{eq.sweepCost} is positive: some $q_i > 0$, $i \geq 2$.
-
-\pause
 
 Walking implies $N \geq 1$ below; the converse fails.
 \note{
@@ -558,11 +510,7 @@ orders too.
 \end{equation}
 with priority from left to right, $N$ the levels consumed in full.
 
-\pause
-
 \emph{Elementary}: clears one level, or rests without matching.
-
-\pause
 
 Why the fold of section 1.2 terminates.
 \note{
@@ -576,7 +524,7 @@ loop is finite because the book is.
 % algo.bookFold of the notes, cut to the matching loop: the message, the stream and the
 % fold are class 2's objects, and the full listing stays in message_files.tex.
 % `algorithm' is a float and floats do not place inside a frame, so the environment is
-% bare -- no caption, no line numbering, no \label{algo.*} -- and carries no \pause.
+% bare -- no caption, no line numbering, no \label{algo.*}.
 \begin{frame}
   \frametitle{The rule is a loop before it is a formula}
 {\footnotesize
@@ -593,8 +541,6 @@ loop is finite because the book is.
  \STATE add $q - \marketOrderSize$ to the size at $p$ on the side $d$
 \end{algorithmic}
 }
-
-\pause
 
 The next two frames are this loop, closed.
 \note{
@@ -627,8 +573,6 @@ fold of the message stream.
  \indicator{\nthBestBidPrice[k]_{t-} \geq p}\Big).
  \]
 \end{prop}
-
-\pause
 
 $N_s$: size runs out. $N_p$: the price constraint bites.\\
 $\inf\emptyset = +\infty$.
@@ -663,8 +607,6 @@ does, the best price on that side is undefined and the rule does not apply.
 \qquad
 \nthBestAskSize[j]_{t-} = \nthBestBidSize[j]_{t-} = 0 \; \text{ for } j \leq 0 .
 \]
-
-\pause
 
 Bid: shifts up by $N$. Ask: untouched unless a residual rests.
 \note{
@@ -713,8 +655,6 @@ picture.
 \end{tikzpicture}
 \end{center}
 
-\pause
-
 $N = 0$, $q^{\infty} = q$: nothing matches, the spread narrows to a tick.
 \note{
 The price $1001$ is below every resting ask, so the order matches nothing and the whole of
@@ -758,8 +698,6 @@ one order or one cancellation against it.
 \end{tikzpicture}
 \end{center}
 
-\pause
-
 $N_p$ bites before $N_s$: $q^{\infty} = 0$, the ask side untouched.
 \note{
 The order takes $100$ at $1000$ and $150$ of the $200$ resting at $999$, which is its own
@@ -801,11 +739,7 @@ widens the spread by consuming a queue, never by moving a price the other way.
 \end{tikzpicture}
 \end{center}
 
-\pause
-
 $N = 2$, $q^{\infty} = 100$, and every ask index shifts by three.
-
-\pause
 
 Two ask levels, $1000$ and $1001$, are now empty and still counted.
 \note{
@@ -851,8 +785,6 @@ spread.
 \end{tikzpicture}
 \end{center}
 
-\pause
-
 The spread widens, and not one share traded.
 \note{
 The whole of the best bid queue is withdrawn, so $1000$ leaves the book and the best bid
@@ -878,8 +810,6 @@ the sequence of configurations.
  and $\vwap_{t,w} := \tradedValue_{t,w}/\volume_{t,w}$ where $\volume_{t,w} > 0$.
 \end{defi}
 
-\pause
-
 Every fill in \eqref{eq.tradedValue} prices at $\pi_{n,i}$, the \emph{resting} price.
 \note{
 Let $(\arrivalTimes[]_n, \marketOrderSize[n], d_n)$ be the stream of market orders of a
@@ -896,11 +826,7 @@ The volume-weighted average price is defined whenever anything traded in the win
  $\vwap_{t,w}$ is a statistic of the \emph{transactions}.
 \end{remark}
 
-\pause
-
 cf.\ Remark \ref{remark.sizeVersusVolume}.
-
-\pause
 
 The sweep cost prices an order that is never submitted.
 \note{

@@ -1,0 +1,89 @@
+A name written after a dot is an \emph{attribute reference},
+and one rule fixes what it denotes \citep[Section 9.3]{PSF26tut}.
+We state it for classes that may be built on other classes,
+the subject of Section \ref{sec.inheritance}.
+
+\begin{defi}\label{def.attributeReference}
+ Every class $C$ has a \emph{linearisation},
+ which the language calls its method resolution order:
+ the tuple \codehl{C.\_\_mro\_\_} of classes $(C_0, \dots, C_n)$,
+ where $C_0 = C$ and $C_n$ is the class \codehl{object}.
+ \begin{enumerate}[label={\emph{\roman{*}}.}]
+  \item The reference \codehl{C.name} denotes the attribute \codehl{name}
+        of the first of $C_0, \dots, C_n$ that has one.
+  \item For an instance $x$ of $C$,
+        the reference \codehl{x.name} denotes the attribute \codehl{name} of $x$,
+        if $x$ has one.
+        Otherwise it denotes \codehl{C.name};
+        and when \codehl{C.name} is a function $f$,
+        it denotes the function $u \mapsto f(x, u)$ of the remaining arguments $u$,
+        which is called a \emph{method} of $x$.
+ \end{enumerate}
+ A reference that finds no attribute raises \codehl{AttributeError}.
+\end{defi}
+
+\codehl{AggregateBook} is built on no other class,
+and its linearisation is itself followed by \codehl{object}.
+By part \emph{ii.}, the call \codehl{x.name(u)} of a method
+is the call \codehl{C.name(x, u)} of a function of the class:
+the parameter \codehl{self} of Listings \ref{listing.aggregateStorage}
+and \ref{listing.aggregateInit} receives the object written to the left of the dot.
+The functions are thus held once, by the class,
+and an instance holds only what distinguishes it from the others.
+
+An assignment is not a search.
+A reference looks in the instance and then in the classes of Definition \ref{def.attributeReference},
+whereas \codehl{x.name = value} binds the name in the instance, whatever the classes hold,
+and \codehl{del x.name} removes it from the instance.
+
+The operations of the language are attribute references too,
+made on the type of their operand \citep[Section 3.3]{PSF26lan}:
+\codehl{len(x)} is the call \codehl{type(x).\_\_len\_\_(x)}.
+A name with two underscores on either side is reserved for this use,
+and a class takes part in an operation by binding the function of that name,
+a \emph{special method}.
+Table \ref{tab.operationsAsCalls} lists the operations the package relies on.
+A class that binds none of them finds those of \codehl{object},
+which prints an instance as the name of its class and an address,
+and compares two instances by identity.
+
+\begin{table}[h!]
+ \centering
+ \begin{tabular}{@{}lll@{}}
+  \toprule
+  expression & is the call & in the package \\
+  \midrule
+  \codehl{C(u)} & \codehl{C.\_\_init\_\_(x, u)}, on a new $x$ & every class \\
+  \codehl{repr(x)} & \codehl{type(x).\_\_repr\_\_(x)} & written in \codehl{AggregateBook} \\
+  \codehl{len(x)} & \codehl{type(x).\_\_len\_\_(x)} & written in \codehl{EventJournal} \\
+  \codehl{x == y} & \codehl{type(x).\_\_eq\_\_(x, y)} & generated, Section \ref{sec.dataClasses} \\
+  \codehl{hash(x)} & \codehl{type(x).\_\_hash\_\_(x)} & generated, Section \ref{sec.dataClasses} \\
+  \bottomrule
+ \end{tabular}
+ \caption{Operations of the language as calls of special methods.}
+ \label{tab.operationsAsCalls}
+\end{table}
+
+Listing \ref{listing.methodIsFunction} checks Definition \ref{def.attributeReference}
+on \codehl{best\_price}, the function of Listing \ref{listing.aggregateStorage}:
+the name is an attribute of the class and not of the book,
+the two ways of calling it return the same price,
+and the method carries the book and the function of the class.
+
+\begin{lstlisting}[caption={A method is a function of the class, with the instance prepended.}, label=listing.methodIsFunction]
+from unito26.lob.messages import BUY
+from unito26.lob.orderbook import AggregateBook
+
+book = AggregateBook()
+book.set_size(BUY, 99, 100)
+
+assert AggregateBook.__mro__ == (AggregateBook, object)
+assert "best_price" not in vars(book)
+assert "best_price" in vars(AggregateBook)
+assert book.best_price(BUY) == AggregateBook.best_price(book, BUY) == 99
+
+method = book.best_price
+assert method.__self__ is book
+assert method.__func__ is AggregateBook.best_price
+assert repr(book) == type(book).__repr__(book)
+\end{lstlisting}

@@ -24,9 +24,9 @@ git config core.hooksPath .githooks  # strips notebook outputs before they are c
    ```
 
 2. **Create a branch** — never commit directly to `main`. Use a short, descriptive name,
-   e.g. `new-greeks-method`:
+   e.g. `imbalance-on-lobster`:
    ```bash
-   git checkout -b new-greeks-method
+   git checkout -b imbalance-on-lobster
    ```
 
 3. **Make your changes.**
@@ -44,7 +44,7 @@ git config core.hooksPath .githooks  # strips notebook outputs before they are c
    ```bash
    git add -A
    git commit -m "Short, descriptive message"
-   git push -u origin cb/sabr-calibration
+   git push -u origin imbalance-on-lobster
    ```
 
 6. **Open a pull request into `main`:**
@@ -69,10 +69,10 @@ git config core.hooksPath .githooks  # strips notebook outputs before they are c
 
 ## Submitting an assignment
 
-The course sets two optional assignments, one per chapter, described in the welcome chapter
-of the lecture notes. They are submitted through exactly the cycle above: a branch, the
-tests run locally, a pull request into `main`, green CI, lecturer review. The submission is
-complete when the pull request stands open with CI green — not when the branch is pushed.
+The course sets one optional assignment, described in the welcome chapter of the lecture
+notes. It is submitted through exactly the cycle above: a branch, the tests run locally, a
+pull request into `main`, green CI, lecturer review. The submission is complete when the
+pull request stands open with CI green — not when the branch is pushed.
 
 Two things specific to an assignment:
 

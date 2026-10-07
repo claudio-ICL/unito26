@@ -2,9 +2,10 @@
 
 Course material for **Python for Finance**, University of Turin, Fall 2026.
 
-Two chapters: market microstructure, and option pricing and volatility trading. The lecture
-notes are the authority; the notebooks and the documentation cite them, not the other way
-round.
+The course is on market microstructure: the first half in lectures, the second in laboratory
+work on the implementation. The lecture notes carry a second chapter, on option pricing and
+volatility trading, as optional reading that is neither taught nor examined. The notes are
+the authority; the notebooks and the documentation cite them, not the other way round.
 
 ## Setup
 
@@ -33,10 +34,9 @@ unito26/
 
 - A **multiple-choice questionnaire**, marked out of 100, pass mark 60. Sample questions
   are published during the course.
-- **Two optional assignments**, one per chapter, marked out of 25 each. They are not added
-  to the questionnaire: they lower its pass mark by the points scored, from 60 to as low
-  as 10.
-- Assignments are submitted as **pull requests** into this repository. See
+- **One optional assignment**, marked out of 50. It is not added to the questionnaire: it
+  lowers the pass mark by the points scored, from 60 to as low as 10.
+- The assignment is submitted as a **pull request** into this repository. See
   [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
 The notes state all of this in their welcome chapter.

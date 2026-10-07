@@ -1,0 +1,93 @@
+A message of the stream is a record:
+the order $(t, q, p, d)$, and what is to be done with it.
+A class of records needs a constructor that stores its arguments,
+a printed form that shows them,
+and an equality that compares them,
+and the three are the same for every such class, up to the names of the fields.
+A \emph{decorator} is written above a definition, after the sign \codehl{@}:
+it is a function that receives the class or the function defined below it,
+and returns the object that the name is then bound to.
+The decorator \codehl{dataclass} writes the three from the list of the fields
+\citep[Chapter 5]{Ram22flu},
+as the special methods \codehl{\_\_init\_\_}, \codehl{\_\_repr\_\_} and \codehl{\_\_eq\_\_}
+of Table \ref{tab.operationsAsCalls}.
+Listing \ref{listing.messageRecord} is the class \codehl{Message}.
+
+\begin{lstlisting}[caption={\protect\codehl{unito26.lob.messages.Message}, abridged: the docstring and two of its three checks are cut.}, label=listing.messageRecord]
+@dataclass(frozen=True, slots=True)
+class Message:
+    # ...
+    time: float
+    size: int
+    price: int
+    direction: int
+    kind: MessageType = MessageType.SUBMIT
+
+    def __post_init__(self) -> None:
+        if self.direction not in (BUY, SELL):
+            # ...
+        if self.size < 0:
+            raise ValueError(f"size must be non-negative, got {self.size}")
+        # ...
+\end{lstlisting}
+
+The two arguments of the decorator change what an instance is.
+With \codehl{frozen=True} an assignment to a field raises an error,
+so a message is immutable in the sense of Definition \ref{def.object}:
+the stream is folded more than once,
+and a message edited in passing would make the second fold differ from the first.
+Two messages with equal fields are then equal, though not identical;
+and since a frozen data class also receives \codehl{\_\_hash\_\_},
+they are one element of a set.
+With \codehl{slots=True} the attributes of an instance are its fields and no others,
+and Remark \ref{remark.misspeltAttribute} does not apply.
+
+The generated constructor ends by calling \codehl{\_\_post\_init\_\_}, when the class binds it.
+That of \codehl{Message} raises on a direction other than $\pm 1$,
+on a negative size and on a negative price,
+so no instance of \codehl{Message} carries any of the three.
+Listing \ref{listing.messageValue} checks these statements;
+in it, \codehl{with pytest.raises(E)} asserts that the statement under it raises the error \codehl{E}.
+It also checks that two books in the same configuration are not equal:
+\codehl{AggregateBook} binds no \codehl{\_\_eq\_\_},
+and \codehl{object} compares by identity.
+
+\begin{lstlisting}[caption={A frozen data class is a value, and a plain class is not.}, label=listing.messageValue]
+from dataclasses import FrozenInstanceError
+
+import pytest
+
+from unito26.lob.messages import BUY, Message
+from unito26.lob.orderbook import AggregateBook
+
+message, twin = Message(1.0, 100, 99, BUY), Message(1.0, 100, 99, BUY)
+assert message == twin and message is not twin
+assert len({message, twin}) == 1
+with pytest.raises(FrozenInstanceError):
+    message.size = 0
+with pytest.raises(ValueError):
+    Message(1.0, 100, 99, 0)
+
+book = AggregateBook.from_levels({99: 100}, {101: 100})
+other = AggregateBook.from_levels({99: 100}, {101: 100})
+assert book != other and book.levels_map(BUY) == other.levels_map(BUY)
+\end{lstlisting}
+
+\begin{remark}\label{remark.frozenIsShallow}
+ A frozen instance cannot rebind its fields,
+ and the objects they refer to keep their own mutability,
+ as Definition \ref{def.object} allows.
+ \codehl{SubmitResult} is frozen, and the list of fills it holds can be appended to.
+ \codehl{HawkesParams} is frozen,
+ and its constructor refuses a branching ratio $\branchingRatio \geq 1$;
+ its arrays can still be written to once it has returned.
+\end{remark}
+
+\begin{remark}\label{remark.equalityOfArrays}
+ The generated \codehl{\_\_eq\_\_} compares the fields with \codehl{==}.
+ Between two arrays \codehl{==} returns an array, one entry for each pair of entries,
+ and not a truth value.
+ So the tests of the package compare two instances of \codehl{HawkesParams}
+ field by field, with \codehl{numpy.allclose},
+ and \codehl{MarketSession}, whose fields are tables, is declared with \codehl{eq=False}.
+\end{remark}

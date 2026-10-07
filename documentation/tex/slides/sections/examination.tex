@@ -4,30 +4,26 @@
 % sec.assignments has no frame of its own: the display below is its arithmetic.
 % The caption contract is stated in the header of the_course.tex.
 
-\subsection{Examination and assignments}
+\subsection{Examination and assignment}
 
 \begin{frame}
-  \frametitle{The assignments lower the pass mark}
+  \frametitle{The assignment lowers the pass mark}
 \emph{Questionnaire}: a snippet of code, and what it computes. Out of 100.\\
-\emph{Assignments}: two, one per chapter, optional, 25 each.
-
-\pause
+\emph{Assignment}: one, optional. Out of 50.
 
 \[
-\text{pass mark} \; = \; 60 - a_1 - a_2 .
+\text{pass mark} \; = \; 60 - a .
 \]
-
-\pause
 
 Submitted as a pull request. Sample questions published during the course.
 \note{
 The examination is a multiple-choice questionnaire. A question shows a snippet of code and
 asks what it computes, or shows several and asks which is the right one for a stated
 purpose. It is marked out of 100, and the pass mark is 60.
-The two assignments are optional: submit one, both or neither. Their marks are not added to
-the questionnaire, they lower its pass mark instead --- full marks on both bring it down to
-10 out of 100.
-An assignment is submitted as a pull request into the course repository: a branch, the tests
+There is one assignment, the order flow imbalance on recorded data, and it is optional. Its
+mark, out of 50, is not added to the questionnaire: it lowers the pass mark instead --- full
+marks bring it down to 10 out of 100.
+The assignment is submitted as a pull request into the course repository: a branch, the tests
 run, the pull request opened, and the submission complete once continuous integration has
 passed on it.
 Sample questions are published during the course, so that the format holds no surprises.

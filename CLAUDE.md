@@ -21,8 +21,10 @@ Recorded here as context, not as working instructions:
   LLMs now widespread, the edge is shifting from *writing* working code toward
   **judgment** — making the right choices, evaluating what an assistant
   proposes, and steering it well.
-- Planned distinctive content includes the **SABR model** (the option-desk
-  standard) and an introduction to **market microstructure**.
+- The distinctive content is **market microstructure**, taught in two halves: the
+  first in lectures, the second in laboratory work on the implementation, steered
+  by the questions students send in. The **SABR model** (the option-desk standard)
+  belongs to the optional second chapter of the notes.
 
 See `dev-context/` for the per-topic development notes.
 
@@ -34,25 +36,27 @@ Stated in the notes themselves, in `sec.examination` and `sec.assignments`.
   snippet of code and asks what it computes, or shows several and asks which fits a stated
   purpose. Candidates are harvested into the *Exercises & exam snippets* section of each
   `dev-context/*.md`. Sample questions are published during the course.
-- **Two optional assignments**, one per chapter, marked out of 25 each. They are not added
-  to the questionnaire: they lower its pass mark to `60 - a1 - a2`, so full marks on both
-  bring it down to 10. How the recorded mark is formed is **not decided**, and the notes
-  say nothing about it.
-- Assignments are submitted as **pull requests** into this repository, through the cycle of
-  [`CONTRIBUTING.md`](CONTRIBUTING.md).
+- **One optional assignment**, `sec.lobsterEmpirics`, marked out of 50. It is not added to
+  the questionnaire: it lowers the pass mark to `60 - a`, so full marks bring it down to 10.
+  How the recorded mark is formed is **not decided**, and the notes say nothing about it.
+- The assignment is submitted as a **pull request** into this repository, through the cycle
+  of [`CONTRIBUTING.md`](CONTRIBUTING.md).
+- Chapter 2 is not examined.
 
 ## Course structure
 
-The course has **two subject chapters and only two**. A new topic joins one of them as a
-section; it never becomes a third chapter. Ahead of them sits the welcome chapter, which is
-front matter: it describes the course rather than its subject.
+The notes have **two subject chapters and only two**. A new topic joins one of them as a
+section; it never becomes a third chapter. The course is taught on the first: its first half
+presents Chapter 1 in lectures, and its second half is laboratory work on the implementation
+of Chapter 1. The second chapter is optional reading. Ahead of them sits the welcome chapter,
+which is front matter: it describes the course rather than its subject.
 
-**Chapter 0 — Welcome** (`chap.welcome`) — the two chapters, what is learnt in each, the
-examination and the assignments. It is numbered zero by `\setcounter{chapter}{-1}` in
-`main.tex`, so that microstructure stays chapter 1: every equation number and every
-cross-reference in the book is written against that. Sections: `sec.theCourse`,
-`sec.prerequisites`, `sec.learningPython`, `sec.learningFinance`, `sec.examination`,
-`sec.assignments`, `sec.readingList`.
+**Chapter 0 — Welcome** (`chap.welcome`) — the two chapters, what is learnt in each, how the
+course is taught, the examination and the assignment. It is numbered zero by
+`\setcounter{chapter}{-1}` in `main.tex`, so that microstructure stays chapter 1: every
+equation number and every cross-reference in the book is written against that. Sections:
+`sec.theCourse`, `sec.prerequisites`, `sec.learningPython`, `sec.learningFinance`,
+`sec.examination`, `sec.assignments`, `sec.readingList`.
 
 **Chapter 1 — Market microstructure** (`chap.microstructure`), in this order:
 
@@ -64,12 +68,19 @@ cross-reference in the book is written against that. Sections: `sec.theCourse`,
    data, what it accounts for and what it forecasts
 
 **Chapter 2 — Option pricing and volatility trading** (`chap.options`): Black–Scholes, the
-fundamental theorem of derivative trading, SABR. On disk as a placeholder —
-`options/options.tex` carries the title and one line saying when the material arrives.
+fundamental theorem of derivative trading, SABR. It is **optional reading**: neither taught in
+class nor examined, and added to the notes towards the end of the course. On disk as a
+placeholder — `options/options.tex` carries the title and three lines saying so.
 
 **Appendix A — Integers in binary** (`chap.integersInBinary`) is back matter: lettered, after
 the two chapters, and not a subject chapter. It proves the properties of the binary
 representation that the faster book of `sec.messageFiles` is written in.
+
+**Appendix B — Object-oriented programming** (`chap.objectOrientedProgramming`) is back matter
+too. The course does not assume classes, and the implementation is written in them: the
+appendix defines object, class, instance, method and inheritance on the classes of the
+package, from one rule for the reference of an attribute, and every example in it is a quote
+of the package or a program run against it.
 
 The notes live in `documentation/tex/notes/`, one directory per chapter, one file per
 section under `sections/`, with the sectioning in the chapter file. See
