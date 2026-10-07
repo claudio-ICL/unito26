@@ -19,7 +19,11 @@ documentation/tex/
 │   │   ├── microstructure.tex      \chapter + \section/\label/\input triples
 │   │   ├── sections/*.tex          prose only
 │   │   └── figures/
-│   └── options/                    chapter 2, a placeholder today
+│   ├── options/                    chapter 2, optional reading, a placeholder today
+│   └── appendix/                   appendices A and B: one chapter file each,
+│       ├── appendix.tex            sections/ shared, files prefixed by appendix
+│       ├── objects.tex
+│       └── sections/               binary_*.tex, objects_*.tex
 └── slides/
     ├── unito26slides.cls
     ├── specs.tex                   title, author, institute, date
@@ -68,6 +72,15 @@ Say the topic is `<topic>`.
 
 Ordering is carried only by the `\include` lines. Reordering the course is reordering
 those lines — no file is renamed, no label changes, no cross-reference breaks.
+
+## Adding an appendix
+
+An appendix is back matter, lettered, and not a subject chapter: it is where material that
+serves a section, and would interrupt it, is written out. Its chapter file goes in
+`notes/appendix/<topic>.tex` and its sections in `notes/appendix/sections/<topic>_*.tex`, the
+prefix keeping the names apart on the shared input path. Both directories are already
+registered, so the class file is not touched. Add `\include{appendix/<topic>}` to
+`notes/main.tex` after the `\appendix` line, below the appendices already there.
 
 ## Why the working directory matters
 

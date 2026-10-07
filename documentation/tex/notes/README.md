@@ -3,8 +3,9 @@
 One book, `main.tex`, one `\include` per chapter. The order of those lines is the order of
 the course; chapters are named after their subject, never after their position.
 
-The course has **two subject chapters and only two** (see `CLAUDE.md`). A new topic joins
-one of them as a section. Ahead of them sits the welcome chapter, which is front matter.
+The notes have **two subject chapters and only two** (see `CLAUDE.md`), the second of them
+optional reading. A new topic joins one of them as a section. Ahead of them sits the welcome
+chapter, which is front matter.
 
 The title page carries `This version: \compilationDate`, the day the book was typeset, so a
 reader can tell which printing they hold. The macro is in `unito26notes.cls`; `\today` is
@@ -20,10 +21,12 @@ and every cross-reference in the book is written against microstructure being ch
 | section | label | file |
 | --- | --- | --- |
 | The course | `sec.theCourse` | `the_course.tex` |
+| Prerequisites | `sec.prerequisites` | `prerequisites.tex` |
 | What we learn about Python | `sec.learningPython` | `learning_python.tex` |
 | What we learn about quantitative finance | `sec.learningFinance` | `learning_finance.tex` |
 | The examination | `sec.examination` | `examination.tex` |
-| The assignments | `sec.assignments` | `assignments.tex` |
+| The assignment | `sec.assignments` | `assignments.tex` |
+| Reading list | `sec.readingList` | `reading_list.tex` |
 
 It is the one chapter that speaks about the course rather than about the subject, and the
 only one that names the repository. That is a URL, like the exchanges of §1.1 and LOBSTER in
@@ -66,8 +69,9 @@ is the chapter's assignment: it carries the four things the generated setting la
 
 ## Chapter 2 — Option pricing and volatility trading
 
-`options/options.tex`, a placeholder: the chapter title and one line saying when the
-material arrives. `options/sections/` is registered in `\input@path` and is empty.
+Optional reading: neither taught in class nor examined, and added to the notes towards the
+end of the course. `options/options.tex` is a placeholder, the chapter title and three lines
+saying so. `options/sections/` is registered in `\input@path` and is empty.
 
 ## Appendix A — Integers in binary
 
@@ -76,6 +80,28 @@ lettered and is not a subject chapter; it serves `sec.fasterBook`, proving the p
 the binary representation that the array-backed book is written in.
 `appendix/appendix.tex` carries the sectioning and each section is one file in
 `appendix/sections/`, named `binary_*` so that no name clashes on the shared input path.
+
+## Appendix B — Object-oriented programming
+
+Back matter, after Appendix A: `\include{appendix/objects}`. It serves `sec.foldImplementation`
+and `sec.fasterBook`, which speak of instances, constructors and inheritance without defining
+them: it defines those terms on the classes of the package, from one rule for the reference of
+an attribute (`def.attributeReference`). The course does not assume classes, and
+`sec.theCourse` sends the reader here.
+`appendix/objects.tex` carries the sectioning and each section is one file in
+`appendix/sections/`, named `objects_*`.
+
+| section | label | file |
+| --- | --- | --- |
+| Names and objects | `sec.namesAndObjects` | `objects_names.tex` |
+| Classes and instances | `sec.classesAndInstances` | `objects_classes.tex` |
+| Attribute references | `sec.attributeReferences` | `objects_references.tex` |
+| Data classes | `sec.dataClasses` | `objects_dataclasses.tex` |
+| Properties and class methods | `sec.propertiesAndClassMethods` | `objects_properties.tex` |
+| State and its invariants | `sec.stateAndInvariants` | `objects_invariants.tex` |
+| Inheritance | `sec.inheritance` | `objects_inheritance.tex` |
+| Abstract classes and duck typing | `sec.abstractClasses` | `objects_abstract.tex` |
+| Composition | `sec.composition` | `objects_composition.tex` |
 
 **No measured figure appears in the notes.** Coefficients, windows and goodness-of-fit numbers
 live in `notebooks/`, which is where they can be re-derived; the notes carry the mechanism and
@@ -86,11 +112,13 @@ module. They are self-contained: it is the notebooks and the documentation that 
 not the other way round.
 
 The one exception is scoped: `sec.foldImplementation`, `sec.fasterBook`, the LOBSTER-session
-subsubsection of §1.2 and Appendix A name the package's modules, classes, functions and test
-modules, and quote its code. A quote names its source in its caption as `\codehl{unito26.…}`
-and marks each cut with a line reading `# ...`; `tests/test_notes_quote_the_package.py` keeps
-every quote verbatim and runs every other listing. Notebooks and markdown documents are never
-named.
+subsubsection of §1.2 and Appendices A and B name the package's modules, classes, functions
+and test modules, and quote its code. A quote names its source in its caption as
+`\codehl{unito26.…}` and marks each cut with a line reading `# ...`;
+`tests/test_notes_quote_the_package.py` keeps every quote verbatim and runs every other
+listing, which therefore names no `unito26.` path in its caption. A listing keeps to 75
+columns, the width the page prints without wrapping. Notebooks and markdown documents are
+never named.
 
 ## Building
 

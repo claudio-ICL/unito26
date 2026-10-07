@@ -1,7 +1,8 @@
 % WELCOME -- the notes' sections 0.1 and 0.4, sec.theCourse and sec.learningFinance.
 % The first frames of the course. Budget 4 min.
-% sec.learningFinance has no frame of its own: what we build in each chapter is the second
-% and third rows of the table below, where it costs no words.
+% sec.learningFinance has no frame of its own: what Chapter 1 builds is the second and third
+% rows of the table below, where it costs no words. The right-hand column is the part of
+% the package that the laboratory half of the course works on.
 %
 % THE CAPTION CONTRACT. A caption is a gloss (`term: noun phrase'), a fragment of subject
 % and predicate, or a condition written as mathematics -- never a sentence, and never a
@@ -12,38 +13,43 @@
 \subsection{The course}
 
 \begin{frame}
-  \frametitle{The course has two chapters}
+  \frametitle{Market microstructure: lectures, then the lab}
 \begin{center}
 \small
 \begin{tabular}{@{}lll@{}}
 \toprule
- & \emph{Chapter 1} & \emph{Chapter 2} \\
- & market microstructure & options and volatility \\
+ & \emph{in lectures} & \emph{in the lab} \\
+ & Chapter 1 & its implementation \\
 \midrule
-the subject & orders, matching, the book & Black--Scholes, SABR \\
-we build & the fold, and faster folds & pricers for calls and puts \\
-on the way & Hawkes processes & the fundamental theorem \\
-the end point & price formation & a volatility signal's P\&L \\
+the subject & orders, matching, the book & the modules that hold them \\
+we build & the fold, and faster folds & five books, one matching \\
+on the way & Hawkes processes & two simulation schemes \\
+the end point & price formation & sessions from recorded data \\
 \bottomrule
 \end{tabular}
 \end{center}
 
-\pause
+In Python. Every computable statement, computed.
 
-Both in Python. Every computable statement, computed.
+Your questions, by email: what the lab concentrates on.
+
+Chapter 2, options and volatility: optional, not examined.
 
 \url{https://github.com/claudio-ICL/unito26}
 \note{
-Chapter 1 is about market microstructure: what an order is, how an exchange matches orders,
-what the limit order book is at any instant, and how the flow of orders forms a price. We
-fold the stream of orders into an aggregated book, examine several implementations of that
-fold and compare their performance, then model the arrival of orders as a Hawkes process and
-ask what its parametrisation says about a trading epoch. The order flow imbalance and price
-formation are the end point.
-Chapter 2 is option pricing and volatility trading: the Black--Scholes model, the
-fundamental theorem of derivative trading, and SABR. We write pricers for European calls and
-puts under each, and quantify the profit and loss of strategies built to capture a
-volatility signal.
+The course is about market microstructure, Chapter 1 of the notes: what an order is, how an
+exchange matches orders, what the limit order book is at any instant, and how the flow of
+orders forms a price. We fold the stream of orders into an aggregated book, examine several
+implementations of that fold and compare their performance, then model the arrival of orders
+as a Hawkes process and ask what its parametrisation says about a trading epoch. The order
+flow imbalance and price formation are the end point.
+The first half of the course presents the chapter in lectures. The second half is laboratory
+work on its implementation: we read the code, run it and change it together. Write to me with
+questions and remarks on what you find challenging in the implementation, and the laboratory
+sessions concentrate on those parts.
+Chapter 2 of the notes is optional reading on option pricing and volatility trading. It is
+neither taught in class nor examined, and it is added to the notes towards the end of the
+course.
 You are expected to read and understand the implementations, not only to run them.
 }
 \end{frame}

@@ -79,7 +79,7 @@
 \newtheorem{assumption}[theorem]{Assumption}
 \newtheorem{approximation}[theorem]{Approximation}
 
-% The course sets two assignments, one per chapter, and they are numbered as such:
+% The course sets one assignment, and it is numbered on its own:
 % own counter, not the shared one, and not numbered within a section.
 \newtheorem{assignment}{Assignment}
 
