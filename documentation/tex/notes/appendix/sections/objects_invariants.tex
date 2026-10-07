@@ -1,0 +1,83 @@
+Section \ref{sec.learningPython} asks that the invariants an implementation preserves
+be stated before it is written.
+A mutable object changes through its methods,
+and what can be relied on about it is what every method leaves true.
+
+\begin{defi}\label{def.classInvariant}
+ An \emph{invariant} of a class is a condition on its instances
+ that holds of each of them whenever none of its methods is running.
+\end{defi}
+
+\begin{prop}[{\citealp{Hoa72pro}}]\label{prop.invariantByInduction}
+ A condition on the instances of a class is an invariant of the class if
+ \begin{enumerate}[label={\emph{\roman{*}}.}]
+  \item it holds of an instance when a constructor returns it;
+  \item a method called on an instance of which it holds returns with it holding;
+  \item the attributes of an instance, and the mutable objects they refer to,
+        are written to by the methods of the class alone.
+ \end{enumerate}
+\end{prop}
+\begin{proof}
+ By \emph{iii.} an instance changes only while one of its methods runs.
+ It suffices to notice that the condition holds after the constructor, by \emph{i.},
+ and after each call of a method if it held before the call, by \emph{ii.}
+\end{proof}
+
+The book has two invariants.
+Every size it stores is positive,
+and its best bid lies below its best ask, $\bestBidPrice < \bestAskPrice$,
+which is the positive spread of Section \ref{sec.orderDrivenMarkets}.
+\codehl{check\_invariants} tests the two, and raises if either fails.
+For the first, \emph{ii.} is checked on one function:
+every method writes a size through \codehl{set\_size},
+which in Listing \ref{listing.aggregateStorage} removes a price whose size becomes zero.
+The second is preserved by the matching of Listing \ref{listing.submit},
+which rests what is left of an order only once no price of the opposite side is eligible for it.
+And \codehl{from\_levels}, in Listing \ref{listing.fromLevels}, is \emph{i.}:
+it writes through \codehl{set\_size}, and it checks the book before returning it.
+
+Python enforces no part of \emph{iii.}
+Whoever holds a book can assign to its attributes and write to its dictionaries,
+and \codehl{levels\_map} of \codehl{AggregateBook} returns the dictionary of a side itself,
+not a copy of it.
+The package answers in four ways.
+A name that begins with an underscore, such as \codehl{\_bits} or \codehl{\_cached},
+is by convention not to be touched outside its class.
+The writes of a size are gathered in \codehl{set\_size},
+so that a class which keeps an index of the occupied prices
+maintains it in that one function.
+\codehl{TickArrayBook} deletes the two dictionaries in its constructor,
+Listing \ref{listing.tickArrayInit},
+so that code reaching for them fails, and does not read an empty book.
+And a frozen data class binds no method that writes and admits no assignment:
+for \codehl{Message}, parts \emph{ii.} and \emph{iii.} hold with nothing to check,
+and what \codehl{\_\_post\_init\_\_} tested stays true of the instance.
+Remark \ref{remark.frozenIsShallow} is where that argument stops.
+
+Listing \ref{listing.silentCache} breaks \emph{iii.} with one write.
+\codehl{CachedBestBook}, which Section \ref{sec.inheritance} reads,
+keeps the best price of each side in a cache beside the dictionaries,
+and so has a third invariant: the cache is the best price of the dictionary.
+A bid written into the dictionary past \codehl{set\_size}
+leaves the first two invariants true, on a plain book and on a cached one,
+and breaks the third.
+The plain book answers the new best bid;
+the cached book answers the old one, and raises no error.
+
+\begin{lstlisting}[caption={A write that bypasses the methods, and the invariant it breaks.}, label=listing.silentCache]
+import pytest
+
+from unito26.lob.messages import BUY
+from unito26.lob.orderbook import AggregateBook, CachedBestBook
+
+plain = AggregateBook.from_levels({99: 100}, {101: 100})
+cached = CachedBestBook.from_levels({99: 100}, {101: 100})
+for book in (plain, cached):
+    book.bids[100] = 50
+    book.check_invariants()
+
+assert plain.best_price(BUY) == 100
+assert cached.best_price(BUY) == 99
+with pytest.raises(AssertionError):
+    cached.check_cache_is_consistent()
+\end{lstlisting}

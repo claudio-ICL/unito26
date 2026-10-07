@@ -1,0 +1,122 @@
+Part \emph{ii.} of Definition \ref{def.attributeReference} prepends the instance
+when the attribute found in the class is a function.
+Three decorators change what is prepended, and when the function is called.
+Table \ref{tab.kindsOfMethod} gives the four cases,
+for an instance $x$ of $C$ and a function $f$ bound to \codehl{name} in the class.
+
+\begin{table}[h!]
+ \centering
+ \begin{tabular}{@{}lll@{}}
+  \toprule
+  $f$ is defined & \codehl{x.name} denotes & \codehl{C.name} denotes \\
+  \midrule
+  with no decorator & $u \mapsto f(x, u)$ & $f$ \\
+  under \codehl{@property} & the value $f(x)$ & --- \\
+  under \codehl{@classmethod} & $u \mapsto f(C, u)$ & $u \mapsto f(C, u)$ \\
+  under \codehl{@staticmethod} & $f$ & $f$ \\
+  \bottomrule
+ \end{tabular}
+ \caption{What an attribute reference prepends to the arguments of a function of the class.}
+ \label{tab.kindsOfMethod}
+\end{table}
+
+A \emph{property} is read without a call, as a stored attribute is,
+and it is computed from the instance at every reading.
+The book stores its two sides and nothing derived from them:
+the best prices, the spread and the mid-price of Section \ref{sec.orderDrivenMarkets}
+are properties, and Listing \ref{listing.bookProperties} shows two of them.
+A stored quantity has to be updated by every write, and can be left behind;
+a computed one cannot disagree with the configuration.
+It costs a call at every reading:
+a reading of \codehl{spread} looks up the best price of both sides.
+
+\begin{lstlisting}[caption={\protect\codehl{unito26.lob.orderbook.AggregateBook}: two of its properties. Docstrings elided.}, label=listing.bookProperties]
+    @property
+    def best_bid_price(self) -> int | None:
+        # ...
+        return self.best_price(BUY)
+    # ...
+    @property
+    def spread(self) -> int | None:
+        # ...
+        bid, ask = self.best_bid_price, self.best_ask_price
+        return None if bid is None or ask is None else ask - bid
+\end{lstlisting}
+
+A name bound in the body of a class to something other than a function
+is an attribute of the class all the same, read through every instance by part \emph{ii.}
+\codehl{BAND\_MARGIN}, the margin of the band of Section \ref{sec.fasterBook}, is one.
+Being one object for all the instances,
+such an attribute is not the place for a list that each instance is to own.
+A data class refuses a list as the default of a field for that reason,
+and \codehl{SubmitResult} declares the function that builds a new one for each instance.
+
+A \emph{class method} receives the class.
+The package uses it as a second constructor:
+the first builds an instance from its attributes,
+and a class method builds one from something else, and returns it.
+\codehl{from\_levels}, in Listing \ref{listing.fromLevels},
+builds a book from its two sides given as dictionaries;
+it writes every size through \codehl{set\_size},
+and it checks the book before returning it,
+which Section \ref{sec.stateAndInvariants} takes up.
+\codehl{LobsterFiles.parse} builds the description of a LOBSTER pair
+from the name of either of its files,
+and Listing \ref{listing.parseLobsterName} runs it.
+By the third row of Table \ref{tab.kindsOfMethod},
+the function receives the class on which the reference is written.
+So \codehl{from\_levels}, reached from a subclass in the sense of Section \ref{sec.inheritance},
+builds an instance of the subclass.
+A \emph{static method} receives neither the instance nor the class:
+it is a function kept in the class because it belongs with it,
+as \codehl{resting\_price} of Section \ref{sec.foldImplementation} is.
+
+\begin{lstlisting}[caption={\protect\codehl{unito26.lob.orderbook.AggregateBook.from\_levels}, abridged.}, label=listing.fromLevels]
+@classmethod
+def from_levels(
+    cls, bids: dict[int, int], asks: dict[int, int], strict: bool = False
+) -> "AggregateBook":
+    # ...
+    book = cls.for_prices(list(bids) + list(asks), strict)
+    for direction, levels in ((BUY, bids), (SELL, asks)):
+        for price, size in levels.items():
+            # ...
+            book.set_size(direction, price, size)
+    book.check_invariants()
+    return book
+\end{lstlisting}
+
+\begin{lstlisting}[caption={A second constructor: a LOBSTER pair from the name of a file.}, label=listing.parseLobsterName]
+from unito26.lob.lobster import LobsterFiles, TradingWindow
+
+name = "AMZN_2012-06-21_34200000_57600000_message_10.csv"
+files = LobsterFiles.parse(name)
+twin = LobsterFiles.parse(name.replace("message", "orderbook"))
+
+assert files == twin and files is not twin
+assert files.ticker == "AMZN" and files.reported_depth == 10
+assert files.span == TradingWindow(34200.0, 57600.0)
+assert files.messages_path.name == name
+\end{lstlisting}
+
+\begin{remark}\label{remark.completeRule}
+ Definition \ref{def.attributeReference} leaves out three things that can be observed
+ \citep[Section 3.3]{PSF26lan}.
+ A property is found before an attribute of the instance of the same name,
+ and it refuses assignment: \codehl{book.spread = 1} raises an error.
+ A class with \codehl{slots=True} keeps the fields of an instance in fixed slots,
+ and \codehl{vars} does not apply to it.
+ And a class is itself an instance, of the class \codehl{type},
+ which is why it can be named, passed and called as any object can.
+\end{remark}
+
+\begin{remark}\label{remark.calledLikeAClass}
+ Two kinds of name in the package are called as a class is, and create nothing.
+ \codehl{MessageType} and \codehl{EventType} are \emph{enumerations},
+ classes with a fixed set of named instances such as \codehl{MessageType.SUBMIT},
+ and a call returns the one of the given value.
+ \codehl{GridDepth} and \codehl{ReportedDepth} are made by \codehl{NewType}:
+ \codehl{GridDepth(3)} is the integer $3$ itself,
+ and the name exists for a static type checker,
+ which refuses a number of grid positions where a number of occupied levels is expected.
+\end{remark}

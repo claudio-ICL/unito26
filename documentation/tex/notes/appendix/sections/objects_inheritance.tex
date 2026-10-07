@@ -1,0 +1,178 @@
+A class is built on another by naming it.
+The statement \codehl{class D(B)} defines a class $D$
+whose linearisation is $D$ followed by the linearisation of $B$;
+$D$ is a \emph{subclass} of $B$, and $B$ is the \emph{base class} of $D$.
+Every class of the package names at most one base class, and we assume so throughout.
+By Definition \ref{def.attributeReference},
+a name that $D$ does not bind is found in $B$, and $D$ is said to \emph{inherit} it;
+a name that $D$ binds is found before the one of $B$, and $D$ is said to \emph{override} it.
+An instance $x$ of $D$ counts as one of $B$:
+\codehl{isinstance(x, B)} is true whenever $B$ is in the linearisation of the class of $x$.
+
+\begin{prop}\label{prop.lateBinding}
+ Let \codehl{f} be a function bound in the class $B$,
+ and $x$ an instance of a subclass $D$ of $B$ that inherits it.
+ In the call \codehl{x.f(u)}, a reference \codehl{self.g} in the body of the function
+ is the reference \codehl{x.g}:
+ it is resolved along the linearisation of $D$, and not along that of $B$.
+\end{prop}
+\begin{proof}
+ By Definition \ref{def.attributeReference} the call passes $x$ as first argument,
+ so \codehl{self} is a name of $x$, and $x$ is an instance of $D$.
+\end{proof}
+
+So a method that $D$ inherits calls the functions that $D$ overrides.
+A subclass changes a part of what its base class does
+by overriding the functions in which that part is written;
+it inherits the rest, which then runs on what the subclass changed.
+This is the construction of Section \ref{sec.fasterBook}.
+The matching of Listing \ref{listing.submit} is written in \codehl{AggregateBook}
+against \codehl{self.best\_price} and \codehl{self.set\_size},
+and \codehl{CachedBestBook}, in Listing \ref{listing.cachedBestBook},
+overrides those two and binds nothing else of the fold.
+
+Inside a function of the class $C_k$ of a linearisation,
+\codehl{super().name} is the reference \codehl{self.name}
+with the search of part \emph{i.} begun at $C_{k+1}$.
+It is how a function calls the one it overrides:
+in \codehl{CachedBestBook}, the call \codehl{super().set\_size(direction, price, size)}
+is \codehl{AggregateBook.set\_size(self, direction, price, size)}.
+The constructor of \codehl{CachedBestBook} calls that of \codehl{AggregateBook},
+which binds the two dictionaries, and adds the cache.
+Its \codehl{set\_size} writes the dictionary through the function it overrides,
+and then brings the cache up to date.
+Its \codehl{best\_price} returns the cache, and does not call the scan it overrides.
+
+\begin{lstlisting}[caption={\protect\codehl{unito26.lob.orderbook.CachedBestBook}, abridged: the constructor and the two overrides.}, label=listing.cachedBestBook]
+class CachedBestBook(AggregateBook):
+    # ...
+    def __init__(self, strict: bool = False):
+        super().__init__(strict)
+        self._cached: dict[int, int | None] = {BUY: None, SELL: None}
+
+    def set_size(self, direction: int, price: int, size: int) -> None:
+        super().set_size(direction, price, size)
+        self._cached[direction] = self._best_after(direction, price, size)
+    # ...
+    def best_price(self, direction: int) -> int | None:
+        return self._cached[direction]
+\end{lstlisting}
+
+\begin{remark}\label{remark.constructorsBindTheState}
+ A subclass inherits the attributes of its base class.
+ The attributes of an instance are not inherited:
+ they are bound by the constructors that run,
+ and a constructor that does not call \codehl{super().\_\_init\_\_}
+ leaves the instance without those of the base class.
+ It is in this sense that \codehl{TickArrayBook} deletes the two dictionaries it inherits,
+ in Listing \ref{listing.tickArrayInit}:
+ the constructor of \codehl{AggregateBook} has just bound them.
+\end{remark}
+
+Listing \ref{listing.lateBinding} writes a subclass.
+\codehl{CountingBook} overrides the constructor, to add a count,
+and \codehl{best\_price}, to increase the count and then call the function it overrides.
+It binds neither \codehl{apply} nor \codehl{submit}.
+The market buy of the worked example of Section \ref{sec.fasterBook} is applied to it:
+the inherited matching trades at two prices,
+and by Proposition \ref{prop.lateBinding} it asks for the best ask through the override,
+once for each.
+
+\begin{lstlisting}[caption={An inherited method calls the function that the subclass overrides.}, label=listing.lateBinding]
+from unito26.lob.messages import BUY, SELL, market_order
+from unito26.lob.orderbook import AggregateBook
+
+
+class CountingBook(AggregateBook):
+    def __init__(self, strict):
+        super().__init__(strict)
+        self.lookups = 0
+
+    def best_price(self, direction):
+        self.lookups += 1
+        return super().best_price(direction)
+
+
+assert CountingBook.__mro__ == (CountingBook, AggregateBook, object)
+assert CountingBook.submit is AggregateBook.submit
+
+book = CountingBook(strict=False)
+for price, size in ((101, 100), (102, 80), (105, 20)):
+    book.set_size(SELL, price, size)
+book.apply(market_order(1.0, 150, BUY), record=False)
+assert book.lookups == 2
+assert book.size_at(SELL, 102) == 30
+\end{lstlisting}
+
+Inheritance gives $D$ the attributes of $B$,
+and it guarantees nothing about what the overrides of $D$ do.
+
+\begin{defi}[{\citealp{LW94beh}}]\label{def.substitution}
+ A subclass $D$ \emph{substitutes} for its base class $B$
+ if every statement that holds of the instances of $B$,
+ and is written in the attributes of $B$,
+ holds of the instances of $D$.
+\end{defi}
+
+For the books the statement is the fold \eqref{eq.bookFold}.
+The storage of a book stands for a configuration of Section \ref{sec.orderDrivenMarkets}.
+Write $\configurationOf(s)$ for the configuration that a storage $s$ stands for,
+which \codehl{levels\_map} returns one side at a time,
+and $F_D(s, m)$ for the storage that \codehl{apply} leaves
+when a book of the class $D$, in the storage $s$, is given the message $m$.
+Then $D$ substitutes for \codehl{AggregateBook} in the fold when
+\begin{equation}\label{eq.commutingFold}
+ \configurationOf\big(F_D(s, m)\big) = F\big(\configurationOf(s), m\big)
+\end{equation}
+for every storage $s$ that satisfies the invariants of $D$ and every message $m$,
+where $F$ is the transition of \eqref{eq.bookFold}.
+The map $\configurationOf$ and the condition \eqref{eq.commutingFold}
+are those of \cite{Hoa72pro};
+for \codehl{AggregateBook} the storage is the configuration,
+and $\configurationOf$ is the identity.
+Equation \eqref{eq.commutingFold} is the statement of Section \ref{sec.fasterBook}
+that two books which share their matching pass through the same configurations,
+and the test module named there checks it after every message.
+
+\begin{remark}\label{remark.limitsOfSubstitution}
+ Three things lie outside \eqref{eq.commutingFold}.
+ The cost of an operation is not a statement about configurations,
+ and Table \ref{tab.fasterBookCosts} is the reason for having more than one class.
+ \codehl{TickArrayBook} refuses a write outside its band,
+ and \codehl{BitmapBook} one below its floor,
+ so each satisfies \eqref{eq.commutingFold} for the messages whose prices it can hold.
+ And the constructors differ:
+ \codehl{TickArrayBook} takes a floor and a width,
+ where \codehl{AggregateBook} takes neither.
+ Code that builds a book of a class it is handed
+ therefore calls the class method \codehl{for\_prices},
+ which these two classes override to compute their own arguments,
+ or \codehl{from\_levels}, which calls it.
+\end{remark}
+
+A class is an object, by Remark \ref{remark.completeRule},
+and \codehl{AXIS\_B\_VARIANTS} in \codehl{unito26.lob.orderbook}
+is the tuple of the five book classes of Section \ref{sec.fasterBook}.
+Listing \ref{listing.fiveBooks} builds a book of each
+through the one function \codehl{from\_levels} of Listing \ref{listing.fromLevels},
+applies the same market order to each,
+and reads the same configuration off each.
+It then checks, on the attributes of the four subclasses,
+that none binds the matching and that each binds the write and the lookup.
+
+\begin{lstlisting}[caption={Five classes, one matching, one configuration.}, label=listing.fiveBooks]
+from unito26.lob.messages import BUY, SELL, market_order
+from unito26.lob.orderbook import AXIS_B_VARIANTS, AggregateBook
+
+asks = {101: 100, 102: 80, 105: 20}
+for cls in AXIS_B_VARIANTS:
+    book = cls.from_levels({99: 100}, asks)
+    assert type(book) is cls and isinstance(book, AggregateBook)
+    book.apply(market_order(1.0, 150, BUY), record=False)
+    assert book.levels_map(SELL) == {102: 30, 105: 20}
+
+matching = {"apply", "submit", "withdraw"}
+for cls in AXIS_B_VARIANTS[1:]:
+    assert not matching & set(vars(cls))
+    assert {"set_size", "best_price"} <= set(vars(cls))
+\end{lstlisting}

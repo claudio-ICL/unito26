@@ -98,8 +98,18 @@ produced it (`tex/chap3/sections/tables_and_figures.tex`).
 
 Style comes from `include/snippets_stylerendering.tex`, defaulting to Python.
 
-- Prefer `\lstinputlisting[language=Python,caption=...,label=listing.x]{path/to/file.py}`
-  over inline listings, so the code that appears in the notes is code that runs.
+- A listing is an inline `lstlisting` with its options on one line,
+  `\begin{lstlisting}[caption={...}, label=listing.x]`. It is one of two kinds, which
+  `tests/test_notes_quote_the_package.py` tells apart by the caption and enforces:
+  - a **quote** of the package names its source in the caption as `\codehl{unito26.…}`,
+    marks each cut with a line reading `# ...`, and is checked verbatim against the source;
+  - a **program** names no `unito26.` path in its caption, and is run. It asserts what the
+    prose claims.
+
+  A listing whose options span two lines is not collected by the test, and so is not checked.
+  No `\lstinputlisting`: the notes carry no path into the repository (rule 8 of the skill).
+- Every line of a listing stays within **75 columns**. The notes print that many and wrap
+  the rest; a wider source line of a quote is cut.
 - `\codehl{...}` for inline identifiers in prose — `\codehl{OrderQueue::add}`,
   `\codehl{.csv}`. See `tex/appendix/simulob_implementation.tex`.
 
@@ -128,7 +138,7 @@ read it.
 ## Slides
 
 - `\begin{frame}` then `\frametitle{...}` on the next line.
-- One idea per frame; `\pause` between beats.
+- One idea per frame, shown whole: no `\pause` and no other overlay.
 - A long statement is split across frames titled `... - 1 of 3`
   (`viva/tex/sections/sec4.tex`).
 - Reuse the notes' theorem environments and the *same label names*, so a statement can

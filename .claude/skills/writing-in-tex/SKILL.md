@@ -70,12 +70,14 @@ What the rule forbids is a path *into this repository*.
 
 **One scoped exception.** The implementation subsections of `sec.messageFiles` --
 `sec.foldImplementation`, `sec.fasterBook` and the subsubsection on the session read from a
-LOBSTER pair -- and Appendix A, `chap.integersInBinary`, guide the reader through the package.
+LOBSTER pair -- and the two appendices, `chap.integersInBinary` and
+`chap.objectOrientedProgramming`, guide the reader through the package.
 There, and only there, the notes name its modules, classes, functions and test modules, and
 quote its code. Notebooks and markdown documents are never named, there or anywhere. A listing
 that quotes the package names its source in its caption, `\codehl{unito26.…}`, marks each cut
 with a line reading `# ...`, and is kept verbatim by `tests/test_notes_quote_the_package.py`,
-which also runs every other listing of the notes.
+which also runs every other listing of the notes. `references/style.md` has the two kinds of
+listing and the width they keep to.
 
 **9. Every paragraph earns its place.** A free-standing paragraph must introduce a symbol,
 state a hypothesis, or draw a consequence. One that does none of the three exists only to

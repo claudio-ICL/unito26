@@ -1,0 +1,78 @@
+\begin{defi}\label{def.classAndInstance}
+ The type of an object is itself an object, and it is called a \emph{class}.
+ An object whose type is the class $C$ is an \emph{instance} of $C$:
+ \codehl{type(x)} returns the class of which \codehl{x} is an instance,
+ and calling a class creates a new instance of it.
+\end{defi}
+
+\codehl{dict} is a class, and a side of the book is an instance of it.
+The statement \codehl{class} defines a new one:
+the names bound in its body, most of them to functions,
+become the \emph{attributes} of the class, written \codehl{C.name}.
+An instance has attributes of its own, written \codehl{x.name}.
+They are created by assignment,
+and \codehl{vars(x)} returns them as a dictionary.
+
+The accumulator of the fold \eqref{eq.bookFold} is the class \codehl{AggregateBook}.
+When \codehl{AggregateBook(strict)} is evaluated,
+Python creates an instance with no attributes
+and calls the function \codehl{\_\_init\_\_} of the class,
+with the instance as first argument and \codehl{strict} after it.
+That function is the \emph{constructor}, in Listing \ref{listing.aggregateInit}:
+by assigning to the attributes of its first parameter it gives the instance its state,
+here two empty sides, the flag \codehl{strict} of Section \ref{sec.foldImplementation},
+and three counts of what the last message traded.
+The first parameter is named \codehl{self} by convention,
+and only its position makes it the instance.
+The annotations of the listing, \codehl{strict: bool} and those after it,
+state the types that are intended;
+Python records them and does not check them.
+
+\begin{lstlisting}[caption={\protect\codehl{unito26.lob.orderbook.AggregateBook.\_\_init\_\_}.}, label=listing.aggregateInit]
+    def __init__(self, strict: bool = False):
+        self.bids: dict[int, int] = {}
+        self.asks: dict[int, int] = {}
+        self.strict = strict
+        self.last_fill_count = 0
+        self.last_traded_size = 0
+        self.last_traded_value = 0
+\end{lstlisting}
+
+Two calls of the class create two books,
+each with its own six attributes,
+and a write to one leaves the other as it was.
+A name refers to a book, and not to the configuration the book is in:
+in the fold \eqref{eq.bookFold} the configurations $\mathcal{B}_0, \mathcal{B}_1, \dots$
+are the successive values of one object.
+So a list to which the book is appended after every message holds one object many times,
+and every entry shows the last configuration.
+Whatever records the sequence stores copies,
+and \codehl{copy} returns a new book in the configuration of the old one.
+Listing \ref{listing.twoBooks} checks these statements.
+
+\begin{lstlisting}[caption={Two instances of one class, and a copy.}, label=listing.twoBooks]
+from unito26.lob.messages import BUY
+from unito26.lob.orderbook import AggregateBook
+
+book, other = AggregateBook(), AggregateBook()
+assert type(book) is type(other) is AggregateBook
+assert book is not other
+assert set(vars(book)) == {
+    "bids", "asks", "strict",
+    "last_fill_count", "last_traded_size", "last_traded_value",
+}
+
+book.set_size(BUY, 99, 100)
+assert book.bids == {99: 100} and other.bids == {}
+
+states = [book, book.copy()]
+book.set_size(BUY, 99, 0)
+assert states[0] is book and states[0].bids == {}
+assert states[1].bids == {99: 100}
+\end{lstlisting}
+
+\begin{remark}\label{remark.misspeltAttribute}
+ The assignment \codehl{x.name = value} creates the attribute if \codehl{x} does not have it.
+ On a book, \codehl{book.bid = \{\}} raises no error:
+ it gives the book a third dictionary, which no function of the class reads.
+\end{remark}

@@ -1,0 +1,136 @@
+A base class can leave a function to its subclasses.
+\codehl{FrameSerializable}, in \codehl{unito26.lob.frames},
+is the base class of the objects that the package stores as tables.
+It declares three functions under the decorator \codehl{abstractmethod},
+with a description for a body:
+the schema of the table, the conversion to a table, and the conversion from one.
+And it defines the forms that follow from those three,
+the list of records and the JSON text, in terms of them.
+Listing \ref{listing.frameSerializable} shows the three declarations
+and two of the derived forms.
+A class with an abstract method is an \emph{abstract class}.
+It cannot be instantiated,
+and neither can a subclass until it has overridden every abstract method.
+
+\begin{lstlisting}[caption={\protect\codehl{unito26.lob.frames.FrameSerializable}, abridged: three declarations, and two of the forms derived from them.}, label=listing.frameSerializable]
+class FrameSerializable(ABC):
+    # ...
+    @classmethod
+    @abstractmethod
+    def schema(cls) -> pa.DataFrameSchema:
+        # ...
+    @abstractmethod
+    def to_frame(self) -> pd.DataFrame:
+        """This object as a validated frame."""
+
+    @classmethod
+    @abstractmethod
+    def from_frame(cls, frame: pd.DataFrame) -> "FrameSerializable":
+        """Rebuild from a frame, validating it first."""
+    # ...
+    @classmethod
+    def from_records(cls, records: list[dict]) -> "FrameSerializable":
+        return cls.from_frame(pd.DataFrame(records))
+    # ...
+    @classmethod
+    def from_json(cls, text: str) -> "FrameSerializable":
+        return cls.from_records(json.loads(text))
+\end{lstlisting}
+
+\codehl{MarkParams} and \codehl{HawkesParams} are subclasses, and each defines the three.
+The call \codehl{MarkParams.from\_json(text)} finds \codehl{from\_json} in the base class,
+and by the third row of Table \ref{tab.kindsOfMethod} the function receives
+\codehl{MarkParams} as \codehl{cls}.
+The references \codehl{cls.from\_records} and \codehl{cls.from\_frame} that follow
+are therefore resolved along the linearisation of \codehl{MarkParams},
+as in Proposition \ref{prop.lateBinding},
+and the result is an instance of \codehl{MarkParams}.
+This is the habit of Section \ref{sec.learningPython},
+that a type carries the schema that validates it
+and the pair of functions that write it to a table and read it back,
+written once for every type that has it.
+Listing \ref{listing.roundTrip} closes the round trip.
+
+\begin{lstlisting}[caption={A form inherited from the abstract class returns an instance of the subclass.}, label=listing.roundTrip]
+import pytest
+
+from unito26.lob.frames import FrameSerializable
+from unito26.lob.simulate import MarkParams
+
+marks = MarkParams(
+    depth_decay=0.5, mean_log_size=4.0, sigma_log_size=0.75, lot=10
+)
+again = MarkParams.from_json(marks.to_json(2))
+assert again == marks and again is not marks
+assert type(again) is MarkParams
+assert "from_json" not in vars(MarkParams)
+
+with pytest.raises(TypeError):
+    FrameSerializable()
+\end{lstlisting}
+
+\begin{remark}\label{remark.twoFormsOfAbstract}
+ The package leaves a function to its subclasses in a second way.
+ \codehl{\_HawkesState} holds the state of a simulated process
+ and the loop \codehl{events} that yields its events one \codehl{step} at a time,
+ and its own \codehl{step} raises \codehl{NotImplementedError}.
+ Each of its two subclasses binds \codehl{step} alone:
+ \codehl{OgataThinningHawkes} is Algorithm \ref{algo.ogata},
+ and \codehl{ExponentialHawkes} is Algorithm \ref{algo.dassiosZhao}.
+ Nothing prevents an instance of this base class from being created,
+ and the error is raised at its first event.
+\end{remark}
+
+Definition \ref{def.attributeReference} asks whether a name is found,
+and never what the class of the object is.
+So a function accepts as an argument any object
+on which the attribute references of its body succeed, whatever the class of the object.
+This is \emph{duck typing},
+and inheriting from a common base class is one way of meeting it, not the only one.
+\codehl{IdealisedFlow}, which places the events of a process as orders
+under Assumption \ref{assumption.idealisedBook},
+reads two attributes of its source of events:
+\codehl{params}, for the number of types, and \codehl{events}.
+Its constructor annotates the source as an \codehl{ExponentialHawkes},
+and an annotation is not checked when the program runs.
+The tests of the package hand it a class that yields a script of events,
+so as to place one chosen event at a time,
+and Listing \ref{listing.scriptedSource} does the same:
+a limit buy that joins the best bid,
+and a market buy that takes one share from the best ask.
+The attributes that a function requires in this way can be written down
+as a \codehl{typing.Protocol}, for a static type checker to verify
+\citep[Chapter 13]{Ram22flu};
+the package states none.
+
+\begin{lstlisting}[caption={A scripted source of events in the place of the process.}, label=listing.scriptedSource]
+from unito26.lob import config
+from unito26.lob.hawkes import ExponentialHawkes
+from unito26.lob.idealised import (
+    IdealisedFlow, UniformDepth, idealised_book,
+)
+from unito26.lob.messages import BUY, SELL, GridDepth
+from unito26.lob.simulate import EventType
+
+
+class Scripted:
+    params = config.resilient_order_flow_params()
+
+    def __init__(self, script):
+        self.script = script
+
+    def events(self, horizon):
+        return iter(self.script)
+
+
+script = [(1.0, EventType.LIMIT_BUY), (2.0, EventType.MARKET_BUY)]
+source = Scripted(script)
+assert not isinstance(source, ExponentialHawkes)
+
+depth = UniformDepth(5)
+touches = {BUY: (1000, 2), SELL: (1010, 4)}
+book = idealised_book(depth, touches, GridDepth(3))
+for message in IdealisedFlow(source, depth).stream(book, 10.0, None):
+    book.apply(message, record=False)
+assert (book.best_bid_size, book.best_ask_size) == (3, 3)
+\end{lstlisting}
