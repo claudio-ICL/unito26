@@ -103,8 +103,9 @@ moved between the two"*, and did not keep it.
   hard errors when used, and every schematic wants one. Added.
 - **there was no way to build the lecturer's script.** `\documentclass[script]{unito26slides}`
   now sets `show notes`, so each frame is followed by a page carrying its `\note`: the slide
-  and what is said over it are one source and cannot drift apart. Combine it with `handout`, or
-  every `\pause` beat gets a page and the script repeats. natbib renews `\makeindex`
+  and what is said over it are one source and cannot drift apart. It is combined with
+  `handout`, which kept the script from repeating while the decks carried `\pause` and changes
+  nothing now that they carry none. natbib renews `\makeindex`
   unconditionally and beamer leaves it undefined once notes are typeset, so the class
   `\providecommand`s it before loading natbib — without that the script build alone fails.
 - **`handout` was swallowed in silence.** `\LoadClass[10pt]{beamer}` forwarded no options, so
@@ -406,7 +407,7 @@ mechanical and one is mine:
 grep -c 'Overfull .vbox' documentation/tex/slides/main.log    # 0
 grep -c 'Overfull .hbox' documentation/tex/slides/main.log    # 0
 
-# render in handout mode -- one image per frame, not one per \pause beat
+# one image per frame
 pdftoppm -r 110 -png documentation/tex/slides/main.pdf /tmp/frame
 ```
 
@@ -440,5 +441,5 @@ sed 's/{unito26slides}/[handout,script]{unito26slides}/' documentation/tex/slide
 ```
 
 A `\nocite` key is checked against `documentation/tex/bibliography.bib` before it is written.
-The 46 valid keys are the only ones that exist, and a wrong one fails inside bibtex rather
+The keys of that file are the only ones that exist, and a wrong one fails inside bibtex rather
 than at the point of use.

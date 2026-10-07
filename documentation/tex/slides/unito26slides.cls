@@ -4,14 +4,11 @@
 %% CLASS OPTIONS %%
 % `script' interleaves the lecturer's script with the slides: every frame is followed by a
 % page carrying its \note.  A frame holds the object and its captions, and what is said over
-% it lives in the \note, so the two are one source and cannot drift apart.  Combine with
-% `handout' -- \documentclass[handout,script]{unito26slides} -- or each \pause beat gets a
-% page of its own and the script repeats.
+% it lives in the \note, so the two are one source and cannot drift apart.
 \newif\if@unito@script
 \DeclareOption{script}{\@unito@scripttrue}
-% Everything else is forwarded to beamer, so that \documentclass[handout]{unito26slides}
-% collapses the \pause beats to one page per frame.  Without this they are swallowed in
-% silence.
+% Every other option is forwarded to beamer.  Without this an option such as `handout' is
+% swallowed in silence.
 \DeclareOption*{\PassOptionsToClass{\CurrentOption}{beamer}}
 \ProcessOptions\relax
 \LoadClass[10pt]{beamer}

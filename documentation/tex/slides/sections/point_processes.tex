@@ -77,15 +77,9 @@
 \end{tikzpicture}
 \end{center}
 
-\pause
-
 The message stream as a process in continuous time.
 
-\pause
-
 One arrival changes the rate of the next.
-
-\pause
 
 One two-type process, simulated throughout.
 \note{
@@ -108,11 +102,7 @@ formula on these slides is met by a simulation there.
  \compensator_e(t) = \int_{0}^{t} \intensity(u)\,du
 \]
 
-\pause
-
 $\intensity$: predictable, a function of the strict past
-
-\pause
 
 $\multiCountingProc - \compensator$: a local martingale
 \note{
@@ -136,12 +126,8 @@ every intensity we write is left-continuous.
  \totalIntensity(u) \, du \Big)
 \]
 
-\pause
-
 $\totalIntensity = \intensity[1] + \dots + \intensity[\numEventTypes]$: the ground intensity,
 on the event of no arrival
-
-\pause
 
 Poisson: $e^{-\totalIntensity s}$
 \note{
@@ -164,8 +150,6 @@ form.
  are independent $\mathrm{Exp}(1)$, over $j$ and $e$.
 \end{thm}
 
-\pause
-
 No common jumps: what buys the joint independence
 \note{
 Rescaling each component's clock by its own compensator turns it into a unit-rate Poisson
@@ -185,12 +169,8 @@ rescaled inter-arrival times are independent $\mathrm{Exp}(1)$ draws.
  with $\baseIntensity_e \geq 0$ and $\hawkesKernel\subscriptee \geq 0$.
 \end{defi}
 
-\pause
-
 $\branchingMatrix\subscriptee = \int_0^\infty \hawkesKernel\subscriptee$: the branching
 matrix
-
-\pause
 
 $\branchingRatio$: its spectral radius, the branching ratio
 \note{
@@ -220,8 +200,6 @@ $+\infty$ by convention.
        {$\sum_{e}\branchingMatrix\subscriptee$: the direct offspring\\of one event of type $\eone$};
 \end{tikzpicture}
 \end{center}
-
-\pause
 
 $\branchingMatrix$ and $\branchingMatrix^{\transpose}$: one spectral radius
 \note{
@@ -277,11 +255,7 @@ also produces a path of the right total rate. The convention is the only defence
 \end{tikzpicture}
 \end{center}
 
-\pause
-
 Immigrants at rate $\baseIntensity$; offspring at the rate of the kernel
-
-\pause
 
 The trees are not observed; only the axis is
 \note{
@@ -308,11 +282,7 @@ ancestor, and it need not be a run of events of one type.
 \end{gathered}
 \]
 
-\pause
-
 One decay $\decay$, shared by every pair
-
-\pause
 
 $\branchingMatrix = \excitation/\decay$: a count; $\excitation$: a rate
 \note{
@@ -358,11 +328,7 @@ standard error.
 \end{tikzpicture}
 \end{center}
 
-\pause
-
 $d\decayedCounts = -\decay\decayedCounts\,dt + d\multiCountingProc$
-
-\pause
 
 Filled dot: the value at an event, before its jump
 \note{
@@ -386,11 +352,7 @@ carried forward. Confusing the two shifts every intensity by one event.
  \]
 \end{prop}
 
-\pause
-
 The count read before $\timeHorizon$, the state at it
-
-\pause
 
 No numerical integration
 \note{
@@ -419,11 +381,7 @@ triggers whom.
  \]
 \end{thm}
 
-\pause
-
 Nothing assumed about $\branchingRatio$
-
-\pause
 
 $O(1)$ per event, against $O(n^2)$ for the sum over the past
 \note{
@@ -445,11 +403,7 @@ $\numEventTypes^2$.
  $\stationaryIntensity = (I - \branchingMatrix)^{-1}\baseIntensity$.
 \end{thm}
 
-\pause
-
 $\branchingMatrix \geq 0$: $\branchingRatio$ an eigenvalue; irreducible $\Rightarrow$ $u, v > 0$, simple
-
-\pause
 
 $\totalRate = \mathbf{1}^{\transpose}\stationaryIntensity$,
 $\bar{\baseIntensity} = \mathbf{1}^{\transpose}\baseIntensity$
@@ -490,11 +444,7 @@ $\totalRate$ is the total event rate and $\bar{\baseIntensity}$ the total immigr
 \end{tikzpicture}
 \end{center}
 
-\pause
-
 $\branchingRatio = 0.75$ and $\stationaryIntensity = (1,1)$ in both
-
-\pause
 
 Who triggers whom: not in $\branchingRatio$
 \note{
@@ -516,11 +466,7 @@ shows it on the counts of each type and on their correlation.
  = \totalRate/\bar{\baseIntensity}$.
 \end{prop}
 
-\pause
-
 Endogenous fraction: $1 - \bar{\baseIntensity}/\totalRate = 1 - 1/\bar C$
-
-\pause
 
 $\branchingRatio = 1 - 1/\bar C$ in particular when
 $\mathbf{1}^{\transpose}\branchingMatrix = \branchingRatio\mathbf{1}^{\transpose}$
@@ -547,8 +493,6 @@ Now to notebook 04, section 4: reading the branching ratio.
  $(\decay I - \excitation)\, m = \baseIntensity$.
 \end{prop}
 
-\pause
-
 The generator with $f(z) = z$:
 $\tfrac{d}{dt}\Expectation\decayedCounts = \baseIntensity
 + (\excitation - \decay I)\Expectation\decayedCounts$
@@ -568,8 +512,6 @@ frame.
  Let $\excitation \geq 0$ and $\decay > 0$. Then $\hurwitzMatrix := \excitation - \decay I$
  is Hurwitz if and only if $\branchingRatio < 1$.
 \end{prop}
-
-\pause
 
 Eigenvalues of $\hurwitzMatrix$: $\decay(\gamma_i - 1)$, over those of $\branchingMatrix$
 \note{
@@ -591,12 +533,8 @@ $\excitation \geq 0$.
  and $\CoVariance(\intensity[ ]) = \excitation V \excitation^{\transpose}$.
 \end{thm}
 
-\pause
-
 $V = \int_0^\infty e^{\hurwitzMatrix s}\diag(\stationaryIntensity)
 e^{\hurwitzMatrix^{\transpose}s}\,ds$, positive definite
-
-\pause
 
 Unit jumps, no common jumps: a diagonal source
 \note{
@@ -619,11 +557,7 @@ distinct entries of $V$.
  = \frac{\totalRate}{2\decay(1-\branchingRatio)}
 \]
 
-\pause
-
 A statement about $\mathbf{1}^{\transpose}\decayedCounts$, not about one component
-
-\pause
 
 $\Variance(\totalIntensity) = \decay\branchingRatio^{2}\totalRate/(2(1-\branchingRatio))$,
 in the same case
@@ -655,8 +589,6 @@ Now to notebook 05, sections 1 to 3: the first moment, $V$, and the intensity re
  \end{gather*}
 \end{prop}
 
-\pause
-
 Finite at every $\branchingRatio$, on every horizon; a function of $t - s$ alone
 \note{
 The pair $(\multiCountingProc, \decayedCounts)$ is Markov and its generator does not depend on
@@ -684,12 +616,8 @@ meet at the fixed point of the same equation.
  + \excitation\meanResponseIntegral(\forecastHorizon)(z - m)
 \end{gather*}
 
-\pause
-
 $\branchingRatio < 1$: the baseline enters only through $m$, and $m_{s,t}(z) \to m$ as
 $t \to \infty$
-
-\pause
 
 $z = m$: nothing to forget
 \note{
@@ -715,8 +643,6 @@ state over its mean. A state at its mean forecasts the stationary rate, at every
  $\int_0^\infty \mathbf{1}^{\transpose}\excitation R_{\eone}(\forecastHorizon)
  \,d\forecastHorizon = C_{\eone} - 1$.
 \end{corol}
-
-\pause
 
 Rates $\decay(1 - \Real\gamma_i)$; the slowest $\decay(1 - \branchingRatio)$
 \note{
@@ -751,11 +677,7 @@ the extra event, $C_{\eone} - 1$: the event itself sits in the state and not in 
 \end{tikzpicture}
 \end{center}
 
-\pause
-
 Slope at $0$: $\decay\big((\mathbf{1}^{\transpose}\branchingMatrix)_j - 1\big)$
-
-\pause
 
 Relaxation time $1/(\decay(1-\branchingRatio))$: the slowest mode, asymptotically
 \note{
@@ -781,11 +703,7 @@ $\branchingMatrix$ is irreducible.
  \emph{window count}.
 \end{defi}
 
-\pause
-
 Invariant under $t \mapsto ct$, which leaves $\branchingMatrix$ alone
-
-\pause
 
 $\totalRate/\decay \ll 1$: excitation expired before the next event
 \note{
@@ -824,12 +742,8 @@ relaxation time, and a ladder in $\decay$.
 \end{tikzpicture}
 \end{center}
 
-\pause
-
 $v^{\transpose}\Expectation\intensity[ ](t) = v^{\transpose}\baseIntensity\,
 \frac{\branchingRatio e^{\decay(\branchingRatio-1)t} - 1}{\branchingRatio - 1}$
-
-\pause
 
 No blow-up in finite time: $\Expectation\multiCountingProc(\timeHorizon) < \infty$
 \note{
@@ -862,8 +776,6 @@ time averages along one path estimate the stationary ones & yes \\
 \bottomrule
 \end{tabular}
 \end{center}
-
-\pause
 
 $\langle \martingale_e, \martingale_{\eone} \rangle \equiv 0$ for $e \neq \eone$: no common jumps
 \note{
@@ -898,8 +810,6 @@ The notebook runs the exact scheme at $\branchingRatio = 1.1$.
 \end{algorithmic}
 }
 
-\pause
-
 $\excitation \geq 0$: $\totalIntensity$ non-increasing between events, so the bound is free
 \note{
 Ogata's algorithm, for any kernel. If the ground intensity were constant the next wait would be
@@ -921,11 +831,7 @@ the intensity decays during a wait, and the notebook measures it.
  \, e^{-\decay(\arrivalTimes[ ]_{n+1} - \arrivalTimes[ ]_{n})}
 \]
 
-\pause
-
 $O(1)$ per event, against $O(n^2)$ for the direct sum
-
-\pause
 
 Pre-jump: enters the intensity. Post-jump: carried forward.
 \note{
@@ -947,11 +853,7 @@ shifts every intensity by one event, and produces a path that is plausible and w
  \exp\Big( -\frac{D}{\decay}\big(1 - e^{-\decay s}\big) \Big)
 \]
 
-\pause
-
 $D := \totalIntensity(\arrivalTimes[ ]_{n}+) - \bar{\baseIntensity} \geq 0$
-
-\pause
 
 A minimum of two independent clocks: immigration and excitation
 \note{
@@ -978,11 +880,7 @@ the survival function still factorises, over one clock per decay rate.
  and $\tau_2 = +\infty$ when the argument is not positive.
 \end{thm}
 
-\pause
-
 $\Prob(\tau_2 = \infty) = e^{-D/\decay}$: the next event an immigrant
-
-\pause
 
 The type drawn before the jump, with probabilities $\intensity/\totalIntensity$
 \note{
@@ -1046,11 +944,7 @@ reproduced draw for draw, and the process above $\branchingRatio = 1$.
 \end{tikzpicture}
 \end{center}
 
-\pause
-
 The two simulators share the type draw
-
-\pause
 
 The compensator shares nothing with either
 \note{
@@ -1078,8 +972,6 @@ $\compensator_e(t) \to \infty$ & when $\baseIntensity > 0$ & when $\baseIntensit
 \bottomrule
 \end{tabular}
 \end{center}
-
-\pause
 
 \cite{Oga88sta}: the test, for earthquake catalogues
 \note{
@@ -1111,11 +1003,7 @@ time, and the time change then says nothing about the joint law.
 \end{tikzpicture}
 \end{center}
 
-\pause
-
 Band: pointwise, from the order statistics of a uniform sample
-
-\pause
 
 A wrong kernel bends the line
 \note{
@@ -1137,11 +1025,7 @@ each type.
  two independences.
 \end{remark}
 
-\pause
-
 Serial, within a type: the autocorrelation of the residuals
-
-\pause
 
 Across types: $\langle \martingale_e, \martingale_{\eone}\rangle \equiv 0$
 \note{

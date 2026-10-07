@@ -44,8 +44,8 @@ MACRO = re.compile(r"\\[a-zA-Z@]+\*?(?:\[[^\]]*\])?")
 #: A symbol is not a word: inline mathematics is the object's language, not prose.
 INLINE = re.compile(r"\$[^$]*\$", re.S)
 BRACES = re.compile(r"[{}$&\\]")
-#: What separates one caption from the next: a beat, a blank line, a break, a full stop.
-BREAK = re.compile(r"\\pause|\\\\|\n\s*\n|(?<=[a-z])[.;](?:\s|$)")
+#: What separates one caption from the next: a blank line, a break, a full stop.
+BREAK = re.compile(r"\\\\|\n\s*\n|(?<=[a-z])[.;](?:\s|$)")
 
 
 def _balanced(text: str, start: int) -> tuple[str, int]:
