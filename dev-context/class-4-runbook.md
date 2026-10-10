@@ -1,5 +1,5 @@
 ---
-title: "Class 4 — price formation: the runbook"
+title: "Price formation: the runbook"
 subtitle: "Section 1.4 and section 1.5, slides and notebooks 07 and 08 in delivery order"
 geometry: margin=2cm
 fontsize: 11pt
@@ -62,9 +62,17 @@ absorbing the flow: say it over step 33). In notebook 08: sections 3, 9 and 10.
 
 **Practical.**
 
-- Open notebooks 07 and 08 before the class. Both are stored executed. **Do not re-run
-  notebook 08 in class**: sections 6, 7, 8 and 11 are Monte Carlo and take minutes. Scroll
-  the stored output. Notebook 07 runs in seconds and can be run live.
+- Notebook outputs are not kept in git: the `pre-commit` hook strips them from the file on
+  disk, and a notebook committed or freshly checked out has none. Run both before the class,
+  from `notebooks/lectures/` inside the env:
+  `jupyter nbconvert --to notebook --execute --inplace 07-*.ipynb 08-*.ipynb`.
+  Notebook 07 takes five seconds, notebook 08 four minutes.
+- **Do not re-run notebook 08 in class**: the Monte Carlo cells of sections 6, 7, 8, 11 and
+  13 take twenty seconds to a minute each. Scroll the output. Notebook 07 can be run live.
+- The class is remote. Share the whole screen and not one window, so that the switches
+  between the deck and the notebooks are seen.
+- The deck numbers its statements on one counter of its own: *Proposition 29* on the screen
+  is Proposition 1.4.3 of the notes. The numbers below are those of the notes.
 - Prices in both notebooks are in ticks, so $\tau = 1$ everywhere on screen.
 - `script.pdf` in `documentation/tex/slides/` has the fuller wording of every slide.
 
@@ -74,12 +82,12 @@ absorbing the flow: say it over step 33). In notebook 08: sections 3, 9 and 10.
 
 ## 1. Slide: *Outline*
 
-**Say.** Three classes of background lead here. Today's question: which features of the order
+**Say.** Sections 1.1 to 1.3 lead here. Today's question: which features of the order
 flow move the mid-price, and how the Hawkes apparatus captures them. Three steps: one number
 read off the book; a model of the flow that produces it; a forecast of where the flow takes
 the mid-price.
 
-**Next.** Why the exact rule of class 1 is not enough.
+**Next.** Why the exact rule of section 1.1 is not enough.
 
 ## 2. Slide: *The exact update is too fine for the mid-price*
 
@@ -265,11 +273,13 @@ Proposition 1.4.9, on ten events.
 
 **If asked** about the `NaN` on row 1: the first row has no predecessor in the session.
 
-**Show.** The ten small books under the table, one per event.
+**Show.** The figure under the table: one book, and a dropdown that steps through the
+opening book and the ten events.
 
 ## 17. Section 3: *The order flow imbalance over a window*
 
-**Show.** The three prints saying `True`: three ways to compute the imbalance agree.
+**Show.** The prints saying `True`: three ways to compute the imbalance agree, and it is
+undefined on the rows within $w$ of the first event, as the mid-price change is.
 
 **Show.** The figure with two panels. Top the mid-price change over one second, bottom the
 imbalance over the same second.
@@ -280,10 +290,11 @@ imbalance over the same second.
 
 **Show.** The print: 1,999 random windows, from 1.4 milliseconds to 57 seconds long. Slope
 $0.1$, which is $\tau/(2\bar S)$ with $\bar S = 5$. Identity in integers: largest error
-$0.0$. Largest residual: $0.8$ ticks.
+$0.0$. Identity as stated: $1.8 \times 10^{-15}$. Largest residual: $0.8$ ticks.
 
-**Say.** No tolerance. The identity holds exactly on every window. The residual never reaches
-a tick.
+**Say.** Multiplied by $2\bar S/\tau$ the identity is one between integers, and it holds with
+no tolerance on every window. As the notes state it, it holds to the rounding of
+floating-point arithmetic. The residual never reaches a tick.
 
 **Show.** The scatter: every window inside the band.
 
@@ -589,7 +600,7 @@ types. The second never closes: the state does not know the sizes.
 
 # Notebook 08, sections 6 to 13 — the forecast against simulation
 
-**Reminder.** Do not re-run. Scroll the stored output.
+**Reminder.** Do not re-run. Scroll the output.
 
 ## 41. Section 6: *The short-horizon forecast against Monte Carlo*
 
@@ -609,7 +620,8 @@ $(t, t+h]$ depends on $h$ and on the state at $t$ only, so the simulation puts $
 $-51.9$, standard error $3.8$. Trending: formula $+97.6$, Monte Carlo $+98.1$, standard error
 $5.9$.
 
-**Show.** The two figures: the formula runs through the error bars at every horizon.
+**Show.** The two figures: the formula runs inside the band of two standard errors at every
+horizon.
 
 **Say.** After a market buy: the resilient regime forecasts selling pressure, the trending
 regime buying pressure. Same event, opposite forecasts.
@@ -619,8 +631,8 @@ zero. The Monte Carlo is 8 to 22 standard errors from zero. Which state is read 
 
 ## 42. Section 7: *The forecast of the mid-price, on an idealised book*
 
-**Say.** The same paths, now folded into an idealised book with $\bar S = 3$. Each path
-records the mid-price.
+**Say.** The same state, continued along 10,000 new paths, each folded into an idealised book
+with $\bar S = 3$. Each path records the mid-price.
 
 **Show.** The print: the identity holds on every path and at every horizon; the largest
 residual is $0.333$ ticks.
@@ -628,8 +640,9 @@ residual is $0.333$ ticks.
 **Show.** The figure with three curves, *the three terms*. Dashed: flow term. The mid-price
 change follows it. The residual is small after the first tenth of a second.
 
-**Show.** The table with the column *no quote moved*: $98.5\%$ of paths at 10 milliseconds,
-$54\%$ at a tenth of a second, none after a second. While no quote has moved the residual is
+**Show.** The table with the column *no quote moved*, resilient regime: $98.5\%$ of paths at
+10 milliseconds, $54\%$ at a tenth of a second, $0.2\%$ at one second. The trending regime is
+within two points of it. While no quote has moved the residual is
 exactly minus the flow term.
 
 **Show.** The second figure, $\bar S = 12$: *the price inherits the flow late*. On a thicker
@@ -702,7 +715,7 @@ $5.43$.
 signed flow differs by a factor of ten. The kernel sets the volatility.
 
 **Show.** The long table, one per regime. Column *Var(Y)/h* settles on that rate. Column
-*Var(forecast)* stops growing after about two seconds. Column *share* peaks near half a
+*Var(forecast)*, by the formula and along the path, stops growing after a few seconds. Column *share* peaks near half a
 second, at about $7\%$ (resilient) and $14\%$ (trending), and then halves each time the
 horizon doubles.
 
@@ -729,7 +742,7 @@ notebook.
 ## 49. Slide: *Outline*
 
 **Say.** Everything today was on flow that we generate. A result on generated flow is a result
-about the generator. Four things are absent by construction.
+about the generator. Five things are absent by construction.
 
 ## 50. Slide: *The intensities do not read the book*
 
