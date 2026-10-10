@@ -410,7 +410,7 @@ assumption is used.
   \frametitle{The residual is the flow that went into the queues}
 \begin{center}
 \begin{tikzpicture}[x=0.55cm, y=0.55cm, font=\scriptsize]
-  \fill[gray!15] (-5.5,-4.75) -- (5.5,0.75) -- (5.5,4.75) -- (-5.5,-0.75) -- cycle;
+  \fill[gray!15] (-5.5,-3.75) -- (5.5,1.75) -- (5.5,3.75) -- (-5.5,-1.75) -- cycle;
   \draw[-{Stealth}, gray!70] (-5.8,0) -- (6.1,0) node[right] {$\OFI_{t,\ofiWindow}$};
   \draw[-{Stealth}, gray!70] (0,-3.6) -- (0,3.8) node[above] {$\Delta\midPrice_{t,\ofiWindow}$};
   \draw[gray!60!black] (-5.5,-2.75) -- (5.5,2.75);
@@ -886,9 +886,9 @@ $\flowVolatility^{2} = \meanSize^{2}\,\pressure^{\transpose}(I-\branchingMatrix)
 + \Variance(\orderSize)\,\totalRate$: set by the kernel
 \note{
 The last frames said that the forecast is bounded in the horizon. This one says what it is
-bounded against. In the stationary regime the variance of the mid-price change grows linearly
-with the horizon, at a rate we can write down, while the variance of the forecast stops growing
-once the state has been forgotten. The share of the variance that the forecast accounts for
+bounded against. In the stationary regime, with sizes of finite variance, the variance of the
+mid-price change grows linearly with the horizon as the horizon grows, at a rate we can write
+down, while the variance of the forecast stops growing once the state has been forgotten. The share of the variance that the forecast accounts for
 therefore falls like one over the horizon: about the next hour the state says nothing beyond
 what it says about the next seconds.
 Together with the short horizons of two frames ago, the forecast is informative over a range of
@@ -934,8 +934,8 @@ forecast of the mid-price, residual included.
 
 The timescale: the slowest mode that survives the contraction with $\pressure$
 \note{
-At the other end, $\excitation\meanResponseIntegral(\infty)$ is the whole expected progeny of
-the present state: direct offspring composed with all descendants. So the state-dependent part
+At the other end, and for $\branchingRatio < 1$, $\excitation\meanResponseIntegral(\infty)$ is
+the whole expected progeny of the present state: direct offspring composed with all descendants. So the state-dependent part
 of the forecast has finished at horizons long against the relaxation time.
 It finishes strictly sooner. Let $\branchingMatrix$ be irreducible with right Perron vector
 $u$. Direction symmetry makes $\swapMatrix u$ a Perron vector as well, and simplicity with

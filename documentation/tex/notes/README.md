@@ -64,7 +64,7 @@ package, under the exception stated below.
 
 Price formation is what the chapter is for. It runs from the order flow imbalance, through
 the marked point process that generates it, to a forecast of the mid-price. The last section
-is the chapter's assignment: it carries the four things the generated setting lacks, and
+is the chapter's assignment: it carries the five things the generated setting lacks, and
 `assignment.orderFlowImbalance`, which asks that forecast of recorded data.
 
 ## Chapter 2 — Option pricing and volatility trading
