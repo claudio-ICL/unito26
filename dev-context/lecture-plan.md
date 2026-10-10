@@ -1,8 +1,10 @@
 # Delivering chapter 1: four classes, twelve hours
 
-Teaching starts Monday 28 September 2026, two classes a week, three hours each. The first
-four cover `chap.microstructure` in full. This file is the plan and the checklist for the
-material that delivers it.
+Teaching starts Monday 28 September 2026, two classes a week, three hours each. The plan was
+four classes for `chap.microstructure`; it took five, the students having asked for more time
+on the notebooks: §1.3 filled the classes of 5 and 6 October, and "class 4" below, §1.4 and
+§1.5, is the class of Monday 12 October, taught remotely. This file is the plan and the
+checklist for the material that delivers it.
 
 **The lecture notes change only by addition.** After class 2 they gained the implementation
 subsections of §1.2, a subsubsection on the session read from a LOBSTER pair, and Appendix A,
@@ -323,7 +325,7 @@ what Sunday's plan promised, so the question is what to finish rather than what 
 | Fri 25 | the class-1 review applied, both errata fixed, then class 2 in full: the deck at 16 frames and notebooks `02` and `03`, written and executed | **class 2 teachable end to end** | ☑ |
 
 Classes 3 and 4 were built on 29 and 30 September, unsupervised, and reach the lecturer as a
-pull request; they are taught on 5 and 8 October. **The gate: nothing for class 2 begins until
+pull request; class 3 was taught on 5 and 6 October and class 4 is taught on 12 October. **The gate: nothing for class 2 begins until
 class 1 is teachable.**
 
 ### Artefacts
