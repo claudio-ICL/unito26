@@ -125,3 +125,21 @@ An event that moves it contributes a whole queue.
  which is what makes \eqref{eq.idealisedUpdate} useful over windows
  whose flow term is larger than that.
 \end{remark}
+
+The order flow imbalance does not depend on the unit in which prices are quoted:
+in \eqref{eq.orderFlowContribution} the prices enter only through the indicators,
+which compare two of them,
+and every other term is a size.
+Dividing \eqref{eq.idealisedUpdate} by $\tickSizeOfLOB$ therefore gives
+\[
+ \frac{\Delta \midPrice_{t,\ofiWindow}}{\tickSizeOfLOB}
+ = \frac{1}{2\uniformDepth} \, \OFI_{t,\ofiWindow}
+ \; + \; \frac{\residual_{t,\ofiWindow}}{\tickSizeOfLOB},
+ \qquad
+ \Big\vert \frac{\residual_{t,\ofiWindow}}{\tickSizeOfLOB} \Big\vert \leq 1 ,
+\]
+which is \eqref{eq.idealisedUpdate} with the mid-price counted in ticks,
+and the form in which \cite{CKS14pri} state it.
+The slope $\tickSizeOfLOB / (2\uniformDepth)$ is a price per share:
+a slope estimated on prices counted in ticks is multiplied by $\tickSizeOfLOB$
+to be read in currency.
