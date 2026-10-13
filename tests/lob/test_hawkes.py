@@ -556,6 +556,125 @@ class TestTheMeanResponse:
             assert params.relaxation_time() == pytest.approx(1 / slowest)
 
 
+class TestTheTermsOfTheForwardMeans:
+    """Each term of the two forward means against the integral it stands for, and what
+    the pressure leaves of them."""
+
+    PRESSURE = np.array([1.0, -1.0])
+    STATE = np.array([1.7, 0.4])
+    CLOCK = Clock(np.array([0.05, 0.3, 1.0, 4.0]))
+    SYMMETRIC = [
+        config.weakly_exciting_pair_params(),
+        config.self_exciting_pair_params(),
+        config.cross_exciting_pair_params(),
+    ]
+
+    def test_each_term_is_the_integral_it_stands_for(self):
+        params = config.one_way_pair_params()
+        hurwitz, excitation, baseline = params.hurwitz_matrix, params.excitation, params.baseline
+
+        def response_integral(horizon):
+            return quad_vec(lambda u: expm(hurwitz * u), 0.0, horizon)[0]
+
+        for horizon in self.CLOCK:
+            state = params.forward_mean_state_terms(self.STATE, horizon)
+            counts = params.forward_mean_counts_terms(self.STATE, horizon)
+            assert state.from_state == pytest.approx(expm(hurwitz * horizon) @ self.STATE)
+            assert state.from_baseline == pytest.approx(response_integral(horizon) @ baseline)
+            assert counts.immigrants == pytest.approx(horizon * baseline)
+            assert counts.descendants_of_state == pytest.approx(
+                excitation @ response_integral(horizon) @ self.STATE
+            )
+            double, _ = quad_vec(lambda u: response_integral(u) @ baseline, 0.0, horizon)
+            assert counts.descendants_of_immigrants == pytest.approx(excitation @ double)
+
+    def test_a_clock_gives_a_row_per_horizon(self):
+        params = config.one_way_pair_params()
+        for forward_mean in (params.forward_mean_state, params.forward_mean_counts):
+            rows = forward_mean(self.STATE, self.CLOCK)
+            assert rows.shape == (self.CLOCK.size, 2)
+            for row, horizon in zip(rows, self.CLOCK):
+                assert row == pytest.approx(forward_mean(self.STATE, horizon), rel=1e-12)
+        response = params.mean_response(self.CLOCK)
+        assert response.shape == (self.CLOCK.size, 2, 2)
+        assert response[2] == pytest.approx(params.mean_response(self.CLOCK[2]), rel=1e-12)
+
+    def test_at_no_horizon_the_state_is_the_state_and_nothing_is_counted(self):
+        params = config.one_way_pair_params()
+        state = params.forward_mean_state_terms(self.STATE, 0.0)
+        counts = params.forward_mean_counts_terms(self.STATE, 0.0)
+        assert state.from_state == pytest.approx(self.STATE)
+        assert state.from_baseline == pytest.approx(np.zeros(2))
+        assert counts.total == pytest.approx(np.zeros(2))
+
+    @pytest.mark.parametrize("params", SYMMETRIC + [config.one_way_pair_params()])
+    def test_about_the_mean_it_is_the_same_expectation(self, params):
+        mean = params.stationary_mean()
+        assert (params.decay * np.eye(2) - params.excitation) @ mean == pytest.approx(
+            params.baseline
+        )
+        for terms, about in (
+            (params.forward_mean_state_terms, params.forward_mean_state_about_the_mean),
+            (params.forward_mean_counts_terms, params.forward_mean_counts_about_the_mean),
+        ):
+            assert about(self.STATE, self.CLOCK).total == pytest.approx(
+                terms(self.STATE, self.CLOCK).total
+            )
+            assert about(mean, self.CLOCK).deviation == pytest.approx(
+                np.zeros((self.CLOCK.size, 2)), abs=1e-12
+            )
+
+    @pytest.mark.parametrize("params", SYMMETRIC)
+    def test_under_direction_symmetry_the_pressure_leaves_one_term(self, params):
+        signed = params.forward_mean_counts_terms(self.STATE, self.CLOCK).contracted(
+            self.PRESSURE
+        )
+        assert signed.immigrants == pytest.approx(np.zeros(self.CLOCK.size), abs=1e-12)
+        assert signed.descendants_of_immigrants == pytest.approx(
+            np.zeros(self.CLOCK.size), abs=1e-12
+        )
+        theta = np.array(
+            [params.signed_excitation_at_horizon(self.PRESSURE, h)[0] for h in self.CLOCK]
+        )
+        assert signed.descendants_of_state == pytest.approx(
+            theta * (self.STATE[0] - self.STATE[1])
+        )
+        assert signed.total == pytest.approx(signed.descendants_of_state)
+
+    def test_without_it_the_pressure_leaves_all_three(self):
+        params = config.one_way_pair_params()
+        signed = params.forward_mean_counts_terms(self.STATE, self.CLOCK).contracted(
+            self.PRESSURE
+        )
+        assert signed.immigrants == pytest.approx(0.3 * self.CLOCK)
+        assert np.all(signed.descendants_of_state < 0)
+        assert np.all(signed.descendants_of_immigrants < 0)
+        about = params.forward_mean_counts_about_the_mean(self.STATE, self.CLOCK).contracted(
+            self.PRESSURE
+        )
+        assert about.stationary == pytest.approx(-self.CLOCK)
+
+    def test_the_descendants_of_the_state_end_at_its_whole_progeny(self):
+        params = config.one_way_pair_params()
+        gamma = params.branching_matrix
+        progeny = gamma @ np.linalg.inv(np.eye(2) - gamma) @ self.STATE
+        late = params.forward_mean_counts_terms(self.STATE, 60.0)
+        assert late.descendants_of_state == pytest.approx(progeny)
+
+    def test_the_forward_mean_composes(self):
+        """From ``z`` over ``h1 + h2`` it is the forward mean over ``h2`` from the forward
+        mean over ``h1``: the Markov property and time homogeneity, in the mean."""
+        params = config.one_way_pair_params()
+        first, second = 0.4, 1.1
+        midway = params.forward_mean_state(self.STATE, first)
+        assert params.forward_mean_state(midway, second) == pytest.approx(
+            params.forward_mean_state(self.STATE, first + second)
+        )
+        assert params.forward_mean_counts(self.STATE, first) + params.forward_mean_counts(
+            midway, second
+        ) == pytest.approx(params.forward_mean_counts(self.STATE, first + second))
+
+
 class TestTheSignedExcitation:
     """Statements of section 1.4 of the notes, on the two shipped six-type regimes."""
 

@@ -25,6 +25,9 @@ The strand is built as a ladder of increasing complexity, and the modules follow
     an integer as a set of bit positions: the vocabulary the bitmap books are written in.
 ``hawkes``
     multivariate Hawkes order flow: the timing and type of events.
+``monte_carlo``
+    the forward means of ``hawkes`` estimated across a fan of independent paths: the
+    statistics read on a path, each with the formula its mean is set against.
 ``simulate``
     marks -- turning an event type into an actual order, given the book.
 ``idealised``

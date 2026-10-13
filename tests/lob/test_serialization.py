@@ -295,7 +295,11 @@ class TestTheFrozenPairs:
         (config.self_exciting_pair_params, config.SELF_EXCITING_PAIR_PARAMS),
         (config.cross_exciting_pair_params, config.CROSS_EXCITING_PAIR_PARAMS),
         (config.asymmetric_pair_params, config.ASYMMETRIC_PAIR_PARAMS),
+        (config.weakly_exciting_pair_params, config.WEAKLY_EXCITING_PAIR_PARAMS),
+        (config.one_way_pair_params, config.ONE_WAY_PAIR_PARAMS),
     ]
+    SWAP = np.array([[0.0, 1.0], [1.0, 0.0]])
+    PRESSURE = np.array([1.0, -1.0])
 
     @pytest.mark.parametrize("loader, records", PAIRS)
     def test_each_reserialises_to_its_frozen_records(self, loader, records):
@@ -332,3 +336,24 @@ class TestTheFrozenPairs:
         assert params.endogenous_fraction() == pytest.approx(11 / 15)
         assert params.mean_cluster_size() == pytest.approx(3.75)
         assert 1 / (1 - params.branching_ratio) == pytest.approx(2.5)
+
+    def test_the_weakly_exciting_pair_is_the_symmetric_pairs_with_little_excitation(self):
+        params = config.weakly_exciting_pair_params()
+        assert params.decay == 4.0
+        assert params.branching_ratio == pytest.approx(0.1)
+        assert params.stationary_intensity() == pytest.approx([1.0, 1.0])
+        assert np.array_equal(self.SWAP @ params.excitation @ self.SWAP, params.excitation)
+        assert np.array_equal(self.SWAP @ params.baseline, params.baseline)
+
+    def test_the_one_way_pair_excites_in_one_direction_and_drifts(self):
+        params = config.one_way_pair_params()
+        assert params.decay == 4.0
+        assert params.excitation[0, 1] == 0.0
+        assert params.excitation[1, 0] > 0.0
+        assert params.branching_ratio == pytest.approx(0.6)
+        assert params.branching_matrix.sum(axis=0) == pytest.approx([1.2, 0.6])
+        assert params.stationary_intensity() == pytest.approx([0.5, 1.5])
+        assert self.PRESSURE @ params.stationary_intensity() == pytest.approx(-1.0)
+        assert not np.array_equal(
+            self.SWAP @ params.excitation @ self.SWAP, params.excitation
+        )

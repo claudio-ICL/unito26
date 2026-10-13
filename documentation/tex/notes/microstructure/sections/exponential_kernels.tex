@@ -198,6 +198,29 @@ For the general statement on piecewise-deterministic Markov processes and for th
 the extended generator, see \cite[Theorem 5.5]{Dav84pie};
 the Markov property of the exponential-kernel case is due to \cite{Oak75mar}.
 
+The jump rate and the jump kernel of Theorem \ref{thm.markovState} are functions of the state alone:
+they depend neither on the time nor on the counts,
+and $\multiCountingProc$ counts the jumps of $\decayedCounts$ by type.
+The Markov property is therefore homogeneous in time.
+For every $s \geq 0$,
+conditionally on $\filtrationF_{s}$,
+the law of
+\begin{equation*}
+ \big( \multiCountingProc(s+u) - \multiCountingProc(s) , \,
+ \decayedCounts(s+u) \big)_{u > 0}
+\end{equation*}
+depends on $\decayedCounts(s+)$ alone,
+and neither on $s$, nor on $\multiCountingProc(s)$, nor on the path before $s$:
+it is the law of the counts and of the state of the
+piecewise-deterministic Markov process of Theorem \ref{thm.markovState}
+started from the state $\decayedCounts(s+)$.
+Hence a conditional expectation over the interval $(s,t]$,
+given $\decayedCounts(s+) = z$,
+is a function of $z$ and of $t-s$,
+and it is computed on $(0, t-s]$ for the process started from $z$.
+The same holds when $s$ is a stopping time,
+piecewise-deterministic Markov processes being strong Markov \cite{Dav84pie}.
+
 \begin{remark}\label{remark.noSubcriticality}
  Notice that Theorem \ref{thm.markovState} assumes nothing about $\branchingRatio$.
  The integrability it requires holds on every finite horizon at every $\branchingRatio$,
