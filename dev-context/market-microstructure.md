@@ -518,6 +518,25 @@ complete, plausible answer, and most of them pass a test suite written from the 
 - **mean execution size as mean trade size.** LOBSTER records executions against resting
   orders, not trades; its own demo says so and it is still the easiest number to get wrong.
 
+From the laboratory on the Hawkes statistics (`09-hawkes-processes-in-the-lab`). Each runs and
+returns a matrix of the right shape:
+
+- **`solve_continuous_lyapunov(K.T, -np.diag(lam))`** for $V$. SciPy solves
+  $aX + Xa^{H} = q$, so the transposed $K$ solves another equation and returns a symmetric
+  positive-definite matrix. On a symmetric $A$ the two agree, and the snippet is right by
+  accident; on the one-way pair the variance of the first type is seven times too large;
+- **`solve_continuous_lyapunov(K, np.diag(lam))`**, the sign of the forcing term lost. It
+  returns $-V$: "what gives it away?" is a negative variance;
+- **`expm(K) * h` for $e^{Kh}$.** The two agree at $h = 1$ and nowhere else;
+- **which slice of `expm(G * h)` is $\Phi(h)$**, for the block matrix of
+  `_mean_response_blocks`: `[:d, d:2*d]`, against `[:d, :d]` and `[d:2*d, :d]` offered beside it;
+- **`Gamma.sum(axis=1)` for the offspring of one event of each type.** Row sums, where the
+  column excites: on the one-way pair $(0.2, 1.6)$ against $(1.2, 0.6)$;
+- **`decayed_counts_at(..., Clock(times))` taken as the state after each event.** It is the
+  state before the jump, $Z$ being left-continuous, and the state after is one unit vector more;
+- **the signed count's standard error from the two types' own**, in quadrature. The two
+  counts are read on the same paths and are correlated; `Contracted` contracts each path first.
+
 From the lectures on point processes and price formation (classes 3 and 4). Each runs and
 returns a plausible number:
 

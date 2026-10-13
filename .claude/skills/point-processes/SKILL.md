@@ -37,7 +37,12 @@ already name, and never rename a concept on the way into Python.
 | $K = A - \beta I$ | `\hurwitzMatrix` | `hurwitz_matrix` |
 | $V = \mathrm{Cov}(Z)$ | — | `stationary_covariance()` |
 | $e^{Kh}$, $\Phi(h) = \int_0^h e^{Ks}ds$ | `\meanResponseIntegral` | `mean_response`, `mean_response_integral` |
+| $m = \lambda^*/\beta$ | — | `stationary_mean()` |
 | $m_{s,s+h}(z)$, $\mathbb E[N(s+h) - N(s) \mid Z(s+) = z]$ | — | `forward_mean_state`, `forward_mean_counts` |
+| $e^{Kh}z$, $\Phi(h)\mu$ | — | `forward_mean_state_terms`: `from_state`, `from_baseline` |
+| $h\mu$, $A\Phi(h)z$, $A(\int_0^h\Phi)\mu$ | — | `forward_mean_counts_terms`: `immigrants`, `descendants_of_state`, `descendants_of_immigrants` |
+| $m + e^{Kh}(z-m)$, $h\lambda^* + A\Phi(h)(z-m)$ | — | `forward_mean_state_about_the_mean`, `forward_mean_counts_about_the_mean`: `stationary`, `deviation` |
+| the same, estimated across independent paths from $z$ | — | `monte_carlo.Fan`, `ForwardState`, `ForwardCounts`, `Contracted`, `SampleMean` |
 | $\theta$, $\theta(h)$ | `\signedExcitation` | `signed_excitation`, `signed_excitation_at_horizon` |
 
 **$\Lambda$ is the compensator and nothing else.** The total intensity is $\lambda_{\mathfrak g}$.

@@ -20,6 +20,7 @@ One notes section per class, and slides and a notebook in every class.
 | Class 2 | §1.2 `sec.messageFiles` | 1h | `02-the-fold` 1h05 · `03-the-book-made-faster` 55m |
 | Class 3 | §1.3 `sec.pointProcesses` | 34 frames | `04-simulating-self-excitation` · `05-moments-and-timescales` · `06-simulation-and-goodness-of-fit`, interleaved with the deck |
 | Class 4 | §1.4 `sec.priceFormation`, §1.5 `sec.lobsterEmpirics` | 29 + 4 frames | `07-the-order-flow-imbalance` · `08-forecasting-the-mid`, interleaved with the deck |
+| Laboratory, 13 October | §1.3.3, §1.3.4, on the implementation | none | `09-hawkes-processes-in-the-lab` |
 
 ---
 
@@ -348,9 +349,14 @@ cannot read anything before teaching, so a checklist gated on it could never clo
 | `notebooks/lectures/06-simulation-and-goodness-of-fit.ipynb` | ☑ | ☑ | ☑ | ☐ |
 | `notebooks/lectures/07-the-order-flow-imbalance.ipynb` | ☑ | ☑ | ☑ | ☐ |
 | `notebooks/lectures/08-forecasting-the-mid.ipynb` | ☑ | ☑ | ☑ | ☐ |
+| `notebooks/lectures/09-hawkes-processes-in-the-lab.ipynb` | ☑ | ☑ | ☑ | ☐ |
 | `unito26slides.cls` and `slide_formatting.tex` | ☑ | ☑ | ☑ | ☑ |
 | the three two-type pairs of `config`, and their tests | ☑ | ☑ | ☑ | ☐ |
 | `hawkes`: the timescales, the covariance, simulation from a state | ☑ | ☑ | ☑ | ☐ |
+| the weakly exciting and one-way pairs of `config`, and their tests | ☑ | ☑ | ☑ | ☐ |
+| `hawkes`: the terms of the forward means, on a horizon or a clock of horizons | ☑ | ☑ | ☑ | ☐ |
+| `monte_carlo`: the forward means estimated across a fan, and its tests | ☑ | ☑ | ☑ | ☐ |
+| `visualization.state_figure`, `.matrix_figure` | ☑ | ☑ | ☑ | ☐ |
 | `idealised`: the idealised book, and its tests | ☑ | ☑ | ☑ | ☐ |
 | `visualization.use_template` | ☑ | ☑ | ☑ | ☑ |
 | `sections/microstructure.tex` deleted | ☐ | | | |

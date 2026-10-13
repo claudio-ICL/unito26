@@ -9,8 +9,10 @@ from unito26.lob.visualization import (
     counting_figure,
     exponential_qq_figure,
     intensity_figure,
+    matrix_figure,
     monte_carlo_figure,
     raster_figure,
+    state_figure,
 )
 
 LABELS = ["type 1", "type 2"]
@@ -39,6 +41,40 @@ def test_the_intensity_jumps_at_each_event_and_not_before(path):
         at = np.flatnonzero(line.x == time)
         assert at.size == 2
         assert line.y[at[1]] - line.y[at[0]] == pytest.approx(params.excitation[0, kind])
+
+
+def test_the_state_rises_by_one_at_each_event_of_its_type_about_its_mean(path):
+    """Per type: the intensity, the state, its stationary mean and its events.  At an event
+    the state of the event's type holds two points one apart, and the other type's holds
+    two equal ones."""
+    params = config.asymmetric_pair_params()
+    times, types = path
+    clock = Clock(np.linspace(5.0, 15.0, 101))
+    figure = state_figure(params, times, types, clock, LABELS)
+    shown = (times >= 5.0) & (times <= 15.0)
+    assert len(figure.data) == 8
+    for slot in range(2):
+        intensity, state, mean, ticks = figure.data[4 * slot : 4 * slot + 4]
+        assert np.array_equal(ticks.x, times[shown & (types == slot)])
+        assert mean.y == pytest.approx([params.stationary_mean()[slot]] * 2)
+        for time, kind in zip(times[shown], types[shown]):
+            at = np.flatnonzero(state.x == time)
+            assert at.size == 2
+            assert state.y[at[1]] - state.y[at[0]] == pytest.approx(float(kind == slot))
+    states = np.stack([figure.data[1].y, figure.data[5].y], axis=1)
+    intensities = np.stack([figure.data[0].y, figure.data[4].y], axis=1)
+    assert intensities == pytest.approx(params.baseline + states @ params.excitation.T)
+
+
+def test_the_matrices_share_one_scale_and_read_as_they_are_written():
+    small, large = np.array([[0.1, 0.0], [0.2, 0.3]]), np.array([[1.0, 2.0], [0.5, 0.0]])
+    figure = matrix_figure({"small": small, "large": large}, LABELS)
+    assert len(figure.data) == 2
+    for trace, matrix in zip(figure.data, (small, large)):
+        assert np.array_equal(trace.z, matrix)
+        assert (trace.zmin, trace.zmax) == (0, 2.0)
+    assert figure.layout.yaxis.autorange == "reversed"
+    assert [trace.showscale for trace in figure.data] == [False, True]
 
 
 def test_the_raster_has_a_row_per_path_and_every_event(path):

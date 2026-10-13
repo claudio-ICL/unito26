@@ -32,7 +32,7 @@ sufficient summary rather than the history -- in a different setting.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 from typing import Iterator, NewType, Self
 
 import numpy as np
@@ -48,6 +48,9 @@ __all__ = [
     "HawkesParams",
     "ExponentialHawkes",
     "OgataThinningHawkes",
+    "ForwardMeanState",
+    "ForwardMeanCounts",
+    "ForwardMeanAboutTheMean",
     "compensators_at_events",
     "decayed_counts_at",
     "intensities_at_events",
@@ -59,7 +62,69 @@ __all__ = [
 
 #: Deterministic times at which the state of a path is read, in seconds and sorted.  A
 #: ``NewType`` because the event times it is read against are an array of the same kind.
+#: A forward mean is evaluated on one too: after a time ``s`` the clock is moved to zero, and
+#: a time on it is a horizon.
 Clock = NewType("Clock", np.ndarray)
+
+
+@dataclass(frozen=True, slots=True)
+class _Terms:
+    """A conditional expectation as the sum of its terms, at a horizon or on a clock of
+    horizons.  On a clock every term has a row per horizon."""
+
+    @property
+    def total(self) -> np.ndarray:
+        return sum(getattr(self, field.name) for field in fields(self))
+
+    def contracted(self, vector: np.ndarray) -> Self:
+        """Every term contracted with ``vector``.  With the pressure, the terms of the
+        signed quantity."""
+        vector = np.asarray(vector, dtype=float)
+        return type(self)(*(getattr(self, field.name) @ vector for field in fields(self)))
+
+
+@dataclass(frozen=True, slots=True)
+class ForwardMeanState(_Terms):
+    """The terms of ``m_{s,s+h}(z) = e^{K h} z + Phi(h) mu``, the mean state ``h`` after a
+    time ``s`` at which ``Z(s+) = z``."""
+
+    from_state: np.ndarray
+    """``e^{K h} z``: what is left at ``s + h`` of the weight the state carries at ``s``, and
+    the weight of the events descended from it."""
+    from_baseline: np.ndarray
+    """``Phi(h) mu``: the weight of the immigrants of ``(s, s+h]`` and of their descendants."""
+
+
+@dataclass(frozen=True, slots=True)
+class ForwardMeanCounts(_Terms):
+    """The terms of ``h mu + A Phi(h) z + A (int_0^h Phi) mu``, the expected number of events
+    of each type in ``(s, s+h]`` given ``Z(s+) = z``.
+
+    The three terms count three disjoint kinds of event, at any branching ratio: given the
+    past, the events after ``s`` are the immigrants, the offspring of the events the state
+    carries, and the descendants of both.
+    """
+
+    immigrants: np.ndarray
+    """``h mu``: the immigrants of ``(s, s+h]``."""
+    descendants_of_state: np.ndarray
+    """``A Phi(h) z``: the events of ``(s, s+h]`` descended from an event at or before ``s``.
+    Contracted with the pressure of a direction-symmetric specification, it is the whole of
+    the signed count."""
+    descendants_of_immigrants: np.ndarray
+    """``A (int_0^h Phi) mu``: the events of ``(s, s+h]`` descended from its immigrants."""
+
+
+@dataclass(frozen=True, slots=True)
+class ForwardMeanAboutTheMean(_Terms):
+    """A forward mean of a stationary specification, as its stationary value and the
+    deviation from it that the state carries."""
+
+    stationary: np.ndarray
+    """``m`` for the state, ``h lambda*`` for the counts."""
+    deviation: np.ndarray
+    """``e^{K h} (z - m)`` for the state, ``A Phi(h) (z - m)`` for the counts.  It vanishes
+    at ``z = m`` and is bounded in ``h``."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -245,6 +310,10 @@ class HawkesParams(FrameSerializable):
         identity = np.eye(self.dimension)
         return self._signed(pressure, np.linalg.inv(identity - self.branching_matrix))
 
+    def stationary_mean(self) -> np.ndarray:
+        """``m = lambda* / beta``, the stationary mean of the state ``Z``."""
+        return self.stationary_intensity() / self.decay
+
     def stationary_covariance(self) -> np.ndarray:
         """``V``, the stationary covariance of the state ``Z``: the solution of the
         Lyapunov equation ``K V + V K' + diag(lambda*) = 0``.
@@ -267,29 +336,78 @@ class HawkesParams(FrameSerializable):
         descendants = np.linalg.inv(np.eye(self.dimension) - self.branching_matrix)
         return descendants @ np.diag(self.stationary_intensity()) @ descendants.T
 
-    def mean_response(self, horizon: Horizon) -> np.ndarray:
+    # ---- timescales ------------------------------------------------------------------
+    #
+    # Every statement below is conditional on the state just after a time ``s`` and depends
+    # on ``s`` only through the horizon ``h``: the rates of ``Z`` depend neither on the time
+    # nor on the counts.  A horizon may be one number or a clock of them, and on a clock
+    # every result has a leading axis, an entry per horizon.
+
+    def mean_response(self, horizon: Horizon | Clock) -> np.ndarray:
         """``e^{K h}``.  Column ``j`` is ``R_j(h)``, the displacement of the mean state ``h``
         later by one more event of type ``j`` in the state."""
         return mean_response(self.excitation, self.decay, horizon)
 
-    def mean_response_integral(self, horizon: Horizon) -> np.ndarray:
+    def mean_response_integral(self, horizon: Horizon | Clock) -> np.ndarray:
         """``Phi(h) = int_0^h e^{K s} ds``."""
         return mean_response_integral(self.excitation, self.decay, horizon)
 
-    def forward_mean_state(self, state: np.ndarray, horizon: Horizon) -> np.ndarray:
+    def forward_mean_state_terms(
+        self, state: np.ndarray, horizon: Horizon | Clock
+    ) -> ForwardMeanState:
+        """The two terms of ``m_{s,s+h}(z) = e^{K h} z + Phi(h) mu``."""
+        exponential, integral, _ = _mean_response_blocks(self.excitation, self.decay, horizon)
+        return ForwardMeanState(
+            from_state=exponential @ np.asarray(state, dtype=float),
+            from_baseline=integral @ self.baseline,
+        )
+
+    def forward_mean_counts_terms(
+        self, state: np.ndarray, horizon: Horizon | Clock
+    ) -> ForwardMeanCounts:
+        """The three terms of ``h mu + A Phi(h) z + A (int_0^h Phi) mu``: the immigrants of
+        ``(s, s+h]``, the descendants of the events the state carries, the descendants of
+        those immigrants."""
+        _, integral, double = _mean_response_blocks(self.excitation, self.decay, horizon)
+        return ForwardMeanCounts(
+            immigrants=np.multiply.outer(np.asarray(horizon, dtype=float), self.baseline),
+            descendants_of_state=self.excitation @ integral @ np.asarray(state, dtype=float),
+            descendants_of_immigrants=self.excitation @ double @ self.baseline,
+        )
+
+    def forward_mean_state_about_the_mean(
+        self, state: np.ndarray, horizon: Horizon | Clock
+    ) -> ForwardMeanAboutTheMean:
+        """``m + e^{K h} (z - m)``: the same mean state, as the stationary mean and the
+        deviation from it."""
+        mean = self.stationary_mean()
+        deviation = self.forward_mean_state_terms(state - mean, horizon).from_state
+        return ForwardMeanAboutTheMean(
+            stationary=np.broadcast_to(mean, deviation.shape), deviation=deviation
+        )
+
+    def forward_mean_counts_about_the_mean(
+        self, state: np.ndarray, horizon: Horizon | Clock
+    ) -> ForwardMeanAboutTheMean:
+        """``h lambda* + A Phi(h) (z - m)``: the same expected counts, as the stationary
+        count and the deviation from it."""
+        deviation = state - self.stationary_mean()
+        return ForwardMeanAboutTheMean(
+            stationary=np.multiply.outer(
+                np.asarray(horizon, dtype=float), self.stationary_intensity()
+            ),
+            deviation=self.forward_mean_counts_terms(deviation, horizon).descendants_of_state,
+        )
+
+    def forward_mean_state(self, state: np.ndarray, horizon: Horizon | Clock) -> np.ndarray:
         """``m_{s,s+h}(z) = e^{K h} z + Phi(h) mu``: the mean state ``h`` after a time ``s``
         at which ``Z(s+) = z``."""
-        exponential, integral, _ = _mean_response_blocks(self.excitation, self.decay, horizon)
-        return exponential @ np.asarray(state, dtype=float) + integral @ self.baseline
+        return self.forward_mean_state_terms(state, horizon).total
 
-    def forward_mean_counts(self, state: np.ndarray, horizon: Horizon) -> np.ndarray:
+    def forward_mean_counts(self, state: np.ndarray, horizon: Horizon | Clock) -> np.ndarray:
         """``h mu + A Phi(h) z + A (int_0^h Phi) mu``: the expected number of events of
         each type in ``(s, s+h]``, given ``Z(s+) = z``."""
-        _, integral, double = _mean_response_blocks(self.excitation, self.decay, horizon)
-        state = np.asarray(state, dtype=float)
-        return float(horizon) * self.baseline + self.excitation @ (
-            integral @ state + double @ self.baseline
-        )
+        return self.forward_mean_counts_terms(state, horizon).total
 
     def relaxation_time(self) -> float:
         """``1 / (beta (1 - rho))``, the time constant of the slowest mode of the mean
@@ -700,13 +818,15 @@ def compensators_at_events(
     return out
 
 
-def mean_response(excitation: np.ndarray, decay: Decay, horizon: Horizon) -> np.ndarray:
+def mean_response(
+    excitation: np.ndarray, decay: Decay, horizon: Horizon | Clock
+) -> np.ndarray:
     """``e^{K h}`` for ``K = A - beta I``, at any branching ratio."""
     return _mean_response_blocks(excitation, decay, horizon)[0]
 
 
 def mean_response_integral(
-    excitation: np.ndarray, decay: Decay, horizon: Horizon
+    excitation: np.ndarray, decay: Decay, horizon: Horizon | Clock
 ) -> np.ndarray:
     """``Phi(h) = int_0^h e^{K s} ds`` for ``K = A - beta I``, at any branching ratio.
 
@@ -717,10 +837,11 @@ def mean_response_integral(
 
 
 def _mean_response_blocks(
-    excitation: np.ndarray, decay: Decay, horizon: Horizon
+    excitation: np.ndarray, decay: Decay, horizon: Horizon | Clock
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """``(e^{K h}, Phi(h), int_0^h Phi)``, the first block row of
-    ``exp([[K, I, 0], [0, 0, I], [0, 0, 0]] h)``."""
+    ``exp([[K, I, 0], [0, 0, I], [0, 0, 0]] h)``.  On a clock each block has a leading
+    axis, one matrix per horizon."""
     excitation = np.asarray(excitation, dtype=float)
     d = excitation.shape[0]
     identity = np.eye(d)
@@ -728,8 +849,8 @@ def _mean_response_blocks(
     generator[:d, :d] = excitation - float(decay) * identity
     generator[:d, d : 2 * d] = identity
     generator[d : 2 * d, 2 * d :] = identity
-    blocks = expm(generator * float(horizon))
-    return blocks[:d, :d], blocks[:d, d : 2 * d], blocks[:d, 2 * d :]
+    blocks = expm(generator * np.asarray(horizon, dtype=float)[..., None, None])
+    return blocks[..., :d, :d], blocks[..., :d, d : 2 * d], blocks[..., :d, 2 * d :]
 
 
 def decayed_counts_at(

@@ -89,9 +89,13 @@ __all__ = [
     "SELF_EXCITING_PAIR_PARAMS",
     "CROSS_EXCITING_PAIR_PARAMS",
     "ASYMMETRIC_PAIR_PARAMS",
+    "WEAKLY_EXCITING_PAIR_PARAMS",
+    "ONE_WAY_PAIR_PARAMS",
     "self_exciting_pair_params",
     "cross_exciting_pair_params",
     "asymmetric_pair_params",
+    "weakly_exciting_pair_params",
+    "one_way_pair_params",
 ]
 
 #: A six-type flow with the asymmetry described above, at a branching ratio of 0.6.
@@ -310,6 +314,30 @@ ASYMMETRIC_PAIR_PARAMS: list[dict] = [
     {"Component": 1, "Cause": 1, "BaseIntensity": 0.6, "Kernel": 0.8, "Decay": 4.0},
 ]
 
+#: Two more, read as the market-order pair of the six-type flow: type 1 the market buys,
+#: type 2 the market sells, with pressure ``(+1, -1)``.
+#:
+#: The first has the stationary intensity of the self- and cross-exciting pairs at a
+#: branching ratio of 0.1, close to a Poisson flow, and like them it is symmetric under the
+#: exchange of the two types.
+WEAKLY_EXCITING_PAIR_PARAMS: list[dict] = [
+    {"Component": 0, "Cause": 0, "BaseIntensity": 0.9, "Kernel": 0.3, "Decay": 4.0},
+    {"Component": 0, "Cause": 1, "BaseIntensity": None, "Kernel": 0.1, "Decay": 4.0},
+    {"Component": 1, "Cause": 0, "BaseIntensity": None, "Kernel": 0.1, "Decay": 4.0},
+    {"Component": 1, "Cause": 1, "BaseIntensity": 0.9, "Kernel": 0.3, "Decay": 4.0},
+]
+
+#: Type 1 excites itself and type 2, and type 2 excites only itself.  The branching ratio is
+#: 0.6, the second type's own, and the stationary intensity is ``(0.5, 1.5)``: the same total
+#: rate as the three symmetric pairs, with a pressure contrast of one event a second.  The
+#: column sums of the branching matrix are 1.2 and 0.6.
+ONE_WAY_PAIR_PARAMS: list[dict] = [
+    {"Component": 0, "Cause": 0, "BaseIntensity": 0.4, "Kernel": 0.8, "Decay": 4.0},
+    {"Component": 0, "Cause": 1, "BaseIntensity": None, "Kernel": 0.0, "Decay": 4.0},
+    {"Component": 1, "Cause": 0, "BaseIntensity": None, "Kernel": 4.0, "Decay": 4.0},
+    {"Component": 1, "Cause": 1, "BaseIntensity": 0.1, "Kernel": 2.4, "Decay": 4.0},
+]
+
 
 def resilient_order_flow_params() -> HawkesParams:
     return HawkesParams.from_records(RESILIENT_ORDER_FLOW_PARAMS)
@@ -347,3 +375,11 @@ def cross_exciting_pair_params() -> HawkesParams:
 
 def asymmetric_pair_params() -> HawkesParams:
     return HawkesParams.from_records(ASYMMETRIC_PAIR_PARAMS)
+
+
+def weakly_exciting_pair_params() -> HawkesParams:
+    return HawkesParams.from_records(WEAKLY_EXCITING_PAIR_PARAMS)
+
+
+def one_way_pair_params() -> HawkesParams:
+    return HawkesParams.from_records(ONE_WAY_PAIR_PARAMS)

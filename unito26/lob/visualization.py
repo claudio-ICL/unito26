@@ -36,6 +36,8 @@ __all__ = [
     "coverage_figure",
     "band_width_figure",
     "intensity_figure",
+    "state_figure",
+    "matrix_figure",
     "raster_figure",
     "counting_figure",
     "monte_carlo_figure",
@@ -557,18 +559,15 @@ def band_width_figure(timings, title: str):
 # ---- point processes -----------------------------------------------------------------
 
 
-def intensity_figure(params, times, types, clock, labels, title: str = ""):
-    """The intensity of every type along one path, with the events beneath it.
+def _state_at_jumps(params, times, types, clock):
+    """The state ``Z`` of a path started from empty, read on ``clock`` and at every event
+    on it twice, just before the event and just after, so that a line through the readings
+    jumps at its events and not across the step of the clock that holds them.
 
-    ``params`` is the specification the path ``(times, types)`` was drawn from, and the path
-    starts from empty.  The intensity is read on ``clock``, and at every event on it twice,
-    just before the event and just after, so that each jump is drawn at its event and not
-    across the step of the clock that holds it.  The events are ticks in a strip below, one
-    row per type.
+    Returns the times of the readings, the readings, and the times and types of the events
+    on the clock.
     """
     import numpy as np
-    import plotly.graph_objects as go
-    from plotly.subplots import make_subplots
 
     from unito26.lob.hawkes import Clock, decayed_counts_at
 
@@ -579,16 +578,52 @@ def intensity_figure(params, times, types, clock, labels, title: str = ""):
     events, kinds = times[shown], types[shown]
     empty = np.zeros(params.dimension)
 
-    def intensity(at):
-        states = decayed_counts_at(params.decay, times, types, empty, Clock(at))
-        return params.baseline + states @ params.excitation.T
+    def state(at):
+        return decayed_counts_at(params.decay, times, types, empty, Clock(at))
 
     grid = np.sort(np.concatenate([clock, events]))
-    after = intensity(events) + params.excitation[:, kinds].T
+    after = state(events) + np.eye(params.dimension)[kinds]
     x = np.concatenate([grid, events])
-    y = np.concatenate([intensity(grid), after])
+    states = np.concatenate([state(grid), after])
     order = np.lexsort((np.r_[np.zeros(grid.size), np.ones(events.size)], x))
-    x, y = x[order], y[order]
+    return x[order], states[order], events, kinds
+
+
+def _event_ticks(events, kinds, slot: int, label: str):
+    """The events of one type as ticks, on the line of an event strip that is the type's."""
+    import numpy as np
+    import plotly.graph_objects as go
+
+    mine = events[kinds == slot]
+    return go.Scatter(
+        x=mine, y=np.full(mine.size, slot), mode="markers", showlegend=False,
+        marker=dict(symbol="line-ns-open", size=10, color=PALETTE[slot % len(PALETTE)]),
+        legendgroup=label, hovertemplate="%{x:.3f} s<extra>" + label + "</extra>",
+    )
+
+
+def _event_strip_axes(figure, labels, row: int) -> None:
+    figure.update_yaxes(
+        tickvals=list(range(len(labels))), ticktext=list(labels),
+        range=[-0.6, len(labels) - 0.4], row=row, col=1,
+    )
+    figure.update_xaxes(title_text="time (s)", row=row, col=1)
+
+
+def intensity_figure(params, times, types, clock, labels, title: str = ""):
+    """The intensity of every type along one path, with the events beneath it.
+
+    ``params`` is the specification the path ``(times, types)`` was drawn from, and the path
+    starts from empty.  The intensity is read on ``clock``, and at every event on it twice,
+    just before the event and just after, so that each jump is drawn at its event and not
+    across the step of the clock that holds it.  The events are ticks in a strip below, one
+    row per type.
+    """
+    import plotly.graph_objects as go
+    from plotly.subplots import make_subplots
+
+    x, states, events, kinds = _state_at_jumps(params, times, types, clock)
+    y = params.baseline + states @ params.excitation.T
 
     figure = make_subplots(
         rows=2, cols=1, shared_xaxes=True, row_heights=[0.8, 0.2], vertical_spacing=0.03
@@ -602,22 +637,89 @@ def intensity_figure(params, times, types, clock, labels, title: str = ""):
             ),
             row=1, col=1,
         )
-        mine = events[kinds == slot]
+        figure.add_trace(_event_ticks(events, kinds, slot, label), row=2, col=1)
+    figure.update_yaxes(title_text="intensity (1/s)", rangemode="tozero", row=1, col=1)
+    _event_strip_axes(figure, labels, 2)
+    figure.update_layout(title=title, height=460, legend=dict(orientation="h", y=1.08, x=0))
+    return figure
+
+
+def state_figure(params, times, types, clock, labels, title: str = ""):
+    """The intensity and the state of every type along one path, with the events beneath.
+
+    Three rows on one time axis.  The first is the intensity ``lambda = mu + A Z``; the
+    second is the state ``Z``, with a dotted line at its stationary mean ``lambda* / beta``
+    for each type; the third is the events, as ticks.  ``params`` is the specification the
+    path ``(times, types)`` was drawn from, and the path starts from empty.  Both lines are
+    read on ``clock`` and on either side of every event, as in :func:`intensity_figure`.
+    """
+    import plotly.graph_objects as go
+    from plotly.subplots import make_subplots
+
+    x, states, events, kinds = _state_at_jumps(params, times, types, clock)
+    intensities = params.baseline + states @ params.excitation.T
+    mean = params.stationary_mean()
+
+    figure = make_subplots(
+        rows=3, cols=1, shared_xaxes=True, row_heights=[0.42, 0.42, 0.16],
+        vertical_spacing=0.03,
+    )
+    for slot, label in enumerate(labels):
+        colour = PALETTE[slot % len(PALETTE)]
+        for row, y in ((1, intensities), (2, states)):
+            figure.add_trace(
+                go.Scatter(
+                    x=x, y=y[:, slot], name=label, mode="lines",
+                    line=dict(color=colour, width=1.5), legendgroup=label,
+                    showlegend=row == 1,
+                ),
+                row=row, col=1,
+            )
         figure.add_trace(
             go.Scatter(
-                x=mine, y=np.full(mine.size, slot), mode="markers", showlegend=False,
-                marker=dict(symbol="line-ns-open", size=10, color=colour),
-                legendgroup=label, hovertemplate="%{x:.3f} s<extra>" + label + "</extra>",
+                x=[x[0], x[-1]], y=[mean[slot]] * 2, mode="lines", showlegend=False,
+                line=dict(color=colour, width=1, dash="dot"), legendgroup=label,
+                hovertemplate="stationary mean %{y:.3f}<extra>" + label + "</extra>",
             ),
             row=2, col=1,
         )
+        figure.add_trace(_event_ticks(events, kinds, slot, label), row=3, col=1)
     figure.update_yaxes(title_text="intensity (1/s)", rangemode="tozero", row=1, col=1)
-    figure.update_yaxes(
-        tickvals=list(range(len(labels))), ticktext=list(labels),
-        range=[-0.6, len(labels) - 0.4], row=2, col=1,
-    )
-    figure.update_xaxes(title_text="time (s)", row=2, col=1)
-    figure.update_layout(title=title, height=460, legend=dict(orientation="h", y=1.08, x=0))
+    figure.update_yaxes(title_text="state Z", rangemode="tozero", row=2, col=1)
+    _event_strip_axes(figure, labels, 3)
+    figure.update_layout(title=title, height=620, legend=dict(orientation="h", y=1.06, x=0))
+    return figure
+
+
+def matrix_figure(matrices: dict, labels, title: str = ""):
+    """Several square matrices as heatmaps side by side, on one colour scale.
+
+    ``matrices`` maps a panel name to a matrix indexed by type, row excited and column
+    exciting, and ``labels`` names the types.  The entries are printed in the cells, and the
+    rows run downwards, so that a panel reads as the matrix is written.
+    """
+    import numpy as np
+    import plotly.graph_objects as go
+    from plotly.subplots import make_subplots
+
+    names = list(matrices)
+    arrays = [np.asarray(matrices[name], dtype=float) for name in names]
+    top = max(array.max() for array in arrays)
+    figure = make_subplots(rows=1, cols=len(names), subplot_titles=names)
+    for column, array in enumerate(arrays, start=1):
+        figure.add_trace(
+            go.Heatmap(
+                z=array, x=list(labels), y=list(labels), zmin=0, zmax=top,
+                colorscale="Blues", showscale=column == len(names),
+                texttemplate="%{z:.3g}",
+                hovertemplate="%{x} excites %{y}: %{z:.4g}<extra></extra>",
+            ),
+            row=1, col=column,
+        )
+    figure.update_yaxes(autorange="reversed")
+    figure.update_xaxes(title_text="exciting type")
+    figure.update_yaxes(title_text="excited type", row=1, col=1)
+    figure.update_layout(title=title, height=360)
     return figure
 
 
