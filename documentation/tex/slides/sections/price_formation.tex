@@ -123,6 +123,11 @@ Parts i, iii and iv are the stylised book of \cite{CKS14pri}. Part ii is not: th
 are totalled at whichever quote is best when each order arrives, so an order reaching past the
 touch is split across the levels it crosses. We ask instead that the contribution of an event
 be the size of that event, and part ii is what that costs.
+At a spread of one tick, one tick above a full best bid is the best ask: the limit buy of part
+iv does not rest but trades there, as a market buy would, and parts i to iv still hold after it.
+The stylised book of \cite{CKS14pri} does not treat this case: there the order of part iv is
+passive and opens a new best level. In their accounting it is a marketable buy, totalled with
+the orders that arrive at the best ask.
 }
 \end{frame}
 
@@ -150,11 +155,14 @@ be the size of that event, and part ii is what that costs.
 At a touch: at most $\uniformDepth$
 
 Every event at a touch, and no gap behind it
+
+At a spread of one tick, iv.\ trades at the opposite touch
 \note{
 The bid side is blue and the ask side orange. The touches are the only queues whose size
 moves; every queue behind them holds exactly $\uniformDepth$, so a touch that empties
 uncovers a full queue one tick away, and a limit order at a full touch opens a new queue one
-tick inside the spread.
+tick inside the spread. When the spread is one tick there is no tick inside it, and the limit
+order trades one share at the opposite touch instead.
 The mid-price then moves only by half a tick at a time, and only when a touch empties or a
 new one opens. That is what makes it an explicit function of the flow.
 }
@@ -392,16 +400,17 @@ exercise on the next frame.
 \end{tikzpicture}
 \end{center}
 
-Each event: a step of its own signed bid-side flow
+Each event: a step of the flow it brings to the bid
 
 A multiple of $\uniformDepth$ crossed: the bid moves a tick
 \note{
 This is the exercise that proves the proposition. Measure the position of the bid in shares
 by the size at the touch plus $\uniformDepth$ for every tick the bid has moved since the
-start of the window. Each event moves it by its own signed bid-side flow: a limit buy at a
-full touch opens a queue of its own size one tick up, which adds exactly its size; a market
-sell that clears the touch uncovers a full queue one tick down, which removes exactly the size
-it took. Sum over the window, do the same for the ask, and say where each part of the
+start of the window. Each event moves it by the signed flow it brings to the bid, whatever its
+type: a limit buy at a full touch opens a queue of its own size one tick up, which adds exactly
+its size; a market sell that clears the touch uncovers a full queue one tick down, which
+removes exactly the size it took; a limit buy that trades at the ask brings nothing to the
+bid. Sum over the window, do the same for the ask, and say where each part of the
 assumption is used.
 }
 \end{frame}
@@ -572,9 +581,11 @@ Part ii: each event changes one queue, by its own size
 \note{
 The first two terms of the contribution are the signed flow on the bid side, the last two
 minus the signed flow on the ask side. No order reaches past the quote it acts on, so each
-event changes one queue by its own size: a limit buy adds its size to the bid, a withdrawal
-from the bid removes it, a market buy removes it from the ask; in each case with the sign
-$\pressure_{\event[n]}$.
+event changes one queue by its own size: a limit buy that rests adds its size to the bid, a
+withdrawal from the bid removes it, a market buy removes it from the ask, and so does a limit
+buy that trades at a spread of one tick; in each case with the sign $\pressure_{\event[n]}$.
+The type of an event no longer names the side it acts on, but its pressure is still the sign of
+its contribution.
 On a general book an order that reaches past the touch registers only what the touch held.
 Now to notebook 07: the idealised book made real, what each event contributes, and the
 identity checked to the last digit on the package's own session.
@@ -666,6 +677,8 @@ it, must beget successors, and what they chiefly beget must be the limit orders 
 side they emptied. A kernel that does this has large column sums on the market-order and
 withdrawal types, a small one on the limit types, and its mass concentrated off the diagonal
 blocks that $\pressure$ separates.
+On the idealised book a limit order at a full touch facing a spread of one tick depletes the
+opposite side instead, and the kernel, which reads only the types, counts it as a refill.
 The package ships two specifications at the same branching ratio and the same total rate: the
 resilient regime excites across the partition, as on the left, and the trending regime within it,
 as on the right. The diagonal blocks are exchanged by $\swapMatrix$, and so are the

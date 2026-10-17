@@ -136,10 +136,14 @@ and the times of the cancellations are those of the Hawkes process.
  and the last two are minus the signed flow on the ask side.
  By Assumption \ref{assumption.idealisedBook}~\emph{ii.} no order reaches past the quote it
  acts on, so each event changes one queue by its own size.
- A limit buy adds $\orderSize_n$ to the bid and a withdrawal from the bid removes it,
+ A limit buy that rests adds $\orderSize_n$ to the bid and a withdrawal from the bid
+ removes it,
  giving $\pm\orderSize_n$ with no ask term;
  a market buy removes $\orderSize_n$ from the ask, giving $+\orderSize_n$ through the ask
- terms, and mutatis mutandis for the three sell-side types.
+ terms,
+ and so does a limit buy that trades at a spread of one tick,
+ as described after Assumption \ref{assumption.idealisedBook};
+ mutatis mutandis for the three sell-side types.
  In each case the sign is $\pressure_{\event[n]}$.
 \end{proof}
 
@@ -152,16 +156,24 @@ and the times of the cancellations are those of the Hawkes process.
  a withdrawal remove one share from the best quote of its side,
  and a limit order join the best quote of its side,
  or, once the size there has reached $\uniformDepth$,
- arrive one tick above (below, resp.) it.
+ arrive one tick above (below, resp.) it,
+ where it trades if the spread is one tick,
+ as described after Assumption \ref{assumption.idealisedBook}.
  Then Assumption \ref{assumption.idealisedBook} holds
- up to the first event that would empty a side
- or place a limit order inside a spread of one tick.
+ up to the first event that would empty a side.
  Up to that event $\orderFlowContribution = \pressure_{\event[n]}$
  by Proposition \ref{prop.signedSizeContribution},
  and \eqref{eq.idealisedUpdate} holds along the path.
  The sizes are units because a larger order may reach past a queue that holds one share,
  against part \emph{ii.}
 \end{example}
+
+Under this placement a limit order may initiate a transaction,
+which under the geometric placement it never does.
+A limit buy that trades changes the ask and not the bid:
+at a spread of one tick the flow at a side is no longer the flow of the types of that side.
+Equation \eqref{eq.signedSizeContribution} holds all the same,
+the pressure of a limit buy being that of a market buy.
 
 \begin{remark}\label{remark.depthBehindTheQuotes}
  The geometric placement satisfies Assumption \ref{assumption.idealisedBook}
@@ -267,6 +279,10 @@ The two kinds of event that deplete a queue --- an aggression against it and a w
 from it --- must beget successors,
 and what they chiefly beget must be the limit orders that refill the side they emptied;
 a limit order that has already refilled should beget little.
+Under the placement of Example \ref{example.idealisedPlacement}
+a limit order at a full best quote facing a spread of one tick depletes the opposite side
+instead,
+and the kernel, which reads only the types, counts it as a refill.
 A kernel that does this has large column sums on the market-order and withdrawal types,
 a small one on the limit-order types,
 and its mass concentrated off the diagonal blocks that $\pressure$ separates.
