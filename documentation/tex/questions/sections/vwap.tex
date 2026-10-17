@@ -1,1 +1,481 @@
 \notebook{03-vwap}
+The questions of this section concern
+the volume, the traded value and the volume-weighted average price
+of equations~\eqref{notes:eq.transactedVolume} to~\eqref{notes:eq.vwap},
+the sweep cost of equation~\eqref{notes:eq.sweepCost} they are compared with,
+and the trades of a LOBSTER message file, Section~\ref{notes:sec.messageFiles}.
+After each message,
+\codehl{book.last\_traded\_size} is the number of shares the message traded,
+zero for a withdrawal,
+and \codehl{book.last\_traded\_value} is the sum over its fills of size times price,
+in tick-shares.
+
+\begin{question}
+\label{question.vwapOfABatchAgainstTheBookItLeaves}
+Two buy orders arrive at the book below,
+a market order and then a limit order.
+\begin{lstlisting}[caption={The VWAP of a batch of two orders}, label=listing.vwapOfABatch]
+book = AggregateBook.from_levels(
+    {1000: 100, 999: 200}, {1002: 120, 1003: 180}
+)
+stream = [
+    market_order(1.0, 150, BUY),
+    limit_order(2.0, 100, 1004, BUY),
+]
+value = volume = 0
+for message in stream:
+    book.apply(message, record=False)
+    value += book.last_traded_value
+    volume += book.last_traded_size
+print(value / volume)
+\end{lstlisting}
+What does the snippet print?
+\begin{choices}
+ \choice \codehl{1002.12}
+ \choice \codehl{1002.2}
+ \correctchoice \codehl{1002.52}
+ \choice \codehl{1002.6}
+ \choice \codehl{1002.92}
+\end{choices}
+\explanation{The market buy takes 120 at 1002 and 30 at 1003.
+By Proposition~\ref{notes:prop.decompositionOfLimitOrder}
+the limit buy at 1004 trades its 100 shares against the book the first order left,
+150 at 1003, at the resting price:
+$(150330 + 100300)/250$.
+The mean of the two orders' own averages, 1002.6, weights them equally rather than by volume.}
+\end{question}
+
+\begin{question}
+\label{question.vwapOfTwoBuysAgainstOne}
+The function below folds a stream through a fresh copy of one book
+and returns the VWAP of what the stream traded.
+\codehl{withdrawal(t, q, p, d)} removes $q$ shares from the size at $p$ on the side $d$.
+\begin{lstlisting}[caption={Four streams, one book}, label=listing.vwapOfTwoBuysAgainstOne]
+def batch_vwap(stream):
+    book = AggregateBook.from_levels(
+        {1000: 100, 999: 200}, {1002: 120, 1003: 180}
+    )
+    value = volume = 0
+    for message in stream:
+        book.apply(message, record=False)
+        value += book.last_traded_value
+        volume += book.last_traded_size
+    return value / volume
+
+one = [market_order(1.0, 200, BUY)]
+two = [market_order(1.0, 100, BUY), market_order(2.0, 100, BUY)]
+cancelled = [
+    market_order(1.0, 100, BUY),
+    withdrawal(1.5, 20, 1002, SELL),
+    market_order(2.0, 100, BUY),
+]
+refilled = [
+    market_order(1.0, 100, BUY),
+    limit_order(1.5, 50, 1002, SELL),
+    market_order(2.0, 100, BUY),
+]
+for stream in (one, two, cancelled, refilled):
+    print(batch_vwap(stream))
+\end{lstlisting}
+What does the snippet print, line by line?
+\begin{choices}
+ \choice \codehl{1002.4}, \codehl{1002.4}, \codehl{1002.4}, \codehl{1002.4}
+ \correctchoice \codehl{1002.4}, \codehl{1002.4}, \codehl{1002.5}, \codehl{1002.15}
+ \choice \codehl{1002.4}, \codehl{1002.0}, \codehl{1002.0}, \codehl{1002.0}
+ \choice \codehl{1002.4}, \codehl{1002.4}, \codehl{1002.4}, \codehl{1002.15}
+\end{choices}
+\explanation{Two buys of 100 with nothing between them take the shares one buy of 200 takes,
+120 at 1002 and 80 at 1003.
+The withdrawal trades nothing and still moves the VWAP:
+it removes the 20 shares at 1002 that the second buy would have taken.
+The limit sell adds 50 there,
+and the second buy takes 70 at 1002 and 30 at 1003.
+The fills of an order, and so the traded value~\eqref{notes:eq.tradedValue},
+depend on every message that reached the book before it.}
+\end{question}
+
+\begin{question}
+\label{question.sweepCostIsTheVwapOfOneOrderLessTheMid}
+\codehl{book.sweep\_cost(d, size, depth)} is the sweep cost $\sweepCost(\quantityToLiquidate)$
+of equation~\eqref{notes:eq.sweepCost}, in ticks,
+of a market order for \codehl{size} shares in the direction \codehl{d},
+read on the first \codehl{depth} occupied levels of the side the order consumes.
+\codehl{SweepSize} and \codehl{ReportedDepth} are integer types of \codehl{unito26.lob.messages},
+and \codehl{book.mid\_price} is $\midPrice$.
+\begin{lstlisting}[caption={The sweep cost of an order, and the VWAP of its fills}, label=listing.sweepCostAgainstVwap]
+book = AggregateBook.from_levels(
+    {1000: 100, 999: 200}, {1002: 120, 1003: 180}
+)
+cost = book.sweep_cost(BUY, SweepSize(160), ReportedDepth(5))
+before = book.mid_price
+book.apply(market_order(1.0, 160, BUY), record=False)
+vwap = book.last_traded_value / book.last_traded_size
+print(cost, vwap - before, vwap - book.mid_price)
+\end{lstlisting}
+What does the snippet print?
+\begin{choices}
+ \correctchoice \codehl{1.25 1.25 0.75}
+ \choice \codehl{0.25 1.25 0.75}
+ \choice \codehl{1.25 1.25 1.25}
+ \choice \codehl{1.25 0.75 0.75}
+\end{choices}
+\explanation{For one order the sweep cost is the VWAP of its fills less the mid before it:
+$1002.25 - 1001 = \LOBspread/2 + 40/160$,
+larger than $\LOBspread/2$ because the order walks the book.
+The order empties 1002 and moves the mid to 1001.5,
+and the same fills measured against it give 0.75.
+\codehl{before} holds the number the property returned, not the property.}
+\end{question}
+
+\begin{question}
+\label{question.sweepCostWalksTheGrid}
+The package computes the sweep cost with the function below.
+The method \codehl{sweep\_cost} of the book,
+given a direction \codehl{d}, a \codehl{size} and a \codehl{depth},
+calls it with the first \codehl{depth} occupied levels of the side the order consumes,
+best first, as pairs \codehl{(price, size)},
+then \codehl{book.mid\_price}, the one size \codehl{(size,)}, and \codehl{d},
+and returns the single cost.
+\begin{lstlisting}[caption={\protect\codehl{unito26.lob.orderbook.\_sweep\_cost}, abridged.}, label=listing.sweepCostFunction]
+def _sweep_cost(
+    levels: list[tuple[int, int]],
+    mid: float | None,
+    sizes: tuple[SweepSize, ...],
+    direction: int,
+) -> list[float | None]:
+# ...
+    costs: list[float | None] = []
+    filled = value = 0
+    level = consumed = 0
+    for size in sizes:
+# ...
+        while filled < size and level < len(levels):
+            price, resting = levels[level]
+            taken = min(size - filled, resting - consumed)
+            filled += taken
+            value += taken * price
+            consumed += taken
+            if consumed == resting:
+                level += 1
+                consumed = 0
+        if filled < size or mid is None:
+            costs.append(None)
+            continue
+        cost = direction * (value / size - mid)
+# ...
+        costs.append(cost)
+    return costs
+\end{lstlisting}
+The function \codehl{walk\_cost} transcribes the second expression
+of equation~\eqref{notes:eq.sweepCost},
+half the spread plus a walk term.
+\begin{lstlisting}[caption={The second expression of the sweep cost, on a book with a gap}, label=listing.sweepCostWalkTerm]
+def walk_cost(book, size):
+    asks = sorted(book.asks.items())
+    filled = walk = 0
+    for i, (price, resting) in enumerate(asks, start=1):
+        taken = min(size - filled, resting)
+        filled += taken
+        walk += taken * (i - 1)
+    return book.spread / 2 + walk / size
+
+book = AggregateBook.from_levels({1000: 100}, {1002: 120, 1004: 180})
+print(book.sweep_cost(BUY, SweepSize(160), ReportedDepth(5)),
+      walk_cost(book, 160))
+\end{lstlisting}
+What does the snippet print?
+\begin{choices}
+ \choice \codehl{1.5 1.5}
+ \choice \codehl{1.25 1.25}
+ \choice \codehl{0.5 0.25}
+ \correctchoice \codehl{1.5 1.25}
+\end{choices}
+\explanation{The package takes the VWAP of the fills less the mid, $1002.5 - 1001$.
+The index $i$ of equation~\eqref{notes:eq.sweepCost} runs over the price grid,
+so the 40 shares at 1004 sit at level 3 and pay two ticks beyond the touch,
+$1 + 80/160$.
+\codehl{walk\_cost} counts occupied levels and charges them one tick, $1 + 40/160$;
+the two agree only where no gap falls within the sweep,
+Remark~\ref{notes:remark.gridAgainstOccupied}.}
+\end{question}
+
+\begin{question}
+\label{question.vwapIsARatioOfSums}
+A frame of trades holds one row per message:
+the shares the message traded and their value in tick-shares,
+both zero for a message that traded nothing.
+Dividing one integer column of pandas by another gives a column of floats,
+in which $0/0$ is NaN and raises nothing.
+\begin{lstlisting}[caption={A ratio of sums, and a mean of ratios}, label=listing.vwapRatioOfSums]
+trades = pd.DataFrame({
+    "Volume": [300, 0, 100],
+    "TradedValue": [300600, 0, 100000],
+})
+a = trades.TradedValue.sum() / trades.Volume.sum()
+b = (trades.TradedValue / trades.Volume).mean()
+print(a, b)
+\end{lstlisting}
+What does the snippet print?
+\begin{choices}
+ \choice \codehl{1001.5 1001.5}
+ \choice \codehl{1001.5 nan}
+ \choice \codehl{1001.0 1001.5}
+ \choice \codehl{1001.5} and a number near $667.3$.
+ \correctchoice \codehl{1001.5 1001.0}
+\end{choices}
+\explanation{The VWAP~\eqref{notes:eq.vwap} is a ratio of sums, $400600/400$.
+The mean of the ratios gives every row that traded the same weight, whatever its volume:
+the empty row is NaN, which \codehl{mean} skips,
+and the two others average to $(1002 + 1000)/2$.}
+\end{question}
+
+\begin{question}
+\label{question.vwapWindowAtATiedTimestamp}
+The package computes a statistic over the window $(t - w, t]$
+of equation~\eqref{notes:eq.transactedVolume}
+with the two functions below, of \codehl{unito26.lob.session}.
+\codehl{np.searchsorted(a, v, side="right")} returns, for each entry of \codehl{v},
+the number of entries of the sorted array \codehl{a} that are less than or equal to it.
+\begin{lstlisting}[caption={\protect\codehl{unito26.lob.session.window\_start}, its docstring elided.}, label=listing.windowStart]
+def window_start(times: np.ndarray, window: float) -> np.ndarray:
+# ...
+    return np.searchsorted(times, times - window, side="right")
+\end{lstlisting}
+\begin{lstlisting}[caption={\protect\codehl{unito26.lob.session.rolling\_sum}, its docstring elided.}, label=listing.rollingSum]
+def rolling_sum(start: np.ndarray, values: np.ndarray) -> np.ndarray:
+# ...
+    cumulative = np.concatenate(([0.0], np.cumsum(values)))
+    return cumulative[1:] - cumulative[start]
+\end{lstlisting}
+Four trades are recorded at the prices 1002, 1003, 1000 and 1001,
+the second and the third at the same time.
+\begin{lstlisting}[caption={A rolling VWAP over a window of one second}, label=listing.vwapTiedTimestamp]
+times = np.array([1.0, 2.0, 2.0, 3.0])
+volume = np.array([100.0, 100.0, 300.0, 100.0])
+value = np.array([100200.0, 100300.0, 300000.0, 100100.0])
+start = window_start(times, 1.0)
+vwap = rolling_sum(start, value) / rolling_sum(start, volume)
+print(vwap.tolist())
+\end{lstlisting}
+What does the snippet print?
+\begin{choices}
+ \choice \codehl{[1002.0, 1000.75, 1000.75, 1001.0]}
+ \correctchoice \codehl{[1002.0, 1003.0, 1000.75, 1001.0]}
+ \choice \codehl{[1002.0, 1002.5, 1001.0, 1000.8]}
+ \choice \codehl{[1002.0, 1001.0, 1001.0, 1000.8]}
+\end{choices}
+\explanation{\codehl{side="right"} leaves a trade exactly $w$ old outside the window,
+so the windows start at rows 0, 1, 1 and 3,
+and each ends at its own row:
+row 1 does not see row 2, although the two share a time.
+Row 2 averages $(100300 + 300000)/400$.
+Read on the times, both rows at time 2 would give 1000.75.}
+\end{question}
+
+\begin{question}
+\label{question.rollingVwapByCumulativeSums}
+Two implementations of the VWAP over the window $(t - w, t]$ at every trade of a session.
+In Alternative A,
+\codehl{window\_start} finds the first row of each window by a binary search,
+and \codehl{rolling\_sum} differences one cumulative sum,
+as in Question~\ref{question.vwapWindowAtATiedTimestamp}.
+\begin{lstlisting}[caption={Alternative A}, label=listing.rollingVwapA]
+def rolling_vwap_a(times, volume, value, w):
+    start = window_start(times, w)
+    return rolling_sum(start, value) / rolling_sum(start, volume)
+\end{lstlisting}
+\begin{lstlisting}[caption={Alternative B}, label=listing.rollingVwapB]
+def rolling_vwap_b(times, volume, value, w):
+    out = []
+    for i, t in enumerate(times):
+        traded = worth = 0.0
+        j = i
+        while j >= 0 and times[j] > t - w:
+            traded += volume[j]
+            worth += value[j]
+            j -= 1
+        out.append(worth / traded)
+    return out
+\end{lstlisting}
+Both are timed on sessions of $n = 1000$ and $n = 4000$ trades
+spread over the same trading day of 23400 seconds,
+with $w = 1800$ seconds,
+so that a window holds about $n/13$ trades.
+Which statement holds?
+\begin{choices}
+ \correctchoice A is faster;
+  from $n = 1000$ to $n = 4000$ its time grows about fourfold or less,
+  and that of B about sixteenfold.
+ \choice A is faster by a constant factor:
+  the time of each grows about fourfold.
+ \choice B is faster:
+  it visits only the trades inside each window,
+  where A sums over the whole session.
+ \choice A is faster;
+  its time grows about sixteenfold, a binary search over the session being made for every row,
+  and that of B about fourfold.
+\end{choices}
+\explanation{B walks back over every trade of each window,
+and a window holds a fixed fraction of the day's trades:
+its work is about $n \cdot n/13$, quadratic in $n$.
+A makes two cumulative sums and $n$ binary searches of $\log_2 n$ steps each.}
+\end{question}
+
+\begin{question}
+\label{question.vwapOfAnEmptyWindowIsNan}
+A VWAP is computed over three windows, the second of which traded nothing,
+and compared with the mid at the start of each.
+Under \codehl{np.errstate(invalid="raise")}
+an invalid floating-point operation on arrays, such as $0/0$,
+raises \codehl{FloatingPointError} instead of returning NaN.
+\codehl{np.divide(x, y, out=z, where=m)} divides only where \codehl{m} holds
+and leaves \codehl{z} as it was elsewhere,
+and \codehl{np.nanmean} is the mean of the entries that are not NaN.
+\begin{lstlisting}[caption={Alternative A}, label=listing.emptyWindowA]
+def vwap(value, volume):
+    return np.where(volume > 0, value / volume, np.nan)
+\end{lstlisting}
+\begin{lstlisting}[caption={Alternative B}, label=listing.emptyWindowB]
+def vwap(value, volume):
+    return np.divide(
+        value, volume, out=np.full(len(volume), np.nan), where=volume > 0
+    )
+\end{lstlisting}
+\begin{lstlisting}[caption={Alternative C}, label=listing.emptyWindowC]
+def vwap(value, volume):
+    return value / np.maximum(volume, 1.0)
+\end{lstlisting}
+\begin{lstlisting}[caption={Run once with each alternative}, label=listing.emptyWindowRun]
+value = np.array([100200.0, 0.0, 100300.0])
+volume = np.array([100.0, 0.0, 100.0])
+mid = np.array([1001.0, 1001.0, 1001.5])
+with np.errstate(invalid="raise"):
+    print(np.nanmean(vwap(value, volume) - mid))
+\end{lstlisting}
+What happens?
+\begin{choices}
+ \choice All three print \codehl{1.25}.
+ \choice A and B print \codehl{1.25}; C prints a number near $-333$.
+ \choice A raises \codehl{FloatingPointError}; B and C print \codehl{1.25}.
+ \correctchoice A raises \codehl{FloatingPointError}; B prints \codehl{1.25};
+  C prints a number near $-333$.
+ \choice A and B raise \codehl{FloatingPointError}; C prints a number near $-333$.
+\end{choices}
+\explanation{The arguments of \codehl{np.where} are evaluated before it chooses among them,
+so A divides 0 by 0 in the empty window.
+C gives that window a VWAP of 0, which is a price, $1001$ below the mid,
+and the mean is $(1 - 1001 + 1.5)/3$.
+The VWAP~\eqref{notes:eq.vwap} is defined only where $\volume_{t,w} > 0$.}
+\end{question}
+
+\begin{question}
+\label{question.frameSweepCostZeroTimesNan}
+A frame of book states holds, for each row,
+the prices and the sizes of the first three ask levels, as floats,
+as a file with a reported depth of three does.
+Where the side holds fewer than three prices the file pads the level,
+and once the sentinel is cleaned a padded level has price NaN and size 0.
+In floating point \codehl{0 * nan} is \codehl{nan}.
+\begin{lstlisting}[caption={Alternative A: \protect\codehl{unito26.lob.session.\_frame\_sweep\_cost}, its docstring elided.}, label=listing.frameSweepCostA]
+def _frame_sweep_cost(
+    prices: np.ndarray,
+    sizes: np.ndarray,
+    mid: np.ndarray,
+    size: SweepSize,
+    direction: int,
+) -> tuple[np.ndarray, np.ndarray]:
+# ...
+    before = np.cumsum(sizes, axis=1) - sizes
+    taken = np.clip(size - before, 0.0, sizes)
+    filled = taken.sum(1) >= size
+    value = np.where(taken > 0, taken * prices, 0.0).sum(1)
+    return np.where(filled, direction * (value / size - mid), np.nan), filled
+\end{lstlisting}
+\begin{lstlisting}[caption={Alternative B}, label=listing.frameSweepCostB]
+def sweep_cost(prices, sizes, mid, size, direction):
+    before = np.cumsum(sizes, axis=1) - sizes
+    taken = np.clip(size - before, 0.0, sizes)
+    filled = taken.sum(1) >= size
+    value = (taken * prices).sum(1)
+    cost = direction * (value / size - mid)
+    return np.where(filled, cost, np.nan), filled
+\end{lstlisting}
+\begin{lstlisting}[caption={Run once with each alternative as \protect\codehl{sweep\_cost}}, label=listing.frameSweepCostRun]
+prices = np.array([
+    [1002.0, 1003.0, 1004.0],
+    [1002.0, 1003.0, np.nan],
+    [1002.0, np.nan, np.nan],
+])
+sizes = np.array([
+    [120.0, 180.0, 50.0],
+    [120.0, 180.0, 0.0],
+    [120.0, 0.0, 0.0],
+])
+mid = np.full(3, 1001.0)
+cost, filled = sweep_cost(prices, sizes, mid, 160, BUY)
+print(cost.tolist())
+\end{lstlisting}
+What happens?
+\begin{choices}
+ \choice Both print \codehl{[1.25, 1.25, nan]}.
+ \choice A prints \codehl{[1.25, 1.25, 1.0]}; B prints \codehl{[1.25, nan, 1.0]}.
+ \correctchoice A prints \codehl{[1.25, 1.25, nan]}; B prints \codehl{[1.25, nan, nan]}.
+ \choice Both print \codehl{[1.25, nan, nan]}.
+\end{choices}
+\explanation{The second row fills its 160 shares in two levels,
+and its third level, which it never reaches, is padded:
+B multiplies the 0 shares taken there by the NaN price,
+and the NaN reaches the sum of a row whose cost is determined.
+A keeps the product only where shares are taken.
+The third row holds 120 shares in the reported levels, fewer than 160,
+and both return NaN for it.}
+\end{question}
+
+\begin{question}
+\label{question.lobsterAggressorIsMinusDirection}
+A LOBSTER message file writes one row per event:
+type 1 is the submission of a limit order,
+type 3 its deletion,
+and type 4 the execution of a visible limit order.
+\codehl{Direction} is that of the limit order the row concerns,
+1 for a buy and $-1$ for a sell;
+for an execution, it is the order that was executed.
+Prices are in ticks.
+The snippet computes the VWAP of the buyer-initiated trades and that of the seller-initiated ones;
+\codehl{s.where(c, 0)} keeps the entries of \codehl{s} where \codehl{c} holds and puts 0 elsewhere.
+\begin{lstlisting}[caption={Six rows of a message file}, label=listing.lobsterMessages]
+messages = pd.DataFrame({
+    "Type": [1, 4, 4, 3, 4, 4],
+    "Size": [50, 96, 60, 50, 32, 20],
+    "Price": [1001, 1002, 1000, 1001, 1003, 999],
+    "Direction": [1, -1, 1, 1, -1, 1],
+})
+\end{lstlisting}
+\begin{lstlisting}[caption={Alternative A}, label=listing.lobsterAggressorA]
+aggressor = -messages.Direction
+\end{lstlisting}
+\begin{lstlisting}[caption={Alternative B}, label=listing.lobsterAggressorB]
+aggressor = messages.Direction
+\end{lstlisting}
+\begin{lstlisting}[caption={Run after each alternative}, label=listing.lobsterAggressorRun]
+executed = messages.Type == 4
+size = messages.Size.where(executed, 0)
+value = size * messages.Price
+buy = aggressor > 0
+print(value[buy].sum() / size[buy].sum(),
+      value[~buy].sum() / size[~buy].sum())
+\end{lstlisting}
+What happens?
+\begin{choices}
+ \choice Both print \codehl{1002.25 999.75}.
+ \correctchoice A prints \codehl{1002.25 999.75}; B prints \codehl{999.75 1002.25}.
+ \choice A prints \codehl{999.75 1002.25}; B prints \codehl{1002.25 999.75}.
+ \choice Both print \codehl{999.75 1002.25}.
+\end{choices}
+\explanation{A trade is recorded as the execution of the resting order it matched,
+Remark~\ref{notes:remark.passiveDirection},
+so the aggressor's direction is the opposite of \codehl{Direction}:
+the executed sells at 1002 and 1003 were bought by market orders,
+$(96 \cdot 1002 + 32 \cdot 1003)/128 = 1002.25$.
+B swaps the two VWAPs, and its buyers pay the bid.}
+\end{question}
