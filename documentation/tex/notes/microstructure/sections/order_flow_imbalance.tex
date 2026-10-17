@@ -34,6 +34,24 @@ The cap in \emph{iii.} is what \emph{iv.} intends,
 and \eqref{eq.idealisedResidual} names a residual that the reference carries as the
 truncation of a floor.
 
+Let the size at the best bid be $\uniformDepth$
+and the spread be $\tickSizeOfLOB$.
+By part \emph{iv.} the next bid limit order arrives at $\bestAskPrice_{t-}$,
+so by Proposition \ref{prop.decompositionOfLimitOrder} it does not rest:
+its market part is its whole size,
+which part \emph{ii.} bounds by $\nthBestAskSize[1]_{t-}$,
+and it trades at the best ask exactly as a market buy of that size would.
+The bid is unchanged and the size at the best ask falls,
+so parts \emph{i.} to \emph{iv.} hold after the event.
+The stylised book of \cite{CKS14pri} does not treat this case:
+there the order of part \emph{iv.} is passive and opens a new best level,
+and the bid and the ask are followed separately,
+with no condition relating the two.
+In the accounting of \cite{CKS14pri} the order is a marketable buy order,
+totalled with the orders that arrive at the best ask
+and not with those that arrive at the best bid.
+The same holds of the ask mutatis mutandis.
+
 \begin{defi}[{\citealp{CKS14pri}}]\label{def.orderFlowImbalance}
  Let $\arrivalTimes[]_n$ be the times of the events of a trading epoch,
  and write $\nthBestBidSize[1]_{\arrivalTimes[]_n}$ for the size at the best bid
@@ -105,7 +123,8 @@ An event that moves it contributes a whole queue.
  Measure the position of the bid in shares by
  $\nthBestBidSize[1]_{s}
  + \uniformDepth\,(\bestBidPrice_{s} - \bestBidPrice_{t-\ofiWindow})/\tickSizeOfLOB$,
- show that each event moves it by its own signed bid-side flow,
+ show that each event moves it by the signed flow it brings to the bid side,
+ whatever its type,
  and sum over the window.
  Say where each part of Assumption \ref{assumption.idealisedBook} is used.
 \end{exercise}

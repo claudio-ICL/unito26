@@ -61,19 +61,19 @@ class IdealisedFlow:
     """Hawkes events of the six types, placed as orders of one share at the touches.
 
     * a market order is a submission of one share at the opposite touch;
-    * a limit order joins its touch, or opens one tick inside it when the touch holds
-      ``Sbar``;
+    * a limit order joins its touch, or arrives one tick beyond it when the touch holds
+      ``Sbar``: on a free tick it opens a new touch, and at a spread of one tick it trades
+      one share at the opposite touch, exactly as a market order would;
     * a withdrawal takes one share from its touch.
 
     Sizes are units because part *ii.* of the assumption needs them: an order of two
     shares can overshoot the cap, or reach past a touch that holds one.  Nothing is drawn
     beyond the events themselves.
 
-    An event that cannot be placed raises :class:`AssumptionBreach` rather than being
-    moved or dropped: a limit order that would open inside a spread of one tick, and a
-    market order or a withdrawal that would empty a side.  The assumption cannot hold for
-    ever -- a flow that leans one way closes the spread or empties a side in the end -- so
-    a stream runs from a wide spread, over a horizon short against the time that takes.
+    An event that would empty a side raises :class:`AssumptionBreach` rather than being
+    moved or dropped.  The assumption cannot hold for ever -- a flow that leans one way
+    empties a side in the end -- so a stream runs over a horizon short against the time
+    that takes, from a book deep enough for it.
     Usage is the fold of :class:`unito26.lob.simulate.OrderFlowSimulator`::
 
         for message in flow.stream(book, horizon, journal=None):
@@ -121,9 +121,8 @@ class IdealisedFlow:
             return limit_order(time, 1, touch, direction)
         inside = touch + direction
         if inside == book.best_price(-direction):
-            raise AssumptionBreach(
-                f"at {time:.6f} s a limit order would open inside a spread of one tick"
-            )
+            opposite = self._consumable_touch(book, -direction, time)
+            return limit_order(time, 1, opposite, direction)
         return limit_order(time, 1, inside, direction)
 
     def _check(self, book: AggregateBook) -> None:

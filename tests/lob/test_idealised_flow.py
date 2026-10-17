@@ -21,6 +21,8 @@ SPEC = SessionStatistics((GridDepth(1),), (), (1,))
 PRESSURE = np.array([event.pressure for event in EventType])
 REGIMES = [config.resilient_order_flow_params(), config.trending_order_flow_params()]
 WIDE = {BUY: (1000, 5), SELL: (1020, 5)}
+NARROW = {BUY: (1000, 5), SELL: (1001, 5)}
+LIMIT_TYPES = (EventType.LIMIT_BUY, EventType.LIMIT_SELL)
 
 
 class Scripted:
@@ -46,15 +48,16 @@ def record(source, touches, horizon=10.0, levels=GridDepth(60)):
     return session, np.array(journal.types)
 
 
-def simulated(params, seed):
-    return record(ExponentialHawkes(params, rng=seed), WIDE, horizon=20.0)
+def simulated(params, seed, touches):
+    return record(ExponentialHawkes(params, rng=seed), touches, horizon=20.0)
 
 
+@pytest.mark.parametrize("touches", [WIDE, NARROW])
 @pytest.mark.parametrize("params", REGIMES)
-def test_every_event_contributes_its_pressure(params):
+def test_every_event_contributes_its_pressure(params, touches):
     """``prop.signedSizeContribution``: under the assumption ``e_n`` is the pressure of the
     event times its size, one share here."""
-    session, types = simulated(params, seed=0)
+    session, types = simulated(params, 0, touches)
     flow = session.stats["OrderFlowContribution"].to_numpy()
     assert len(types) > 300
     assert np.isnan(flow[0])
@@ -81,10 +84,27 @@ def test_the_assumption_holds_after_every_message(params):
 
 
 @pytest.mark.parametrize("params", REGIMES)
-def test_the_mid_price_is_the_imbalance_plus_the_residual_exactly(params):
+def test_a_full_touch_facing_a_spread_of_one_tick_trades(params):
+    """From a spread of one tick between two full touches, limit orders trade at the opposite
+    touch, and the assumption holds after each of them."""
+    book = idealised_book(DEPTH, NARROW, GridDepth(60))
+    journal = EventJournal.empty()
+    flow = IdealisedFlow(ExponentialHawkes(params, rng=4), DEPTH)
+    trades = 0
+    for message in flow.stream(book, 20.0, journal):
+        opposite = book.best_price(-message.direction)
+        trades += EventType(journal.types[-1]) in LIMIT_TYPES and message.price == opposite
+        book.apply(message, record=False)
+        flow._check(book)
+    assert trades > 0
+
+
+@pytest.mark.parametrize("touches", [WIDE, NARROW])
+@pytest.mark.parametrize("params", REGIMES)
+def test_the_mid_price_is_the_imbalance_plus_the_residual_exactly(params, touches):
     """``prop.idealisedUpdate`` in integers: ``2 Sbar dP/tau = OFI - dS^b + dS^a``, over
     random windows that start after the first row, where ``e_1`` is undefined."""
-    session, _ = simulated(params, seed=2)
+    session, _ = simulated(params, 2, touches)
     mid = session.stats["MidPrice"].to_numpy()
     flow = session.stats["OrderFlowContribution"].to_numpy()
     bid = session.lobster_book["BidSize1"].to_numpy()
@@ -137,11 +157,35 @@ class TestTheCornerCases:
         assert session.lobster_book["BidSize1"].iloc[-1] == DEPTH
         assert session.stats["OrderFlowContribution"].iloc[-1] == -1
 
+    def test_a_limit_buy_at_a_full_bid_facing_one_tick_trades_at_the_ask(self):
+        session, _ = record(
+            Scripted([(1, EventType.LIMIT_BUY), (2, EventType.LIMIT_BUY)]),
+            {BUY: (1000, DEPTH - 1), SELL: (1001, 1)},
+        )
+        last = session.lobster_book.iloc[-1]
+        assert (last["BidPrice1"], last["BidSize1"]) == (1000, DEPTH)
+        assert (last["AskPrice1"], last["AskSize1"]) == (1002, DEPTH)
+        assert session.stats["OrderFlowContribution"].iloc[-1] == 1
+
+    def test_a_limit_sell_at_a_full_ask_facing_one_tick_trades_at_the_bid(self):
+        session, _ = record(
+            Scripted([(1, EventType.LIMIT_SELL), (2, EventType.LIMIT_SELL)]),
+            {BUY: (1000, 1), SELL: (1001, DEPTH - 1)},
+        )
+        last = session.lobster_book.iloc[-1]
+        assert (last["AskPrice1"], last["AskSize1"]) == (1001, DEPTH)
+        assert (last["BidPrice1"], last["BidSize1"]) == (999, DEPTH)
+        assert session.stats["OrderFlowContribution"].iloc[-1] == -1
+
 
 class TestTheBreaches:
-    def test_a_limit_order_cannot_open_inside_a_spread_of_one_tick(self):
-        with pytest.raises(AssumptionBreach, match="one tick"):
-            record(Scripted([(1, EventType.LIMIT_BUY)]), {BUY: (1000, 5), SELL: (1001, 5)})
+    def test_a_limit_order_cannot_trade_a_side_empty(self):
+        with pytest.raises(AssumptionBreach, match="ask side would empty"):
+            record(
+                Scripted([(1, EventType.LIMIT_BUY)]),
+                {BUY: (1000, DEPTH), SELL: (1001, 1)},
+                levels=GridDepth(1),
+            )
 
     def test_a_side_cannot_be_emptied(self):
         with pytest.raises(AssumptionBreach, match="ask side would empty"):

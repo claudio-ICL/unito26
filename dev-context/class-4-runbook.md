@@ -121,6 +121,10 @@ the bid moves down one tick. If the best bid is full and a limit buy arrives, it
 queue one tick up: the bid moves up one tick. So the mid-price moves by half a tick at a time,
 and only when a best queue empties or a new one opens.
 
+**If asked.** At a spread of one tick, "one tick up" from a full bid is the best ask: the limit
+buy trades there, as a market buy would, and takes one share off the ask. The notes say so in
+the paragraph after Assumption 1.4.1; Cont, Kukanov and Stoikov do not treat the case.
+
 **Next.** The statistic.
 
 ## 5. Slide: *The order flow imbalance*
@@ -245,15 +249,13 @@ own size. The imbalance no longer needs the book. It is a functional of the flow
 
 ## 15. Section 1: *The idealised book*
 
-**Show.** The figure of the opening book: best bid 3 at 1000, best ask 2 at 1020,
+**Show.** The figure of the opening book: best bid 3 at 1000, best ask 2 at 1003,
 $\bar S = 5$, every level behind full.
 
-**Say.** The spread is wide on purpose: a limit order at a full best quote needs a free tick
-inside it.
-
 **Show.** The print after the simulation: 1,728 messages in 60 seconds, all of size one; the
-four parts of the assumption held for every message. The counts by type: limit orders the
-commonest, market orders the rarest.
+four parts of the assumption held for every message. The spread stays between 3 and 11 ticks,
+so no limit order trades in this run. The counts by type: limit orders the commonest, market
+orders the rarest.
 
 **Say.** The flow is the `resilient` specification. Every order has size one because parts two
 and three need it: an order of two shares could reach past a queue that holds one.
@@ -275,6 +277,12 @@ Proposition 1.4.9, on ten events.
 
 **Show.** The figure under the table: one book, and a dropdown that steps through the
 opening book and the ten events.
+
+**Show.** The second table: two limit buys at a full bid, 5 at 1000, facing a spread of one
+tick. Neither rests: each trades one share at the ask, the second clears it to 5 at 1002.
+
+**Say.** The type of the event names the bid, and its contribution, $+1$, is read on the ask.
+The sign is the pressure of a limit buy all the same.
 
 ## 17. Section 3: *The order flow imbalance over a window*
 
