@@ -1,0 +1,36 @@
+These are sample questions in the format of the examination,
+which Section~\ref{notes:sec.examination} of the lecture notes describes.
+A question shows code and offers lettered choices,
+of which exactly one is right.
+Numbered statements cited in the questions are those of the lecture notes.
+
+Every answer can be read off running code.
+For each section a notebook of the directory \codehl{notebooks/sample-questions}
+of the course repository runs the code of every question,
+evaluates each of its choices,
+and asserts that the right one holds and that no other does.
+The solution key at the end names the notebook of each section.
+
+The questions are answered without a computer, as in the examination.
+Every number a question asks for can be reached by hand,
+and where an exponential or a logarithm is needed its value is given.
+
+Prices are integer counts of ticks, as in the package,
+unless a question states a tick size.
+A side of a book is written as its occupied levels, price $\times$ size,
+best first.
+Snippets omit their imports.
+They run after the following lines,
+and a name not imported here is introduced by the question that uses it.
+\begin{lstlisting}[caption={The standing imports}, label=listing.standingImports]
+import numpy as np
+import pandas as pd
+from scipy.linalg import expm
+
+from unito26.lob import config
+from unito26.lob.hawkes import ExponentialHawkes, HawkesParams
+from unito26.lob.messages import (
+    BUY, SELL, GridDepth, limit_order, market_order, withdrawal,
+)
+from unito26.lob.orderbook import AggregateBook
+\end{lstlisting}
