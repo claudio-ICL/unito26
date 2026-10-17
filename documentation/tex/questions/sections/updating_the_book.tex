@@ -1,1 +1,569 @@
 \notebook{02-updating-the-book}
+The questions of this section concern the update of the aggregated book by an incoming order,
+Propositions~\ref{notes:prop.lobUpdate} and~\ref{notes:prop.decompositionOfLimitOrder},
+its implementation in Section~\ref{notes:sec.foldImplementation},
+and the placement of orders of Example~\ref{notes:example.idealisedPlacement}.
+
+\begin{question}
+\label{question.limitBuyRestsInsideTheSpread}
+The book below receives a buy limit order of 200 shares at 1003,
+which \codehl{apply} processes as in Algorithm~\ref{notes:algo.bookFold}.
+\codehl{book.spread} and \codehl{book.mid\_price} are $\LOBspread$ and $\midPrice$ in ticks,
+and \codehl{book.queue\_imbalance(GridDepth(1))} is $\queueImbalance[1]$
+of equation~\eqref{notes:eq.queueImbalance}.
+\begin{lstlisting}[caption={A buy limit order, and three quantities of the book it leaves}, label=listing.limitBuyRestsInsideTheSpread]
+book = AggregateBook.from_levels(
+    {1000: 300, 999: 100}, {1001: 50, 1002: 100, 1004: 200}
+)
+book.apply(limit_order(1.0, 200, 1003, BUY), record=False)
+print(book.spread, book.mid_price,
+      round(book.queue_imbalance(GridDepth(1)), 3))
+\end{lstlisting}
+What does the snippet print?
+\begin{choices}
+ \choice \codehl{2 1003.0 -0.6}
+ \choice \codehl{1 1003.5 0.6}
+ \correctchoice \codehl{1 1003.5 -0.6}
+ \choice \codehl{4 1002.0 0.2}
+ \choice \codehl{4 1002.0 0.333}
+\end{choices}
+\explanation{The order buys 50 at 1001 and 100 at 1002, stops at 1004, above its limit,
+and rests the remaining 50 at its own price, 1003.
+The touches are then $1003 \times 50$ and $1004 \times 200$:
+$\LOBspread = 1$, $\midPrice = 1003.5$ and $\queueImbalance[1] = (50 - 200)/250$.
+Resting the remainder at the last fill, 1002, gives (A); dropping it gives (D).}
+\end{question}
+
+\begin{question}
+\label{question.precomputedMarketPartOnAWalkingSell}
+Two functions process an incoming order on an \codehl{AggregateBook}
+and return its fills as pairs \codehl{(price, size)}.
+They use four methods of the book:
+\codehl{best\_price(d)}, the best price of the side \codehl{d},
+or \codehl{None} when that side is empty;
+\codehl{size\_at(d, x)}, the size at the price \codehl{x} on the side \codehl{d},
+zero where nothing rests;
+\codehl{set\_size(d, x, s)}, which writes the size \codehl{s} at \codehl{x}
+and removes \codehl{x} when \codehl{s} is zero;
+and \codehl{levels\_map(d)}, the dictionary from price to size that holds the side \codehl{d}.
+A market order carries the sentinel price of Section~\ref{notes:sec.foldImplementation},
+0 for a sell and \codehl{sys.maxsize} for a buy,
+which \codehl{is\_market\_price} recognises.
+Alternative~A is the update of the package written as a function,
+and calls the static method quoted below;
+Alternative~B computes $\marketOrderSize$ first,
+as in Proposition~\ref{notes:prop.decompositionOfLimitOrder}.
+\begin{lstlisting}[caption={\protect\codehl{unito26.lob.orderbook.AggregateBook.resting\_price}, its docstring elided.}, label=listing.precomputedMarketPartRestingPrice]
+@staticmethod
+def resting_price(limit_price: int, last_fill_price: int | None) -> int | None:
+    # ...
+    if not is_market_price(limit_price):
+        return limit_price
+    return last_fill_price
+\end{lstlisting}
+\begin{lstlisting}[caption={Alternative A}, label=listing.precomputedMarketPartOnAWalkingSellA]
+def submit(book, message):
+    remaining, d, p = message.size, message.direction, message.price
+    fills = []
+    while remaining > 0:
+        best = book.best_price(-d)
+        if best is None or best * d > p * d:
+            break
+        resting = book.size_at(-d, best)
+        traded = min(remaining, resting)
+        remaining -= traded
+        book.set_size(-d, best, resting - traded)
+        fills.append((best, traded))
+    last = fills[-1][0] if fills else None
+    rest = book.resting_price(p, last)
+    if remaining > 0 and rest is not None:
+        book.set_size(d, rest, book.size_at(d, rest) + remaining)
+    return fills
+\end{lstlisting}
+\begin{lstlisting}[caption={Alternative B}, label=listing.precomputedMarketPartOnAWalkingSellB]
+def submit(book, message):
+    q, d, p = message.size, message.direction, message.price
+    side = book.levels_map(-d)
+    eligible = sum(s for price, s in side.items() if price * d <= p * d)
+    q_m = min(q, eligible)
+    fills, remaining = [], q_m
+    while remaining > 0:
+        best = book.best_price(-d)
+        resting = book.size_at(-d, best)
+        traded = min(remaining, resting)
+        remaining -= traded
+        book.set_size(-d, best, resting - traded)
+        fills.append((best, traded))
+    if q > q_m:
+        book.set_size(d, p, book.size_at(d, p) + q - q_m)
+    return fills
+\end{lstlisting}
+\begin{lstlisting}[caption={Run once with each alternative}, label=listing.precomputedMarketPartOnAWalkingSellRun]
+book = AggregateBook.from_levels(
+    {1000: 100, 999: 200, 998: 150}, {1002: 120, 1003: 180}
+)
+fills = submit(book, limit_order(1.0, 400, 999, SELL))
+print(fills)
+print(book.best_bid_price, book.best_ask_price, book.best_ask_size)
+\end{lstlisting}
+What happens?
+\begin{choices}
+ \correctchoice Both alternatives print \codehl{[(1000, 100), (999, 200)]},
+  then \codehl{998 999 100}.
+ \choice Alternative A prints \codehl{[(1000, 100), (999, 200)]}, then \codehl{998 999 100};
+  Alternative B prints \codehl{[(1000, 100), (999, 200), (998, 100)]}, then \codehl{998 1002 120}.
+ \choice Both alternatives print \codehl{[(999, 300)]}, then \codehl{998 999 100}.
+ \choice Alternative A prints \codehl{[(1000, 100), (999, 200)]}, then \codehl{998 999 100};
+  Alternative B raises \codehl{TypeError}.
+\end{choices}
+\explanation{The loop of A stops at 998, the first bid below the limit.
+B stops after $\marketOrderSize = \min(400, 100 + 200) = 300$ shares,
+all the size at eligible prices,
+so its loop needs no price test and never meets an empty side.
+Both rest $q - \marketOrderSize = 100$ at 999, which becomes the best ask,
+and both price the fills at the resting orders.}
+\end{question}
+
+\begin{question}
+\label{question.precomputedMarketPartRestsAtTheSentinel}
+Alternatives~A and~B of Question~\ref{question.precomputedMarketPartOnAWalkingSell}
+process a market sell larger than the bid side, and then a buy limit order.
+\begin{lstlisting}[caption={Run once with each alternative}, label=listing.precomputedMarketPartRestsAtTheSentinelRun]
+book = AggregateBook.from_levels(
+    {1000: 100, 999: 200, 998: 150}, {1002: 120, 1003: 180}
+)
+submit(book, market_order(1.0, 1000, SELL))
+fills = submit(book, limit_order(2.0, 50, 997, BUY))
+print(fills, book.best_bid_price, book.best_ask_price)
+\end{lstlisting}
+What happens?
+\begin{choices}
+ \choice Both alternatives print \codehl{[] 997 998}.
+ \choice Both alternatives print \codehl{[] 997 1002}.
+ \choice Alternative A prints \codehl{[] 997 1002};
+  Alternative B prints \codehl{[(0, 50)] None 0}.
+ \correctchoice Alternative A prints \codehl{[] 997 998};
+  Alternative B prints \codehl{[(0, 50)] None 0}.
+\end{choices}
+\explanation{Both sell the 450 shares of the bid side and keep 550.
+A rests them at 998, the price of its last fill,
+by the market-to-limit rule of Section~\ref{notes:sec.foldImplementation},
+and the buy at 997 does not reach them and rests.
+B rests them at the sentinel 0,
+a price at which the buy at 997 trades: it buys 50 shares at 0.}
+\end{question}
+
+\begin{question}
+\label{question.eligibleBidsWalkedFromTheLowest}
+A variant of the update collects the prices of the opposite side
+that pass the test $\pi d \leq p d$,
+and walks them in sorted order.
+The methods of the book it uses are those of
+Question~\ref{question.precomputedMarketPartOnAWalkingSell}.
+The snippet below applies it to two sell orders at 999, each on a book of its own.
+With Alternative~A of Question~\ref{question.precomputedMarketPartOnAWalkingSell}
+in place of the variant,
+the snippet prints \codehl{400 998 150 999}, then \codehl{250 999 50 1002}.
+\begin{lstlisting}[caption={A variant of the update}, label=listing.eligibleBidsWalkedFromTheLowestVariant]
+def submit(book, message):
+    remaining, d, p = message.size, message.direction, message.price
+    side = book.levels_map(-d)
+    eligible = [price for price in side if price * d <= p * d]
+    fills = []
+    for price in sorted(eligible):
+        if remaining == 0:
+            break
+        traded = min(remaining, side[price])
+        remaining -= traded
+        book.set_size(-d, price, side[price] - traded)
+        fills.append((price, traded))
+    if remaining > 0:
+        book.set_size(d, p, book.size_at(d, p) + remaining)
+    return fills
+\end{lstlisting}
+\begin{lstlisting}[caption={Two sell orders at 999}, label=listing.eligibleBidsWalkedFromTheLowestRun]
+for q in (400, 250):
+    book = AggregateBook.from_levels(
+        {1000: 100, 999: 200, 998: 150}, {1002: 120, 1003: 180}
+    )
+    submit(book, limit_order(1.0, q, 999, SELL))
+    print(q, book.best_bid_price, book.best_bid_size, book.best_ask_price)
+\end{lstlisting}
+What does the snippet print with the variant?
+\begin{choices}
+ \choice \codehl{400 998 150 999}, then \codehl{250 999 50 1002}.
+ \correctchoice \codehl{400 998 150 999}, then \codehl{250 1000 50 1002}.
+ \choice \codehl{400 1000 100 999}, then \codehl{250 1000 100 1002}.
+ \choice It raises \codehl{RuntimeError}: the dictionary changes size while it is iterated.
+\end{choices}
+\explanation{\codehl{sorted} puts the eligible bids in increasing order, 999 before 1000,
+whereas the priority of equation~\eqref{notes:eq.orderingOfLimitOrders}
+matches a sell against the highest bid first.
+The order of 400 takes both eligible levels whole, so the order of the walk leaves no trace
+in the book;
+the order of 250 takes the 200 shares at 999 and 50 of the 100 at 1000.
+The loop runs over the list that \codehl{sorted} returns, not over the dictionary.}
+\end{question}
+
+\begin{question}
+\label{question.fillsPricedAtTheIncomingOrder}
+A variant of Alternative~A of Question~\ref{question.precomputedMarketPartOnAWalkingSell}
+records each fill at the price of the incoming order:
+it replaces line~12 of Listing~\ref{listing.precomputedMarketPartOnAWalkingSellA}
+by the line below.
+The snippet sums the sizes and the values of the fills of two orders,
+and is run once with Alternative~A and once with the variant.
+\begin{lstlisting}[caption={Line 12 of the variant}, label=listing.fillsPricedAtTheIncomingOrderLine]
+        fills.append((p, traded))
+\end{lstlisting}
+\begin{lstlisting}[caption={The volume and the value of two orders}, label=listing.fillsPricedAtTheIncomingOrderRun]
+book = AggregateBook.from_levels(
+    {1000: 100, 999: 200, 998: 150}, {1002: 120, 1003: 180}
+)
+volume = value = 0
+for message in [limit_order(1.0, 250, 999, SELL),
+                market_order(2.0, 100, SELL)]:
+    for price, size in submit(book, message):
+        volume += size
+        value += price * size
+print(book.best_bid_price, book.best_bid_size, volume, value)
+\end{lstlisting}
+What happens?
+\begin{choices}
+ \correctchoice Alternative A prints \codehl{998 100 350 349700};
+  the variant prints \codehl{998 100 350 249750}.
+ \choice Both print \codehl{998 100 350 349700}.
+ \choice Alternative A prints \codehl{998 100 350 349700};
+  the variant prints \codehl{998 100 350 349650}.
+ \choice Alternative A prints \codehl{998 100 350 349700};
+  the variant prints \codehl{998 100 350} and a number larger than $10^{20}$.
+\end{choices}
+\explanation{The price of a fill is recorded and never read by the matching,
+so the book and the volume are the same.
+A records the resting prices, $100 \times 1000 + 200 \times 999 + 50 \times 998$;
+the variant records 999 for the 250 shares of the limit sell,
+and the sentinel 0 for the 100 shares of the market sell.}
+\end{question}
+
+\begin{question}
+\label{question.priceTestWithoutTheDirection}
+A variant of Alternative~A of Question~\ref{question.precomputedMarketPartOnAWalkingSell}
+writes its price test without the direction:
+it replaces line~6 of Listing~\ref{listing.precomputedMarketPartOnAWalkingSellA}
+by the line below.
+Each of the four messages below is applied to its own copy of the book
+\begin{center}
+ bid $1000 \times 100$, $999 \times 200$, $998 \times 150$;
+ \quad
+ ask $1002 \times 120$, $1003 \times 180$,
+\end{center}
+once by Alternative~A and once by the variant,
+and the two books are compared.
+\begin{lstlisting}[caption={Line 6 of the variant}, label=listing.priceTestWithoutTheDirectionLine]
+        if best is None or best > p:
+\end{lstlisting}
+\begin{lstlisting}[caption={Four messages}, label=listing.priceTestWithoutTheDirectionMessages]
+messages = [
+    limit_order(1.0, 200, 1002, BUY),   # (i)
+    limit_order(1.0, 50, 1000, SELL),   # (ii)
+    market_order(1.0, 50, SELL),        # (iii)
+    limit_order(1.0, 50, 1001, SELL),   # (iv)
+]
+\end{lstlisting}
+After which messages do Alternative~A and the variant leave the same book?
+\begin{choices}
+ \choice After (i) only.
+ \choice After (i) and (iii).
+ \correctchoice After (i) and (ii).
+ \choice After (i), (ii) and (iv).
+ \choice After all four.
+\end{choices}
+\explanation{For a sell, \codehl{best > p} stops the loop when the bid is above the limit,
+where the order should trade, and lets it trade below the limit.
+The variant processes the sell at 1000 correctly because its 50 shares fit in the queue at its own price.
+The market sell, priced 0, trades nothing,
+and the sell at 1001 trades 50 shares at 1000 instead of resting.}
+\end{question}
+
+\begin{question}
+\label{question.splittingAMarketOrderLosesItsRemainder}
+Proposition~\ref{notes:prop.decompositionOfLimitOrder} replaces an order $(t,q,p,d)$
+by its market part, of size $\marketOrderSize$,
+followed by its resting part $(t,q-\marketOrderSize,p,d)$.
+The function \codehl{split} below writes the two parts as messages of the package,
+computing $\marketOrderSize$ on the book they will meet,
+with the methods of Question~\ref{question.precomputedMarketPartOnAWalkingSell}.
+The snippet compares the book left by each message with the book left by its two parts;
+\codehl{apply} processes a submission as Alternative~A of
+Question~\ref{question.precomputedMarketPartOnAWalkingSell} does,
+and \codehl{book.bids} and \codehl{book.asks} are the two dictionaries of the book.
+\begin{lstlisting}[caption={An order as its two parts}, label=listing.splittingAMarketOrderSplit]
+def split(book, message):
+    d, p = message.direction, message.price
+    side = book.levels_map(-d)
+    eligible = sum(s for price, s in side.items() if price * d <= p * d)
+    q_m = min(message.size, eligible)
+    return [
+        market_order(message.time, q_m, d),
+        limit_order(message.time, message.size - q_m, p, d),
+    ]
+\end{lstlisting}
+\begin{lstlisting}[caption={Each of three messages against its two parts}, label=listing.splittingAMarketOrderRun]
+bids = {1000: 100, 999: 200, 998: 150}
+asks = {1002: 120, 1003: 180}
+for message in [limit_order(1.0, 400, 999, SELL),
+                market_order(1.0, 1000, SELL),
+                market_order(1.0, 150, BUY)]:
+    whole = AggregateBook.from_levels(bids, asks)
+    parts = AggregateBook.from_levels(bids, asks)
+    whole.apply(message, record=False)
+    for part in split(parts, message):
+        parts.apply(part, record=False)
+    print(whole.bids == parts.bids and whole.asks == parts.asks)
+\end{lstlisting}
+What happens?
+\begin{choices}
+ \choice It prints \codehl{True} three times.
+ \correctchoice It prints \codehl{True}, \codehl{False}, \codehl{True}.
+ \choice It prints \codehl{True}, \codehl{False}, \codehl{False}.
+ \choice It prints \codehl{True}, \codehl{False},
+  and raises \codehl{ValueError} on the third message, whose resting part has no shares.
+\end{choices}
+\explanation{The resting part of the third message is an order of no shares, which changes nothing.
+That of the second is a sell of 550 shares at the price 0,
+which the package reads as a market order:
+it matches nothing, has no fill price to inherit, and rests nowhere.
+The whole order rests the 550 shares at 998,
+by the market-to-limit rule of Section~\ref{notes:sec.foldImplementation}.}
+\end{question}
+
+\begin{question}
+\label{question.setSizeKeepingEmptyLevelsNeverReturns}
+The book writes every change of a size through \codehl{set\_size}
+and finds its best prices by \codehl{best\_price}, both quoted below.
+\codehl{apply} passes a submission to \codehl{submit},
+quoted below with what it records cut.
+A subclass overrides \codehl{set\_size} so that a price whose size reaches zero is kept.
+\begin{lstlisting}[caption={\protect\codehl{unito26.lob.orderbook.AggregateBook}: a write, and the best price. Docstrings elided.}, label=listing.setSizeKeepingEmptyLevelsStorage]
+def set_size(self, direction: int, price: int, size: int) -> None:
+    # ...
+    levels = self.levels_map(direction)
+    if size > 0:
+        levels[price] = size
+    else:
+        levels.pop(price, None)
+# ...
+def best_price(self, direction: int) -> int | None:
+    # ...
+    levels = self.levels_map(direction)
+    if not levels:
+        return None
+    return max(levels) if direction == BUY else min(levels)
+\end{lstlisting}
+\begin{lstlisting}[caption={\protect\codehl{unito26.lob.orderbook.AggregateBook.submit}, abridged: the fills and the level changes it can record are cut.}, label=listing.setSizeKeepingEmptyLevelsSubmit]
+def submit(self, message: Message, record: bool) -> SubmitResult | None:
+    # ...
+    remaining = message.size
+    direction = message.direction
+    limit_price = message.price
+    # ...
+    last_fill_price = None
+    # ...
+    while remaining > 0:
+        best = self.best_price(-direction)
+        # ...
+        if best is None or best * direction > limit_price * direction:
+            break
+        resting = self.size_at(-direction, best)
+        traded = min(remaining, resting)
+        remaining -= traded
+        self.set_size(-direction, best, resting - traded)
+        # ...
+        last_fill_price = best
+    # ...
+    rest_price = self.resting_price(limit_price, last_fill_price)
+    if remaining > 0 and rest_price is not None:
+        resting = self.size_at(direction, rest_price) + remaining
+        self.set_size(direction, rest_price, resting)
+\end{lstlisting}
+\begin{lstlisting}[caption={A subclass that keeps a level of size zero}, label=listing.setSizeKeepingEmptyLevelsClass]
+class ZeroKeepingBook(AggregateBook):
+    def set_size(self, direction, price, size):
+        self.levels_map(direction)[price] = size
+\end{lstlisting}
+\begin{lstlisting}[caption={Two market buys}, label=listing.setSizeKeepingEmptyLevelsRun]
+for q in (120, 150):
+    book = ZeroKeepingBook.from_levels(
+        {1000: 100, 999: 200}, {1002: 120, 1003: 180}
+    )
+    book.apply(market_order(1.0, q, BUY), record=False)
+    print(book.best_ask_price, book.best_ask_size, book.spread)
+\end{lstlisting}
+What happens?
+\begin{choices}
+ \choice It prints \codehl{1003 180 3}, then \codehl{1003 150 3}.
+ \choice It prints \codehl{1002 0 2}, then \codehl{1002 0 2}.
+ \choice It prints \codehl{1002 0 2}, then raises \codehl{AssertionError}.
+ \correctchoice It prints \codehl{1002 0 2}, and the second call of \codehl{apply} never returns.
+\end{choices}
+\explanation{The buy of 120 empties 1002, which the subclass keeps at size 0
+and \codehl{min} still returns as the best ask.
+The buy of 150 has 30 shares left at that point,
+and every further pass finds the best ask at 1002, trades \codehl{min(30, 0)} shares,
+and writes 0 back, so that the loop never changes the book or \codehl{remaining}.
+Algorithm~\ref{notes:algo.bookFold} terminates because each pass removes a price
+or brings $r$ to zero.}
+\end{question}
+
+\begin{question}
+\label{question.withdrawalBeyondTheRestingSize}
+A withdrawal removes size from one price of one side,
+and the book processes it by \codehl{withdraw}, quoted below.
+\codehl{strict} is the third argument of \codehl{from\_levels},
+and the snippet is run once with \codehl{strict = False} and once with \codehl{strict = True}.
+\begin{lstlisting}[caption={\protect\codehl{unito26.lob.orderbook.AggregateBook.withdraw}, abridged.}, label=listing.withdrawalBeyondTheRestingSizeWithdraw]
+def withdraw(self, message: Message, record: bool) -> SubmitResult | None:
+    # ...
+    resting = self.size_at(message.direction, message.price)
+    if message.size > resting and self.strict:
+        raise ValueError(
+            f"cannot withdraw {message.size} at price {message.price}: only "
+            f"{resting} resting"
+        )
+    removed = min(message.size, resting)
+    if removed == 0:
+        return SubmitResult() if record else None
+    left = resting - removed
+    self.set_size(message.direction, message.price, left)
+    # ...
+\end{lstlisting}
+\begin{lstlisting}[caption={A fill, then a withdrawal}, label=listing.withdrawalBeyondTheRestingSizeRun]
+book = AggregateBook.from_levels(
+    {1000: 100, 999: 200}, {1002: 120, 1003: 180}, strict
+)
+book.apply(market_order(1.0, 30, SELL), record=False)
+book.apply(withdrawal(2.0, 100, 1000, BUY), record=False)
+print(book.best_bid_price, book.spread, book.mid_price)
+\end{lstlisting}
+What happens?
+\begin{choices}
+ \correctchoice With \codehl{strict = False} it prints \codehl{999 3 1000.5};
+  with \codehl{strict = True} it raises \codehl{ValueError}.
+ \choice With \codehl{strict = False} it prints \codehl{1000 2 1001.0};
+  with \codehl{strict = True} it raises \codehl{ValueError}.
+ \choice It prints \codehl{999 3 1000.5} in both runs.
+ \choice It raises \codehl{ValueError} in both runs.
+\end{choices}
+\explanation{The market sell leaves 70 shares at 1000.
+The lenient book removes those 70, the most it can,
+so that the best bid falls to 999, the spread widens to 3 and the mid-price falls by half a tick;
+the strict book refuses to withdraw 100 shares from 70.
+Forgetting the fill gives (C).}
+\end{question}
+
+\begin{question}
+\label{question.sweepRescanningTheBestPrice}
+Alternative~B below walks the eligible prices of the opposite side
+in the order of priority of equation~\eqref{notes:eq.orderingOfLimitOrders},
+sorted once,
+where Alternative~A of Question~\ref{question.precomputedMarketPartOnAWalkingSell}
+asks the book for its best price on every pass,
+by the \codehl{best\_price} of Listing~\ref{listing.setSizeKeepingEmptyLevelsStorage}.
+The two leave the same book and return the same fills.
+They are timed on a market sell of $\ell$ shares
+against a bid side of $\ell$ prices holding one share each,
+the book built afresh before each run,
+for $\ell = 10^{3}$ and $\ell = 10^{4}$.
+\begin{lstlisting}[caption={Alternative B}, label=listing.sweepRescanningTheBestPriceB]
+def submit(book, message):
+    remaining, d, p = message.size, message.direction, message.price
+    side = book.levels_map(-d)
+    eligible = sorted(
+        (price for price in side if price * d <= p * d),
+        key=lambda price: price * d,
+    )
+    fills = []
+    for best in eligible:
+        if remaining == 0:
+            break
+        resting = side[best]
+        traded = min(remaining, resting)
+        remaining -= traded
+        book.set_size(-d, best, resting - traded)
+        fills.append((best, traded))
+    last = fills[-1][0] if fills else None
+    rest = book.resting_price(p, last)
+    if remaining > 0 and rest is not None:
+        book.set_size(d, rest, book.size_at(d, rest) + remaining)
+    return fills
+\end{lstlisting}
+Which statement holds?
+\begin{choices}
+ \choice B is slower: it sorts the eligible prices of every order,
+  where A finds each best price by a single scan.
+ \choice Both times grow about tenfold, and A is slower by a constant factor.
+ \correctchoice The time of A grows about a hundredfold, and that of B about tenfold.
+ \choice Both times grow about a hundredfold.
+\end{choices}
+\explanation{A scans the keys of the bid side on each of its $\ell$ passes,
+while the side holds $\ell, \ell - 1, \dots, 1$ prices:
+of the order of $\ell^{2}/2$ comparisons.
+B sorts once, in $O(\ell \log \ell)$ comparisons at most,
+and then visits each price once.}
+\end{question}
+
+\begin{question}
+\label{question.idealisedLimitBuyAtAFullTouch}
+Under the placement of Example~\ref{notes:example.idealisedPlacement},
+an \codehl{IdealisedFlow} turns each event of a Hawkes process into a message of one share,
+by the method quoted below.
+Here \codehl{flow} is an \codehl{IdealisedFlow} whose \codehl{uniform\_depth},
+the $\uniformDepth$ of Assumption~\ref{notes:assumption.idealisedBook}, is 5.
+\codehl{EventType}, of \codehl{unito26.lob.simulate}, names the six types of event,
+and \codehl{event.direction} is \codehl{BUY} for the three buy types.
+\codehl{\_consumable\_touch(book, d, time)} returns \codehl{book.best\_price(d)},
+and raises \codehl{AssumptionBreach} when that price holds one share and the price behind it none,
+so that taking a share would empty the side.
+\begin{lstlisting}[caption={\protect\codehl{unito26.lob.idealised.IdealisedFlow.\_place}}, label=listing.idealisedLimitBuyAtAFullTouchPlace]
+def _place(self, book: AggregateBook, event: EventType, time: float) -> Message:
+    direction = event.direction
+    if event in (EventType.MARKET_BUY, EventType.MARKET_SELL):
+        opposite = self._consumable_touch(book, -direction, time)
+        return limit_order(time, 1, opposite, direction)
+    if event in (EventType.WITHDRAW_BUY, EventType.WITHDRAW_SELL):
+        own = self._consumable_touch(book, direction, time)
+        return withdrawal(time, 1, own, direction)
+    touch = book.best_price(direction)
+    if book.size_at(direction, touch) < self.uniform_depth:
+        return limit_order(time, 1, touch, direction)
+    inside = touch + direction
+    if inside == book.best_price(-direction):
+        opposite = self._consumable_touch(book, -direction, time)
+        return limit_order(time, 1, opposite, direction)
+    return limit_order(time, 1, inside, direction)
+\end{lstlisting}
+\begin{lstlisting}[caption={Three limit buys}, label=listing.idealisedLimitBuyAtAFullTouchRun]
+book = AggregateBook.from_levels(
+    {1000: 4, 999: 5, 998: 5}, {1001: 1, 1002: 5, 1003: 5}
+)
+prices = []
+for time in (1.0, 2.0, 3.0):
+    message = flow._place(book, EventType.LIMIT_BUY, time)
+    book.apply(message, record=False)
+    prices.append(message.price)
+print(prices, book.best_bid_price, book.best_bid_size,
+      book.best_ask_price, book.best_ask_size)
+\end{lstlisting}
+What does the snippet print?
+\begin{choices}
+ \choice \codehl{[1000, 1000, 1001] 1000 6 1002 5}
+ \correctchoice \codehl{[1000, 1001, 1001] 1001 1 1002 5}
+ \choice \codehl{[1000, 1001, 1002] 1000 5 1002 4}
+ \choice It raises \codehl{AssumptionBreach} at the second event.
+\end{choices}
+\explanation{The first share joins the bid, which then holds $\uniformDepth = 5$.
+The second is placed one tick inside, at 1001, which is the best ask:
+it trades the one share there, and the ask moves to 1002, five shares behind it.
+The third is placed at 1001 again, now inside a spread of two ticks,
+and opens a new best bid.}
+\end{question}
