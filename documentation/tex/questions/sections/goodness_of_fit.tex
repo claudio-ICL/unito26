@@ -1,1 +1,509 @@
 \notebook{07-goodness-of-fit}
+The questions of this section concern the compensator of Definition~\ref{notes:def.compensator},
+its closed form for the exponential kernel, Proposition~\ref{notes:prop.compensatorClosedForm},
+and the test of goodness of fit that Theorem~\ref{notes:thm.meyer1971} makes of it,
+Section~\ref{notes:sec.simulation}.
+The two types are read as the market buys, type 0, and the market sells, type 1,
+as the arrays of the package index them.
+The pairs of \codehl{config} have $\decay = 4$.
+The self-exciting pair has $\baseIntensity = (0.25, 0.25)$,
+$\excitation = ((2.8, 0.2), (0.2, 2.8))$ row by row,
+$\branchingRatio = 0.75$ and $\stationaryIntensity = (1, 1)$.
+
+The function \codehl{compensators\_at\_events(params, times, types)} of \codehl{unito26.lob.hawkes}
+returns an array whose row $k$ is $\compensator(\arrivalTimes[ ]_k)$,
+by equation~\eqref{notes:eq.compensatorClosedForm},
+with the count read before $\arrivalTimes[ ]_k$ and the state at it.
+The residuals of a type are the increments~\eqref{notes:eq.time-changed_intertimes}
+of its own compensator between its own arrivals, the first counted from $\compensator(0) = 0$.
+\codehl{stats} is \codehl{scipy.stats}.
+\codehl{stats.kstest(x, cdf)} compares the sample \codehl{x} with the law whose distribution function is \codehl{cdf},
+and \codehl{stats.kstest(x, "expon")} compares it with $\mathrm{Exp}(1)$:
+its \codehl{statistic} is the largest distance $D$ between the empirical distribution function and \codehl{cdf},
+and its \codehl{pvalue} is the p-value of the test.
+
+\begin{question}
+\label{question.palmMeanOfTheTotalIntensity}
+A check of a simulator compares the mean of the total intensity
+$\totalIntensity = \mathbf{1}^{\transpose}\intensity[ ]$ with the total rate $\totalRate$,
+reading the intensity at the events of a long path of the self-exciting pair
+with the function quoted below.
+The column sums of $\excitation$ are both 3,
+so that $\totalIntensity = 0.5 + 3 \, \mathbf{1}^{\transpose}\decayedCounts$,
+and by equation~\eqref{notes:eq.scalarVariance}
+the stationary variance of $\mathbf{1}^{\transpose}\decayedCounts$ is
+$\totalRate / (2\decay(1-\branchingRatio)) = 1$.
+\begin{lstlisting}[caption={\protect\codehl{unito26.lob.hawkes.intensities\_at\_events}, its docstring elided.}, label=listing.palmIntensitiesAtEvents]
+def intensities_at_events(
+    params: HawkesParams, times: np.ndarray, types: np.ndarray
+) -> np.ndarray:
+# ...
+    beta = params.decay
+
+    decayed = np.zeros(params.dimension)
+    previous_time = 0.0
+    out = np.empty((times.size, params.dimension))
+
+    for k, (time, event_type) in enumerate(zip(times, types)):
+        decayed *= np.exp(-beta * (time - previous_time))
+        out[k] = params.baseline + params.excitation @ decayed
+        decayed[event_type] += 1.0
+        previous_time = time
+
+    return out
+\end{lstlisting}
+\begin{lstlisting}[caption={The total intensity at the events, before and after the jump}, label=listing.palmMeanRun]
+params = config.self_exciting_pair_params()
+path = np.array(list(ExponentialHawkes(params, rng=3).events(4e4)))
+times, types = path[:, 0], path[:, 1].astype(int)
+before = intensities_at_events(params, times, types).sum(axis=1)
+after = before + params.excitation.sum(axis=0)[types]
+print(round(len(times) / 4e4, 1), round(before.mean(), 1),
+      round(after.mean(), 1))
+\end{lstlisting}
+What does the snippet print, approximately?
+\begin{choices}
+ \choice \codehl{2.0 2.0 5.0}
+ \correctchoice \codehl{2.0 6.5 9.5}
+ \choice \codehl{2.0 2.5 5.5}
+ \choice \codehl{2.0 4.5 7.5}
+\end{choices}
+\explanation{By equation~\eqref{notes:eq.compensators_and_predict_projections}
+with the predictable $Y = \totalIntensity$,
+the sum of $\totalIntensity(\arrivalTimes[ ]_n)$ over the events has the mean of $\int \totalIntensity^2 \, dt$,
+so the mean over the events is
+$\Expectation[\totalIntensity^2]/\totalRate = (9 \cdot 1 + 2^2)/2 = 6.5$:
+an event arrives where the intensity is high.
+The clock gives $\totalRate = 2$,
+and after the jump each reading gains the column sum 3.}
+\end{question}
+
+\begin{question}
+\label{question.exponentialReferenceOfAPoissonFlow}
+In a quiet session the market sells arrive as a Poisson flow of rate 3 per second,
+the exponential-kernel process with $\excitation = 0$,
+whose compensator is $3t$.
+Their gaps are tested against five reference laws.
+\codehl{stats.expon(loc, scale)} is the law of $\mathtt{loc} + \mathtt{scale} \cdot X$ with $X \sim \mathrm{Exp}(1)$,
+\codehl{loc} defaulting to 0 and \codehl{scale} to 1,
+and its method \codehl{cdf} is its distribution function.
+\begin{lstlisting}[caption={Five reference laws for the gaps of a Poisson flow}, label=listing.exponentialReferences]
+gaps = np.random.default_rng(7).exponential(1 / 3, size=3000)
+references = [
+    (gaps, stats.expon(scale=1 / 3).cdf),
+    (gaps, stats.expon(3).cdf),
+    (3 * gaps, stats.expon().cdf),
+    (gaps, stats.expon(scale=3).cdf),
+    (gaps, stats.expon().cdf),
+]
+print([k for k, (x, cdf) in enumerate(references)
+       if stats.kstest(x, cdf).pvalue > 0.01])
+\end{lstlisting}
+What does the snippet print?
+\begin{choices}
+ \choice \codehl{[0, 1, 2]}
+ \choice \codehl{[2, 3]}
+ \choice \codehl{[0, 2, 4]}
+ \correctchoice \codehl{[0, 2]}
+ \choice \codehl{[2]}
+\end{choices}
+\explanation{By Theorem~\ref{notes:thm.meyer1971} the gaps rescaled by the compensator, $3\,\Delta t$,
+are independent $\mathrm{Exp}(1)$ variables, which is reference 2;
+reference 0 is the same test, sample and law scaled together by $1/3$.
+\codehl{stats.expon(3)} is $\mathrm{Exp}(1)$ moved to start at 3,
+and \codehl{scale=3} is a mean of 3, a rate of $1/3$.}
+\end{question}
+
+\begin{question}
+\label{question.compensatorInMilliseconds}
+A recorded file stamps its events in milliseconds,
+and the parameters were estimated in seconds.
+The snippet moves a path of the self-exciting pair to milliseconds
+and reads the residuals of the market buys through four compensators.
+\codehl{HawkesParams(mu, A, beta)} is the specification
+with baselines \codehl{mu}, excitation matrix \codehl{A} and decay \codehl{beta}.
+The path holds about 4000 events of each type,
+the events of a type about a second apart.
+\begin{lstlisting}[caption={One path, four clocks and specifications}, label=listing.compensatorInMilliseconds]
+params = config.self_exciting_pair_params()
+path = np.array(list(ExponentialHawkes(params, rng=5).events(4000.0)))
+times, types = path[:, 0], path[:, 1].astype(int)
+mu, A, beta = params.baseline, params.excitation, params.decay
+readings = [
+    (times, params),
+    (1000 * times, params),
+    (1000 * times, HawkesParams(mu / 1000, A / 1000, beta / 1000)),
+    (1000 * times, HawkesParams(mu / 1000, A / 1000, beta)),
+]
+for clock, p in readings:
+    compensators = compensators_at_events(p, clock, types)
+    tau = np.diff(compensators[types == 0, 0], prepend=0.0)
+    print(round(tau.mean(), 2))
+\end{lstlisting}
+What does the snippet print, approximately, line by line?
+\begin{choices}
+ \correctchoice 1, 250, 1, 0.25
+ \choice 1, 1, 1, 1
+ \choice 1, 250, 1, 1
+ \choice 1, 1000, 1, 0.25
+\end{choices}
+\explanation{By Remark~\ref{notes:remark.timeRescaling}
+the path on a clock a thousand times faster is the process with
+$\baseIntensity/1000$, $\excitation/1000$ and $\decay/1000$,
+and the third compensator is the first.
+In the second, a decay of 4 per millisecond leaves $\decayedCounts \approx 0$ at every event,
+and $\compensator_0 \approx 250\,t + 0.7 N_0 + 0.05 N_1$ at the time $t$ in seconds,
+against about one buy a second.
+In the fourth the excitation term is a thousand times smaller,
+and the baseline alone gives $0.25$ per buy.}
+\end{question}
+
+\begin{question}
+\label{question.compensatorReadAfterTheJump}
+The package evaluates the compensator at the events by the recursion below:
+\codehl{decayed} is the state $\decayedCounts$ and \codehl{counts} the count $\multiCountingProc$,
+both updated after row $k$ is recorded.
+Alternatives B and C move the record past one update or both.
+\begin{lstlisting}[caption={\protect\codehl{unito26.lob.hawkes.compensators\_at\_events}, its docstring elided.}, label=listing.compensatorsAtEventsQuote]
+def compensators_at_events(
+    params: HawkesParams, times: np.ndarray, types: np.ndarray
+) -> np.ndarray:
+# ...
+    d = params.dimension
+    beta = params.decay
+
+    decayed = np.zeros(d)  # Z, decayed to just before the current event
+    counts = np.zeros(d)  # N, events strictly before the current one
+    previous_time = 0.0
+    out = np.empty((times.size, d))
+
+    for k, (time, event_type) in enumerate(zip(times, types)):
+        decayed *= np.exp(-beta * (time - previous_time))
+        out[k] = params.baseline * time + params.excitation @ ((counts - decayed) / beta)
+        decayed[event_type] += 1.0
+        counts[event_type] += 1.0
+        previous_time = time
+
+    return out
+\end{lstlisting}
+\begin{lstlisting}[caption={Alternative B}, label=listing.compensatorReadAfterBoth]
+def compensators_b(params, times, types):
+    mu, A, beta = params.baseline, params.excitation, params.decay
+    decayed, counts = np.zeros(2), np.zeros(2)
+    previous, out = 0.0, np.empty((times.size, 2))
+    for k, (time, event_type) in enumerate(zip(times, types)):
+        decayed *= np.exp(-beta * (time - previous))
+        decayed[event_type] += 1.0
+        counts[event_type] += 1.0
+        out[k] = mu * time + A @ (counts - decayed) / beta
+        previous = time
+    return out
+\end{lstlisting}
+\begin{lstlisting}[caption={Alternative C}, label=listing.compensatorReadAfterTheCount]
+def compensators_c(params, times, types):
+    mu, A, beta = params.baseline, params.excitation, params.decay
+    decayed, counts = np.zeros(2), np.zeros(2)
+    previous, out = 0.0, np.empty((times.size, 2))
+    for k, (time, event_type) in enumerate(zip(times, types)):
+        decayed *= np.exp(-beta * (time - previous))
+        counts[event_type] += 1.0
+        out[k] = mu * time + A @ (counts - decayed) / beta
+        decayed[event_type] += 1.0
+        previous = time
+    return out
+\end{lstlisting}
+\begin{lstlisting}[caption={The residuals of the buys, against those of the package}, label=listing.compensatorReadAfterRun]
+params = config.self_exciting_pair_params()
+path = np.array(list(ExponentialHawkes(params, rng=1).events(2000.0)))
+times, types = path[:, 0], path[:, 1].astype(int)
+
+def buy_residuals(compensators):
+    return np.diff(compensators[types == 0, 0], prepend=0.0)
+
+reference = buy_residuals(compensators_at_events(params, times, types))
+for variant in (compensators_b, compensators_c):
+    shift = buy_residuals(variant(params, times, types)) - reference
+    moved = np.flatnonzero(np.abs(shift) > 1e-9)
+    print(moved[:3].tolist(), shift[moved[:3]].round(2).tolist())
+\end{lstlisting}
+What does the snippet print?
+\begin{choices}
+ \choice \codehl{[] []} on both lines.
+ \choice \codehl{[0] [0.7]} on both lines.
+ \correctchoice \codehl{[] []}, then \codehl{[0] [0.7]}.
+ \choice \codehl{[] []}, then \codehl{[0, 1, 2] [0.7, 0.7, 0.7]}.
+ \choice \codehl{[] []}, then \codehl{[0, 1, 2] [0.7, 1.4, 2.1]}.
+\end{choices}
+\explanation{The jumps of $\multiCountingProc$ and $\decayedCounts$ cancel at an arrival,
+Remark~\ref{notes:remark.readPreJump},
+so B records the same numbers.
+C reads $\multiCountingProc(\timeHorizon) - \decayedCounts(\timeHorizon)$,
+which overstates $\compensator_0$ by $2.8/4 = 0.7$ at every buy:
+a residual is a difference of two such values, and the overstatement cancels in every residual but the first,
+which starts from $\compensator_0(0) = 0$.}
+\end{question}
+
+\begin{question}
+\label{question.compensatorByRecursionSumOrQuadrature}
+Three implementations of the compensator at the events are compared.
+Alternative A is the function of the package
+quoted in Question~\ref{question.compensatorReadAfterTheJump}.
+Alternative B sums,
+for each $\arrivalTimes[ ]_k$,
+the integral of the proof of Proposition~\ref{notes:prop.compensatorClosedForm}
+over the events before it.
+Alternative C integrates the intensity numerically between consecutive events:
+\codehl{quad\_vec(f, a, b)} of \codehl{scipy.integrate} returns the integral of a vector-valued \codehl{f}
+over $(a, b)$ and an estimate of its error,
+by adaptive Gauss--Kronrod quadrature,
+evaluating \codehl{f} at 21 points of every subinterval it makes.
+\begin{lstlisting}[caption={Alternative B}, label=listing.compensatorBySum]
+def compensators_by_sum(params, times, types):
+    mu, A, beta = params.baseline, params.excitation, params.decay
+    out = np.empty((times.size, 2))
+    for k, time in enumerate(times):
+        mass = (1 - np.exp(-beta * (time - times[:k]))) / beta
+        out[k] = mu * time + A[:, types[:k]] @ mass
+    return out
+\end{lstlisting}
+\begin{lstlisting}[caption={Alternative C}, label=listing.compensatorByQuadrature]
+def compensators_by_quadrature(params, times, types):
+    mu, A, beta = params.baseline, params.excitation, params.decay
+    state, total, previous = np.zeros(2), np.zeros(2), 0.0
+    out = np.empty((times.size, 2))
+    for k, (time, event_type) in enumerate(zip(times, types)):
+        def intensity(u):
+            return mu + A @ state * np.exp(-beta * (u - previous))
+        total = total + quad_vec(intensity, previous, time)[0]
+        out[k] = total
+        state = state * np.exp(-beta * (time - previous))
+        state[event_type] += 1.0
+        previous = time
+    return out
+\end{lstlisting}
+The three agree to rounding.
+They are timed on the first $n$ events of one path of the self-exciting pair,
+for $n = 2000$, 4000, 8000 and 16000.
+Which statement holds?
+\begin{choices}
+ \choice C is the fastest at $n = 16000$, \codehl{quad\_vec} running compiled code.
+ \choice The time of each of the three about doubles with each doubling of $n$.
+ \choice The times of A and B about double with each doubling of $n$,
+  and that of C about quadruples.
+ \correctchoice At $n = 16000$ A is faster than B and than C by more than fivefold;
+  the times of A and C about double with each doubling of $n$,
+  and that of B grows more than threefold.
+ \choice B is the fastest, its sum over the past being vectorised,
+  and the time of A about quadruples with each doubling of $n$.
+\end{choices}
+\explanation{A carries the state from event to event at a constant cost.
+B sums over every earlier event, so event $k$ costs a time proportional to $k$, and the path a time quadratic in $n$.
+C carries the state too, and its cost per event is constant,
+but each interval costs a call of the integrator and its evaluations of the intensity,
+of the order of a hundred steps of A.}
+\end{question}
+
+\begin{question}
+\label{question.groundResidualsCannotSeeTheTypes}
+The cross-exciting pair has the baselines and the decay of the self-exciting pair,
+and the rows of its excitation matrix swapped,
+$\excitation = ((0.2, 2.8), (2.8, 0.2))$:
+a market buy mostly excites market sells.
+A path of the self-exciting pair, with about 1900 buys,
+is tested against each specification twice:
+through the residuals of the ground process,
+the increments of $\compensator_0 + \compensator_1$ between consecutive events of either type,
+and through the residuals of the buys.
+\begin{lstlisting}[caption={The ground process and the buys, under two kernels}, label=listing.groundResidualsRun]
+self_exciting = config.self_exciting_pair_params()
+cross_exciting = config.cross_exciting_pair_params()
+events = ExponentialHawkes(self_exciting, rng=1).events(2000.0)
+path = np.array(list(events))
+times, types = path[:, 0], path[:, 1].astype(int)
+for params in (self_exciting, cross_exciting):
+    compensators = compensators_at_events(params, times, types)
+    ground = np.diff(compensators.sum(axis=1), prepend=0.0)
+    buys = np.diff(compensators[types == 0, 0], prepend=0.0)
+    print(stats.kstest(ground, "expon").pvalue > 0.01,
+          stats.kstest(buys, "expon").pvalue > 0.01)
+\end{lstlisting}
+What does the snippet print?
+\begin{choices}
+ \choice \codehl{True True} on both lines.
+ \correctchoice \codehl{True True}, then \codehl{True False}.
+ \choice \codehl{True True}, then \codehl{False False}.
+ \choice \codehl{True True}, then \codehl{False True}.
+\end{choices}
+\explanation{Both matrices have column sums 3,
+so under both $\totalIntensity = 0.5 + 3\,\mathbf{1}^{\transpose}\decayedCounts$ on any path,
+and the ground compensator and its residuals are the same function of the times:
+the residuals of the ground process see $\excitation$ only through its column sums,
+as the wait of Remark~\ref{notes:remark.typeDraw} does.
+The compensator of the buys under the cross-exciting kernel
+misses the bursts of buys that follow buys, and the residuals of the buys reject it.}
+\end{question}
+
+\begin{question}
+\label{question.antitheticWaitsPassTheMargin}
+A Monte Carlo of an order-flow statistic draws the waits between market buys,
+a Poisson flow of rate 2, by inversion.
+Alternative B draws antithetic pairs of uniforms, $U$ and $1-U$,
+to reduce the variance of the estimate.
+Each of $-\log U$ and $-\log(1-U)$ is $\mathrm{Exp}(1)$,
+and their correlation is $1 - \pi^2/6 \approx -0.64$.
+The compensator of the flow is $2t$, so the residuals are twice the waits.
+\codehl{f"\{r:+.1f\}"} writes \codehl{r} with its sign and one decimal.
+\begin{lstlisting}[caption={Alternative A}, label=listing.antitheticWaitsA]
+def waits_a(rng, n):
+    return -np.log(rng.random(n)) / 2
+\end{lstlisting}
+\begin{lstlisting}[caption={Alternative B}, label=listing.antitheticWaitsB]
+def waits_b(rng, n):
+    u = rng.random(n // 2)
+    return -np.log(np.column_stack([u, 1 - u]).ravel()) / 2
+\end{lstlisting}
+\begin{lstlisting}[caption={The margin and the lag-one autocorrelation of the residuals}, label=listing.antitheticWaitsRun]
+for waits in (waits_a, waits_b):
+    tau = 2 * waits(np.random.default_rng(11), 4000)
+    r = np.corrcoef(tau[:-1], tau[1:])[0, 1]
+    print(stats.kstest(tau, "expon").pvalue > 0.01, f"{r:+.1f}")
+\end{lstlisting}
+What does the snippet print?
+\begin{choices}
+ \choice \codehl{True +0.0} on both lines.
+ \choice \codehl{True +0.0}, then \codehl{False -0.6}.
+ \choice \codehl{True +0.0}, then \codehl{True -0.6}.
+ \choice \codehl{True +0.0}, then \codehl{False -0.3}.
+ \correctchoice \codehl{True +0.0}, then \codehl{True -0.3}.
+\end{choices}
+\explanation{Every residual of B is $\mathrm{Exp}(1)$, so the comparison of the margin passes.
+The adjacent pairs alternate between an antithetic pair and an independent one,
+so the lag-one autocorrelation is half of $-0.64$.
+Theorem~\ref{notes:thm.meyer1971} asserts a serial independence
+that a test of the margin does not see, Remark~\ref{notes:remark.marginsOnly}.}
+\end{question}
+
+\begin{question}
+\label{question.tradesReportedOnBothSides}
+A trade feed reports every trade twice, once for each counterparty:
+as a market buy and as a market sell, with the same time.
+The snippet compares two independent Poisson flows of rate 1, a path of the model fitted to the feed,
+with the stream of the feed,
+and with that stream after the sells are moved by one millisecond to break the ties.
+Under the model the compensator of each type is $t$,
+so its residuals are its gaps.
+\begin{lstlisting}[caption={Two margins and a correlation, on three streams}, label=listing.tradesReportedTwice]
+rng = np.random.default_rng(14)
+model = [rng.exponential(1.0, 3000).cumsum() for _ in range(2)]
+trades = rng.exponential(1.0, 3000).cumsum()
+for buys, sells in (model, (trades, trades), (trades, trades + 0.001)):
+    tau_buy = np.diff(buys, prepend=0.0)
+    tau_sell = np.diff(sells, prepend=0.0)
+    print(stats.kstest(tau_buy, "expon").pvalue > 0.01,
+          stats.kstest(tau_sell, "expon").pvalue > 0.01,
+          round(np.corrcoef(tau_buy, tau_sell)[0, 1], 1))
+\end{lstlisting}
+What does the snippet print?
+\begin{choices}
+ \choice \codehl{True True 0.0} on all three lines.
+ \choice \codehl{True True 0.0}, \codehl{True True 1.0}, \codehl{True True 0.0}.
+ \correctchoice \codehl{True True 0.0}, then \codehl{True True 1.0} twice.
+ \choice \codehl{True True 0.0}, \codehl{False False 1.0}, \codehl{True True 1.0}.
+\end{choices}
+\explanation{Each type of the feed is a Poisson flow of rate 1 on its own, and its margin passes;
+the two residual sequences are one sequence,
+the joint independence of Theorem~\ref{notes:thm.meyer1971} fails,
+and so does its hypothesis~\emph{i.}, equation~\eqref{notes:eq.noCommonJumps}.
+A millisecond makes the times distinct and leaves the sells a function of the buys,
+so their residuals after the first are those of the buys.}
+\end{question}
+
+\begin{question}
+\label{question.fillsSharingATimestamp}
+On a thin book every market buy matches exactly two resting sell orders,
+and the message file records one execution per resting order,
+so that each market buy appears as two rows with the same time.
+The market buys arrive as a Poisson flow of rate 1.
+The snippet rescales the gaps of three streams by a rate,
+a count over the horizon:
+the executions at the rate of the executions,
+the distinct times at the rate of the executions,
+and the distinct times at their own rate.
+For $x \geq 0$, $e^{-x/2} - e^{-x}$ attains its maximum, $1/4$, at $x = 2\log 2$.
+\begin{lstlisting}[caption={The statistic $D$ on three streams}, label=listing.fillsSharingATimestamp]
+rng = np.random.default_rng(9)
+orders = rng.exponential(1.0, 2000).cumsum()
+fills = np.repeat(orders, 2)
+horizon = orders[-1]
+readings = [
+    (fills, len(fills) / horizon),
+    (np.unique(fills), len(fills) / horizon),
+    (np.unique(fills), len(np.unique(fills)) / horizon),
+]
+for times, rate in readings:
+    tau = rate * np.diff(times, prepend=0.0)
+    print(round(stats.kstest(tau, "expon").statistic, 3))
+\end{lstlisting}
+What does the snippet print, approximately, line by line?
+\begin{choices}
+ \correctchoice 0.5, 0.25, and a number close to 0.
+ \choice A number close to 0 on every line.
+ \choice 0.5, 0.5, and a number close to 0.
+ \choice 0.5, then a number close to 0 twice.
+ \choice 0.25, 0.25, and a number close to 0.
+\end{choices}
+\explanation{Half the gaps of the executions are zero,
+an atom of mass $1/2$ where $\mathrm{Exp}(1)$ has none:
+the count jumps by two at once, which equation~\eqref{notes:eq.noCommonJumps} excludes.
+The distinct times are the market buys, a flow of rate 1,
+and rescaled at the rate of the executions, about 2,
+their residuals are $2\,\mathrm{Exp}(1)$,
+at the distance $\max_{x} (e^{-x/2} - e^{-x}) = 1/4$ from $\mathrm{Exp}(1)$.}
+\end{question}
+
+\begin{question}
+\label{question.twoSampleTestOnTheGapsOfOnePath}
+\codehl{ExponentialHawkes}, the exact scheme,
+and \codehl{OgataThinningHawkes} of \codehl{unito26.lob.hawkes},
+which simulates by Algorithm~\ref{notes:algo.ogata},
+are both correct.
+A comparison draws one path of each, with different seeds,
+and compares their gaps by \codehl{stats.ks\_2samp},
+the two-sample Kolmogorov--Smirnov test,
+which assumes that each of its two samples is a sample of independent draws.
+It repeats this for 300 pairs of seeds,
+on the self-exciting pair and on a Poisson flow of the same total rate,
+and prints the fraction of the comparisons that reject at the level $0.01$.
+A path holds about 500 events.
+\begin{lstlisting}[caption={The rejection rate of a comparison of gaps}, label=listing.twoSampleOnGaps]
+def gaps(simulator):
+    times = np.array([time for time, _ in simulator.events(250.0)])
+    return np.diff(times)
+
+def rejection_rate(params):
+    rejected = 0
+    for seed in range(300):
+        exact = gaps(ExponentialHawkes(params, rng=seed))
+        thinned = gaps(OgataThinningHawkes(params, rng=seed + 1000))
+        rejected += stats.ks_2samp(exact, thinned).pvalue < 0.01
+    return rejected / 300
+
+poisson = HawkesParams([1.0, 1.0], np.zeros((2, 2)), 4.0)
+print(rejection_rate(config.self_exciting_pair_params()),
+      rejection_rate(poisson))
+\end{lstlisting}
+Which statement holds?
+\begin{choices}
+ \choice Both fractions are about $0.01$.
+ \correctchoice The first is well above $0.01$, the second about $0.01$.
+ \choice Both are well above $0.01$.
+ \choice The first is about $0.01$, the second well above it.
+\end{choices}
+\explanation{Under both specifications the two simulators draw the same law,
+and a test at its level rejects about once in a hundred.
+The gaps of a Poisson flow are independent.
+The gaps along one path of the self-exciting pair are dependent,
+so the gaps of one path vary from path to path more than a sample of independent gaps would,
+and the test overstates its evidence;
+one statistic per independent path restores the level.}
+\end{question}
