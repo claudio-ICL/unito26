@@ -13,7 +13,8 @@ literally, the sentinel price would take the axis to 10^10.
 
 The book figures go through ``levels_map`` and know nothing about how a book stores its
 levels; the session figures read the LOBSTER frame and its statistics; the point-process
-figures take event times and types, and samples to set against a formula.
+figures take event times and types, and samples to set against a formula; the figures of
+the CKS and the Hawkes flows read :mod:`unito26.lob.coupling`.
 """
 
 from __future__ import annotations
@@ -42,6 +43,12 @@ __all__ = [
     "counting_figure",
     "monte_carlo_figure",
     "exponential_qq_figure",
+    "mids_figure",
+    "touch_walks_figure",
+    "first_times_figure",
+    "discrepancy_fan_figure",
+    "variance_split_figure",
+    "distance_terms_figure",
 ]
 
 #: The first four slots of the categorical palette, in order.  A side keeps its colour
@@ -906,4 +913,317 @@ def exponential_qq_figure(residuals: dict, levels: int = 1000, title: str = ""):
         figure.update_xaxes(title_text="Exp(1) quantile", row=1, col=column)
     figure.update_yaxes(title_text="sample quantile", row=1, col=1)
     figure.update_layout(title=title, height=420)
+    return figure
+
+
+# ---- three flows on one path ----------------------------------------------------------
+
+#: Which flow a trace is about: one colour each in every figure of the study, and the dash
+#: as a second encoding, so that the books stay apart where their lines coincide.
+CKS_COLOUR = PALETTE[2]
+HAW_1_COLOUR = PALETTE[4]
+HAW_Q_COLOUR = PALETTE[3]
+FLOW_STYLE = {
+    "CKS": dict(color=CKS_COLOUR, dash="dot"),
+    "haw-1": dict(color=HAW_1_COLOUR, dash="solid"),
+    "haw-q": dict(color=HAW_Q_COLOUR, dash="dash"),
+}
+
+#: Predicted curves set against the coupled runs, in the order they are given: ink first.
+FORMULA_LINES = (
+    dict(color=INK, width=2, dash="dot"),
+    dict(color=MUTED, width=2, dash="dash"),
+    dict(color=MUTED, width=1.5, dash="dashdot"),
+)
+
+
+def _flow_style(label: str) -> dict:
+    """The style of the flow a label names: the flow alone, ``"haw-1"``, or the flow and,
+    after a comma, what sets the run apart, ``"haw-1, η = 0.2"``."""
+    return FLOW_STYLE[label.split(",")[0]]
+
+
+def _flow_steps(times, values, flow: str, **kwargs):
+    style = _flow_style(flow)
+    return _steps(
+        times, values, flow, style["color"],
+        line=dict(color=style["color"], width=2.5, dash=style["dash"]), **kwargs,
+    )
+
+
+def _formula_traces(clock, curves: dict, shown: set):
+    """A line per predicted curve, styled by position, one legend entry a name."""
+    import plotly.graph_objects as go
+
+    for slot, (name, curve) in enumerate(curves.items()):
+        yield go.Scatter(
+            x=clock, y=curve, mode="lines", name=name, legendgroup=name,
+            line=FORMULA_LINES[slot], showlegend=name not in shown,
+            hovertemplate="%{x:.3g} s: %{y:.4g}<extra>" + name + "</extra>",
+        )
+        shown.add(name)
+
+
+def mids_figure(pairs: dict, title: str = ""):
+    """The mid-price of CKS and of each Hawkes flow on one path, with ``chi`` of each.
+
+    ``pairs`` maps a Hawkes flow, ``"haw-1"`` or ``"haw-q"``, to its
+    :class:`unito26.lob.coupling.CoupledFlows` on the path; the CKS mid is read from the
+    first.  A rule in the colour of a flow marks the first event after which its mid and the
+    CKS one differ.
+    """
+    import plotly.graph_objects as go
+
+    figure = go.Figure()
+    first = next(iter(pairs.values())).frame
+    figure.add_trace(_flow_steps(first["TimeStamp"], first["CKSMidPrice"], "CKS"))
+    for flow, pair in pairs.items():
+        figure.add_trace(_flow_steps(pair.frame["TimeStamp"], pair.frame["HawMidPrice"], flow))
+    for slot, (flow, pair) in enumerate(pairs.items()):
+        time = pair.first_price_discrepancy_time
+        if time is not None:
+            figure.add_vline(
+                x=time, line=dict(color=_flow_style(flow)["color"], width=1.5, dash="dash"),
+                annotation_text=f"χ, {flow}", annotation_font_color=INK,
+                annotation_position="top right" if slot % 2 == 0 else "bottom right",
+            )
+    figure.update_layout(
+        title=title, template="simple_white", hovermode="x unified", height=460,
+        xaxis_title="time (s)", yaxis_title="mid-price P<sup>m</sup> (ticks)",
+        legend=dict(orientation="h", y=1.08, x=0),
+    )
+    return figure
+
+
+def touch_walks_figure(walks, flow: str, title: str = ""):
+    """The touch sizes of the CKS and of one Hawkes book up to the first move of each, the
+    bid above and the ask below.
+
+    ``walks`` is :func:`unito26.lob.coupling.touch_walks` and ``flow`` names its Hawkes book,
+    ``"haw-1"`` or ``"haw-q"``.  A line ends where its book first moves a best price, and a
+    rule in its colour marks ``psi`` there.
+    """
+    from plotly.subplots import make_subplots
+
+    times = walks.index.to_numpy()
+    books = {"CKS": "CKS", "Haw": flow}
+    figure = make_subplots(
+        rows=2, cols=1, shared_xaxes=True, shared_yaxes="all", vertical_spacing=0.08,
+        subplot_titles=(
+            "Size at the best bid S<sup>b</sup>", "Size at the best ask S<sup>a</sup>"
+        ),
+    )
+    for row, side in enumerate(("Bid", "Ask"), start=1):
+        for prefix, label in books.items():
+            # A step is drawn only up to the next point, so the last size is carried onto
+            # the row of the move for the line to reach it.
+            sizes = walks[f"{prefix}{side}Size1"].ffill(limit=1)
+            figure.add_trace(
+                _flow_steps(times, sizes, label, showlegend=row == 1), row=row, col=1
+            )
+        figure.update_yaxes(title_text="units", rangemode="tozero", row=row, col=1)
+    for prefix, label in books.items():
+        moved = walks.index[walks[f"{prefix}BidSize1"].isna()]
+        if not len(moved):
+            continue
+        rule = dict(color=_flow_style(label)["color"], width=1.5, dash="dash")
+        figure.add_vline(
+            x=moved[0], line=rule, annotation_text=f"ψ, {label}", annotation_font_color=INK,
+            annotation_position="top", row=1, col=1,
+        )
+        figure.add_vline(x=moved[0], line=rule, row=2, col=1)
+    figure.update_xaxes(title_text="time (s)", row=2, col=1)
+    figure.update_layout(
+        title=title, template="simple_white", hovermode="x unified", height=580,
+        legend=dict(orientation="h", y=-0.15, x=0),
+    )
+    return figure
+
+
+def first_times_figure(times: dict, clock, predicted: dict, y_title: str, title: str = ""):
+    """The survival of a first time -- ``chi``, or a first move ``psi`` -- in a grid of
+    panels, on a logarithmic time axis.
+
+    ``times[row][column]`` maps a flow, ``"CKS"``, ``"haw-1"`` or ``"haw-q"``, to the first
+    time of each path of one experiment, NaN where it had not come by the end of ``clock``;
+    its empirical survival is drawn as steps in the colour of the flow.  The rows and the
+    columns are what is varied, ``Sbar`` and ``DepthDecay`` say.  ``predicted[row][column]``,
+    where present, maps a name to a curve on ``clock``, drawn in the styles of
+    ``FORMULA_LINES`` by position.
+    """
+    import numpy as np
+    from plotly.subplots import make_subplots
+
+    clock = np.asarray(clock, dtype=float)
+    row_labels = list(times)
+    column_labels = list(next(iter(times.values())))
+    figure = make_subplots(
+        rows=len(row_labels), cols=len(column_labels), shared_xaxes=True, shared_yaxes=True,
+        horizontal_spacing=0.025, vertical_spacing=0.1,
+        subplot_titles=[f"{row}, {column}" for row in row_labels for column in column_labels],
+    )
+    shown = set()
+    for r, row in enumerate(row_labels, start=1):
+        for c, column in enumerate(column_labels, start=1):
+            for flow, sample in times[row][column].items():
+                sample = np.asarray(sample, dtype=float)
+                come = np.sort(sample[np.isfinite(sample)])
+                survival = 1.0 - np.searchsorted(come, clock, side="right") / sample.size
+                figure.add_trace(
+                    _flow_steps(
+                        clock, survival, flow, legendgroup=flow, showlegend=flow not in shown,
+                        hovertemplate="%{x:.3g} s: %{y:.3f}<extra>" + flow + "</extra>",
+                    ),
+                    row=r, col=c,
+                )
+                shown.add(flow)
+            curves = predicted.get(row, {}).get(column, {})
+            for trace in _formula_traces(clock, curves, shown):
+                figure.add_trace(trace, row=r, col=c)
+    figure.update_xaxes(type="log", range=[np.log10(clock[0]), np.log10(clock[-1])], dtick=1)
+    for c in range(1, len(column_labels) + 1):
+        figure.update_xaxes(title_text="time (s)", row=len(row_labels), col=c)
+    for r in range(1, len(row_labels) + 1):
+        figure.update_yaxes(title_text=y_title, row=r, col=1)
+    figure.update_yaxes(range=[0, 1.04])
+    figure.update_layout(
+        title=title, template="simple_white", height=300 * len(row_labels) + 160,
+        legend=dict(orientation="h", y=-0.3 / len(row_labels), x=0), hovermode="x unified",
+    )
+    return figure
+
+
+def _side_by_side(flows, title: str, y_title: str):
+    from plotly.subplots import make_subplots
+
+    figure = make_subplots(
+        rows=1, cols=len(flows), shared_yaxes=True, horizontal_spacing=0.04,
+        subplot_titles=list(flows),
+    )
+    for column in range(1, len(flows) + 1):
+        figure.update_xaxes(title_text="time (s)", row=1, col=column)
+    figure.update_yaxes(title_text=y_title, row=1, col=1)
+    figure.update_layout(
+        title=title, template="simple_white", height=440, hovermode="x unified",
+        legend=dict(orientation="h", y=-0.2, x=0),
+    )
+    return figure
+
+
+def discrepancy_fan_figure(fans: dict, clock, shown: int, title: str = ""):
+    """The fan of ``D_t = P^{m,CKS}_t - P^{m,haw}_t`` across runs, a panel per Hawkes flow.
+
+    ``fans`` maps a panel, labelled by its flow, ``"haw-1"`` or ``"haw-q"``, alone or followed
+    by a comma and what sets the runs apart, to the discrepancies of its runs on ``clock``,
+    the last axis being time: one path placed with many mark seeds, or many paths
+    with many each.  The first ``shown`` runs are drawn as thin lines, the mean over every
+    run in the colour of the flow, and a band one standard deviation either side of it.
+    """
+    import numpy as np
+    import plotly.graph_objects as go
+
+    clock = np.asarray(clock, dtype=float)
+    figure = _side_by_side(fans, title, "D<sub>t</sub> (ticks)")
+    for column, (flow, fan) in enumerate(fans.items(), start=1):
+        runs = np.asarray(fan, dtype=float).reshape(-1, clock.size)
+        mean, spread = runs.mean(axis=0), runs.std(axis=0)
+        colour = _flow_style(flow)["color"]
+        for k, run in enumerate(runs[:shown]):
+            figure.add_trace(
+                go.Scatter(
+                    x=clock, y=run, mode="lines", line_shape="hv", name="a run",
+                    legendgroup="a run", line=dict(color=AXIS, width=1), hoverinfo="skip",
+                    showlegend=column == 1 and k == 0,
+                ),
+                row=1, col=column,
+            )
+        figure.add_trace(
+            go.Scatter(
+                x=np.r_[clock, clock[::-1]], y=np.r_[mean + spread, (mean - spread)[::-1]],
+                fill="toself", fillcolor=colour, opacity=0.2, line=dict(width=0),
+                name="± 1 sd", legendgroup="band", showlegend=column == 1, hoverinfo="skip",
+            ),
+            row=1, col=column,
+        )
+        figure.add_trace(
+            go.Scatter(
+                x=clock, y=mean, mode="lines", name=f"mean, {flow}",
+                line=dict(color=colour, width=2.5),
+                hovertemplate="%{x:.0f} s: %{y:.3f}<extra>" + flow + "</extra>",
+            ),
+            row=1, col=column,
+        )
+    return figure
+
+
+#: The three columns of a variance split, as each is drawn in the colour of its flow.
+SPLIT_DASH = {"Total": "solid", "FlowPart": "dash", "PlacementPart": "dot"}
+SPLIT_NAME = {"Total": "total", "FlowPart": "flow part", "PlacementPart": "placement part"}
+
+
+def variance_split_figure(splits: dict, clock, predicted: dict, title: str = ""):
+    """The variance of ``D_t`` and its two parts over time, a panel per Hawkes flow.
+
+    ``splits`` maps a panel, labelled as in :func:`discrepancy_fan_figure`, to its
+    :func:`unito26.lob.coupling.variance_split` on ``clock``; the splits stand side by side
+    on one scale.  ``Total`` is drawn solid, ``FlowPart`` dashed and
+    ``PlacementPart`` dotted, in the colour of the flow.  ``predicted[flow]``, where present,
+    maps a name to a curve on ``clock``, drawn in the styles of ``FORMULA_LINES``.
+    """
+    import numpy as np
+    import plotly.graph_objects as go
+
+    clock = np.asarray(clock, dtype=float)
+    figure = _side_by_side(splits, title, "variance (ticks²)")
+    shown = set()
+    for column, (flow, split) in enumerate(splits.items(), start=1):
+        colour = _flow_style(flow)["color"]
+        for part, dash in SPLIT_DASH.items():
+            name = SPLIT_NAME[part]
+            figure.add_trace(
+                go.Scatter(
+                    x=clock, y=split[part].to_numpy(), mode="lines", name=name,
+                    legendgroup=name, showlegend=name not in shown,
+                    line=dict(color=colour, width=2.5 if part == "Total" else 2, dash=dash),
+                    hovertemplate="%{x:.0f} s: %{y:.4g}<extra>" + name + "</extra>",
+                ),
+                row=1, col=column,
+            )
+            shown.add(name)
+        for trace in _formula_traces(clock, predicted.get(flow, {}), shown):
+            figure.add_trace(trace, row=1, col=column)
+    figure.update_yaxes(rangemode="tozero")
+    return figure
+
+
+def distance_terms_figure(terms, title: str = ""):
+    """The distance ``2 Sbar D`` after each event, and the three terms it is the sum of,
+    signed as they enter, on one time axis and one scale.
+
+    ``terms`` is :func:`unito26.lob.coupling.distance_terms`.
+    """
+    from plotly.subplots import make_subplots
+
+    rows = {
+        "2S̄ (P<sup>m,CKS</sup> − P<sup>m,haw</sup>)": terms["Distance"],
+        "(a) OFI<sup>CKS</sup> − OFI<sup>haw</sup>": terms["ImbalanceMismatch"],
+        "−(b) the best sizes, CKS less Hawkes": -terms["TouchSizeMismatch"],
+        "−(c) the outer sizes of the moves less S̄ a tick, CKS less Hawkes":
+            -terms["DepthMismatch"],
+    }
+    figure = make_subplots(
+        rows=len(rows), cols=1, shared_xaxes=True, shared_yaxes="all", vertical_spacing=0.06,
+        subplot_titles=tuple(rows),
+    )
+    for row, (name, values) in enumerate(rows.items(), start=1):
+        figure.add_trace(
+            _steps(terms["TimeStamp"], values, name, INK,
+                   line=dict(color=INK, width=2 if row == 1 else 1.5), showlegend=False),
+            row=row, col=1,
+        )
+        figure.add_hline(y=0, line=dict(color=AXIS, width=1), row=row, col=1)
+        figure.update_yaxes(title_text="units", row=row, col=1)
+    figure.update_xaxes(title_text="time (s)", row=len(rows), col=1)
+    figure.update_layout(title=title, template="simple_white", hovermode="x unified",
+                         height=760)
     return figure

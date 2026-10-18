@@ -216,6 +216,33 @@
 \newcommand{\signedFlow}{Y}
 \newcommand{\countCovarianceRate}{D}
 \newcommand{\flowVolatility}{\volatilityCoefficient_{\signedFlow}}
+% The book of the idealised placement, after Cont, Kukanov and Stoikov.
+\newcommand{\cks}{\mathrm{CKS}}
+% The book of the geometric placement with orders of one share.
+\newcommand{\hawOne}{\mathrm{haw}\text{-}1}
+% The book of the geometric placement with orders of random size.
+\newcommand{\hawQ}{\mathrm{haw}\text{-}q}
+% The mid-price of the book named in the superscript.
+\newcommand{\midPriceOf}[1]{\price^{m,{#1}}}
+% The best bid and the best ask of the book named in the superscript.
+\newcommand{\bestBidPriceOf}[1]{\price^{b,{#1}}}
+\newcommand{\bestAskPriceOf}[1]{\price^{a,{#1}}}
+% The first time the mid-prices of two books differ. Sigma is the volatility.
+\newcommand{\partingTime}{\chi}
+% The first time a best price of a book moves.
+\newcommand{\firstMove}{\psi}
+% The difference of two mid-prices. D is the count covariance rate.
+\newcommand{\discrepancy}{\mathcal{D}}
+% A touch walk: the opening depth plus the shares the events have brought to one touch.
+\newcommand{\touchWalk}[1]{\Upsilon^{#1}}
+% The running maximum of the two touch walks.
+\newcommand{\walkMaximum}{\bar{\Upsilon}}
+% The shares an event of each type brings to one side. Not u, the right Perron vector.
+\newcommand{\sideVector}[1]{\pressure^{#1}}
+% The fluid touch, in units of the opening depth.
+\newcommand{\fluidTouch}{r}
+% The time, in units of the opening depth, at which the fluid touch reaches zero.
+\newcommand{\fluidEmptying}{s^{*}}
 
 %% THE FASTER BOOK %%
 % The occupied prices of a side, and the band of ticks an array-backed book indexes:
