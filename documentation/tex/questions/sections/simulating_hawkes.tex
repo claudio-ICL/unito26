@@ -1,1 +1,534 @@
 \notebook{06-simulating-hawkes}
+The questions of this section concern the simulation of Section~\ref{notes:sec.simulation}:
+thinning, the update of the state,
+and the exact scheme of Theorem~\ref{notes:thm.dassiosZhao},
+with the simulators of the package.
+A process of two types is read as the market orders,
+type 0 the market buys and type 1 the market sells,
+since the package counts types from 0.
+
+\begin{question}
+\label{question.thinningBoundAfterTheJump}
+Algorithm~\ref{notes:algo.ogata} draws candidates at the rate of a bound,
+and keeps each with probability the total intensity $\totalIntensity$ over the bound.
+The two functions below run it on the state $\decayedCounts$ of a pair of market orders,
+and return the number of events per second up to \codehl{horizon}.
+\codehl{rng.exponential(scale)} draws an exponential of mean \codehl{scale},
+and \codehl{rng.choice(2, p=p)} draws 0 or 1 with probabilities \codehl{p}.
+\begin{lstlisting}[caption={Alternative A}, label=listing.thinningBoundAfterTheJumpA]
+def thinning_rate(params, horizon, rng):
+    mu_bar = params.baseline.sum()
+    jumps = params.excitation.sum(axis=0)
+    time, state, count = 0.0, np.zeros(2), 0
+    bound = mu_bar
+    while True:
+        wait = rng.exponential(1 / bound)
+        time += wait
+        if time > horizon:
+            return count / horizon
+        state *= np.exp(-params.decay * wait)
+        intensity = mu_bar + jumps @ state
+        if rng.random() * bound <= intensity:
+            lam = params.baseline + params.excitation @ state
+            state[rng.choice(2, p=lam / lam.sum())] += 1.0
+            count += 1
+            bound = mu_bar + jumps @ state
+\end{lstlisting}
+Alternative B is Alternative A with the last five lines of its loop replaced by the following.
+\begin{lstlisting}[caption={Alternative B, the end of its loop}, label=listing.thinningBoundAfterTheJumpB]
+        if rng.random() * bound <= intensity:
+            lam = params.baseline + params.excitation @ state
+            state[rng.choice(2, p=lam / lam.sum())] += 1.0
+            count += 1
+        bound = intensity
+\end{lstlisting}
+Each is run on the self-exciting pair,
+\begin{equation*}
+ \baseIntensity = (0.25, 0.25),
+ \qquad
+ \excitation = \begin{pmatrix} 2.8 & 0.2 \\ 0.2 & 2.8 \end{pmatrix},
+ \qquad
+ \decay = 4,
+\end{equation*}
+over $2 \times 10^{4}$ seconds,
+where the standard error of the rate is $0.04$.
+\begin{lstlisting}[caption={Run once with each alternative}, label=listing.thinningBoundAfterTheJumpRun]
+params = config.self_exciting_pair_params()
+rng = np.random.default_rng(8)
+print(round(thinning_rate(params, 2e4, rng), 2))
+\end{lstlisting}
+Which statement holds?
+\begin{choices}
+ \choice Both print a number close to 2.
+ \choice A prints a number clearly below 2, and B a number close to 2.
+ \choice A prints a number close to 2, and B a number clearly above 2.
+ \correctchoice A prints a number close to 2, and B a number clearly below 2.
+\end{choices}
+\explanation{The columns of $\excitation/\decay$ sum to $0.75$, so $\totalRate = 0.5/0.25 = 2$.
+A bounds by the post-jump value $\totalIntensity(\arrivalTimes[]_{n}+)$ until the next event,
+which dominates $\totalIntensity$ since $\excitation \geq 0$:
+it is exact, and wastes only its rejections.
+B bounds by the pre-jump value, smaller by the jump of 3,
+so its candidates come at a rate below $\totalIntensity$ and part of the excitation is lost.}
+\end{question}
+
+\begin{question}
+\label{question.recordedStatesAliasTheJump}
+The update~\eqref{notes:eq.update_of_exponential_intensity} carries the state $\decayedCounts$
+from one market order to the next,
+and Remark~\ref{notes:remark.prePostJump} tells its two values apart:
+the pre-jump value $\decayedCounts(\arrivalTimes[]_{n})$ enters the intensity,
+and the post-jump value $\decayedCounts(\arrivalTimes[]_{n}+)$ is carried forward.
+Each function below is written to record $\decayedCounts(\arrivalTimes[]_{n})$ at every event,
+and the two differ in one line.
+\begin{lstlisting}[caption={Alternative A}, label=listing.recordedStatesAliasTheJumpA]
+def recorded_states(decay, times, types):
+    state, previous, record = np.zeros(2), 0.0, []
+    for now, event_type in zip(times, types):
+        state = state * np.exp(-decay * (now - previous))
+        record.append(state)
+        state[event_type] += 1.0
+        previous = now
+    return record
+\end{lstlisting}
+\begin{lstlisting}[caption={Alternative B}, label=listing.recordedStatesAliasTheJumpB]
+def recorded_states(decay, times, types):
+    state, previous, record = np.zeros(2), 0.0, []
+    for now, event_type in zip(times, types):
+        state *= np.exp(-decay * (now - previous))
+        record.append(state)
+        state[event_type] += 1.0
+        previous = now
+    return record
+\end{lstlisting}
+A market buy, a market sell and a market buy arrive half a second apart,
+and at the decay $\decay = 2\log 2$ the state halves in half a second.
+\begin{lstlisting}[caption={Run once with each alternative}, label=listing.recordedStatesAliasTheJumpRun]
+times, types = [0.5, 1.0, 1.5], [0, 1, 0]
+record = recorded_states(2 * np.log(2), times, types)
+print([state.tolist() for state in record])
+\end{lstlisting}
+What do the two alternatives print?
+\begin{choices}
+ \choice A prints \codehl{[[0.0, 0.0], [0.5, 0.0], [0.25, 0.5]]},\\
+  and B prints \codehl{[[1.25, 0.5], [1.25, 0.5], [1.25, 0.5]]}.
+ \choice Both print \codehl{[[0.0, 0.0], [0.5, 0.0], [0.25, 0.5]]}.
+ \correctchoice A prints \codehl{[[1.0, 0.0], [0.5, 1.0], [1.25, 0.5]]},\\
+  and B prints \codehl{[[1.25, 0.5], [1.25, 0.5], [1.25, 0.5]]}.
+ \choice Both print \codehl{[[1.0, 0.0], [0.5, 1.0], [1.25, 0.5]]}.
+\end{choices}
+\explanation{In A, \codehl{state * ...} builds a new array, which the record holds
+and to which the jump then adds:
+every entry is the post-jump $\decayedCounts(\arrivalTimes[]_{n}+)$.
+In B, \codehl{*=} decays one array in place, and the record holds it three times, at its final value.
+Recording \codehl{state.copy()} gives the pre-jump states,
+\codehl{[[0.0, 0.0], [0.5, 0.0], [0.25, 0.5]]}.}
+\end{question}
+
+\begin{question}
+\label{question.intensityByRecursionAgainstSum}
+The total intensity $\totalIntensity(\arrivalTimes[]_{n})$ standing at each market order of a path
+is computed in two ways.
+Alternative A sums over the events before $\arrivalTimes[]_{n}$, as in~\eqref{notes:eq.decayedCounts};
+Alternative B carries the state by the update~\eqref{notes:eq.update_of_exponential_intensity}.
+\codehl{times} and \codehl{types} are arrays of the $n$ times and types of the path.
+\begin{lstlisting}[caption={Alternative A}, label=listing.intensityByRecursionAgainstSumA]
+def total_intensities_a(params, times, types):
+    jumps = params.excitation.sum(axis=0)
+    out = np.empty(times.size)
+    for n, now in enumerate(times):
+        weights = np.exp(-params.decay * (now - times[:n]))
+        out[n] = params.baseline.sum() + np.sum(weights * jumps[types[:n]])
+    return out
+\end{lstlisting}
+\begin{lstlisting}[caption={Alternative B}, label=listing.intensityByRecursionAgainstSumB]
+def total_intensities_b(params, times, types):
+    jumps = params.excitation.sum(axis=0)
+    state, previous = np.zeros(2), 0.0
+    out = np.empty(times.size)
+    for n, (now, event_type) in enumerate(zip(times, types)):
+        state *= np.exp(-params.decay * (now - previous))
+        out[n] = params.baseline.sum() + jumps @ state
+        state[event_type] += 1.0
+        previous = now
+    return out
+\end{lstlisting}
+Both are timed on the first $n$ events of one path,
+for $n$ from 1000 to 16000, doubling.
+Which statement holds?
+\begin{choices}
+ \correctchoice The time per event of B stays about the same and that of A grows with $n$:
+  B is faster at every $n$, by a factor that grows with $n$.
+ \choice The time per event of both stays about the same,
+  and B is faster by a constant factor.
+ \choice A is faster at every $n$, its loop body being one vectorised expression.
+ \choice The time per event of both grows with $n$,
+  since each loops over the events of the path.
+\end{choices}
+\explanation{The body of A costs a term for every earlier event,
+so the path costs $O(n^{2})$,
+and vectorising the sum lowers the constant and not the growth.
+The update costs $O(1)$ per event.}
+\end{question}
+
+\begin{question}
+\label{question.exactWaitOnGivenUniforms}
+The step of the exact scheme of the package, Algorithm~\ref{notes:algo.dassiosZhao}, is quoted below.
+In it, \codehl{self.total\_intensity} is $\totalIntensity$ at the current state,
+and \codehl{self.\_baseline\_total} is $\bar{\baseIntensity}$.
+The call \codehl{self.\_advance(w)} moves the clock by \codehl{w}
+and multiplies the state by $e^{-\decay w}$,
+and the call \codehl{self.\_draw\_type\_and\_jump()} draws the type
+and adds one to its coordinate of the state.
+\begin{lstlisting}[caption={\protect\codehl{unito26.lob.hawkes.ExponentialHawkes.step}, its comments elided.}, label=listing.exactWaitStep]
+def step(self) -> tuple[float, int]:
+    beta = self.params.decay
+    excess = self.total_intensity - self._baseline_total  # D >= 0
+
+    u1, u2 = self.rng.random(2)
+
+# ...
+    wait_baseline = -np.log(u1) / self._baseline_total
+
+# ...
+    if excess <= 0.0:
+        wait_excited = np.inf
+    else:
+        remaining = 1.0 + beta * np.log(u2) / excess
+        wait_excited = -np.log(remaining) / beta if remaining > 0.0 else np.inf
+
+    self._advance(min(wait_baseline, wait_excited))
+    return self.time, self._draw_type_and_jump()
+\end{lstlisting}
+The simulator is started just after a market order of the asymmetric pair,
+\begin{equation*}
+ \baseIntensity = (0.2, 0.6),
+ \qquad
+ \excitation = \begin{pmatrix} 1.2 & 4.8 \\ 0.4 & 0.8 \end{pmatrix},
+ \qquad
+ \decay = 4,
+\end{equation*}
+from the state $\decayedCounts(0+) = (1.5, 1.0)$.
+\codehl{Uniforms(values)} stands in for the generator:
+its \codehl{random(2)} returns the next two of \codehl{values} as an array,
+and its \codehl{random()} the next one.
+Take $\log 2 \approx 0.693$.
+\begin{lstlisting}[caption={One step on given uniforms, in two cases}, label=listing.exactWaitRun]
+params = config.asymmetric_pair_params()
+for u2 in (np.exp(-1.0), np.exp(-3.0)):
+    simulator = ExponentialHawkes.from_state(params, [1.5, 1.0])
+    simulator.rng = Uniforms([np.exp(-0.4), u2, 0.75])
+    time, event_type = simulator.step()
+    print(round(time, 3))
+\end{lstlisting}
+What does the snippet print?
+\begin{choices}
+ \choice \codehl{0.5}, then \codehl{0.5}.
+ \choice \codehl{0.5}, then \codehl{inf}.
+ \choice \codehl{0.173}, then \codehl{0.32}.
+ \correctchoice \codehl{0.173}, then \codehl{0.5}.
+ \choice \codehl{0.173}, then \codehl{inf}.
+\end{choices}
+\explanation{By~\eqref{notes:eq.dzDraws}, with $D = 1.6 \cdot 1.5 + 5.6 \cdot 1.0 = 8$,
+$\tau_1 = 0.4/0.8 = 0.5$,
+and $\tau_2 = -\tfrac{1}{4}\log(1 - \tfrac{4}{8}) = \tfrac{1}{4}\log 2 \approx 0.173$ in the first case;
+in the second $1 - \tfrac{12}{8} < 0$, so $\tau_2 = +\infty$ and the baseline clock fires at $0.5$.
+The column sums of $\branchingMatrix$ taken for those of $\excitation$ give $D = 2$
+and an infinite $\tau_2$ in both cases.}
+\end{question}
+
+\begin{question}
+\label{question.typeDrawnBeforeTheDecay}
+Equation~\eqref{notes:eq.dzType} draws the type of the next market order
+on the intensities at its arrival, before its jump.
+The package inverts their cumulative sum, as below;
+\codehl{np.searchsorted(cumulative, threshold)} is the first index
+at which \codehl{cumulative} reaches \codehl{threshold}.
+\begin{lstlisting}[caption={\protect\codehl{unito26.lob.hawkes.\_HawkesState}: the intensities, the decay and the type draw, their docstrings elided.}, label=listing.typeDrawState]
+@property
+def intensities(self) -> np.ndarray:
+# ...
+    return self.params.baseline + self.params.excitation @ self.decayed_counts
+# ...
+def _advance(self, elapsed: float) -> None:
+# ...
+    self.time += elapsed
+    self.decayed_counts *= np.exp(-self.params.decay * elapsed)
+
+def _draw_type_and_jump(self) -> int:
+# ...
+    intensities = self.intensities
+    cumulative = np.cumsum(intensities)
+    threshold = self.rng.random() * cumulative[-1]
+# ...
+    event_type = min(int(np.searchsorted(cumulative, threshold)), self.params.dimension - 1)
+    self.decayed_counts[event_type] += 1.0
+    return event_type
+\end{lstlisting}
+The class \codehl{DrawFirst} is \codehl{ExponentialHawkes}
+with the last two lines of its step, Listing~\ref{listing.exactWaitStep},
+replaced by the three below.
+\begin{lstlisting}[caption={The end of the step of \protect\codehl{DrawFirst}}, label=listing.typeDrawnBeforeTheDecayVariant]
+event_type = self._draw_type_and_jump()
+self._advance(min(wait_baseline, wait_excited))
+return self.time, event_type
+\end{lstlisting}
+Both start from the state of Question~\ref{question.exactWaitOnGivenUniforms},
+on the uniforms of its first case.
+\begin{lstlisting}[caption={One step of each class}, label=listing.typeDrawnBeforeTheDecayRun]
+params = config.asymmetric_pair_params()
+for simulator_class in (ExponentialHawkes, DrawFirst):
+    simulator = simulator_class.from_state(params, [1.5, 1.0])
+    simulator.rng = Uniforms([np.exp(-0.4), np.exp(-1.0), 0.75])
+    time, event_type = simulator.step()
+    print(event_type, simulator.decayed_counts.round(3).tolist())
+\end{lstlisting}
+What does the snippet print?
+\begin{choices}
+ \choice \codehl{1 [0.75, 1.5]} on both lines.
+ \choice \codehl{1 [0.75, 1.5]}, then \codehl{0 [1.75, 0.5]}.
+ \choice \codehl{1 [0.75, 1.5]}, then \codehl{0 [2.5, 1.0]}.
+ \choice \codehl{0 [1.75, 0.5]}, then \codehl{0 [1.25, 0.5]}.
+ \correctchoice \codehl{1 [0.75, 1.5]}, then \codehl{0 [1.25, 0.5]}.
+\end{choices}
+\explanation{The wait multiplies the state by $1 - \tfrac{4}{8} = \tfrac{1}{2}$:
+at the arrival the intensities are $(3.5, 1.3)$,
+and the threshold $0.75 \cdot 4.8 = 3.6$ lies past the buys, so the order is a market sell.
+\codehl{DrawFirst} draws on the intensities $(6.8, 2.0)$ left by the last event,
+where $6.6$ falls among the buys,
+and then halves its own jump with the rest of the state, $(2.5, 1.0)$.}
+\end{question}
+
+\begin{question}
+\label{question.clippedExcitationClockAddsEvents}
+The excitation clock of the exact scheme is defective, Remark~\ref{notes:remark.defectiveClock}:
+with probability $e^{-D/\decay}$ it never fires.
+The class \codehl{Clipped} is \codehl{ExponentialHawkes}
+with the two lines under \codehl{else} in its step, Listing~\ref{listing.exactWaitStep},
+replaced by the two below, which never return infinity.
+\begin{lstlisting}[caption={The excitation clock of \protect\codehl{Clipped}}, label=listing.clippedExcitationClockAddsEventsVariant]
+remaining = max(1.0 + beta * np.log(u2) / excess, 1e-12)
+wait_excited = -np.log(remaining) / beta
+\end{lstlisting}
+The flow below decays at 50 per second,
+so that its excitation halves in about 14 milliseconds,
+a time scale of the market orders of a liquid stock.
+Take $\log 10^{-12} \approx -27.6$.
+The snippet is run with \codehl{simulator\_class} each of the two classes,
+over $2 \times 10^{4}$ seconds, where the standard error of the rate is $0.02$.
+\begin{lstlisting}[caption={Run once with each class}, label=listing.clippedExcitationClockAddsEventsRun]
+params = HawkesParams(
+    baseline=[0.5, 0.5],
+    excitation=[[15.0, 10.0], [10.0, 15.0]],
+    decay=50.0,
+)
+events = list(simulator_class(params, rng=4).events(2e4))
+print(round(len(events) / 2e4, 2))
+\end{lstlisting}
+Which statement holds?
+\begin{choices}
+ \choice Both print a number close to 2.
+ \correctchoice \codehl{ExponentialHawkes} prints a number close to 2,
+  and \codehl{Clipped} a number clearly above 2.
+ \choice \codehl{ExponentialHawkes} prints a number close to 2,
+  and \codehl{Clipped} a number clearly below 2.
+ \choice \codehl{ExponentialHawkes} prints a number clearly below 2,
+  its excitation clock failing to fire on some waits,
+  and \codehl{Clipped} a number close to 2.
+\end{choices}
+\explanation{The columns of $\excitation/\decay$ sum to $0.5$, so $\totalRate = 1/0.5 = 2$.
+\codehl{Clipped} makes every defective clock fire at $27.6/50 \approx 0.55$ seconds,
+before the baseline clock, of mean $1/\bar{\baseIntensity} = 1$ second, more often than not:
+each such firing is an event the model does not have, and it excites further events.}
+\end{question}
+
+\begin{question}
+\label{question.selfAndCrossExcitingShareTheirTimes}
+The self-exciting and the cross-exciting pairs of the package share
+$\baseIntensity = (0.25, 0.25)$ and $\decay = 4$;
+their excitation matrices are
+\begin{equation*}
+ \begin{pmatrix} 2.8 & 0.2 \\ 0.2 & 2.8 \end{pmatrix}
+ \quad\text{and}\quad
+ \begin{pmatrix} 0.2 & 2.8 \\ 2.8 & 0.2 \end{pmatrix}.
+\end{equation*}
+In the first a market buy mostly excites market buys,
+in the second market sells.
+Both are simulated by the step of Listing~\ref{listing.exactWaitStep},
+which reads the total intensity as below,
+and whose type draw takes one uniform.
+\begin{lstlisting}[caption={\protect\codehl{unito26.lob.hawkes.\_HawkesState}: the total intensity.}, label=listing.selfAndCrossTotalIntensity]
+# ...
+    self._total_jump = params.excitation.sum(axis=0)
+# ...
+@property
+def total_intensity(self) -> float:
+# ...
+    return self._baseline_total + float(self._total_jump @ self.decayed_counts)
+\end{lstlisting}
+Each path below is an array with a row (time, type) per event.
+\codehl{np.allclose(x, y)} raises \codehl{ValueError} when \codehl{x} and \codehl{y}
+differ in length.
+\begin{lstlisting}[caption={The two pairs on one seed}, label=listing.selfAndCrossExcitingShareTheirTimesRun]
+self_exciting = config.self_exciting_pair_params()
+cross_exciting = config.cross_exciting_pair_params()
+paths = [
+    np.array(list(ExponentialHawkes(params, rng=3).events(100.0)))
+    for params in (self_exciting, cross_exciting)
+]
+times = [path[:, 0] for path in paths]
+types = [path[:, 1] for path in paths]
+print(np.allclose(times[0], times[1]), np.array_equal(types[0], types[1]))
+\end{lstlisting}
+What does the snippet print?
+\begin{choices}
+ \choice \codehl{True True}
+ \choice \codehl{False False}
+ \correctchoice \codehl{True False}
+ \choice \codehl{ValueError}
+\end{choices}
+\explanation{Both matrices have column sums $(3, 3)$,
+so $\totalIntensity = 0.5 + 3\,\mathbf{1}^{\transpose}\decayedCounts$
+depends on the times of the past events and not on their types:
+the same uniforms give the same waits, and the times agree to rounding.
+The type is drawn on the full intensities, where the two matrices differ,
+Remark~\ref{notes:remark.typeDraw}.}
+\end{question}
+
+\begin{question}
+\label{question.eventsHoldTheCrossingEvent}
+A simulation is often run in two stretches,
+a warm-up to a time and then the run proper.
+The simulators yield their market orders up to a horizon by the generator quoted below;
+\codehl{self.\_crossing} is \codehl{None} when a simulator is built,
+and \codehl{self.step()} draws the next event, advancing the clock and the state.
+\begin{lstlisting}[caption={\protect\codehl{unito26.lob.hawkes.\_HawkesState.events}, its docstring elided.}, label=listing.eventsHoldTheCrossingEventQuote]
+def events(self, horizon: float) -> Iterator[tuple[float, int]]:
+# ...
+    while True:
+        if self._crossing is not None:
+            time, event_type = self._crossing
+            self._crossing = None
+        else:
+            time, event_type = self.step()
+        if time > horizon:
+            self._crossing = (time, event_type)
+            return
+        yield time, event_type
+\end{lstlisting}
+The class \codehl{Dropping} overrides it.
+\begin{lstlisting}[caption={A simulator that drops the event past the horizon}, label=listing.eventsHoldTheCrossingEventVariant]
+class Dropping(ExponentialHawkes):
+    def events(self, horizon):
+        while True:
+            time, event_type = self.step()
+            if time > horizon:
+                return
+            yield time, event_type
+\end{lstlisting}
+\begin{lstlisting}[caption={Two stretches against one run}, label=listing.eventsHoldTheCrossingEventRun]
+params = config.one_way_pair_params()
+for simulator_class in (ExponentialHawkes, Dropping):
+    simulator = simulator_class(params, rng=11)
+    first = list(simulator.events(10.0))
+    rest = list(simulator.events(40.0))
+    whole = list(simulator_class(params, rng=11).events(40.0))
+    print(first + rest == whole, len(whole) - len(first + rest))
+\end{lstlisting}
+What does the snippet print?
+\begin{choices}
+ \correctchoice \codehl{True 0}, then \codehl{False 1}.
+ \choice \codehl{True 0} on both lines.
+ \choice \codehl{False 1} on both lines.
+ \choice \codehl{False} and a negative number, on both lines.
+\end{choices}
+\explanation{The first event past 10 seconds is drawn, and its draw has already moved the clock and the state.
+The package holds it and yields it first in the second call,
+so that the two stretches are the single run;
+\codehl{Dropping} discards it, and loses that event alone.
+A second call continues from where the first stopped, not from time zero.}
+\end{question}
+
+\begin{question}
+\label{question.seedsOfAnOrderFlowMonteCarlo}
+A Monte Carlo average over paths of the order flow needs paths that are independent,
+and a study that can be rerun needs them reproducible.
+The simulators take an integer seed or a generator, as below.
+\begin{lstlisting}[caption={\protect\codehl{unito26.lob.hawkes.\_HawkesState.\_\_init\_\_}: the generator.}, label=listing.seedsOfAnOrderFlowMonteCarloQuote]
+# ...
+self.rng = rng if isinstance(rng, np.random.Generator) else np.random.default_rng(rng)
+# ...
+\end{lstlisting}
+Two generators built by \codehl{np.random.default\_rng(5)} draw the same numbers.
+\begin{lstlisting}[caption={Paths from a seed and from a generator}, label=listing.seedsOfAnOrderFlowMonteCarloRun]
+params = config.weakly_exciting_pair_params()
+rng = np.random.default_rng(5)
+
+def path(seed_or_generator):
+    simulator = ExponentialHawkes(params, rng=seed_or_generator)
+    return list(simulator.events(10.0))
+
+print(path(5) == path(5), path(rng) == path(rng), path(5) == path(rng))
+\end{lstlisting}
+What does the snippet print?
+\begin{choices}
+ \choice \codehl{True False True}
+ \correctchoice \codehl{True False False}
+ \choice \codehl{True True True}
+ \choice \codehl{False False False}
+\end{choices}
+\explanation{An integer seed builds a fresh generator, so \codehl{path(5)} is one path at every call.
+A generator is used as given and advanced by every draw:
+the calls of \codehl{path(rng)} read consecutive stretches of its stream,
+and by the third it has moved past the numbers with which \codehl{default\_rng(5)} starts.
+Independent paths share one generator.}
+\end{question}
+
+\begin{question}
+\label{question.transposedKernelChangesTheRate}
+The records \codehl{config.ASYMMETRIC\_PAIR\_PARAMS}
+list the entries of the excitation matrix of the asymmetric pair in the order below,
+\codehl{Component} being the type excited, $e$,
+and \codehl{Cause} the type exciting it, $e'$,
+as in Remark~\ref{notes:remark.indexOrder}.
+\begin{center}
+\begin{tabular}{ccc}
+ \toprule
+ \codehl{Component} & \codehl{Cause} & \codehl{Kernel} \\
+ \midrule
+ 0 & 0 & 1.2 \\
+ 0 & 1 & 4.8 \\
+ 1 & 0 & 0.4 \\
+ 1 & 1 & 0.8 \\
+ \bottomrule
+\end{tabular}
+\end{center}
+The baselines are $\baseIntensity = (0.2, 0.6)$ and the decay is $\decay = 4$.
+The snippet reads the matrix off the records in two ways,
+and simulates each specification over $2 \times 10^{4}$ seconds,
+where the standard errors of the two rates are below $0.04$.
+\codehl{HawkesParams} raises \codehl{ValueError} at a branching ratio of 1 or more.
+\begin{lstlisting}[caption={The records read row by row, and transposed}, label=listing.transposedKernelChangesTheRateRun]
+records = config.ASYMMETRIC_PAIR_PARAMS
+kernel = np.array([record["Kernel"] for record in records])
+for excitation in (kernel.reshape(2, 2), kernel.reshape(2, 2).T):
+    params = HawkesParams(
+        baseline=[0.2, 0.6], excitation=excitation, decay=4.0
+    )
+    events = list(ExponentialHawkes(params, rng=1).events(2e4))
+    print(round(len(events) / 2e4, 2))
+\end{lstlisting}
+What does the snippet print?
+\begin{choices}
+ \choice A number close to 3, twice.
+ \correctchoice A number close to 3, then a number close to 2.
+ \choice A number close to 2, then a number close to 3.
+ \choice A number close to 3, then \codehl{ValueError}.
+\end{choices}
+\explanation{\codehl{reshape} fills rows first, so the first matrix is $\excitation$, row excited.
+With $\branchingMatrix = \excitation/4$, $\det(I - \branchingMatrix) = 0.44$,
+and $\stationaryIntensity = (I - \branchingMatrix)^{-1}\baseIntensity$
+of~\eqref{notes:eq.stationaryIntensity} is $(2, 1)$; with the transpose it is $(0.5, 1.5)$.
+Both have $\branchingRatio = 0.6$ and pass the condition of Theorem~\ref{notes:thm.stationarity}:
+at a fixed baseline the transpose changes the rate.}
+\end{question}
