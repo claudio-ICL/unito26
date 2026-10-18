@@ -3,7 +3,7 @@
 % book of the CKS placement. The class drives that book and the Hawkes flow, placed
 % geometrically, with the same events from one opening book, and asks how far the identity
 % carries over: first through the time at which the two mid-prices part, then through their
-% discrepancy after it, with orders of one share and of random size. 25 frames.
+% discrepancy after it, with orders of one share and of random size. 30 frames.
 %
 % SWITCH POINTS to notebook 10-the-idealised-book-against-the-hawkes-book, each signposted in
 % the \note of the frame before it:
@@ -12,8 +12,9 @@
 %   after "The variance of the discrepancy, ..."   -> 3. The discrepancy: mean and variance
 %   after "What random sizes change"               -> 4. Uncertain sizes
 %
-% Overrunning, cut in this order: the picture of the drawdown (said over the touch walks), then
-% the table of the two placements (said over the CKS placement).
+% Overrunning, cut in this order: the pictures of the drawdown and of the touches on its path
+% (said over the touch walks), the mirror (said over the moments), then the table of the two
+% placements (said over the CKS placement).
 %
 % THE FRAME CONTRACT. These slides are projection material, not reference material: the
 % students read the notes, and they only ever see a frame while it is being talked over.
@@ -246,6 +247,127 @@ differ only in the size of each order. The update of the CKS book counts events,
 signed-size contribution of class 4. So the comparison with $\hawOne$ measures the cost of
 placing the orders away from the touch, and the comparison with $\hawQ$ adds the cost of not
 seeing the size of each order.
+}
+\end{frame}
+
+\begin{frame}
+  \frametitle{A limit buy at a spread of $k \geq 2$ ticks}
+\begin{center}
+\begin{tikzpicture}[x=0.34cm, y=0.24cm, font=\scriptsize,
+    bid/.style={fill=blue!40, draw=blue!60}, ask/.style={fill=orange!40, draw=orange!65},
+    span/.style={{Stealth[length=3pt]}-{Stealth[length=3pt]}, gray!50!black},
+    moves/.style={blue!65, thick}, stays/.style={gray!55, thick}]
+  \begin{scope}
+    \fill[gray!10] (5.5,0) rectangle (8.5,12);
+    \booksizeaxis{0.4}{12.6}{6}{2}
+    \draw[gray!55] (0.4,0) -- (12.6,0);
+    \draw[gray!45] (0.4,7.5) -- (12.6,7.5);
+    \foreach \x in {1,...,5} \draw[bid] (\x-0.3,0) rectangle (\x+0.3,4);
+    \draw[ask] (9-0.3,0) rectangle (9+0.3,2);
+    \foreach \x in {10,11,12} \draw[ask] (\x-0.3,0) rectangle (\x+0.3,4);
+    \node[above, inner sep=1pt] at (5,4) {$\uniformDepth$};
+    \draw[moves] (6,7.5) -- (6,11.5);
+    \fill[blue!65] (6,11.5) circle (1.5pt) node[right] {$1$};
+    \node[below] at (5,-0.2) {$\bestBidPrice$};
+    \node[below] at (9,-0.2) {$\bestAskPrice$};
+    \draw[span] (5,-3.6) -- node[below] {$k$ ticks} (9,-3.6);
+    \node at (6.5,13.6) {$\cks$};
+  \end{scope}
+  \begin{scope}[xshift=5.3cm]
+    \fill[gray!10] (5.5,0) rectangle (8.5,12);
+    \booksizeaxis{0.4}{12.6}{6}{2}
+    \draw[gray!55] (0.4,0) -- (12.6,0);
+    \draw[gray!45] (0.4,7.5) -- (12.6,7.5);
+    \foreach \x/\h in {1/3, 2/5, 3/2, 4/4, 5/2} \draw[bid] (\x-0.3,0) rectangle (\x+0.3,\h);
+    \foreach \x/\h in {9/2, 10/4, 11/1, 12/3} \draw[ask] (\x-0.3,0) rectangle (\x+0.3,\h);
+    \foreach \x/\h in {8/1.6, 7/0.96, 6/0.576} {
+      \draw[moves] (\x,7.5) -- (\x,7.5+\h);
+      \fill[blue!65] (\x,7.5+\h) circle (1.5pt);}
+    \foreach \x/\h in {5/0.346, 4/0.207, 3/0.124, 2/0.075} {
+      \draw[stays] (\x,7.5) -- (\x,7.5+\h);
+      \fill[gray!55] (\x,7.5+\h) circle (1.5pt);}
+    \node[right] at (8,9.1) {$\offsetParameter$};
+    \node[below] at (5,-0.2) {$\bestBidPrice$};
+    \node[below] at (9,-0.2) {$\bestAskPrice$};
+    \draw[span] (5,-3.6) -- node[below] {$k$ ticks} (9,-3.6);
+    \node at (6.5,13.6) {$\hawOne$};
+  \end{scope}
+\end{tikzpicture}
+\end{center}
+
+Stems: the law of the price of the incoming limit buy
+
+$\cks$: one tick inside if its touch holds $\uniformDepth$, else at it
+
+$\hawOne$: inside iff $\tickSizeOfLOB(1+\priceOffset_n) < \LOBspread$, with probability
+$1-(1-\offsetParameter)^{k-1}$
+\note{
+A limit buy, the sell being the mirror, at a spread of $k = 4$ ticks, the free ticks shaded.
+The CKS book sends it to its touch while the touch holds less than $\uniformDepth$, and one tick
+inside once the touch is full, where it opens a new touch of one share.
+The geometric placement prices it $1 + \priceOffset_n$ ticks below the best ask, whatever the
+queue. It improves the bid by $j = k - 1 - \priceOffset_n$ ticks, $1 \leq j \leq k - 1$, with
+probability $\offsetParameter(1-\offsetParameter)^{k-1-j}$, joins the touch with probability
+$\offsetParameter(1-\offsetParameter)^{k-1}$, and rests behind it with probability
+$(1-\offsetParameter)^{k}$. At a full CKS touch the two books improve the bid by the same tick
+with probability $\offsetParameter(1-\offsetParameter)^{k-2}$: the rows $k \geq 2$ of the parting
+table to come.
+}
+\end{frame}
+
+\begin{frame}
+  \frametitle{A limit buy at a spread of one tick}
+\begin{center}
+\begin{tikzpicture}[x=0.34cm, y=0.24cm, font=\scriptsize,
+    bid/.style={fill=blue!40, draw=blue!60}, ask/.style={fill=orange!40, draw=orange!65},
+    stays/.style={gray!55, thick}]
+  \begin{scope}
+    \booksizeaxis{0.4}{10.6}{6}{2}
+    \draw[gray!55] (0.4,0) -- (10.6,0);
+    \draw[gray!45] (0.4,7.5) -- (10.6,7.5);
+    \foreach \x in {1,...,5} \draw[bid] (\x-0.3,0) rectangle (\x+0.3,4);
+    \draw[ask] (6-0.3,0) rectangle (6+0.3,1);
+    \draw[orange!65, dashed] (6-0.3,1) rectangle (6+0.3,2);
+    \foreach \x in {7,...,10} \draw[ask] (\x-0.3,0) rectangle (\x+0.3,4);
+    \node[above, inner sep=1pt] at (5,4) {$\uniformDepth$};
+    \draw[orange!80!black, thick] (6,7.5) -- (6,11.5);
+    \fill[orange!80!black] (6,11.5) circle (1.5pt) node[right] {$1$};
+    \draw[-{Stealth}, orange!80!black] (6,7.3) -- (6,2.3);
+    \node[right, inner sep=1pt] at (6.3,5.4) {trades};
+    \node[below left, inner sep=1pt] at (5.3,-0.2) {$\bestBidPrice$};
+    \node[below right, inner sep=1pt] at (5.7,-0.2) {$\bestAskPrice$};
+    \node at (5.5,13.6) {$\cks$};
+  \end{scope}
+  \begin{scope}[xshift=4.9cm]
+    \booksizeaxis{0.4}{10.6}{6}{2}
+    \draw[gray!55] (0.4,0) -- (10.6,0);
+    \draw[gray!45] (0.4,7.5) -- (10.6,7.5);
+    \foreach \x/\h in {1/3, 2/5, 3/2, 4/4, 5/2} \draw[bid] (\x-0.3,0) rectangle (\x+0.3,\h);
+    \foreach \x/\h in {6/2, 7/4, 8/1, 9/3, 10/2} \draw[ask] (\x-0.3,0) rectangle (\x+0.3,\h);
+    \foreach \x/\h in {5/1.6, 4/0.96, 3/0.576, 2/0.346, 1/0.207} {
+      \draw[stays] (\x,7.5) -- (\x,7.5+\h);
+      \fill[gray!55] (\x,7.5+\h) circle (1.5pt);}
+    \node[right] at (5,9.1) {$\offsetParameter$};
+    \node[below left, inner sep=1pt] at (5.3,-0.2) {$\bestBidPrice$};
+    \node[below right, inner sep=1pt] at (5.7,-0.2) {$\bestAskPrice$};
+    \node at (5.5,13.6) {$\hawOne$};
+  \end{scope}
+\end{tikzpicture}
+\end{center}
+
+$\cks$, touch at $\uniformDepth$: one share traded at $\bestAskPrice$
+
+$\hawOne$: at the touch with probability $\offsetParameter$, behind it otherwise
+
+$\cks$ moves the best ask iff that touch held one share
+\note{
+At a spread of one tick no tick is free. The CKS limit buy at a full bid is priced one tick above
+it, at the best ask, and trades one share there, as a market buy would: the bid stays full, the
+ask touch loses a share, and the best ask moves up a tick when that share was its last. Below
+$\uniformDepth$ the order joins the bid. The geometric limit buy is priced $\priceOffset_n$ ticks
+below the best bid, at the touch when $\priceOffset_n = 0$ and behind it otherwise, and it moves
+no best price. So at one tick no limit order improves a touch, and a best price moves only when
+its touch loses its last share: the quiet book, to come.
 }
 \end{frame}
 
@@ -507,9 +629,61 @@ function of the path.
 \end{frame}
 
 \begin{frame}
+  \frametitle{At $\firstMove^{\cks}$ the CKS ask loses its last share}
+\begin{center}
+\begin{tikzpicture}[x=0.42cm, y=0.36cm, font=\scriptsize,
+    bid/.style={fill=blue!40, draw=blue!60}, ask/.style={fill=orange!40, draw=orange!65}]
+  \begin{scope}
+    \booksizeaxis{0.4}{8.6}{4}{1}
+    \draw[gray!55] (0.4,0) -- (8.6,0);
+    \foreach \x in {1,...,4} \draw[bid] (\x-0.3,0) rectangle (\x+0.3,4);
+    \draw[ask] (5-0.3,0) rectangle (5+0.3,1);
+    \foreach \x in {6,7,8} \draw[ask] (\x-0.3,0) rectangle (\x+0.3,4);
+    \node[below] at (4,-0.2) {$\bestBidPrice$};
+    \node[below] at (5,-0.2) {$\bestAskPrice$};
+    \node at (4.5,5.4) {before};
+    \node[below, align=center] at (4.5,-1.6)
+      {$\touchWalk{b} = 6$, \ $\touchWalk{a} = 3$, \ $\walkMaximum = 6$ \\[2pt]
+       $\nthBestBidSize[1,\cks] = 6 - (6 - 4) = 4$ \\[2pt]
+       $\nthBestAskSize[1,\cks] = 3 - (6 - 4) = 1$};
+  \end{scope}
+  \draw[-{Stealth}, gray!55] (9.2,2.5) -- node[above, inner sep=2pt, text=black, align=center]
+    {market buy\\of one share} (14.2,2.5);
+  \begin{scope}[xshift=6.3cm]
+    \booksizeaxis{0.4}{8.6}{4}{1}
+    \draw[gray!55] (0.4,0) -- (8.6,0);
+    \foreach \x in {1,...,4} \draw[bid] (\x-0.3,0) rectangle (\x+0.3,4);
+    \foreach \x in {6,7,8} \draw[ask] (\x-0.3,0) rectangle (\x+0.3,4);
+    \node[below] at (4,-0.2) {$\bestBidPrice$};
+    \node[below] at (6,-0.2) {$\bestAskPrice$};
+    \node at (4.5,5.4) {after};
+    \node[below, align=center] at (4.5,-1.6)
+      {$\touchWalk{b} = 6$, \ $\touchWalk{a} = 2$, \ $\walkMaximum = 6$ \\[2pt]
+       $\walkMaximum - \touchWalk{a} = 4 = \uniformDepth$};
+  \end{scope}
+\end{tikzpicture}
+\end{center}
+
+$\uniformDepth = 4$: the path of the next frame, at $\firstMove^{\cks}$
+
+A market buy takes the last share of the ask
+
+Behind the touch, $\uniformDepth$: the best ask moves one tick
+\note{
+The CKS book at the last event of the path of the next frame, with $\uniformDepth = 4$. Before it
+the spread is one tick, the bid is full and the ask holds one share, as the proposition reads
+them off the walks. A market buy lowers $\touchWalk{a}$ by one and takes that share: the drawdown
+$\walkMaximum - \touchWalk{a}$ reaches $\uniformDepth$ and the ask touch empties. The best ask
+moves to the next level, which holds $\uniformDepth$, as every CKS level behind a touch does: one
+tick, and a spread of two. The proposition stops at this event, $\firstMove^{\cks}$.
+}
+\end{frame}
+
+\begin{frame}
   \frametitle{The first move of the CKS book is a drawdown of $\uniformDepth$}
 \begin{center}
 \begin{tikzpicture}[x=1.05cm, y=0.3cm, font=\scriptsize]
+  \path (-0.8,0) (9.3,0);
   \fill[gray!12] (0,0) -- (0,4) -- (2.6,4) -- (2.6,5) -- (4.9,5) -- (4.9,6) -- (7.4,6)
     -- (7.4,2) -- (4.9,2) -- (4.9,1) -- (2.6,1) -- (2.6,0) -- cycle;
   \draw[-{Stealth}, gray!70] (0,0) -- (8.2,0) node[right] {$t$};
@@ -542,6 +716,46 @@ the walks open at the opening touches, below the cap. The bid walk raises the ma
 time the CKS bid is full and a limit buy trades at the ask, which raises the floor under the ask
 walk. The ask walk meets the floor at $\firstMove^{\cks}$, where the CKS ask
 empties and the best ask moves up a tick.
+}
+\end{frame}
+
+\begin{frame}
+  \frametitle{The CKS touches on the same path}
+\begin{center}
+\begin{tikzpicture}[x=1.05cm, y=0.45cm, font=\scriptsize]
+  \path (-0.8,0) (9.3,0);
+  \draw[-{Stealth}, gray!70] (0,0) -- (8.2,0) node[right] {$t$};
+  \draw[-{Stealth}, gray!70] (0,0) -- (0,5.6);
+  \draw[gray!45, dashed] (0,4) -- (7.4,4);
+  \node[left, gray!40!black] at (0,4) {$\uniformDepth$};
+  \foreach \t in {2.6, 4.9} {
+    \draw[gray!55, dotted, thick] (\t,0) -- (\t,5);
+    \node[above, gray!40!black] at (\t,5) {$\walkMaximum$ rises};}
+  \draw[blue!65, thick] plot[const plot] coordinates {
+    (0,3) (0.6,4) (1.4,3) (2.2,4) (3.9,3) (4.4,4) (5.9,3) (6.9,4) (7.4,4)};
+  \draw[orange!85, thick] plot[const plot] coordinates {
+    (0,2) (1.0,1) (1.8,2) (2.6,1) (3.4,2) (4.9,1) (5.4,2) (6.4,1) (7.4,0)};
+  \fill[orange!85] (7.4,0) circle (2pt);
+  \draw[gray!60!black, dashed] (7.4,0) -- (7.4,5);
+  \node[below] at (7.4,0) {$\firstMove^{\cks}$};
+  \node[blue!55!black, right] at (7.5,4) {$\nthBestBidSize[1,\cks]$};
+  \node[orange!70!black, right] at (7.5,1) {$\nthBestAskSize[1,\cks]$};
+\end{tikzpicture}
+\end{center}
+
+$\walkMaximum$ rises: a limit buy at a full bid, traded at the ask
+
+Then the bid stays at $\uniformDepth$ and the ask loses a share
+
+$\nthBestAskSize[1,\cks]$ reaches zero at $\firstMove^{\cks}$
+\note{
+The touches of the CKS book on the path of the last frame, read off the walks by the
+proposition. Away from the dotted times each touch moves with its own walk: up at a limit order of
+its side, down at a market order or a withdrawal that takes from it. At the dotted times the bid
+is full and a limit buy arrives. Its walk rises, and so does $\walkMaximum$, but the order trades
+at the best ask: the bid stays at $\uniformDepth$, and the ask loses a share at an event that is
+not of its side. The ask reaches zero at $\firstMove^{\cks}$, at a market buy, and the best ask
+moves up a tick.
 }
 \end{frame}
 
@@ -833,6 +1047,54 @@ of the path. With orders of one share the part of $G$ that excludes an empty sid
 part that excludes the floor is not, and part iv holds exactly on the first part. For $\hawQ$ the
 emptying of a side depends on the sizes, and the split is a statement on the draws that keep its
 sides occupied.
+}
+\end{frame}
+
+\begin{frame}
+  \frametitle{The mirror maps the opening book to itself}
+\begin{center}
+\begin{tikzpicture}[x=0.42cm, y=0.36cm, font=\scriptsize,
+    bid/.style={fill=blue!40, draw=blue!60}, ask/.style={fill=orange!40, draw=orange!65},
+    reflect/.style={{Stealth[length=3pt]}-{Stealth[length=3pt]}, gray!60, bend left=60},
+    mirror/.style={draw=black!70, dashed, thick}]
+  \begin{scope}
+    \booksizeaxis{0.4}{8.6}{4}{1}
+    \draw[gray!55] (0.4,0) -- (8.6,0);
+    \foreach \x/\h in {1/4, 2/4, 3/4, 4/2} \draw[bid] (\x-0.3,0) rectangle (\x+0.3,\h);
+    \foreach \x/\h in {5/2, 6/4, 7/4, 8/4} \draw[ask] (\x-0.3,0) rectangle (\x+0.3,\h);
+    \draw[gray!60!black, dashed] (4.5,-0.4) -- (4.5,6.2);
+    \foreach \x in {2,3,4} \draw[reflect] (\x,4.4) to (9-\x,4.4);
+    \node[below] at (4.5,-0.4) {$\midPrice_0$};
+    \node at (4.5,7.2) {equal touches};
+  \end{scope}
+  \begin{scope}[xshift=5.2cm]
+    \booksizeaxis{0.4}{8.6}{4}{1}
+    \draw[gray!55] (0.4,0) -- (8.6,0);
+    \foreach \x/\h in {1/4, 2/4, 3/4, 4/3} \draw[bid] (\x-0.3,0) rectangle (\x+0.3,\h);
+    \foreach \x/\h in {5/1, 6/4, 7/4, 8/4} \draw[ask] (\x-0.3,0) rectangle (\x+0.3,\h);
+    \draw[mirror] (4-0.3,0) rectangle (4+0.3,1);
+    \draw[mirror] (5-0.3,0) rectangle (5+0.3,3);
+    \draw[gray!60!black, dashed] (4.5,-0.4) -- (4.5,6.2);
+    \foreach \x in {2,3,4} \draw[reflect] (\x,4.4) to (9-\x,4.4);
+    \node[below] at (4.5,-0.4) {$\midPrice_0$};
+    \node at (4.5,7.2) {unequal touches};
+  \end{scope}
+\end{tikzpicture}
+\end{center}
+
+$p \mapsto 2\midPrice_0 - p$: the bid and the ask exchanged
+
+Mirror path: types exchanged, the same draws $(\priceOffset_n, U_n, \orderSize_n)$
+
+Unequal touches: the mirror opens from another book, dashed
+\note{
+The reflection through the opening mid maps the tick grid to itself and exchanges the bid with
+the ask, level by level. On the left the touches are equal and the opening book is its own
+reflection, so the path and its mirror fold from the same book: each book of the mirror is the
+reflection of the book of the path, and the discrepancy changes sign. By direction symmetry the
+mirror has the law of the path, and the mean of the discrepancy is zero. On the right the
+reflection of the opening book, dashed, is another book, the mirror starts from it, and the
+argument says nothing about the mean.
 }
 \end{frame}
 
