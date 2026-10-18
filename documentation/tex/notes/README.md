@@ -50,7 +50,9 @@ only one that names the repository. That is a URL, like the exchanges of §1.1 a
 
 - point processes: `counting_processes`, `hawkes_processes`, `exponential_kernels`,
   `stability`, `simulation`
-- price formation: `order_flow_imbalance`, `order_flow_model`, `forecasting_the_mid`
+- price formation: `order_flow_imbalance`, `order_flow_model`, `forecasting_the_mid`,
+  `idealised_against_hawkes` (three `\subsubsection`s: the first discrepancy, the distance
+  between the mid-prices, with withdrawals)
 
 `stability.tex` carries four `\subsubsection`s of its own — second-order structure, the
 scalar case, timescales, sub- and supercriticality — and `sec.secondOrder` labels the first

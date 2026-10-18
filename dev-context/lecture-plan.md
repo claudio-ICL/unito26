@@ -21,6 +21,7 @@ One notes section per class, and slides and a notebook in every class.
 | Class 3 | §1.3 `sec.pointProcesses` | 34 frames | `04-simulating-self-excitation` · `05-moments-and-timescales` · `06-simulation-and-goodness-of-fit`, interleaved with the deck |
 | Class 4 | §1.4 `sec.priceFormation`, §1.5 `sec.lobsterEmpirics` | 29 + 4 frames | `07-the-order-flow-imbalance` · `08-forecasting-the-mid`, interleaved with the deck |
 | Laboratory, 13 October | §1.3.3, §1.3.4, on the implementation | none | `09-hawkes-processes-in-the-lab` |
+| Class 5, 19 October | §1.4.4 `sec.idealisedAgainstHawkes` | 34 frames | `10-the-idealised-book-against-the-hawkes-book`, interleaved with the deck |
 
 ---
 
@@ -45,6 +46,7 @@ slide of the course was "Two market infrastructures".
 | `sections/point_processes.tex` | 3 | 34 | — | ☑ 30 Sep |
 | `sections/price_formation.tex` | 4 | 29 | — | ☑ 30 Sep |
 | `sections/lobster_empirics.tex` | 4 | 4 | — | ☑ 30 Sep |
+| `sections/idealised_against_hawkes.tex` | 5 | 34 | — | ☑ 18 Oct |
 
 The lecturer runs through frames faster than the budgets of classes 1 and 2 assumed, so the
 decks of classes 3 and 4 carry the frames their sections require, and each header records a
@@ -203,6 +205,7 @@ The cut order lives in each file's header, so it is read where it is needed. In 
 | 2 | the consolidated tape — Regulation NMS is background and plays no part in the assignment | the nomenclature frame, the vendor names surviving under the schematic; then hand the fold's termination argument to the notebook |
 | 3 | the Markov state, its generator spoken over the $Z$ path | the index order, said over the definition; then the three routes, said over the QQ schematic |
 | 4 | the total response, as a clause on the frame before it | the position of the bid in shares; then the schematic of the residual absorbing the flow |
+| 5 | the decoupling rate, said over the generating functional | the two contributions of a geometric order, said over the decomposition; then the exhaustion of a side and the deleted withdrawals, said over the table of the two regimes |
 
 **Class 3 carries the second-order block, the scalar case and sub- and supercriticality**,
 which the brief for lectures 3 and 4 asked for, on one two-type process with abstract types.
@@ -341,6 +344,7 @@ cannot read anything before teaching, so a checklist gated on it could never clo
 | `slides/sections/point_processes.tex` | ☑ | ☑ | ☑ | ☐ |
 | `slides/sections/price_formation.tex` | ☑ | ☑ | ☑ | ☐ |
 | `slides/sections/lobster_empirics.tex` | ☑ | ☑ | ☑ | ☐ |
+| `slides/sections/idealised_against_hawkes.tex` | ☑ | ☑ | ☑ | ☐ |
 | `notebooks/lectures/01-the-limit-order-book.ipynb` | ☑ | ☑ | ☑ | ☑ |
 | `notebooks/lectures/02-the-fold.ipynb` | ☑ | ☑ | ☑ | ☑ |
 | `notebooks/lectures/03-the-book-made-faster.ipynb` | ☑ | ☑ | ☑ | ☑ |

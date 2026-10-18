@@ -38,6 +38,7 @@ from typing import Iterator, NewType, Self
 import numpy as np
 import pandas as pd
 import pandera.pandas as pa
+from scipy.integrate import solve_ivp
 from scipy.linalg import expm, solve_continuous_lyapunov
 
 from unito26.lob.frames import FrameSerializable
@@ -408,6 +409,37 @@ class HawkesParams(FrameSerializable):
         """``h mu + A Phi(h) z + A (int_0^h Phi) mu``: the expected number of events of
         each type in ``(s, s+h]``, given ``Z(s+) = z``."""
         return self.forward_mean_counts_terms(state, horizon).total
+
+    def count_generating_function(
+        self, weights: np.ndarray, state: np.ndarray, clock: Clock
+    ) -> np.ndarray:
+        """``E[prod_e w_e^{N_e(s+h) - N_e(s)} | Z(s+) = z]`` at every horizon ``h`` of ``clock``.
+
+        The expectation is
+        ``exp(psi(h)' z + int_0^h mu' (w o e^psi - 1) dr)``, where ``psi(0) = 0`` and
+        ``psi' = -beta psi + A' (w o e^psi - 1)``, entrywise in ``o`` and ``e^psi``.  The
+        coordinate ``psi_j`` belongs to the exciting type ``j``, hence ``A'``.  The system
+        is solved numerically; ``A >= 0`` keeps ``psi`` in the box ``[-Gamma' 1, 0]`` for
+        weights in ``[0, 1]``, so the solution exists at every horizon.
+
+        ``psi`` does not depend on ``z``, so ``state`` may be a stack of states, a row each,
+        and the result then has a row per state.
+        """
+        weights = np.asarray(weights, dtype=float)
+        state = np.asarray(state, dtype=float)
+        clock = np.asarray(clock, dtype=float)
+        d = self.dimension
+
+        def rhs(_, y):
+            excess = weights * np.exp(y[:d]) - 1.0
+            return np.r_[-self.decay * y[:d] + self.excitation.T @ excess, self.baseline @ excess]
+
+        solution = solve_ivp(
+            rhs, (0.0, float(clock.max(initial=0.0))), np.zeros(d + 1),
+            t_eval=clock, rtol=1e-10, atol=1e-12,
+        )
+        psi, integral = solution.y[:d], solution.y[d]
+        return np.exp(state @ psi + integral)
 
     def relaxation_time(self) -> float:
         """``1 / (beta (1 - rho))``, the time constant of the slowest mode of the mean

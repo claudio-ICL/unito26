@@ -27,6 +27,7 @@
 \newcommand{\argmax}{\mathrm{argmax}}
 \newcommand{\diag}{\mathrm{diag}}
 \newcommand{\indicator}[1]{\mathbf{1}_{\lbrace {#1} \rbrace}}
+\newcommand{\signum}{\operatorname{sgn}}
 
 %% DERIVATIVES %%
 \newcommand{\gradient}{\nabla}
@@ -216,6 +217,45 @@
 \newcommand{\signedFlow}{Y}
 \newcommand{\countCovarianceRate}{D}
 \newcommand{\flowVolatility}{\volatilityCoefficient_{\signedFlow}}
+% Two books driven by the same events: the idealised and the geometric placement, and the
+% mid-price of either. Not i, which is the index of a level.
+\newcommand{\idealisedBook}{\mathrm{id}}
+\newcommand{\geometricBook}{\mathrm{geo}}
+\newcommand{\midPriceOf}[1]{\price^{m,{#1}}}
+% The size at the outer of the two values of a best price that moves.
+\newcommand{\outerSize}{\hat{\size}}
+% The offset at which the geometric placement prices a limit order where the idealised one
+% does, the limit types, and their sum along the path. Sigma is the volatility, so the
+% stopping times are chi: the first discrepancy of the two books, the first event the
+% idealised placement cannot place, and the exit of the touch walks.
+\newcommand{\targetOffset}{\priceOffset^{*}}
+\newcommand{\limitTypes}{\mathrm{lim}}
+\newcommand{\cumulativeTargetOffset}{J}
+\newcommand{\discrepancyTime}{\chi^{\neq}}
+\newcommand{\breachTime}{\chi^{\emptyset}}
+\newcommand{\walkExitTime}{\chi^{\partial}}
+\newcommand{\touchWalk}[1]{\Upsilon^{#1}}
+% The argument and the exponent of the generating functional of the counts, and the rate at
+% which the generating function of the limit-order count decays.
+\newcommand{\pgfArgument}{x}
+\newcommand{\pgfExponent}{\psi}
+\newcommand{\decouplingRate}{c}
+% The slope of the geometric mid-price on the signed count, and what it leaves.
+\newcommand{\effectiveImpact}{\gamma}
+\newcommand{\impactRemainder}{\xi}
+% The signed pressure of the cluster of an event, (I - Gamma)^{-T} pressure, and the volatility
+% of the part of the geometric mid-price that the signed count does not explain.
+\newcommand{\clusterPressure}{\bar{\pressure}}
+\newcommand{\orthogonalVolatility}{\volatilityCoefficient_{\perp}}
+% The geometric book seen from its best bid, the state it forms with the decayed counts, the
+% move of its mid-price at an event, the drift of that move, the solution of the Poisson
+% equation of the drift, and the move corrected by it.
+\newcommand{\bookShape}{\mathcal{B}}
+\newcommand{\geometricState}{\mathcal{Y}}
+\newcommand{\midMove}{\delta}
+\newcommand{\midDrift}{\bar{\midMove}}
+\newcommand{\poissonSolution}{g}
+\newcommand{\correctedMove}{\tilde{\midMove}}
 
 %% THE FASTER BOOK %%
 % The occupied prices of a side, and the band of ticks an array-backed book indexes:
