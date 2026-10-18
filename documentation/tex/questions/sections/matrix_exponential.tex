@@ -1,1 +1,572 @@
 \notebook{10-the-matrix-exponential}
+The questions of this section concern the forward means of Proposition~\ref{notes:prop.forwardMean},
+the mean response of Corollary~\ref{notes:corol.meanResponse},
+and the expected order flow of Section~\ref{notes:sec.forecastingTheMid}.
+They are asked on pairs of event types,
+the market buys and the market sells, in this order,
+with pressure $\pressure = (+1, -1)$.
+The pairs are built by the functions of \codehl{unito26.lob.config} below, all with $\decay = 4$:
+\begin{center}
+ \begin{tabular}{llccc}
+  \toprule
+  pair & built by & $\baseIntensity$ & $\excitation$ & $\stationaryIntensity$ \\
+  \midrule
+  self-exciting & \codehl{self\_exciting\_pair\_params()} & $(0.25, 0.25)$
+  & $\begin{pmatrix} 2.8 & 0.2 \\ 0.2 & 2.8 \end{pmatrix}$ & $(1, 1)$ \\[10pt]
+  cross-exciting & \codehl{cross\_exciting\_pair\_params()} & $(0.25, 0.25)$
+  & $\begin{pmatrix} 0.2 & 2.8 \\ 2.8 & 0.2 \end{pmatrix}$ & $(1, 1)$ \\[10pt]
+  one-way & \codehl{one\_way\_pair\_params()} & $(0.4, 0.1)$
+  & $\begin{pmatrix} 0.8 & 0 \\ 4 & 2.4 \end{pmatrix}$ & $(0.5, 1.5)$ \\
+  \bottomrule
+ \end{tabular}
+\end{center}
+For such a pair \codehl{params},
+\codehl{params.excitation} is $\excitation$, \codehl{params.decay} is $\decay$,
+\codehl{params.branching\_matrix} is $\branchingMatrix = \excitation/\decay$,
+\codehl{params.hurwitz\_matrix} is $\hurwitzMatrix = \excitation - \decay I$,
+and \codehl{params.stationary\_mean()} is $m = \stationaryIntensity/\decay$.
+\codehl{params.mean\_response(h)} returns the matrix $e^{\hurwitzMatrix \forecastHorizon}$,
+\codehl{params.mean\_response\_integral(h)} returns $\meanResponseIntegral(\forecastHorizon)$,
+and \codehl{params.forward\_mean\_state(z, h)} returns $m_{s,s+\forecastHorizon}(z)$
+of equation~\eqref{notes:eq.forwardMeanState}.
+Given an array of $n$ horizons in place of \codehl{h},
+the first two return an array of shape $(n, 2, 2)$, one matrix per horizon.
+
+\begin{question}
+\label{question.expmOfKTimesTheHorizon}
+By Corollary~\ref{notes:corol.meanResponse},
+the displacement of the mean state at $s + \forecastHorizon$
+by one more market buy in the state at $s$
+is the first column of $e^{\hurwitzMatrix \forecastHorizon}$.
+The snippet computes three candidates on the self-exciting pair.
+\codehl{expm} is \codehl{scipy.linalg.expm}, the exponential of a matrix,
+and \codehl{np.exp} acts entry by entry.
+To three digits,
+$e^{-0.5} = 0.607$, $e^{-0.7} = 0.497$, $e^{-1} = 0.368$, $e^{-1.4} = 0.247$,
+$e^{-0.6} = 0.549$ and $e^{0.1} = 1.105$.
+\begin{lstlisting}[caption={Three exponentials at half a second}, label=listing.expmOfKTimesTheHorizon]
+params = config.self_exciting_pair_params()
+K, h = params.hurwitz_matrix, 0.5
+for R in (expm(K * h), expm(K) * h, np.exp(K * h)):
+    print(R[:, 0].round(3).tolist())
+\end{lstlisting}
+What does the snippet print, line by line?
+\begin{choices}
+ \choice \codehl{[0.552, 0.055]} on all three lines.
+ \choice \codehl{[0.552, 0.055]}, \codehl{[0.552, 0.055]}, \codehl{[0.549, 1.105]}
+ \correctchoice \codehl{[0.552, 0.055]}, \codehl{[0.154, 0.03]}, \codehl{[0.549, 1.105]}
+ \choice \codehl{[0.552, 0.055]}, \codehl{[0.154, 0.03]}, \codehl{[0.552, 0.055]}
+\end{choices}
+\explanation{$\hurwitzMatrix$ has the eigenvalue $-1$ on $(1, 1)$ and $-1.4$ on $(1, -1)$,
+so the first column of $e^{\hurwitzMatrix \forecastHorizon}$ is
+$\tfrac12(e^{-\forecastHorizon} + e^{-1.4\forecastHorizon},
+e^{-\forecastHorizon} - e^{-1.4\forecastHorizon})$.
+\codehl{expm(K) * h} is $\forecastHorizon e^{\hurwitzMatrix}$,
+which agrees with $e^{\hurwitzMatrix \forecastHorizon}$ only at $\forecastHorizon = 1$,
+and \codehl{np.exp} returns $(e^{-0.6}, e^{0.1})$, the exponentials of the entries.}
+\end{question}
+
+\begin{question}
+\label{question.seriesOnKAgainstSeriesOnTheExcitation}
+The exponential of a matrix is the sum of its series,
+$e^{\hurwitzMatrix \forecastHorizon} = \sum_{k \geq 0} (\hurwitzMatrix \forecastHorizon)^{k}/k!$,
+and since $\decay I$ commutes with $\excitation$,
+also $e^{\hurwitzMatrix \forecastHorizon} = e^{-\decay \forecastHorizon} e^{\excitation \forecastHorizon}$.
+Two functions sum the two series to 400 terms,
+and each is compared with \codehl{expm} on the cross-exciting pair,
+at a horizon of one second and at one of ten.
+$\hurwitzMatrix$ has the eigenvalues $-1$ and $-6.6$,
+and $\excitation$ the eigenvalues $3$ and $-2.6$.
+At $\forecastHorizon = 10$ the entries of $e^{\hurwitzMatrix \forecastHorizon}$ are about $2.3 \times 10^{-5}$,
+the largest of the numbers $66^{k}/k!$ is about $2 \times 10^{27}$,
+and $e^{30}$ is about $10^{13}$.
+A double carries about 16 significant digits,
+and \codehl{np.allclose(x, y)} holds when every entry of $x - y$ is at most
+$10^{-8} + 10^{-5}\lvert y \rvert$ in absolute value.
+\begin{lstlisting}[caption={Two series for the mean response}, label=listing.seriesOnKAgainstSeriesOnTheExcitation]
+def series_on_k(params, h):
+    term, total = np.eye(2), np.eye(2)
+    for k in range(1, 400):
+        term = term @ (params.hurwitz_matrix * h) / k
+        total = total + term
+    return total
+
+def series_on_a(params, h):
+    term, total = np.eye(2), np.eye(2)
+    for k in range(1, 400):
+        term = term @ (params.excitation * h) / k
+        total = total + term
+    return np.exp(-params.decay * h) * total
+
+params = config.cross_exciting_pair_params()
+for h in (1.0, 10.0):
+    exact = expm(params.hurwitz_matrix * h)
+    print(np.allclose(series_on_k(params, h), exact),
+          np.allclose(series_on_a(params, h), exact))
+\end{lstlisting}
+What does the snippet print, line by line?
+\begin{choices}
+ \choice \codehl{True True}, then \codehl{True True}.
+ \correctchoice \codehl{True True}, then \codehl{False True}.
+ \choice \codehl{True True}, then \codehl{True False}.
+ \choice \codehl{True True}, then \codehl{False False}.
+ \choice \codehl{False True}, then \codehl{False True}.
+\end{choices}
+\explanation{Along the eigenvector of $-6.6$ the terms of the series of $\hurwitzMatrix \forecastHorizon$
+alternate in sign,
+and at $\forecastHorizon = 10$ terms of the order of $10^{27}$ cancel to a sum of the order of $10^{-5}$:
+what is left is their rounding, of the order of $10^{11}$.
+The terms of the series of $\excitation \forecastHorizon$ are non-negative matrices,
+since $\excitation \geq 0$,
+so their sum, of the order of $e^{30}$, loses no digit,
+and multiplying it by $e^{-40}$ costs one rounding.
+At $\forecastHorizon = 1$ the largest term is about $6.6^{6}/6! \approx 115$,
+and both sums are accurate.}
+\end{question}
+
+\begin{question}
+\label{question.eigenvectorsTransposedForTheInverse}
+If $\hurwitzMatrix = P \diag(\kappa) P^{-1}$,
+then $e^{\hurwitzMatrix \forecastHorizon} = P \diag(e^{\kappa \forecastHorizon}) P^{-1}$.
+\codehl{np.linalg.eig(K)} returns the eigenvalues $\kappa$
+and a matrix $P$ whose columns are eigenvectors of unit length,
+and \codehl{P * v} multiplies the column $j$ of $P$ by \codehl{v[j]}.
+On the one-way pair, $\hurwitzMatrix$ has the eigenvalue $-1.6$ on $(0, 1)$
+and $-3.2$ on $(0.4, -1)$.
+\begin{lstlisting}[caption={Two inverses of the eigenvectors}, label=listing.eigenvectorsTransposedForTheInverse]
+def by_inverse(params, h):
+    kappa, P = np.linalg.eig(params.hurwitz_matrix)
+    return (P * np.exp(kappa * h)) @ np.linalg.inv(P)
+
+def by_transpose(params, h):
+    kappa, P = np.linalg.eig(params.hurwitz_matrix)
+    return (P * np.exp(kappa * h)) @ P.T
+
+for params in (config.self_exciting_pair_params(),
+               config.one_way_pair_params()):
+    exact = expm(params.hurwitz_matrix * 0.5)
+    print(np.allclose(by_inverse(params, 0.5), exact),
+          np.allclose(by_transpose(params, 0.5), exact))
+\end{lstlisting}
+What does the snippet print, line by line?
+\begin{choices}
+ \correctchoice \codehl{True True}, then \codehl{True False}.
+ \choice \codehl{True True} on both lines.
+ \choice \codehl{True False} on both lines.
+ \choice \codehl{True True}, then \codehl{False False}.
+\end{choices}
+\explanation{$P \diag(e^{\kappa \forecastHorizon}) P^{-1}$ is $e^{\hurwitzMatrix \forecastHorizon}$
+for any choice of the eigenvectors,
+and $P^{\transpose} = P^{-1}$ holds when the columns of $P$ are orthonormal.
+On the self-exciting pair $\hurwitzMatrix$ is symmetric with distinct eigenvalues,
+and its unit eigenvectors $(1, \pm 1)/\sqrt{2}$ are orthonormal;
+on the one-way pair $(0, 1)$ and $(0.4, -1)$ are not orthogonal,
+and unit length does not make them so.}
+\end{question}
+
+\begin{question}
+\label{question.blockExponentialOfOneMarketBuy}
+The package computes $e^{\hurwitzMatrix \forecastHorizon}$, $\meanResponseIntegral(\forecastHorizon)$
+and $\int_{0}^{\forecastHorizon} \meanResponseIntegral(u) \, du$,
+the matrices of equation~\eqref{notes:eq.forwardMeanCounts},
+from one exponential of a matrix of $3d \times 3d$ entries,
+by the function below.
+\begin{lstlisting}[caption={\protect\codehl{unito26.lob.hawkes.\_mean\_response\_blocks}, its docstring elided.}, label=listing.meanResponseBlocks]
+def _mean_response_blocks(
+    excitation: np.ndarray, decay: Decay, horizon: Horizon | Clock
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+# ...
+    excitation = np.asarray(excitation, dtype=float)
+    d = excitation.shape[0]
+    identity = np.eye(d)
+    generator = np.zeros((3 * d, 3 * d))
+    generator[:d, :d] = excitation - float(decay) * identity
+    generator[:d, d : 2 * d] = identity
+    generator[d : 2 * d, 2 * d :] = identity
+    blocks = expm(generator * np.asarray(horizon, dtype=float)[..., None, None])
+    return blocks[..., :d, :d], blocks[..., :d, d : 2 * d], blocks[..., :d, 2 * d :]
+\end{lstlisting}
+With a single type, the market buys,
+a Hawkes process with $\baseIntensity = 0.5$, $\excitation = 2$ and $\decay = 4$
+has $\hurwitzMatrix = -2$.
+A market buy arrives at $s$ on an empty history, so that $\decayedCounts(s+) = 1$.
+The snippet writes out the generator for $d = 1$
+and evaluates the expected number of market buys in $(s, s + 0.5]$.
+To three digits, $e^{-1} = 0.368$.
+\begin{lstlisting}[caption={The blocks for one type}, label=listing.blockExponentialOfOneMarketBuy]
+mu, a, z, h = 0.5, 2.0, 1.0, 0.5
+generator = np.array([
+    [a - 4.0, 1.0, 0.0],
+    [0.0, 0.0, 1.0],
+    [0.0, 0.0, 0.0],
+])
+blocks = expm(generator * h)
+print(blocks[1].round(3).tolist())
+print(round(h * mu + a * blocks[0, 1] * z + a * blocks[0, 2] * mu, 3))
+\end{lstlisting}
+What does the snippet print?
+\begin{choices}
+ \choice \codehl{[0.0, 0.0, 0.5]}, then \codehl{0.974}.
+ \choice \codehl{[0.0, 1.0, 0.5]}, then \codehl{1.375}.
+ \choice \codehl{[0.0, 1.0, 0.5]}, then \codehl{0.882}.
+ \correctchoice \codehl{[0.0, 1.0, 0.5]}, then \codehl{0.974}.
+ \choice \codehl{[0.0, 1.0, 0.5]}, then \codehl{1.078}.
+\end{choices}
+\explanation{Writing $(E, F, D)$ for a block row,
+$\frac{d}{d\forecastHorizon} e^{G\forecastHorizon} = e^{G\forecastHorizon} G$ gives $E' = E\hurwitzMatrix$, $F' = E$ and $D' = F$:
+from $(1, 0, 0)$ the first row is
+$(e^{-1}, (1 - e^{-1})/2, 0.25 - (1 - e^{-1})/4) = (0.368, 0.316, 0.092)$,
+and from $(0, 1, 0)$ the second is $(0, 1, \forecastHorizon)$,
+the exponential of a zero block being the identity.
+The count is $0.25 + 2 \cdot 0.316 + 2 \cdot 0.092 \cdot 0.5$:
+the immigrants, the descendants of the buy at $s$, and those of the immigrants.}
+\end{question}
+
+\begin{question}
+\label{question.integralOfTheResponseAtTheCriticalPoint}
+The forward means of Proposition~\ref{notes:prop.forwardMean} are finite at every $\branchingRatio$.
+The pair below has every entry of $\excitation$ equal to $2$ and $\decay = 4$,
+so that $\branchingRatio = 1$:
+$\hurwitzMatrix$ has the eigenvalue $0$ on $(1, 1)$ and $-4$ on $(1, -1)$.
+\codehl{np.linalg.solve(M, B)} solves $MX = B$
+and raises \codehl{LinAlgError} when $M$ is singular.
+\codehl{np.linalg.pinv(M)} is the pseudo-inverse,
+which for a symmetric $M$ inverts the non-zero eigenvalues on their eigenvectors
+and sends the null space of $M$ to zero.
+The function \codehl{mean\_response\_integral} of \codehl{unito26.lob.hawkes}
+takes $\excitation$ and $\decay$ rather than a pair,
+and \codehl{\_mean\_response\_blocks} is the function of
+Question~\ref{question.blockExponentialOfOneMarketBuy}.
+To three digits, $e^{-2} = 0.135$.
+\begin{lstlisting}[caption={\protect\codehl{unito26.lob.hawkes.mean\_response\_integral}, its docstring elided.}, label=listing.meanResponseIntegralFunction]
+def mean_response_integral(
+    excitation: np.ndarray, decay: Decay, horizon: Horizon | Clock
+) -> np.ndarray:
+# ...
+    return _mean_response_blocks(excitation, decay, horizon)[1]
+\end{lstlisting}
+\begin{lstlisting}[caption={Alternative A}, label=listing.criticalPhiA]
+def phi(excitation, decay, h):
+    K = excitation - decay * np.eye(2)
+    return np.linalg.solve(K, expm(K * h) - np.eye(2))
+\end{lstlisting}
+\begin{lstlisting}[caption={Alternative B}, label=listing.criticalPhiB]
+def phi(excitation, decay, h):
+    K = excitation - decay * np.eye(2)
+    return np.linalg.pinv(K) @ (expm(K * h) - np.eye(2))
+\end{lstlisting}
+\begin{lstlisting}[caption={Alternative C}, label=listing.criticalPhiC]
+phi = mean_response_integral
+\end{lstlisting}
+\begin{lstlisting}[caption={Run once with each alternative}, label=listing.criticalPhiRun]
+excitation = np.array([[2.0, 2.0], [2.0, 2.0]])
+print(phi(excitation, 4.0, 0.5).round(3).tolist())
+\end{lstlisting}
+What happens?
+\begin{choices}
+ \choice A raises \codehl{LinAlgError};
+  B and C print \codehl{[[0.358, 0.142], [0.142, 0.358]]}.
+ \choice A and B raise \codehl{LinAlgError};
+  C prints \codehl{[[0.358, 0.142], [0.142, 0.358]]}.
+ \correctchoice A raises \codehl{LinAlgError};
+  B prints \codehl{[[0.108, -0.108], [-0.108, 0.108]]};
+  C prints \codehl{[[0.358, 0.142], [0.142, 0.358]]}.
+ \choice A raises \codehl{LinAlgError};
+  B prints \codehl{[[0.108, -0.108], [-0.108, 0.108]]};
+  C raises \codehl{LinAlgError}.
+\end{choices}
+\explanation{$\meanResponseIntegral(0.5)$ is $0.5$ on $(1, 1)$, where the exponent is zero,
+and $(1 - e^{-2})/4 = 0.216$ on $(1, -1)$,
+whence the entries $(0.5 \pm 0.216)/2$.
+The pseudo-inverse sends $(1, 1)$ to zero,
+losing the mode that grows with $\forecastHorizon$,
+and leaves negative entries, which no integral of $e^{\hurwitzMatrix u} \geq 0$ has.
+The block exponential inverts nothing,
+and the closed form $\hurwitzMatrix^{-1}(e^{\hurwitzMatrix \forecastHorizon} - I)$
+needs $\branchingRatio < 1$.}
+\end{question}
+
+\begin{question}
+\label{question.oneMoreMarketBuyDisplacesTheSells}
+On the one-way pair, to three digits,
+$e^{\hurwitzMatrix \forecastHorizon} = \begin{pmatrix} 0.202 & 0 \\ 0.619 & 0.449 \end{pmatrix}$
+at $\forecastHorizon = 0.5$.
+The snippet computes three candidates for the displacement of the mean state at $s + \forecastHorizon$
+by one more market buy in the state at $s$,
+the quantity $R_{\eone}(\forecastHorizon)$ of Corollary~\ref{notes:corol.meanResponse}.
+\begin{lstlisting}[caption={Three displacements by one more market buy}, label=listing.oneMoreMarketBuyDisplacesTheSells]
+params = config.one_way_pair_params()
+z, buy, h = np.array([0.3, 0.9]), np.array([1.0, 0.0]), 0.5
+mean_state = params.forward_mean_state
+a = mean_state(z + buy, h) - mean_state(z, h)
+b = params.mean_response(h)[0]
+c = params.forward_mean_state(buy, h)
+for displacement in (a, b, c):
+    print(displacement.round(3).tolist())
+\end{lstlisting}
+What does the snippet print, line by line?
+\begin{choices}
+ \correctchoice \codehl{[0.202, 0.619]}, \codehl{[0.202, 0.0]}, \codehl{[0.302, 0.748]}
+ \choice \codehl{[0.202, 0.619]}, \codehl{[0.202, 0.619]}, \codehl{[0.302, 0.748]}
+ \choice \codehl{[0.202, 0.619]}, \codehl{[0.202, 0.0]}, \codehl{[0.202, 0.619]}
+ \choice \codehl{[0.202, 0.619]} on all three lines.
+\end{choices}
+\explanation{The term $\meanResponseIntegral(\forecastHorizon)\baseIntensity$ is common to the two mean states,
+so \codehl{a} is $e^{\hurwitzMatrix \forecastHorizon}\unitVector_1$, the first column, whatever $z$:
+one more market buy raises the mean state of the sells by $0.619$, more than its own.
+The first row holds the response of the state of the buys to each type,
+and no sell excites a buy.
+\codehl{c} keeps the baseline:
+by equation~\eqref{notes:eq.forwardMeanDeviation} it is $m + e^{\hurwitzMatrix \forecastHorizon}(\unitVector_1 - m)$.}
+\end{question}
+
+\begin{question}
+\label{question.peakOfTheTotalMeanResponse}
+On the one-way pair
+\begin{equation*}
+ e^{\hurwitzMatrix \forecastHorizon} = \begin{pmatrix}
+  e^{-3.2\forecastHorizon} & 0 \\
+  2.5\big(e^{-1.6\forecastHorizon} - e^{-3.2\forecastHorizon}\big) & e^{-1.6\forecastHorizon}
+ \end{pmatrix} .
+\end{equation*}
+The remark that follows Definition~\ref{notes:def.relaxationTime}
+reads the response $\mathbf{1}^{\transpose} R_{\eone}(\forecastHorizon)$ of the total state
+to one more event of type $\eone$.
+The snippet locates the horizon at which each of two sums of entries is largest,
+on a clock of horizons spaced by $0.001$;
+\codehl{total.argmax(axis=0)} gives, for each column of \codehl{total},
+the first row at which it is largest.
+To three digits, $\log 1.2 = 0.182$ and $\log(10/7) = 0.357$.
+\begin{lstlisting}[caption={The peaks of two sums}, label=listing.peakOfTheTotalMeanResponse]
+params = config.one_way_pair_params()
+clock = np.linspace(0.0, 1.0, 1001)
+R = params.mean_response(clock)
+for total in (R.sum(axis=1), R.sum(axis=2)):
+    print(clock[total.argmax(axis=0)].round(3).tolist())
+\end{lstlisting}
+What does the snippet print, line by line?
+\begin{choices}
+ \choice \codehl{[0.0, 0.223]}, then \codehl{[0.114, 0.0]}.
+ \correctchoice \codehl{[0.114, 0.0]}, then \codehl{[0.0, 0.223]}.
+ \choice \codehl{[0.0, 0.0]} on both lines.
+ \choice \codehl{[0.114, 0.0]} on both lines.
+\end{choices}
+\explanation{\codehl{R.sum(axis=1)} sums over the components of the state:
+its columns are $\mathbf{1}^{\transpose} R_{1} = 2.5e^{-1.6\forecastHorizon} - 1.5e^{-3.2\forecastHorizon}$,
+which starts with the slope $\decay\big((\mathbf{1}^{\transpose}\branchingMatrix)_{1} - 1\big) = 0.8$
+and peaks at $e^{1.6\forecastHorizon} = 1.2$,
+and $\mathbf{1}^{\transpose} R_{2} = e^{-1.6\forecastHorizon}$.
+\codehl{R.sum(axis=2)} sums over the causes instead:
+the row sums $e^{-3.2\forecastHorizon}$ and $3.5e^{-1.6\forecastHorizon} - 2.5e^{-3.2\forecastHorizon}$,
+the second peaking at $e^{1.6\forecastHorizon} = 10/7$,
+are not the response to any one event.}
+\end{question}
+
+\begin{question}
+\label{question.responseIntegralCountsStrictDescendants}
+By equation~\eqref{notes:eq.responseIntegral}
+the displacement of the total intensity integrated over all horizons,
+$\int_{0}^{\infty} \mathbf{1}^{\transpose}\excitation R_{\eone}(\forecastHorizon) \, d\forecastHorizon$,
+is the expected number of strict descendants of one more event of type $\eone$.
+On the one-way pair it is computed below with $\meanResponseIntegral(50)$ for $\meanResponseIntegral(\infty)$,
+every entry of $e^{50\hurwitzMatrix}$ being below $10^{-30}$,
+and compared with two expressions in $(I - \branchingMatrix)^{-1}$.
+\begin{lstlisting}[caption={Descendants of one more event}, label=listing.responseIntegralCountsStrictDescendants]
+params = config.one_way_pair_params()
+ones, gamma = np.ones(2), params.branching_matrix
+inverse = np.linalg.inv(np.eye(2) - gamma)
+a = ones @ params.excitation @ params.mean_response_integral(50.0)
+b = ones @ inverse
+c = inverse @ ones - 1
+for counts in (a, b, c):
+    print(counts.round(3).tolist())
+\end{lstlisting}
+What does the snippet print, line by line?
+\begin{choices}
+ \choice \codehl{[3.375, 1.5]}, \codehl{[4.375, 2.5]}, \codehl{[3.375, 1.5]}
+ \choice \codehl{[4.375, 2.5]}, \codehl{[4.375, 2.5]}, \codehl{[0.25, 4.625]}
+ \choice \codehl{[0.25, 4.625]}, \codehl{[1.25, 5.625]}, \codehl{[0.25, 4.625]}
+ \correctchoice \codehl{[3.375, 1.5]}, \codehl{[4.375, 2.5]}, \codehl{[0.25, 4.625]}
+\end{choices}
+\explanation{Here $(I - \branchingMatrix)^{-1} = \begin{pmatrix} 1.25 & 0 \\ 3.125 & 2.5 \end{pmatrix}$,
+and \codehl{ones @ M} sums the columns of \codehl{M}:
+\codehl{b} holds the cluster sizes $C_{\eone}$ of equation~\eqref{notes:eq.clusterSize},
+which count the ancestor,
+and \codehl{a} one less,
+since $\excitation\meanResponseIntegral(\infty) = \branchingMatrix(I - \branchingMatrix)^{-1}
+= (I - \branchingMatrix)^{-1} - I$ by Remark~\ref{notes:remark.totalResponse}.
+\codehl{c} sums the rows, which reads the kernel transposed.}
+\end{question}
+
+\begin{question}
+\label{question.signedCountDriftOnTheOneWayPair}
+The method below returns the three terms of equation~\eqref{notes:eq.forwardMeanCounts}:
+the immigrants of $(s, s + \forecastHorizon]$,
+the descendants of the events the state carries,
+and the descendants of the immigrants.
+\codehl{terms.contracted(pressure)} replaces each term $x$ by $\pressure^{\transpose} x$,
+and \codehl{total} is the sum of the three.
+\begin{lstlisting}[caption={\protect\codehl{unito26.lob.hawkes.HawkesParams.forward\_mean\_counts\_terms}, its docstring elided.}, label=listing.forwardMeanCountsTerms]
+def forward_mean_counts_terms(
+    self, state: np.ndarray, horizon: Horizon | Clock
+) -> ForwardMeanCounts:
+# ...
+    _, integral, double = _mean_response_blocks(self.excitation, self.decay, horizon)
+    return ForwardMeanCounts(
+        immigrants=np.multiply.outer(np.asarray(horizon, dtype=float), self.baseline),
+        descendants_of_state=self.excitation @ integral @ np.asarray(state, dtype=float),
+        descendants_of_immigrants=self.excitation @ double @ self.baseline,
+    )
+\end{lstlisting}
+The one-way pair is not direction-symmetric.
+The snippet starts from the stationary mean of the state
+and looks 100 seconds ahead,
+where every entry of $e^{\hurwitzMatrix \forecastHorizon}$ is below $10^{-60}$.
+\begin{lstlisting}[caption={Buys minus sells over 100 seconds}, label=listing.signedCountDriftOnTheOneWayPair]
+params = config.one_way_pair_params()
+pressure, z = np.array([1.0, -1.0]), params.stationary_mean()
+terms = params.forward_mean_counts_terms(z, 100.0).contracted(pressure)
+print(round(terms.total, 2), round(terms.descendants_of_state, 2))
+\end{lstlisting}
+What does the snippet print?
+\begin{choices}
+ \choice \codehl{-0.92 -0.92}
+ \choice \codehl{0.0 0.0}
+ \choice \codehl{-100.0 0.0}
+ \choice \codehl{-100.92 -0.92}
+ \correctchoice \codehl{-100.0 -0.92}
+\end{choices}
+\explanation{At $z = m$ equation~\eqref{notes:eq.forwardMeanCountsDeviation} leaves
+$\forecastHorizon\stationaryIntensity$,
+and $\pressure^{\transpose}\stationaryIntensity = 0.5 - 1.5$:
+a drift that the pair carries whatever the state,
+in the two baseline terms, which direction symmetry would cancel.
+The descendants of the state are
+$\pressure^{\transpose}\branchingMatrix(I - \branchingMatrix)^{-1} m
+= -2.875 \cdot 0.125 - 1.5 \cdot 0.375$,
+part of $\forecastHorizon\stationaryIntensity$ and not added to it.}
+\end{question}
+
+\begin{question}
+\label{question.signedDescendantsOfTheStateContracted}
+The term \codehl{descendants\_of\_state}
+of Question~\ref{question.signedCountDriftOnTheOneWayPair},
+contracted with $\pressure$,
+is $\pressure^{\transpose}\excitation\meanResponseIntegral(\forecastHorizon)z$:
+the expected buys minus sells of $(s, s + \forecastHorizon]$
+descended from the events the state carries at $s$.
+Four expressions are compared with it on the one-way pair.
+Between a one-dimensional array and a matrix,
+\codehl{@} reads the array as a row on the left and as a column on the right,
+and between two one-dimensional arrays it is their scalar product.
+\begin{lstlisting}[caption={Four contractions}, label=listing.signedDescendantsOfTheStateContracted]
+params = config.one_way_pair_params()
+pressure, z, h = np.array([1.0, -1.0]), np.array([0.3, 0.9]), 0.5
+A, phi = params.excitation, params.mean_response_integral(h)
+terms = params.forward_mean_counts_terms(z, h).contracted(pressure)
+reference = terms.descendants_of_state
+candidates = (
+    pressure @ A @ phi @ z,
+    pressure @ phi @ A @ z,
+    z @ A @ phi @ pressure,
+    pressure @ A.T @ phi @ z,
+)
+print([bool(np.isclose(x, reference)) for x in candidates])
+\end{lstlisting}
+What does the snippet print?
+\begin{choices}
+ \choice \codehl{[True, False, False, False]}
+ \choice \codehl{[True, True, True, False]}
+ \correctchoice \codehl{[True, True, False, False]}
+ \choice \codehl{[True, False, True, False]}
+ \choice \codehl{[True, True, True, True]}
+\end{choices}
+\explanation{$\excitation$ commutes with $\hurwitzMatrix = \excitation - \decay I$,
+hence with every $e^{\hurwitzMatrix u}$ and with $\meanResponseIntegral(\forecastHorizon)$,
+so the first two agree.
+The third is $z^{\transpose}\excitation\meanResponseIntegral(\forecastHorizon)\pressure
+= \pressure^{\transpose}\big(\excitation\meanResponseIntegral(\forecastHorizon)\big)^{\transpose} z$,
+and the fourth transposes the kernel alone;
+on the one-way pair, where a buy excites sells and no sell excites a buy,
+neither gives the same number.}
+\end{question}
+
+\begin{question}
+\label{question.regimeSignAfterABurstOfBuys}
+After a burst of market buys the state is $z = (2, 0.5)$.
+On the self-exciting and on the cross-exciting pair,
+both direction-symmetric,
+the snippet computes the expected buys minus sells over the next half second
+from the terms of Question~\ref{question.signedCountDriftOnTheOneWayPair},
+and the drift $\forecastHorizon\pressure^{\transpose}\excitation z$
+of Corollary~\ref{notes:corol.contrastAsDrift},
+both per unit of mean size.
+To three digits, $e^{-0.7} = 0.497$ and $e^{-3.3} = 0.037$.
+\begin{lstlisting}[caption={The forecast after a burst of buys}, label=listing.regimeSignAfterABurstOfBuys]
+pressure, z, h = np.array([1.0, -1.0]), np.array([2.0, 0.5]), 0.5
+for params in (config.self_exciting_pair_params(),
+               config.cross_exciting_pair_params()):
+    terms = params.forward_mean_counts_terms(z, h).contracted(pressure)
+    drift = h * pressure @ params.excitation @ z
+    print(round(terms.total, 3), round(drift, 3))
+\end{lstlisting}
+What does the snippet print, line by line?
+\begin{choices}
+ \choice \codehl{-0.569 -1.95}, then \codehl{1.402 1.95}.
+ \choice \codehl{1.95 1.95}, then \codehl{-1.95 -1.95}.
+ \choice \codehl{1.402 1.95}, then \codehl{-1.402 -1.95}.
+ \correctchoice \codehl{1.402 1.95}, then \codehl{-0.569 -1.95}.
+\end{choices}
+\explanation{On both pairs $\pressure^{\transpose}\excitation = \signedExcitation\pressure^{\transpose}$,
+with $\signedExcitation = \pm 2.6$,
+so $\pressure^{\transpose}\hurwitzMatrix = (\signedExcitation - 4)\pressure^{\transpose}$
+and the forecast is
+$\signedExcitation\big(1 - e^{(\signedExcitation - 4)\forecastHorizon}\big)/(4 - \signedExcitation)
+\cdot (z_1 - z_2)$:
+$2.6 \cdot 0.503/1.4 \cdot 1.5$ and $-2.6 \cdot 0.963/6.6 \cdot 1.5$.
+The self-exciting pair forecasts continuation and the cross-exciting pair reversal,
+as Corollary~\ref{notes:corol.regimeSign} reads them;
+the drift is the slope at $\forecastHorizon = 0$,
+and the mode of $\pressure$ decays at the rate $4 - \signedExcitation$, $1.4$ against $6.6$.}
+\end{question}
+
+\begin{question}
+\label{question.meanResponseOnAClockByEigenvalues}
+The displacement of the mean state by one more event is wanted
+at every horizon of a clock of $n$ horizons, on the one-way pair.
+Alternative A calls \codehl{expm} once per horizon.
+Alternative B decomposes $\hurwitzMatrix$ once,
+as in Question~\ref{question.eigenvectorsTransposedForTheInverse}:
+\codehl{np.multiply.outer(clock, kappa)} is the $n \times 2$ array of the products
+$\forecastHorizon\kappa_i$,
+and \codehl{P * growth[:, None, :]} is the stack of the $n$ matrices
+$P\diag(e^{\kappa \forecastHorizon})$,
+each of which \codehl{@} multiplies by $P^{-1}$.
+Both are timed for $n = 10^{4}$ and $n = 10^{5}$.
+\begin{lstlisting}[caption={Alternative A}, label=listing.meanResponseOnAClockA]
+def responses_a(K, clock):
+    return np.array([expm(K * h) for h in clock])
+\end{lstlisting}
+\begin{lstlisting}[caption={Alternative B}, label=listing.meanResponseOnAClockB]
+def responses_b(K, clock):
+    kappa, P = np.linalg.eig(K)
+    growth = np.exp(np.multiply.outer(clock, kappa))
+    return ((P * growth[:, None, :]) @ np.linalg.inv(P)).real
+\end{lstlisting}
+Which statement holds?
+\begin{choices}
+ \choice A is faster: \codehl{expm} is compiled, and B builds a stack of $n$ matrices.
+ \correctchoice B is faster by a factor of five or more,
+  and the time of each grows about tenfold from $n = 10^{4}$ to $n = 10^{5}$.
+ \choice B is faster by a factor of five or more,
+  and its time hardly changes with $n$, its work being a few calls of numpy.
+ \choice The two are within a factor of two of each other:
+  each computes $n$ exponentials of a $2 \times 2$ matrix.
+\end{choices}
+\explanation{A pays at each horizon for a call of \codehl{expm} made from the interpreter,
+which scales the matrix, evaluates a rational approximation and squares the result back.
+B makes one eigendecomposition,
+then $n$ scalar exponentials and $n$ products of $2 \times 2$ matrices
+inside a few array operations,
+whose work is still proportional to $n$.}
+\end{question}
