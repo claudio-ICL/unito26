@@ -880,7 +880,7 @@ def fluid_emptying_time(
 def diffusive_scale(params: HawkesParams, uniform_depth: UniformDepth) -> float:
     """``Sbar^2 / (varpi^b)' D varpi^b``, in seconds: the time over which the standard
     deviation of a touch walk reaches ``Sbar``.  In the second regime ``psi^CKS``, and with
-    it ``chi``, is of this order (Approximation ``approx.secondRegime``); a side of the
+    it ``chi``, is of this order (the paragraphs after ``corol.twoRegimes``); a side of the
     opening book, which holds about ``L Sbar``, lasts of the order of ``L^2`` times as
     long."""
     bid = side_vector(BUY)
@@ -889,8 +889,8 @@ def diffusive_scale(params: HawkesParams, uniform_depth: UniformDepth) -> float:
 
 def second_regime_rate(params: HawkesParams, uniform_depth: UniformDepth) -> float:
     """``varpi' D varpi / (2 Sbar)^2``, in ticks squared a second: the rate of ``Var D_t``
-    while no best price of the Hawkes book moves (Approximation
-    ``approx.secondRegimeVariance``).  ``D_t`` is then the CKS mid less the opening one, a
+    while no best price of the Hawkes book moves (the paragraphs after
+    ``prop.discrepancyMoments``).  ``D_t`` is then the CKS mid less the opening one, a
     function of the path, and the whole rate is its flow part."""
     pressure = _pressure()
     return float(pressure @ params.count_covariance_rate() @ pressure / (2 * uniform_depth) ** 2)
@@ -907,16 +907,16 @@ def _imbalance_and_move(pair: CoupledFlows) -> tuple[float, float]:
 
 @dataclass(frozen=True, slots=True, eq=False)
 class PlacementStatistics:
-    """``alpha`` and ``S~``: what Approximation ``approx.firstRegimeVariance`` reads of the
-    books of a Hawkes flow, under its hypotheses H1 and H2.
+    """``alpha`` and ``S~``: what the first-regime closed form of
+    ``documentation/idealised-against-hawkes.md`` §4 reads of the books of a Hawkes flow,
+    under its hypotheses H1 and H2.
 
     * ``behind_probability`` is ``alpha_e``, by type: the fraction of the events of the type
-      that the book places behind the touch of their side, the set ``ℋ`` of Lemma
-      ``lemma.unitContribution``.  Those are the limit orders and withdrawals with
-      ``e_n = 0``; a market order, which always acts at a touch, has none.  It is NaN for a
-      type with no event.
-    * ``effective_depth`` is ``S~``, in units: by ``eq.effectiveDepth``, the slope of the
-      regression of the order flow imbalance of the book since the opening on
+      that the book places behind the touch of their side, the set ``ℋ``.  Those are the
+      limit orders and withdrawals with ``e_n = 0``; a market order, which always acts at a
+      touch, has none.  It is NaN for a type with no event.
+    * ``effective_depth`` is ``S~``, in units: by H2, the slope of the regression of the
+      order flow imbalance of the book since the opening on
       ``Pi_T = 2 (P^m_T - P^m_0) / tau``, across runs to one horizon.  It is infinite when
       no best price moves.  The mean outer size per tick crossed at the moves is a
       different statistic.
@@ -966,8 +966,8 @@ def closed_form_rates(
     statistics: PlacementStatistics,
     size_variance: float,
 ) -> VarianceRates:
-    """The two rates of ``Var D_t`` in the first regime, by Approximation
-    ``approx.firstRegimeVariance``.
+    """The two rates of ``Var D_t`` in the first regime, by the closed form of
+    ``documentation/idealised-against-hawkes.md`` §4.
 
     ``c_e = 1 / (2 Sbar) - (1 - alpha_e) / (2 S~)`` is the impact of one event of type ``e``
     on the CKS mid less its mean impact on the Hawkes one, and the flow part is
@@ -977,12 +977,11 @@ def closed_form_rates(
     are those of :func:`second_regime_rate`.
 
     ``size_variance`` is ``Var xi`` of the sizes in units, zero for haw-1.  Otherwise each
-    event enters the placement part with the variance ``eq.sizePlacementVariance``,
+    event enters the placement part with the variance
     ``alpha_e (1 - alpha_e) + (1 - alpha_e) Var xi``, which adds
-    ``Var xi sum_e (1 - alpha_e) lambda*_e / (2 S~)^2``.  By Remark
-    ``remark.whatTheSizesAdd`` that term, the truncation at the touch being set aside, is
-    neither the whole of what the sizes add nor a bound on it, and for haw-q the rates are
-    not a closed form of the variance.
+    ``Var xi sum_e (1 - alpha_e) lambda*_e / (2 S~)^2``.  That term, the truncation at the
+    touch being set aside, is neither the whole of what the sizes add nor a bound on it, and
+    for haw-q the rates are not a closed form of the variance.
     """
     alpha = statistics.behind_probability
     depth = 2 * statistics.effective_depth

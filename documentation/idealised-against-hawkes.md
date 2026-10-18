@@ -7,8 +7,9 @@ mid-prices first differ, and how far apart they are after.
 **Sources.** The statements are those of `sec.idealisedAgainstHawkes`, the last subsection
 of `sec.priceFormation` in [`tex/notes/microstructure/`](tex/notes/microstructure/); the
 symbols are the macros of [`tex/include/notation.tex`](tex/include/notation.tex). This file
-restates them with their proofs, summarises the numerical evidence behind the
-approximations, lists what the notes predict, and maps each statement onto the code and the
+restates them with their proofs, keeps as working material the derivations behind the
+unnumbered paragraphs that close two of its subsubsections, summarises the numerical evidence,
+lists what the notes predict, and maps each statement onto the code and the
 test that carry it. The lecture is
 `notebooks/lectures/10-the-idealised-book-against-the-hawkes-book.ipynb`.
 **If this file and the `.tex` disagree, the `.tex` wins** — fix this file.
@@ -30,15 +31,15 @@ another module is named.
 | `eq.touchWalks`, `prop.cksTouchWalks` | the touches of CKS from the touch walks and their running maximum; $\psi^{\mathrm{CKS}}$ a drawdown | `cks_touch_walks`, `cks_first_move` | `TestTheCKSTouchWalks` |
 | `prop.hawkesTouch`, `eq.hawkesTouch` | the touches of haw-1 before $\psi^{\mathrm{haw}\text{-}1}$ from the counts and the draws; $\psi^{\mathrm{haw}\text{-}1}$ the first time one reaches zero | `touch_walks` | `TestTheFirstMoves` |
 | `prop.fluidTouch`, `eq.countsFromNoPast`, `exercise.fluidTouch`, `corol.twoRegimes` | the fluid touches $r^b$, $r^a$ from the opening touches, the times $s^*_b$, $s^*_a$ and $s^* = s^*_b \wedge s^*_a$, the two regimes | `fluid_touch`, `fluid_emptying_time` (`OpeningTouch`) | `TestTheFluidTouch` |
-| `approx.secondRegime` | $\psi^{\mathrm{CKS}}$ at the diffusive scale $\bar S^2/(\varpi^b)^\top D\varpi^b$, the side at $L^2$ times it | `diffusive_scale` | — |
+| heuristics after `corol.twoRegimes` | $\psi^{\mathrm{CKS}}$ at the diffusive scale $\bar S^2/(\varpi^b)^\top D\varpi^b$, the side at $L^2$ times it | `diffusive_scale` | — |
 | `def.discrepancy`, `prop.discrepancyMoments` | $\mathcal D_t$: zero before $\chi$; symmetric and bounded below when the opening touches are equal; flow and placement parts | `cks_mids`, `hawkes_mids`, `variance_split` | `TestTheMidsOnAClock`, `TestTheVarianceSplit` |
-| `def.outerSize`, `prop.touchIdentity`, `corol.touchIdentityUnderTheAssumption` | the touch identity on any book | `distance_terms` (`CKSDepthMismatch` is zero) | `TestTheDistance` |
-| `lemma.unitContribution`, `eq.geometricContribution`, `prop.discrepancyDecomposition` | $e_n = \varpi_{E_n}\mathbf 1\{n\notin\mathcal H\}\hat q_n$; the three terms of $2\bar S\mathcal D_t/\tau$ | `distance_terms` (`ImbalanceMismatch`, `TouchSizeMismatch`, `DepthMismatch`) | `TestTheDistance` |
-| `prop.placementMartingale` | $\alpha_n$, the martingale $M^{\mathcal H}$ | `PlacementStatistics.behind_probability` (pooled by type) | `TestThePlacementStatistics` |
-| `approx.secondRegimeVariance` | the rate $\varpi^\top D\varpi/(2\bar S)^2$, all flow | `second_regime_rate` | `TestTheClosedForm` |
-| H1, H2, `eq.effectiveDepth`, `approx.firstRegimeVariance` | $\tilde S$ as a regression slope; the impact differences $c$; the flow and the placement rates | `PlacementStatistics.of`, `closed_form_rates(…, 0.0)` (`VarianceRates`) | `TestTheClosedForm`, `TestThePlacementStatistics` |
-| `prop.partingProbabilitySizes`, `remark.fluidScaleWithSizes` | haw-q is never quiet; the fluid scale is unchanged | `CoupledFlows.on` with `uncertain_size_mark_params`, `SizeUnit` | `TestThePair` |
-| `prop.discrepancyDecompositionSizes`, `eq.sizePlacementVariance`, `remark.whatTheSizesAdd` | the size term; the conditional variance $\alpha(1-\alpha) + (1-\alpha)\mathrm{Var}\,\xi$ | `distance_terms` on haw-q; `closed_form_rates(…, size_variance)` | `TestTheDistance`, `TestTheClosedForm` |
+| §4 working material: outer sizes, the touch identity | the touch identity on any book | `distance_terms` (`CKSDepthMismatch` is zero) | `TestTheDistance` |
+| §4 working material: the contribution of an event, the three-term decomposition | $e_n = \varpi_{E_n}\mathbf 1\{n\notin\mathcal H\}\hat q_n$; the three terms of $2\bar S\mathcal D_t/\tau$ | `distance_terms` (`ImbalanceMismatch`, `TouchSizeMismatch`, `DepthMismatch`) | `TestTheDistance` |
+| §4 working material: the placement martingale | $\alpha_n$, the martingale $M^{\mathcal H}$ | `PlacementStatistics.behind_probability` (pooled by type) | `TestThePlacementStatistics` |
+| §4 working material: the second-regime rate | the rate $\varpi^\top D\varpi/(2\bar S)^2$, all flow | `second_regime_rate` | `TestTheClosedForm` |
+| §4 working material: H1, H2, the effective depth, the first-regime closed form | $\tilde S$ as a regression slope; the impact differences $c$; the flow and the placement rates | `PlacementStatistics.of`, `closed_form_rates(…, 0.0)` (`VarianceRates`) | `TestTheClosedForm`, `TestThePlacementStatistics` |
+| §5 working material: the parting with sizes, the fluid scale with sizes | haw-q is never quiet; the fluid scale is unchanged | `CoupledFlows.on` with `uncertain_size_mark_params`, `SizeUnit` | `TestThePair` |
+| §5 working material: the decomposition with sizes, what the sizes add | the size term; the conditional variance $\alpha(1-\alpha) + (1-\alpha)\mathrm{Var}\,\xi$ | `distance_terms` on haw-q; `closed_form_rates(…, size_variance)` | `TestTheDistance`, `TestTheClosedForm` |
 
 The figures of the lecture are `visualization.mids_figure`, `touch_walks_figure`,
 `first_times_figure`, `discrepancy_fan_figure`, `variance_split_figure` and
@@ -52,7 +53,7 @@ The figures of the lecture are `visualization.mids_figure`, `touch_walks_figure`
 and sell, 5, 6 the withdrawals from the bid and the ask; $\varpi = (+1,-1,+1,-1,-1,+1)$.
 `EventType` numbers them from 0. $D$ is the count covariance rate of `eq.flowVolatility`,
 which is why the discrepancy is $\mathcal D$. $\varpi^b$, $\varpi^a$ are the side vectors
-(`\sideVector`), not $u$, which is the right Perron vector; $\mathcal H$ (`\behindSet`) is
+(`\sideVector`), not $u$, which is the right Perron vector; $\mathcal H$ is
 the set of events placed behind, not $B$, the bid orders. $\Sigma(e)$ is the type with
 which $\Sigma$ exchanges $e$.
 
@@ -320,6 +321,16 @@ types act on the ask. By `corol.quietBook` a best price of haw-1 moves exactly a
 that takes the last share of a touch, at which one right-hand side reaches zero; each event
 changes them by at most one. $\square$
 
+**Why $\bar S \to \infty$.** Before their first moves the touches of the two books are walks
+from openings of the order of $\bar S$. The best bid of haw-1 drifts at $\eta\lambda^*_3 -
+\lambda^*_2 - \lambda^*_5 S^{b,1,\mathrm{haw}\text{-}1}_t/S^{b,\mathrm{haw}\text{-}1}_t(\tau\mathbb
+N)$, of order one, negative if $\eta\lambda^*_3 < \lambda^*_2$, and then empties in a time of
+the order of $\bar S$. The touch walks of CKS have no drift under balance, and the drawdown of
+the order of $\bar S$ that gives $\psi^{\mathrm{CKS}}$ takes a time of the order of $\bar S^2$.
+At a fixed $\bar S$ either book may move first; as $\bar S$ grows the two scales separate, so the
+limit is taken with opening touches in proportion: the counts follow their means over horizons
+proportional to $\bar S$, and each touch of haw-1 follows an ordinary differential equation.
+
 **Proposition** (`prop.fluidTouch`). Let $\bar S \to \infty$ with $L$, $\eta$ and the
 specification fixed, and with $S^{x,1}_0/\bar S \to r^x(0) \in (0, 1]$ for $x \in \{b,
 a\}$. Let $L_x := L - 1 + r^x(0)$, the limit of $S^x_0(\tau\mathbb N)/\bar S$, and let
@@ -419,29 +430,33 @@ marks, levels, opening, scaled_time)` is $r^x$ and `fluid_emptying_time(params, 
 levels, opening)` is $s^*_x$, infinite in the second regime, with `opening` the
 `OpeningTouch` $r^x(0)$.
 
-**Approximation** (`approx.secondRegime`). If $\eta\lambda^*_3 > \lambda^*_2$ and $\bar S$
-is large, with opening touches as in `prop.fluidTouch`: by `eq.hawkesTouch` the touch of the
-side $x$ of haw-1 relaxes, at the rate $\lambda^*_5/(L_x\bar S)$ per share of deviation,
-towards $(r^x_\infty/L_x)S^{x,\mathrm{haw}\text{-}1}_t(\tau\mathbb N)$, which by
-`eq.sideSize` is $r^x_\infty\bar S$ plus a multiple of a driftless walk, and it fluctuates
-about that centre by $O(\sqrt{\bar S})$. It reaches zero by a large deviation of the
-fluctuation, or when the side is nearly exhausted, at the scale $(L\bar S)^2/(\varpi^b)^\top
-D\varpi^b$. CKS moves at the diffusive scale: $\bar S^{-1}(\Upsilon^b(\bar S^2 s) - \bar S,
-\Upsilon^a(\bar S^2 s) - \bar S)$ converges in law to a Brownian motion $(W^b, W^a)$ started
-at $(r^b(0) - 1, r^a(0) - 1)$, with $\mathrm{Cov}(W^x(s), W^y(s)) = s(\varpi^x)^\top
-D\varpi^y$, and $\psi^{\mathrm{CKS}}/\bar S^2$
-to the first $s$ with $\max(0, \sup_{s'\le s}\max(W^b, W^a)(s')) - \min(W^b, W^a)(s) = 1$.
-Both scales are of order $\bar S^2$, in the ratio of $\mathbb E\psi^{\mathrm{CKS}}$ to
-$L^2\bar S^2/(\varpi^b)^\top D\varpi^b$. Away from the threshold and for $L$ large, $\chi =
-\psi^{\mathrm{CKS}}$ with probability close to one, a function of the path, of order $\bar
-S^2/(\varpi^b)^\top D\varpi^b$ (`diffusive_scale(params, uniform_depth)`).
+**Heuristics after the corollary** (unnumbered paragraphs in the notes). The regime is decided by
+the sign of $\eta\lambda^*_3 - \lambda^*_2$; the withdrawals pull the touch towards
+$r^x_\infty\bar S$. In the first regime the limit decides which book moves first and gives
+$\chi \approx \bar S s^*$; CKS plays no part. At a finite $\bar S$ the touch of haw-1 fluctuates
+about $\bar S r^x(t/\bar S)$ by $O(\sqrt{\bar S})$, so $\chi/\bar S$ falls short of $s^*$ on
+average, and by more near the threshold, where the fluid touch meets zero at a small slope. In the
+second regime the corollary says only that neither book moves on the scale $\bar S$.
 
-So "$\chi = \psi^{\mathrm{CKS}}$" is a statement about $L$, not about $\bar S \to \infty$:
-the first move of haw-1 is not exponential in $\bar S$, since the side is a driftless walk
-that empties in finite time. The walks converge by the functional central limit theorem of
-`BDHM13som` applied to $(\varpi^b)^\top N$, $(\varpi^a)^\top N$. Two statements are not
-proved: the Ornstein–Uhlenbeck behaviour of the touch of haw-1 about its moving centre, and
-the continuity of the drawdown functional at Brownian paths.
+CKS does not depend on $\eta$ and moves by the fluctuations of its walks. By the functional
+central limit theorem of `BDHM13som` applied to $(\varpi^b)^\top N$ and $(\varpi^a)^\top N$,
+whose drifts vanish under balance, the walks move by $\bar S$ in a time of the order of $\bar
+S^2/(\varpi^b)^\top D\varpi^b$ (`diffusive_scale(params, uniform_depth)`). On that scale
+$\psi^{\mathrm{CKS}}$ is the drawdown of `prop.cksTouchWalks` read on a Brownian motion $(W^b,
+W^a)$ started at $(r^b(0) - 1, r^a(0) - 1)$, with $\mathrm{Cov}(W^x(s), W^y(s)) =
+s(\varpi^x)^\top D\varpi^y$: $\psi^{\mathrm{CKS}}/\bar S^2$ is near in law to the first $s$ with
+$\max(0, \sup_{s'\le s}\max(W^b, W^a)(s')) - \min(W^b, W^a)(s) = 1$, a function of the path.
+
+The touch of haw-1 relaxes, at the rate $\lambda^*_5/(L_x\bar S)$ per share of deviation, towards
+$(r^x_\infty/L_x)S^{x,\mathrm{haw}\text{-}1}_t(\tau\mathbb N)$, which by `eq.sideSize` is
+$r^x_\infty\bar S$ plus a multiple of a driftless walk, and it fluctuates about that centre by
+$O(\sqrt{\bar S})$. It reaches zero by a large deviation of the fluctuation, or when its side is
+nearly exhausted, on the scale $(L\bar S)^2/(\varpi^b)^\top D\varpi^b$, $L^2$ times that of CKS.
+Both first moves are on the scale $\bar S^2$, and $L$, not $\bar S$, orders them: on a book of
+many levels $\chi = \psi^{\mathrm{CKS}}$, a function of the path. The first move of haw-1 is not
+exponential in $\bar S$, since the side is a driftless walk that empties in finite time. Two steps
+are not proved: the Ornstein–Uhlenbeck behaviour of the touch of haw-1 about its moving centre,
+and the continuity of the drawdown functional at Brownian paths.
 
 ### Evidence for §3
 
@@ -476,12 +491,19 @@ the full opening unless another is stated.
   the threshold, where the slope at $s^*$ is small.
 - *$\chi$ at $\bar S = 20$.* Mean $19.4$ s at $\eta = 0.1$ rising to $38.5$ s at $\eta \ge
   0.5$; CKS moves first on 59 of 240 paths at $\eta = 0.1$ and on all above $0.5$.
-- *`approx.secondRegime`, CKS.* $\mathbb E\psi^{\mathrm{CKS}}$ over $\bar S^2/(\varpi^b)^\top
+- *The race as $\bar S$ grows.* 48 paths, each cut at $2.5\bar Ss^*$: haw-1 moves before CKS on
+  a share $0.81, 1, 1, 1$ of them at $\eta = 0.1$, $0.63, 0.94, 0.98, 1$ at $0.2$ and $0.44,
+  0.79, 0.94, 1$ at $0.3$, for $\bar S = 20, 40, 80, 160$ (s.e. at most $0.07$). With
+  $\mathbb E\psi^{\mathrm{CKS}} \approx k\bar S^2/(\varpi^b)^\top D\varpi^b$, $k = 0.313$ pooled
+  over $\bar S = 10, 20, 40$, the two first moves meet at $\bar S_\times = s^*(\varpi^b)^\top
+  D\varpi^b/k = 11.6, 16.7, 29.8$; the share is below one half only at $\eta = 0.3$, $\bar S =
+  20$, the one case below its $\bar S_\times$.
+- *The second regime, CKS.* $\mathbb E\psi^{\mathrm{CKS}}$ over $\bar S^2/(\varpi^b)^\top
   D\varpi^b$ is $0.316, 0.308, 0.307, 0.309$ (s.e. 0.011) at $\bar S = 10, \dots, 80$; the
   Brownian problem at the base correlation gives $0.32$. Without the coupling of the cap,
   two sides each reflected at its own cap, the constant would be $0.61$. At $\bar S = 20$
   the scale is $134$ s and $\mathbb E\psi^{\mathrm{CKS}} = 41$ s.
-- *`approx.secondRegime`, haw-1.* The first move of haw-1 comes with the exhaustion of its
+- *The second regime, haw-1.* The first move of haw-1 comes with the exhaustion of its
   side (24 paths each; medians):
 
   | $\eta$ | $L$ | $\bar S$ | $\psi^{\mathrm{haw}\text{-}1}$ | over $\bar S^2$ | exhaustion of a side | $\psi^{\mathrm{haw}\text{-}1} \le$ exhaustion |
@@ -538,13 +560,21 @@ unbiased parts: `PlacementPart` is the mean of the within-path variances, `FlowP
 variance of the path means less `PlacementPart` over the number of mark seeds, and `Total` their
 sum. On a small sample `FlowPart` can be negative.
 
-**Outer sizes** (`def.outerSize`). With $\Delta_n X := X_{T_n} - X_{T_{n-1}}$:
+### Working material behind the closing paragraphs (not in the notes)
+
+The notes close `sec.discrepancy` with unnumbered paragraphs: the identity that ties the imbalance
+of any book to the moves of its best prices, the three ways haw-1 departs from it, what can be
+hoped for of the variance in each regime, and what random sizes change. The statements below,
+and those of §5, are the derivations behind those paragraphs and behind the package and the
+notebook; none carries a label in the notes.
+
+**Outer sizes.** With $\Delta_n X := X_{T_n} - X_{T_{n-1}}$:
 $\hat S^b_n = S^{b,1}_{T_{n-1}}$ if $\Delta_nP^b > 0$, $S^{b,1}_{T_n}$ if $\Delta_nP^b < 0$,
 zero otherwise; $\hat S^a_n = S^{a,1}_{T_n}$ if $\Delta_nP^a > 0$, $S^{a,1}_{T_{n-1}}$ if
 $\Delta_nP^a < 0$, zero otherwise: the size at the outer of the two values, on the book in
 which that value is best.
 
-**Proposition** (`prop.touchIdentity`). With both sides occupied before and after the
+**The touch identity.** With both sides occupied before and after the
 event, and $e = e^b + e^a$ split as in `eq.orderFlowContribution`,
 $e^b - \Delta_nS^{b,1} = \mathrm{sgn}(\Delta_nP^b)\hat S^b_n$ and $e^a + \Delta_nS^{a,1} =
 \mathrm{sgn}(\Delta_nP^a)\hat S^a_n$; over a window,
@@ -561,18 +591,18 @@ and telescope. $\square$
 It uses no property of the mechanism. A move contributes its ticks weighted by its outer
 size per tick, which is $\bar S$ under `assumption.idealisedBook`.
 
-**Corollary** (`corol.touchIdentityUnderTheAssumption`). Under the assumption every move is
+**The touch identity under the idealised assumption.** Under the assumption every move is
 by one tick with outer size $\bar S$, and the identity is `eq.idealisedUpdate` with the
 residual `eq.idealisedResidual`. *Proof.* Parts *ii.*–*iv.*, as in
 `exercise.idealisedUpdate`; the right-hand side is $2\bar S\Delta P^m_{t,w}/\tau$. $\square$
 
-**Lemma** (`lemma.unitContribution`). $\mathcal H$ is the set of the indices $n$ of the limit
+**The contribution of an event.** $\mathcal H$ is the set of the indices $n$ of the limit
 orders and withdrawals that haw-1 places behind the touch of their side. Then
 $e^{\mathrm{haw}\text{-}1}_n = \varpi_{E_n}\mathbf 1\{n \notin \mathcal H\}$,
 $\mathrm{OFI}^{\mathrm{haw}\text{-}1}_{t,t} = \varpi^\top N(t) - \sum_{n\in\mathcal H, T_n\le
 t}\varpi_{E_n}$, $\mathrm{OFI}^{\mathrm{CKS}}_{t,t} = \varpi^\top N(t)$.
 
-*Proof.* More generally (`eq.geometricContribution`), an event of size $q$ on a geometric
+*Proof.* More generally, an event of size $q$ on a geometric
 book contributes $e = \varpi_{E_n}\mathbf 1\{n\notin\mathcal H\}\hat q_n$, with $\hat q_n :=
 q \wedge S$ for a market order or a withdrawal at the touch, $S$ the touch it acts on, and
 $\hat q_n := q$ otherwise. A market buy changes only the ask: if $q < S$ the ask stays and
@@ -584,7 +614,7 @@ either the bid stays and $e^b = -(q \wedge S)$, or the queue empties, the bid fa
 = -S^{b,1}_{T_{n-1}} = -(q \wedge S)$. Sell types likewise; the sign is $\varpi_{E_n}$. With
 $q = 1$ this is the claim; CKS is `prop.signedSizeContribution`. $\square$
 
-**Proposition** (`prop.discrepancyDecomposition`).
+**The three-term decomposition.**
 
 $$\frac{2\bar S}{\tau}\mathcal D_t = \sum_{n\in\mathcal H, T_n\le t}\varpi_{E_n}
 - \big[(S^{b,1,\mathrm{CKS}}_t - S^{b,1,\mathrm{haw}\text{-}1}_t) - (S^{a,1,\mathrm{CKS}}_t -
@@ -610,7 +640,7 @@ every move by one tick onto or off a queue of $\bar S$. `distance_terms(pair)` r
 TouchSizeMismatch - DepthMismatch`; `DepthMismatch` is CKS less haw-1 and `CKSDepthMismatch`
 the CKS sum alone, zero by `prop.idealisedUpdate`.
 
-**Proposition** (`prop.placementMartingale`). $\alpha_n := \mathbb P(n \in \mathcal H \mid
+**The placement martingale.** $\alpha_n := \mathbb P(n \in \mathcal H \mid
 \mathfrak F^N, \text{earlier draws})$ is $(1-\eta)^{k_n}$ for a limit order, with $k_n :=
 \phi^{\mathrm{haw}\text{-}1}_{T_n-}/\tau$ the spread of haw-1 before the event (after
 $\chi$ the spreads of the two books differ), $1 - S^{\mathrm{haw}\text{-}1}/
@@ -630,7 +660,7 @@ bounded by one, of conditional variance $\alpha_n(1-\alpha_n)$ since $\varpi_e^2
 orthogonal; the number of events in $(0, t]$ is $\mathcal G_0$-measurable. The identity is
 the lemma. $\square$
 
-**Approximation** (`approx.secondRegimeVariance`). If $\eta\lambda^*_3 > \lambda^*_2$ and $t$
+**The second-regime rate.** If $\eta\lambda^*_3 > \lambda^*_2$ and $t$
 is short against $(L\bar S)^2/(\varpi^b)^\top D\varpi^b$: on $\{\psi^{\mathrm{haw}\text{-}1} >
 t\}$, $\mathcal D_t = P^{m,\mathrm{CKS}}_t - P^m_0$ is $\mathfrak F^N$-measurable, and
 
@@ -661,7 +691,7 @@ $(S^{b,1,\mathrm{haw}\text{-}1}_t - S^{b,1}_0) - (S^{a,1,\mathrm{haw}\text{-}1}_
 S^{a,1}_0)$ plus
 the last sum of the decomposition with $\tilde S$ for $\bar S$. When
 $\mathrm{Var}\,P^{m,\mathrm{haw}\text{-}1}_t \to \infty$, H2 and Cauchy–Schwarz identify the
-depth (`eq.effectiveDepth`):
+depth:
 
 $$\tilde S = \lim_{t\to\infty}\frac\tau2\,\frac{\mathrm{Cov}(\mathrm{OFI}^{\mathrm{haw}\text{-}1}_{t,t},
 P^{m,\mathrm{haw}\text{-}1}_t)}{\mathrm{Var}\,P^{m,\mathrm{haw}\text{-}1}_t},$$
@@ -679,7 +709,7 @@ $$c := \frac{\mathbf 1}{2\bar S} - \frac{\mathbf 1 - \alpha}{2\tilde S}:$$
 an event of type $e$ moves the CKS mid by $\varpi_e/(2\bar S)$ ticks, and under H1–H2 that
 of haw-1 by $\varpi_e(1 - \alpha_e)/(2\tilde S)$ in mean; $c_e$ is the difference.
 
-**Approximation** (`approx.firstRegimeVariance`). Under H1 and H2, with $O(1)$ bounded in
+**The first-regime closed form.** Under H1 and H2, with $O(1)$ bounded in
 mean square uniformly in $t$,
 
 $$\frac{\mathcal D_t}{\tau} = (\varpi\circ c)^\top N(t) + \frac{M^{\mathcal H}_t}{2\tilde S} + O(1),$$
@@ -712,14 +742,14 @@ the two uncorrelated; bounded terms $O(\sqrt t)$. The conditional mean is $(\var
 c)^\top N(t)$ up to $O(1)$, so its variance is the first term and the second is the rest.
 $\square$
 
-As $\tilde S \to \infty$ this becomes the second-regime approximation. $\alpha_e$ is zero
+As $\tilde S \to \infty$ this becomes the second-regime rate. $\alpha_e$ is zero
 for a market order, $(1-\eta)^k$ for a limit order at spread $k$, and for a withdrawal one
 minus the touch's share of its side, close to one for large $L$. In the code
 `PlacementStatistics.of(pairs)` estimates $\alpha$ pooled over the events of the pairs and
-$\tilde S$ by `eq.effectiveDepth`, the regression of the imbalance on $\Pi_T$ across them, and
+$\tilde S$ by the regression of the imbalance on $\Pi_T$ across them, and
 `closed_form_rates(params, uniform_depth, statistics, 0.0)` returns the two rates as
-`VarianceRates(flow_part, placement_part)`. The approximation is first order: H1 and H2 hold
-only approximately, and the split into flow and placement is qualitative.
+`VarianceRates(flow_part, placement_part)`. The closed form is first order: H1 and H2 hold
+only approximately, and the split into flow and placement is a first guess.
 
 ### Evidence for §4
 
@@ -777,13 +807,16 @@ estimator. The remaining misfit has four measured sources:
 
 ## 5. Uncertain sizes
 
+Working material, as at the end of §4: the notes say what random sizes change in one closing
+paragraph of `sec.discrepancy`.
+
 CKS against haw-q, sizes in units of $\bar q$: in units the opening book is that of
 `def.threeBooks`, the $n$-th order carries $\xi_n := q_n/\bar q$ units, $\mathbb E\xi_n =
 1$. `lemma.oneBestPrice` and `corol.partingAtOneQuote` hold with the same proofs; in
 `prop.partingProbability` the limit-order rows are unchanged, the price of a limit order not
 depending on its size.
 
-**Proposition** (`prop.partingProbabilitySizes`). In units, haw-q moves the touch of the
+**The parting with sizes.** In units, haw-q moves the touch of the
 side of the event *i.* for a market order exactly when $\xi_n \ge S^{\mathrm{haw}\text{-}q}$,
 probability $\mathbb P(\xi_n \ge S^{\mathrm{haw}\text{-}q})$, to the first price at which
 the size cumulated from the touch exceeds $\xi_n$, possibly several levels away; *ii.* for a
@@ -798,7 +831,7 @@ priority until exhausted. A withdrawal cancels $\xi_n \wedge S(p_n)$ at its pric
 S$, to the next occupied price. $\xi_n$ is independent of $\mathfrak F^N$, the earlier draws
 and the level drawn. $\square$
 
-**Remark** (`remark.fluidScaleWithSizes`). In `eq.hawkesTouch` for haw-q a joining limit
+**The fluid scale with sizes.** In `eq.hawkesTouch` for haw-q a joining limit
 order brings $\xi_n$, a market order or withdrawal at the touch removes $\xi_n \wedge S$.
 With $\mathbb E\xi_n = 1$, $\mathrm{Var}\,\xi_n < \infty$ the three steps go through with
 $\xi_n$ in the martingale of step 2, except two truncations: at the touch, acting only when
@@ -811,13 +844,13 @@ $\mathbb E\mathcal D^{\mathrm{haw}\text{-}q}_t = 0$ when the opening touches are
 the split holds, by `prop.discrepancyMoments`, the split on the draws that keep the sides of
 haw-q occupied.
 
-**Proposition** (`prop.discrepancyDecompositionSizes`). With $\mathcal H$ read on haw-q and
+**The decomposition with sizes.** With $\mathcal H$ read on haw-q and
 $\hat\xi_n := \xi_n \wedge S^{\mathrm{haw}\text{-}q}$ for a market order or a withdrawal at
 the touch, $\xi_n$ otherwise, $2\bar S\mathcal D^{\mathrm{haw}\text{-}q}_t/\tau$ is the
 right-hand side of the decomposition read on haw-q in units, plus $\sum_{T_n\le t}
 \varpi_{E_n}(1 - \hat\xi_n)\mathbf 1\{n\notin\mathcal H\}$.
 
-*Proof.* As before, with `eq.geometricContribution` in units: $e^{\mathrm{haw}\text{-}q}_n/
+*Proof.* As before, with the contribution of an event in units: $e^{\mathrm{haw}\text{-}q}_n/
 \bar q = \varpi_{E_n}\hat\xi_n\mathbf 1\{n\notin\mathcal H\}$, and $\varpi -
 \varpi\hat\xi\mathbf 1\{n\notin\mathcal H\} = \varpi\mathbf 1\{n\in\mathcal H\} +
 \varpi(1-\hat\xi)\mathbf 1\{n\notin\mathcal H\}$. $\square$
@@ -828,13 +861,12 @@ earlier draws $\xi_n$ is independent of $\{n \in \mathcal H\}$, mean one, and th
 probability $\alpha_n$ on haw-q. Where $\hat\xi_n = \xi_n$ (every limit order, every event at
 a touch of more than $\xi_n$ units) the increment $\varpi_{E_n}(1 - \xi_n\mathbf
 1\{n\notin\mathcal H\} - \alpha_n)$ has conditional mean zero and
-(`eq.sizePlacementVariance`)
 
 $$\mathrm{Var}(\xi_n\mathbf 1\{n\notin\mathcal H\}) = \alpha_n(1 - \alpha_n) + (1 -
 \alpha_n)\mathrm{Var}\,\xi_n.$$
 
-**Remark** (`remark.whatTheSizesAdd`). Under H1, H2 read on haw-q, $\tilde S$ in units, and
-setting aside the truncation at the touch, the proof of `approx.firstRegimeVariance` with
+**What the sizes add.** Under H1, H2 read on haw-q, $\tilde S$ in units, and
+setting aside the truncation at the touch, the proof of the first-regime closed form with
 these increments adds $\mathrm{Var}\,\xi_n\sum_e(1-\alpha_e)\lambda^*_e/(2\tilde S)^2$ to
 the placement rate, market orders entering with $\alpha_e = 0$
 (`closed_form_rates(..., size_variance)`). It is neither the whole of what the sizes add nor
@@ -902,16 +934,16 @@ $\varpi^b$, $\varpi^a$ `side_vector(BUY)`, `side_vector(SELL)`. Base case as in 
 | P2 | `prop.partingProbability` | $\mathbb E\sum_{T_n\le\chi}p_n = 1$, type by type | — | — | compensator sum against frequency |
 | P3 | `prop.cksTouchWalks` | $\psi^{\mathrm{CKS}}$ from the counts | `cks_first_move`, `cks_touch_walks` | equal to the folded book on every path | `first_price_moves(...).cks` |
 | P4 | `prop.fluidTouch` | $r^x(s) = r^x_\infty + (r^x(0) - r^x_\infty)e^{-\lambda^*_5 s/L_x}$ | `fluid_touch` | at $r^x(0) = 1$: $r^x_\infty = 1.667, 3.333, 5, 10$ at $\eta = 0.5, 0.6, 0.7, 1$ | mean touch of haw-1 at $\bar S s$ over $\bar S$ |
-| P5 | `corol.twoRegimes` | $\chi \approx \bar S s^*$, $s^* = s^*_b \wedge s^*_a$, in the first regime | `fluid_emptying_time` | $s^* = 1.2155, 1.7491, 3.1334, 5.2564$ at $\eta = 0.1, 0.2, 0.3, 0.35$; $\bar Ss^* = 24.3, 35.0, 62.7, 105.1$ s; from $r^x(0) = 0.5$, $s^*_x = 0.9285$ at $\eta = 0.2$ | $\psi^{\mathrm{haw}\text{-}1}/\bar S$ at $\bar S = 20, \dots, 160$, from below |
-| P6 | `approx.secondRegime` | $\mathbb E\psi^{\mathrm{CKS}} \approx 0.31\,\bar S^2/(\varpi^b)^\top D\varpi^b$; haw-1 moves with the exhaustion of a side, at $L^2$ times the scale | `diffusive_scale` | scale $134.0$ s; $\mathbb E\psi^{\mathrm{CKS}} \approx 41$ s | mean of P3; $\psi^{\mathrm{haw}\text{-}1}$ against the exhaustion time |
+| P5 | `corol.twoRegimes` | $\chi \approx \bar S s^*$, $s^* = s^*_b \wedge s^*_a$, in the first regime; and the share of paths on which haw-1 moves first, rising through one half near $\bar S_\times = s^*(\varpi^b)^\top D\varpi^b/k$ | `fluid_emptying_time` | $s^* = 1.2155, 1.7491, 3.1334, 5.2564$ at $\eta = 0.1, 0.2, 0.3, 0.35$; $\bar Ss^* = 24.3, 35.0, 62.7, 105.1$ s; from $r^x(0) = 0.5$, $s^*_x = 0.9285$ at $\eta = 0.2$; $\bar S_\times = 11.6, 16.7, 29.8$ at $\eta = 0.1, 0.2, 0.3$ | $\psi^{\mathrm{haw}\text{-}1}/\bar S$ at $\bar S = 20, \dots, 160$, from below; the share of haw-1-first paths at each $\bar S$ |
+| P6 | heuristics after `corol.twoRegimes` | $\mathbb E\psi^{\mathrm{CKS}} \approx 0.31\,\bar S^2/(\varpi^b)^\top D\varpi^b$; haw-1 moves with the exhaustion of a side, at $L^2$ times the scale | `diffusive_scale` | scale $134.0$ s; $\mathbb E\psi^{\mathrm{CKS}} \approx 41$ s | mean of P3; $\psi^{\mathrm{haw}\text{-}1}$ against the exhaustion time |
 | P7 | `prop.discrepancyMoments` | $\mathbb E\mathcal D_t = 0$ and the lower bound when the opening touches are equal; the split | `variance_split` | — | paths × mark seeds |
-| P8 | `prop.discrepancyDecomposition`, `prop.discrepancyDecompositionSizes` | the decomposition, per event | `distance_terms` | exact | per event |
-| P9 | `prop.placementMartingale` | $\mathrm{Var}\,M^{\mathcal H}_t = \mathbb E\sum\alpha_n(1-\alpha_n)$, $\alpha_n$ on the spread of haw-1 | — | exact | independent paths, one mark seed each |
-| P10 | `approx.secondRegimeVariance` | $\varpi^\top D\varpi/(2\bar S)^2$, all flow, on horizons short against the life of a side | `second_regime_rate` | $0.003635$ ticks²/s | $\eta \ge 0.7$ |
-| P11 | `approx.firstRegimeVariance` | flow $(\varpi\circ c)^\top D(\varpi\circ c)$, placement $\sum_e\alpha_e(1-\alpha_e)\lambda^*_e/(2\tilde S)^2$, $\tilde S$ by regression | `closed_form_rates(params, uniform_depth, PlacementStatistics.of(pairs), 0.0)` | table of §4 | rates on $[500, 1500]$ s |
-| P12 | `remark.whatTheSizesAdd` | placement plus $\mathrm{Var}\,\xi\sum_e(1-\alpha_e)\lambda^*_e/(2\tilde S)^2$, a lower bound | `closed_form_rates(…, e^{σ²} − 1)` | table of §5 | same |
+| P8 | working material: the three-term decomposition, the decomposition with sizes | the decomposition, per event | `distance_terms` | exact | per event |
+| P9 | working material: the placement martingale | $\mathrm{Var}\,M^{\mathcal H}_t = \mathbb E\sum\alpha_n(1-\alpha_n)$, $\alpha_n$ on the spread of haw-1 | — | exact | independent paths, one mark seed each |
+| P10 | heuristics after `prop.discrepancyMoments`; the second-regime rate | $\varpi^\top D\varpi/(2\bar S)^2$, all flow, on horizons short against the life of a side | `second_regime_rate` | $0.003635$ ticks²/s | $\eta \ge 0.7$ |
+| P11 | heuristics after `prop.discrepancyMoments`, a first guess; the first-regime closed form | flow $(\varpi\circ c)^\top D(\varpi\circ c)$, placement $\sum_e\alpha_e(1-\alpha_e)\lambda^*_e/(2\tilde S)^2$, $\tilde S$ by regression | `closed_form_rates(params, uniform_depth, PlacementStatistics.of(pairs), 0.0)` | table of §4 | rates on $[500, 1500]$ s |
+| P12 | heuristics after `prop.discrepancyMoments`; what the sizes add | placement plus $\mathrm{Var}\,\xi\sum_e(1-\alpha_e)\lambda^*_e/(2\tilde S)^2$, a lower bound | `closed_form_rates(…, e^{σ²} − 1)` | table of §5 | same |
 | P13 | `eq.sideSize`, `remark.wholeBookImbalance` | sides $S^x_0(\tau\mathbb N) + (\varpi^x)^\top N(t)$, whole-book imbalance $S^{b,1}_0 - S^{a,1}_0 + \varpi^\top N(t)$, for haw-1 | `side_vector` | exact | per event |
-| P14 | `eq.sideSize`, `remark.whatTheSizesAdd` | lifetime $(L\bar S)^2/(\varpi^b)^\top D\varpi^b$, with sizes $(L\bar S)^2/[(\varpi^b)^\top D\varpi^b + \mathrm{Var}\,\xi(\lambda^*_3 + \lambda^*_2 + \lambda^*_5)]$ | `CoupledFlows.breach` | 13 400 s; 5357 s | fraction of runs with an empty side |
+| P14 | `eq.sideSize`; what the sizes add | lifetime $(L\bar S)^2/(\varpi^b)^\top D\varpi^b$, with sizes $(L\bar S)^2/[(\varpi^b)^\top D\varpi^b + \mathrm{Var}\,\xi(\lambda^*_3 + \lambda^*_2 + \lambda^*_5)]$ | `CoupledFlows.breach` | 13 400 s; 5357 s | fraction of runs with an empty side |
 
 Estimators for P11–P12 (`PlacementStatistics.of`): $\alpha_e$ is the fraction of the events
 of type $e$ with $e_n = 0$ on the Hawkes book, pooled over runs; $\tilde S$ is

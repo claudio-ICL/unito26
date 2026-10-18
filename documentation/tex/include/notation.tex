@@ -27,7 +27,6 @@
 \newcommand{\argmax}{\mathrm{argmax}}
 \newcommand{\diag}{\mathrm{diag}}
 \newcommand{\indicator}[1]{\mathbf{1}_{\lbrace {#1} \rbrace}}
-\newcommand{\signum}{\operatorname{sgn}}
 
 %% DERIVATIVES %%
 \newcommand{\gradient}{\nabla}
@@ -228,8 +227,6 @@
 % The best bid and the best ask of the book named in the superscript.
 \newcommand{\bestBidPriceOf}[1]{\price^{b,{#1}}}
 \newcommand{\bestAskPriceOf}[1]{\price^{a,{#1}}}
-% The size at the outer of the two values of a best price that moves.
-\newcommand{\outerSize}{\hat{\size}}
 % The first time the mid-prices of two books differ. Sigma is the volatility.
 \newcommand{\partingTime}{\chi}
 % The first time a best price of a book moves.
@@ -246,12 +243,6 @@
 \newcommand{\fluidTouch}{r}
 % The time, in units of the opening depth, at which the fluid touch reaches zero.
 \newcommand{\fluidEmptying}{s^{*}}
-% The probability that an event is placed behind the touch of its side. Not beta, the decay.
-\newcommand{\behindProbability}{\alpha}
-% The events that a geometric book places behind the touch of their side. Not B, the bid orders.
-\newcommand{\behindSet}{\mathcal{H}}
-% The depth per tick at the moves of a best price of a geometric book.
-\newcommand{\effectiveDepth}{\tilde{\size}}
 
 %% THE FASTER BOOK %%
 % The occupied prices of a side, and the band of ticks an array-backed book indexes:

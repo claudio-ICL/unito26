@@ -21,7 +21,7 @@ One notes section per class, and slides and a notebook in every class.
 | Class 3 | §1.3 `sec.pointProcesses` | 34 frames | `04-simulating-self-excitation` · `05-moments-and-timescales` · `06-simulation-and-goodness-of-fit`, interleaved with the deck |
 | Class 4 | §1.4 `sec.priceFormation`, §1.5 `sec.lobsterEmpirics` | 29 + 4 frames | `07-the-order-flow-imbalance` · `08-forecasting-the-mid`, interleaved with the deck |
 | Laboratory, 13 October | §1.3.3, §1.3.4, on the implementation | none | `09-hawkes-processes-in-the-lab` |
-| Class 5, 19 October | §1.4.4 `sec.idealisedAgainstHawkes`: `sec.threeFlows`, `sec.partingTime`, `sec.discrepancy`, `sec.uncertainSizes` | 34 frames | `10-the-idealised-book-against-the-hawkes-book`, interleaved with the deck |
+| Class 5, 19 October | §1.4.4 `sec.idealisedAgainstHawkes`: `sec.threeFlows`, `sec.partingTime`, `sec.discrepancy` | 25 frames | `10-the-idealised-book-against-the-hawkes-book`, interleaved with the deck |
 
 ---
 

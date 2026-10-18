@@ -3,11 +3,11 @@ Example \ref{example.idealisedPlacement}.
 We drive that flow and the flow of Definition \ref{def.geometricPlacement}
 with the same events from the same book,
 and ask how far the identity carries over.
-We proceed in three steps.
+We proceed in two steps.
 First we study the time at which the two mid-prices first differ.
 Then we study the discrepancy of the mid-prices after that time:
-its mean, and its variance.
-Finally we ask what random order sizes change.
+its mean, and what can be said of its variance,
+with orders of one share and of random size.
 
 \subsubsection{Three flows on one path}
 \label{sec.threeFlows}
@@ -519,8 +519,29 @@ and they depend on the draws of the placement as well as on the path.
  each event changes them by at most one.
 \end{proof}
 
-As $\uniformDepth$ grows,
-with opening touches that grow in proportion,
+Before their first moves the touches of the two books are walks
+from openings of the order of $\uniformDepth$,
+and they differ in their drift.
+By \eqref{eq.hawkesTouch}
+the best bid of $\hawOne$ gains a share at a limit buy with probability $\offsetParameter$,
+and loses one at every market sell
+and at a withdrawal from the bid that draws it.
+Its drift,
+$\offsetParameter\stationaryIntensity[3] - \stationaryIntensity[2]
+- \stationaryIntensity[5] \, \nthBestBidSize[1,\hawOne]_t / \size^{b,\hawOne}_t(\tickSizeOfLOB\N)$,
+is of order one per unit of time,
+and if $\offsetParameter\stationaryIntensity[3] < \stationaryIntensity[2]$ it is negative,
+so that the touch empties in a time of the order of $\uniformDepth$.
+The touch walks of $\cks$ receive every event of their side,
+and under balance they have no drift:
+the drawdown that gives $\firstMove^{\cks}$ in Proposition \ref{prop.cksTouchWalks},
+of the order of $\uniformDepth$,
+comes of their fluctuations alone,
+in a time of the order of $\uniformDepth^{2}$.
+At a fixed $\uniformDepth$ either book may move first.
+As $\uniformDepth$ grows the two scales separate,
+and we let $\uniformDepth \to \infty$,
+with opening touches that grow in proportion:
 the counts follow their means over horizons proportional to $\uniformDepth$,
 and each touch of $\hawOne$ follows an ordinary differential equation.
 
@@ -791,67 +812,45 @@ the rate at which limit buys join the best bid of $\hawOne$
 against the rate at which market sells take from it.
 The withdrawals take from the touch in proportion to its share of the side,
 and pull it towards $\fluidTouch^{x}_{\infty}\uniformDepth$.
-In the first regime the book $\cks$ plays no part in $\partingTime$.
-In the second the proof of Corollary \ref{corol.twoRegimes} stops at the fluid scale,
-and what follows it is an approximation.
+In the first regime the limit decides which book moves first,
+and gives $\partingTime$ to first order, as $\uniformDepth\fluidEmptying$;
+the book $\cks$ plays no part in it.
+At a finite $\uniformDepth$
+the touch of $\hawOne$ fluctuates about $\uniformDepth\fluidTouch^{x}(t/\uniformDepth)$
+by an amount of the order of $\sqrt{\uniformDepth}$,
+so that $\partingTime/\uniformDepth$ falls short of $\fluidEmptying$ on average,
+and by more near the threshold,
+where the fluid touch meets zero at a small slope.
+In the second regime the corollary says only that neither book moves on the scale
+$\uniformDepth$,
+and what can be said beyond it is heuristic.
 
-\begin{approximation}\label{approx.secondRegime}
- Let $\offsetParameter\stationaryIntensity[3] > \stationaryIntensity[2]$,
- and let $\uniformDepth$ be large,
- with opening touches as in Proposition \ref{prop.fluidTouch}.
- By \eqref{eq.hawkesTouch},
- the touch of the side $x$ of $\hawOne$ relaxes,
- at the rate $\stationaryIntensity[5]/(L_x\uniformDepth)$ per share of deviation,
- towards $(\fluidTouch^{x}_{\infty}/L_x) \, \size^{x,\hawOne}_t(\tickSizeOfLOB\N)$,
- which by \eqref{eq.sideSize} is $\fluidTouch^{x}_{\infty}\uniformDepth$
- plus a multiple of a walk without drift,
- and it fluctuates about that centre by $O(\sqrt{\uniformDepth})$.
- It reaches zero by a large deviation of the fluctuation,
- or when the side is nearly exhausted,
- which by \eqref{eq.sideSize} happens at the scale
- $(L\uniformDepth)^{2} / (\sideVector{b})^{\transpose}\countCovarianceRate\,\sideVector{b}$.
- The book $\cks$ moves at the diffusive scale:
- \begin{equation*}
-  \frac{1}{\uniformDepth} \Big(
-  \touchWalk{b}(\uniformDepth^{2} s) - \uniformDepth ,
-  \touchWalk{a}(\uniformDepth^{2} s) - \uniformDepth \Big)
- \end{equation*}
- converges in law to a Brownian motion $(\brownianMotion^{b}, \brownianMotion^{a})$
- started at $(\fluidTouch^{b}(0) - 1, \fluidTouch^{a}(0) - 1)$, with
- $\CoVariance\big( \brownianMotion^{x}(s), \brownianMotion^{y}(s) \big)
- = s \, (\sideVector{x})^{\transpose}\countCovarianceRate\,\sideVector{y}$
- for $x, y \in \lbrace b, a \rbrace$,
- and $\firstMove^{\cks}/\uniformDepth^{2}$ converges in law to the first $s$ at which
- \begin{equation*}
-  \max \Big( 0 , \sup_{s' \leq s}
-  \max\big( \brownianMotion^{b}(s'), \brownianMotion^{a}(s') \big) \Big)
-  - \min\big( \brownianMotion^{b}(s), \brownianMotion^{a}(s) \big) = 1 .
- \end{equation*}
- Both scales are of the order of $\uniformDepth^{2}$,
- and they stand in the ratio of $\Expectation\,\firstMove^{\cks}$
- to $L^{2}\uniformDepth^{2} / (\sideVector{b})^{\transpose}\countCovarianceRate\,\sideVector{b}$.
- Away from the threshold, and for $L$ large,
- $\partingTime = \firstMove^{\cks}$ with probability close to one,
- and $\partingTime$ is then a function of the path,
- of the order of
- $\uniformDepth^{2} / (\sideVector{b})^{\transpose}\countCovarianceRate\,\sideVector{b}$.
-\end{approximation}
-
-The convergence of the touch walks is the functional central limit theorem
-of \cite{BDHM13som},
+The book $\cks$ does not depend on $\offsetParameter$,
+and it moves by the fluctuations of its touch walks.
+By the functional central limit theorem of \cite{BDHM13som},
 applied to $(\sideVector{b})^{\transpose}\multiCountingProc$
 and $(\sideVector{a})^{\transpose}\multiCountingProc$,
-whose drifts vanish under balance.
-The approximation rests on two statements that are not proved here.
-The first is the behaviour of the touch of $\hawOne$,
-as an Ornstein--Uhlenbeck process about a moving centre,
-with a noise of order one per unit of time
-and a stationary variance of the order of $\uniformDepth$,
-for which a fall of the order of $\uniformDepth$ is a large deviation.
-The second is the continuity of the functional that maps the two walks to their first
-drawdown of one unit,
-at the paths of a Brownian motion,
-which turns the convergence in law of the walks into that of $\firstMove^{\cks}$.
+whose drifts vanish under balance,
+the walks move by $\uniformDepth$ in a time of the order of
+$\uniformDepth^{2} / (\sideVector{b})^{\transpose}\countCovarianceRate\,\sideVector{b}$.
+On that scale $\firstMove^{\cks}$ is the drawdown of Proposition \ref{prop.cksTouchWalks}
+read on a pair of correlated Brownian motions in place of the walks,
+and it remains a function of the path.
+
+The touch of $\hawOne$ relaxes,
+at the rate $\stationaryIntensity[5]/(L_x\uniformDepth)$ per share of deviation,
+towards $\fluidTouch^{x}_{\infty}/L_x$ times the size of its side,
+which by \eqref{eq.sideSize} is $L_x\uniformDepth$ plus a walk without drift,
+and it fluctuates about that centre by an amount of the order of $\sqrt{\uniformDepth}$.
+It reaches zero by a large deviation of that fluctuation,
+or when its side is nearly exhausted,
+which takes a time of the order of
+$(L\uniformDepth)^{2} / (\sideVector{b})^{\transpose}\countCovarianceRate\,\sideVector{b}$,
+$L^{2}$ times the scale of $\cks$.
+Both first moves are then on the scale $\uniformDepth^{2}$,
+and which comes first is decided by $L$ and not by $\uniformDepth$:
+on a book of many levels $\cks$ moves first,
+and $\partingTime = \firstMove^{\cks}$ is a function of the path.
 
 \subsubsection{The discrepancy of the mid-prices}
 \label{sec.discrepancy}
@@ -967,640 +966,72 @@ and the variance that the draws of $\hawOne$ add given the path.
  so they hold for $\hawQ$.
 \end{proof}
 
-The discrepancy is decomposed by an identity that holds on any book.
-For a quantity $X$ read after each event write
-$\Delta_n X := X_{\arrivalTimes[]_n} - X_{\arrivalTimes[]_{n-1}}$.
-
-\begin{defi}\label{def.outerSize}
- Let both sides of a book be occupied before and after its $n$-th event.
- The \emph{outer sizes} of the event are
- \begin{equation*}
-  \outerSize^{b}_n :=
-  \begin{cases}
-   \nthBestBidSize[1]_{\arrivalTimes[]_{n-1}} & \text{if } \Delta_n \bestBidPrice > 0, \\
-   \nthBestBidSize[1]_{\arrivalTimes[]_{n}} & \text{if } \Delta_n \bestBidPrice < 0, \\
-   0 & \text{otherwise},
-  \end{cases}
-  \qquad
-  \outerSize^{a}_n :=
-  \begin{cases}
-   \nthBestAskSize[1]_{\arrivalTimes[]_{n}} & \text{if } \Delta_n \bestAskPrice > 0, \\
-   \nthBestAskSize[1]_{\arrivalTimes[]_{n-1}} & \text{if } \Delta_n \bestAskPrice < 0, \\
-   0 & \text{otherwise}.
-  \end{cases}
- \end{equation*}
- When a best price moves,
- its outer size is the size at the outer of its two values
- --- the lower of the two best bids, the higher of the two best asks ---
- read on the book in which that value is best.
-\end{defi}
-
-\begin{prop}\label{prop.touchIdentity}
- Let both sides of a book be occupied before and after its $n$-th event,
- and write $\orderFlowContribution = \orderFlowContribution^{b} + \orderFlowContribution^{a}$,
- with $\orderFlowContribution^{b}$ the first two and $\orderFlowContribution^{a}$ the last
- two terms of \eqref{eq.orderFlowContribution}.
- Then
- \begin{equation}\label{eq.touchIdentityOneEvent}
-  \orderFlowContribution^{b} - \Delta_n \nthBestBidSize[1]
-  = \signum(\Delta_n \bestBidPrice) \, \outerSize^{b}_n ,
-  \qquad
-  \orderFlowContribution^{a} + \Delta_n \nthBestAskSize[1]
-  = \signum(\Delta_n \bestAskPrice) \, \outerSize^{a}_n .
- \end{equation}
- Consequently, over a window $(t-\ofiWindow, t]$ on which both sides stay occupied,
- \begin{equation}\label{eq.touchIdentity}
-  \OFI_{t,\ofiWindow}
-  - \big( \nthBestBidSize[1]_{t} - \nthBestBidSize[1]_{t-\ofiWindow} \big)
-  + \big( \nthBestAskSize[1]_{t} - \nthBestAskSize[1]_{t-\ofiWindow} \big)
-  = \sum_{n \, : \, t-\ofiWindow < \arrivalTimes[]_n \leq t}
-  \big( \signum(\Delta_n \bestBidPrice) \, \outerSize^{b}_n
-  + \signum(\Delta_n \bestAskPrice) \, \outerSize^{a}_n \big) .
- \end{equation}
-\end{prop}
-\begin{proof}
- If the best bid does not move,
- both bid indicators of \eqref{eq.orderFlowContribution} are one,
- $\orderFlowContribution^{b} = \Delta_n \nthBestBidSize[1]$,
- and both sides of the first identity vanish.
- If it rises, only the first is one:
- $\orderFlowContribution^{b} = \nthBestBidSize[1]_{\arrivalTimes[]_n}$,
- and the left-hand side is $\nthBestBidSize[1]_{\arrivalTimes[]_{n-1}} = \outerSize^{b}_n$.
- If it falls, only the second is one:
- $\orderFlowContribution^{b} = -\nthBestBidSize[1]_{\arrivalTimes[]_{n-1}}$,
- and the left-hand side is $-\nthBestBidSize[1]_{\arrivalTimes[]_n} = -\outerSize^{b}_n$.
- The ask is the same mutatis mutandis,
- and summing over the window telescopes the sizes.
-\end{proof}
-
-The identity uses Definition \ref{def.orderFlowImbalance}
-and no property of the mechanism that produced the book.
-When the best bid moves,
-$\signum(\Delta_n \bestBidPrice)\,\outerSize^{b}_n
-= \big( \tickSizeOfLOB \, \outerSize^{b}_n / \abs{\Delta_n \bestBidPrice} \big)
-\, \Delta_n \bestBidPrice / \tickSizeOfLOB$,
-so the right-hand side of \eqref{eq.touchIdentity} sums the moves of the two best prices in
-ticks,
-each weighted by its outer size per tick moved.
-Under Assumption \ref{assumption.idealisedBook} that weight is $\uniformDepth$ at every
-move.
-
-\begin{corol}\label{corol.touchIdentityUnderTheAssumption}
- Under Assumption \ref{assumption.idealisedBook},
- every move of a best price is by one tick and has outer size $\uniformDepth$,
- and \eqref{eq.touchIdentity} is \eqref{eq.idealisedUpdate}
- with the residual \eqref{eq.idealisedResidual}.
-\end{corol}
-\begin{proof}
- That a best price moves only by one tick, onto or off a queue of $\uniformDepth$,
- follows from parts \emph{ii.} to \emph{iv.} of the assumption,
- as in Exercise \ref{exercise.idealisedUpdate}.
- The right-hand side of \eqref{eq.touchIdentity} is then
- $\uniformDepth \big( \bestBidPrice_t - \bestBidPrice_{t-\ofiWindow}
- + \bestAskPrice_t - \bestAskPrice_{t-\ofiWindow} \big) / \tickSizeOfLOB
- = 2\uniformDepth \, \Delta\midPrice_{t,\ofiWindow} / \tickSizeOfLOB$.
-\end{proof}
-
-\begin{lemma}\label{lemma.unitContribution}
- Let $\behindSet$ be the set of the indices $n$
- for which the $n$-th event is a limit order or a withdrawal that the book
- $\hawOne$ places behind the touch of its side.
- Then the contribution \eqref{eq.orderFlowContribution} of the $n$-th event to the
- imbalance of $\hawOne$ is
- $\orderFlowContribution^{\hawOne} = \pressure_{\event[n]} \indicator{n \notin \behindSet}$,
- and
- \begin{equation*}
-  \OFI^{\hawOne}_{t,t}
-  = \pressure^{\transpose}\multiCountingProc(t)
-  - \sum_{n \in \behindSet \, : \, \arrivalTimes[]_n \leq t} \pressure_{\event[n]} ,
-  \qquad
-  \OFI^{\cks}_{t,t} = \pressure^{\transpose}\multiCountingProc(t) .
- \end{equation*}
-\end{lemma}
-\begin{proof}
- We show more:
- if the $n$-th event of a geometric book carries the size $\orderSize$,
- and $\behindSet$ is read on that book,
- the contribution of the event is
- \begin{equation}\label{eq.geometricContribution}
-  \orderFlowContribution
-  = \pressure_{\event[n]} \indicator{n \notin \behindSet} \, \hat{\orderSize}_n ,
- \end{equation}
- where $\hat{\orderSize}_n := \orderSize \wedge \size$ for a market order or a withdrawal
- at the touch,
- $\size$ being the size before the event at the touch it acts on,
- and $\hat{\orderSize}_n := \orderSize$ otherwise.
- With $\orderSize = 1$ and $\size \geq 1$ this is the claim.
- A market buy changes only the ask.
- If $\orderSize < \size$ the best ask stays,
- and $\orderFlowContribution^{a} = -\Delta_n \nthBestAskSize[1] = \orderSize$;
- otherwise it rises,
- and $\orderFlowContribution^{a} = \nthBestAskSize[1]_{\arrivalTimes[]_{n-1}} = \size$,
- however far the order walks the book.
- A limit buy rests in full on the bid, by \eqref{eq.limitPrice}.
- Behind the best bid it changes neither best price nor the size at either,
- and $\orderFlowContribution = 0$;
- at the best bid, $\orderFlowContribution^{b} = \Delta_n \nthBestBidSize[1] = \orderSize$;
- above it, the bid rises and
- $\orderFlowContribution^{b} = \nthBestBidSize[1]_{\arrivalTimes[]_n} = \orderSize$.
- A withdrawal from the bid removes
- $\orderSize \wedge \size^{b}_{\arrivalTimes[]_n-}(p_n)$ at the price $p_n$ it draws,
- and changes only the bid.
- Behind the best bid it changes neither best price nor the size at either,
- and $\orderFlowContribution = 0$.
- At the best bid,
- either it removes less than the size there,
- the bid stays and
- $\orderFlowContribution^{b} = \Delta_n \nthBestBidSize[1] = -(\orderSize \wedge \size)$;
- or the queue empties, the bid falls to the next occupied price,
- and $\orderFlowContribution^{b} = -\nthBestBidSize[1]_{\arrivalTimes[]_{n-1}}
- = -(\orderSize \wedge \size)$.
- The sell types are the same mutatis mutandis,
- and in each case the sign is $\pressure_{\event[n]}$.
- For the book $\cks$, Proposition \ref{prop.signedSizeContribution} gives
- $\orderFlowContribution^{\cks} = \pressure_{\event[n]}$.
-\end{proof}
-
-\begin{prop}\label{prop.discrepancyDecomposition}
- For every $t$,
- \begin{equation}\label{eq.discrepancyDecomposition}
- \begin{split}
-  \frac{2\uniformDepth}{\tickSizeOfLOB} \, \discrepancy_t
-  =\;&
-  \sum_{n \in \behindSet \, : \, \arrivalTimes[]_n \leq t} \pressure_{\event[n]}
-  - \Big[ \big( \nthBestBidSize[1,\cks]_t - \nthBestBidSize[1,\hawOne]_t \big)
-  - \big( \nthBestAskSize[1,\cks]_t - \nthBestAskSize[1,\hawOne]_t \big) \Big]
-  \\
-  &+ \sum_{n \, : \, \arrivalTimes[]_n \leq t}
-  \Big[ \signum(\Delta_n \nthBestBidPrice[1,\hawOne])
-  \Big( \outerSize^{b,\hawOne}_n
-  - \uniformDepth \, \frac{\abs{\Delta_n \nthBestBidPrice[1,\hawOne]}}{\tickSizeOfLOB} \Big)
-  \\
-  &\hphantom{+ \sum_{n \, : \, \arrivalTimes[]_n \leq t} \Big[}
-  + \signum(\Delta_n \nthBestAskPrice[1,\hawOne])
-  \Big( \outerSize^{a,\hawOne}_n
-  - \uniformDepth \, \frac{\abs{\Delta_n \nthBestAskPrice[1,\hawOne]}}{\tickSizeOfLOB} \Big)
-  \Big] .
- \end{split}
- \end{equation}
-\end{prop}
-\begin{proof}
- For the book $\cks$, Proposition \ref{prop.idealisedUpdate} over $(0, t]$,
- with Lemma \ref{lemma.unitContribution} and \eqref{eq.idealisedResidual}, gives
- \begin{equation*}
-  \frac{2\uniformDepth}{\tickSizeOfLOB} \big( \midPriceOf{\cks}_t - \midPrice_0 \big)
-  = \pressure^{\transpose}\multiCountingProc(t)
-  - \big( \nthBestBidSize[1,\cks]_t - \nthBestBidSize[1]_0 \big)
-  + \big( \nthBestAskSize[1,\cks]_t - \nthBestAskSize[1]_0 \big) .
- \end{equation*}
- For the book $\hawOne$,
- write \eqref{eq.touchIdentity} over $(0, t]$,
- and add and subtract
- $\uniformDepth \abs{\Delta_n \nthBestBidPrice[1,\hawOne]} / \tickSizeOfLOB$
- and its ask counterpart inside each signed term:
- the signed sum of these is
- $2\uniformDepth \big( \midPriceOf{\hawOne}_t - \midPrice_0 \big) / \tickSizeOfLOB$,
- so that
- \begin{equation*}
-  \frac{2\uniformDepth}{\tickSizeOfLOB} \big( \midPriceOf{\hawOne}_t - \midPrice_0 \big)
-  = \OFI^{\hawOne}_{t,t}
-  - \big( \nthBestBidSize[1,\hawOne]_t - \nthBestBidSize[1]_0 \big)
-  + \big( \nthBestAskSize[1,\hawOne]_t - \nthBestAskSize[1]_0 \big)
-  - \sum_{n \, : \, \arrivalTimes[]_n \leq t} \big[ \cdots \big] ,
- \end{equation*}
- the bracket being that of \eqref{eq.discrepancyDecomposition}.
- Subtract, and use Lemma \ref{lemma.unitContribution} for the imbalance of $\hawOne$.
-\end{proof}
-
-The three terms of \eqref{eq.discrepancyDecomposition} are
-the events that $\hawOne$ places behind its touches,
-the mismatch of the touches at $t$,
-and the mismatch of the depth through which $\hawOne$ moves.
-The second is bounded when the touches of $\hawOne$ are,
-those of $\cks$ lying between one share and $\uniformDepth$.
-The third vanishes on every move of $\hawOne$ by one tick onto or off a queue of
-$\uniformDepth$.
-The first is a sum over the draws of $\hawOne$,
-and its mean given the path is read off the books before each event.
-
-\begin{prop}\label{prop.placementMartingale}
- Let
- $\behindProbability_n := \Prob\big( n \in \behindSet \mid \sigmaAlgebra^{\multiCountingProc},
- \text{the draws of the events before the } n\text{-th} \big)$.
- Then
- $\behindProbability_n = (1-\offsetParameter)^{k_n}$ for a limit order,
- with $k_n := \LOBspread^{\hawOne}_{\arrivalTimes[]_n-}/\tickSizeOfLOB$
- the spread of $\hawOne$ before the event,
- $\behindProbability_n = 1 - \size^{\hawOne}/\size^{\hawOne}(\tickSizeOfLOB\N)$ for a
- withdrawal,
- with $\size^{\hawOne}$ the size at the touch of its side
- and $\size^{\hawOne}(\tickSizeOfLOB\N)$ the size on that side, before the event,
- and $\behindProbability_n = 0$ for a market order.
- The process
- \begin{equation*}
-  \martingale^{\behindSet}_t
-  := \sum_{n \, : \, \arrivalTimes[]_n \leq t}
-  \pressure_{\event[n]} \big( \indicator{n \in \behindSet} - \behindProbability_n \big)
- \end{equation*}
- satisfies
- $\Expectation[ \martingale^{\behindSet}_t \mid \sigmaAlgebra^{\multiCountingProc} ] = 0$ and
- $\Expectation[ (\martingale^{\behindSet}_t)^{2} \mid \sigmaAlgebra^{\multiCountingProc} ]
- = \Expectation\big[ \sum_{n \, : \, \arrivalTimes[]_n \leq t}
- \behindProbability_n (1 - \behindProbability_n)
- \,\big\vert\, \sigmaAlgebra^{\multiCountingProc} \big]$,
- and
- \begin{equation*}
-  \OFI^{\hawOne}_{t,t}
-  = \pressure^{\transpose}\multiCountingProc(t)
-  - \sum_{n \, : \, \arrivalTimes[]_n \leq t} \pressure_{\event[n]} \behindProbability_n
-  - \martingale^{\behindSet}_t .
- \end{equation*}
-\end{prop}
-\begin{proof}
- By \eqref{eq.limitPrice} a limit order at a spread of $k$ ticks lands behind its touch
- exactly when $\priceOffset_n \geq k$,
- which has probability $(1-\offsetParameter)^{k}$ by \eqref{eq.priceOffset}.
- A withdrawal lands behind its touch exactly when it does not draw it,
- and it draws it with probability $\size^{\hawOne}/\size^{\hawOne}(\tickSizeOfLOB\N)$.
- Let $\mathcal{G}_n$ be generated by $\sigmaAlgebra^{\multiCountingProc}$
- and the draws of the first $n$ events.
- Then $\behindProbability_n$ is $\mathcal{G}_{n-1}$-measurable,
- and the offset and the level of the $n$-th event are drawn,
- given $\mathcal{G}_{n-1}$, on the book that the earlier events left.
- The partial sums of
- $\pressure_{\event[n]}(\indicator{n \in \behindSet} - \behindProbability_n)$
- therefore form a martingale in $(\mathcal{G}_n)_n$,
- with increments bounded by one
- and of conditional variance $\behindProbability_n(1 - \behindProbability_n)$,
- since $\pressure_e^{2} = 1$;
- its increments are orthogonal,
- and the number of events of $(0, t]$ is $\mathcal{G}_0$-measurable.
- The identity is Lemma \ref{lemma.unitContribution}.
-\end{proof}
-
-The imbalance of $\hawOne$ is the signed count,
-less what the books of $\hawOne$ predict it places behind its touches,
-less a noise of the placement alone,
-whose variance given the path is known exactly.
-
-Propositions \ref{prop.discrepancyDecomposition} and \ref{prop.placementMartingale} are
-exact, and they do not give the variance in closed form.
-Two approximations do, one for each regime of Corollary \ref{corol.twoRegimes}.
-In the second regime,
-on horizons short against the life of a side,
-a best price of $\hawOne$ moves only by a large deviation of its touch,
-by Approximation \ref{approx.secondRegime}.
-
-\begin{approximation}\label{approx.secondRegimeVariance}
- Let $\offsetParameter\stationaryIntensity[3] > \stationaryIntensity[2]$,
- and let $t$ be short against
- $(L\uniformDepth)^{2} / (\sideVector{b})^{\transpose}\countCovarianceRate\,\sideVector{b}$.
- On $\lbrace \firstMove^{\hawOne} > t \rbrace$,
- $\discrepancy_t = \midPriceOf{\cks}_t - \midPrice_0$,
- which is $\sigmaAlgebra^{\multiCountingProc}$-measurable,
- and
- \begin{equation*}
-  \Variance\Big( \frac{\discrepancy_t}{\tickSizeOfLOB} \Big)
-  = \frac{\pressure^{\transpose}\countCovarianceRate\,\pressure}{(2\uniformDepth)^{2}} \, t
-  + O(\sqrt{t})
-  + O\big( t \, \Prob(\firstMove^{\hawOne} \leq t)^{1/2} \big) ,
- \end{equation*}
- the last term bounding the placement part.
-\end{approximation}
-\begin{proof}
- On $\lbrace \firstMove^{\hawOne} > t \rbrace$
- the mid-price of $\hawOne$ stays at $\midPrice_0$.
- By Proposition \ref{prop.idealisedUpdate} and Lemma \ref{lemma.unitContribution},
- $(\midPriceOf{\cks}_t - \midPrice_0)/\tickSizeOfLOB
- = \pressure^{\transpose}\multiCountingProc(t)/(2\uniformDepth)
- + \residual^{\cks}_{t,t}/\tickSizeOfLOB$,
- where $\vert \residual^{\cks}_{t,t} \vert \leq \tickSizeOfLOB$
- by \eqref{eq.idealisedUpdate}.
- By \eqref{eq.countsFromNoPast},
- $\pressure^{\transpose}\multiCountingProc(t)$ is
- $\pressure^{\transpose}(I - \branchingMatrix)^{-1}\martingale(t)$
- up to a term bounded in mean square, since $\pressure^{\transpose}\stationaryIntensity = 0$.
- The components of $\martingale$ have no common jumps, by \eqref{eq.noCommonJumps},
- and $\Expectation\,\martingale_e(t)^{2} = \Expectation\,\compensator_e(t)
- = t\,\stationaryIntensity[e] + O(1)$,
- the expected intensity converging exponentially fast from no past;
- so the martingale term has variance $t\,\pressure^{\transpose}\countCovarianceRate\,\pressure
- + O(1)$, by \eqref{eq.flowVolatility}.
- The bounded terms contribute $O(\sqrt{t})$, by the Cauchy--Schwarz inequality.
- The last term bounds
- $\Expectation\big[ \discrepancy_t^{2} - (\midPriceOf{\cks}_t - \midPrice_0)^{2} ;
- \, \firstMove^{\hawOne} \leq t \big] / \tickSizeOfLOB^{2}$
- and the placement part
- $\Expectation\big[ \Variance( \midPriceOf{\hawOne}_t \mid \sigmaAlgebra^{\multiCountingProc} ) \big]
- \leq \Expectation\big[ (\midPriceOf{\hawOne}_t - \midPrice_0)^{2} ;
- \, \firstMove^{\hawOne} \leq t \big]$,
- by the Cauchy--Schwarz inequality,
- the fourth moments of the mid-prices less $\midPrice_0$ being $O(t^{2})$.
-\end{proof}
-
-In the first regime the best prices of $\hawOne$ move,
-and a closed form needs two hypotheses on its books:
-\begin{enumerate}[label={\emph{H\arabic*}.}]
- \item \emph{constant placement}:
-       $\behindProbability_n = \behindProbability_{\event[n]}$
-       for a vector $\behindProbability \in [0,1]^{\numEventTypes}$;
- \item \emph{fixed depth}: there is a constant $\effectiveDepth > 0$ such that
-       \begin{equation*}
-        \frac{2\effectiveDepth}{\tickSizeOfLOB}
-        \big( \midPriceOf{\hawOne}_t - \midPrice_0 \big)
-        = \OFI^{\hawOne}_{t,t} + R_t ,
-       \end{equation*}
-       with $\Expectation R_t^{2}$ bounded in $t$.
-\end{enumerate}
-By \eqref{eq.touchIdentity} over $(0, t]$,
-$-R_t$ is the sum of
-$(\nthBestBidSize[1,\hawOne]_t - \nthBestBidSize[1]_0)
-- (\nthBestAskSize[1,\hawOne]_t - \nthBestAskSize[1]_0)$
-and of the last sum of \eqref{eq.discrepancyDecomposition} with $\effectiveDepth$ in place
-of $\uniformDepth$:
-H2 says that $\hawOne$ moves as if it held $\effectiveDepth$ on every tick it crosses,
-up to an error bounded in mean square.
-When the variance of $\midPriceOf{\hawOne}_t$ grows without bound,
-H2 and the Cauchy--Schwarz inequality identify the depth:
-\begin{equation}\label{eq.effectiveDepth}
- \effectiveDepth
- = \lim_{t \to \infty} \frac{\tickSizeOfLOB}{2} \,
- \frac{\CoVariance\big( \OFI^{\hawOne}_{t,t}, \midPriceOf{\hawOne}_t \big)}
- {\Variance\,\midPriceOf{\hawOne}_t} ,
-\end{equation}
-the slope of the regression of the imbalance of $\hawOne$ on its mid-price,
-counted in half ticks.
-When the touches of $\hawOne$ are bounded in mean square,
-\eqref{eq.touchIdentity} allows the imbalance to be replaced
-by the sum of the outer sizes of the moves, signed by the moves.
-Write $\circ$ for the entrywise product,
-$\mathbf{1}$ for the vector of ones,
-and let
-\begin{equation*}
- c := \frac{\mathbf{1}}{2\uniformDepth}
- - \frac{\mathbf{1} - \behindProbability}{2\effectiveDepth} .
-\end{equation*}
-An event of type $e$ moves the mid-price of $\cks$ by $\pressure_e/(2\uniformDepth)$ ticks,
-and under H1 and H2 that of $\hawOne$ by $\pressure_e(1 - \behindProbability_e)/(2\effectiveDepth)$
-in mean:
-$c_e$ is the difference of the two impacts.
-
-\begin{approximation}\label{approx.firstRegimeVariance}
- Let H1 and H2 hold, and write $O(1)$ for a term bounded in mean square uniformly in $t$.
- Then
- \begin{equation*}
-  \frac{\discrepancy_t}{\tickSizeOfLOB}
-  = (\pressure \circ c)^{\transpose}\multiCountingProc(t)
-  + \frac{\martingale^{\behindSet}_t}{2\effectiveDepth} + O(1) ,
- \end{equation*}
- if $\nthBestBidSize[1]_0 = \nthBestAskSize[1]_0$,
- \begin{equation*}
-  \Expectation\Big[ \frac{\discrepancy_t}{\tickSizeOfLOB}
-  \,\Big\vert\, \sigmaAlgebra^{\multiCountingProc} \Big]
-  = (\pressure \circ c)^{\transpose}
-  \big( \multiCountingProc(t) - t\,\stationaryIntensity \big) + O(1) ,
- \end{equation*}
- and
- \begin{equation*}
-  \Variance\Big( \frac{\discrepancy_t}{\tickSizeOfLOB} \Big)
-  = t \, (\pressure \circ c)^{\transpose} \countCovarianceRate \, (\pressure \circ c)
-  + t \sum_{e} \frac{\behindProbability_e (1 - \behindProbability_e)
-  \stationaryIntensity[e]}{(2\effectiveDepth)^{2}}
-  + O(\sqrt{t}) ,
- \end{equation*}
- the first term being the flow part and the second the placement part.
-\end{approximation}
-\begin{proof}
- Under H1,
- $\sum_{n \, : \, \arrivalTimes[]_n \leq t} \pressure_{\event[n]} \behindProbability_n
- = (\pressure \circ \behindProbability)^{\transpose}\multiCountingProc(t)$,
- so that by H2 and Proposition \ref{prop.placementMartingale}
- \begin{equation*}
-  \frac{\midPriceOf{\hawOne}_t - \midPrice_0}{\tickSizeOfLOB}
-  = \frac{(\pressure \circ (\mathbf{1} - \behindProbability))^{\transpose}
-  \multiCountingProc(t)}{2\effectiveDepth}
-  - \frac{\martingale^{\behindSet}_t}{2\effectiveDepth}
-  + \frac{R_t}{2\effectiveDepth} .
- \end{equation*}
- The book $\cks$ gives
- $(\midPriceOf{\cks}_t - \midPrice_0)/\tickSizeOfLOB
- = \pressure^{\transpose}\multiCountingProc(t)/(2\uniformDepth) + O(1)$,
- as in the proof of Approximation \ref{approx.secondRegimeVariance},
- and subtracting gives the first identity.
- If the opening touches are equal,
- the exchange of the path with its mirror,
- of the proof of Proposition \ref{prop.discrepancyMoments},
- maps an event of type $e$ placed behind its touch
- to an event of type $\swapMatrix(e)$ placed behind its touch,
- on the reflected book,
- and preserves the law of the path and of its draws;
- under H1, therefore,
- $\behindProbability_{\swapMatrix(e)} = \behindProbability_{e}$.
- The entries of $c$ are then equal on the two members of each pair,
- while those of $\pressure$ have opposite signs,
- so that $(\pressure \circ c)^{\transpose}\stationaryIntensity = 0$
- by $\swapMatrix\stationaryIntensity = \stationaryIntensity$;
- with $\Expectation[\martingale^{\behindSet}_t \mid \sigmaAlgebra^{\multiCountingProc}] = 0$
- this gives the second.
- For the variance,
- $\Variance\big( (\pressure \circ c)^{\transpose}\multiCountingProc(t) \big)
- = t \, (\pressure \circ c)^{\transpose} \countCovarianceRate \, (\pressure \circ c) + O(\sqrt{t})$
- as in the proof of Approximation \ref{approx.secondRegimeVariance};
- $\Variance\,\martingale^{\behindSet}_t
- = \sum_{e} \behindProbability_e (1 - \behindProbability_e) \Expectation\,\countingProc(t)
- = t \sum_{e} \behindProbability_e (1 - \behindProbability_e) \stationaryIntensity[e] + O(1)$
- by Proposition \ref{prop.placementMartingale};
- the two are uncorrelated,
- $\martingale^{\behindSet}_t$ having mean zero given $\sigmaAlgebra^{\multiCountingProc}$;
- and the bounded terms contribute $O(\sqrt{t})$ by the Cauchy--Schwarz inequality.
- The conditional mean is $(\pressure \circ c)^{\transpose}\multiCountingProc(t)$
- up to a term bounded in mean square,
- so its variance is the first term,
- and the second is the rest.
-\end{proof}
-
+The order flow imbalance of any book is tied to the moves of its best prices.
+At an event that leaves the best bid in place,
+the bid terms of \eqref{eq.orderFlowContribution} are the change in the size at the best bid.
+At an event that moves it,
+they differ from that change by the size at the lower of the two best bids,
+signed by the move,
+and the ask is the same with the higher of the two best asks.
+Over a window, therefore,
+the imbalance less the change in the size at the best bid,
+plus the change at the best ask,
+is the sum, over the moves of the two best prices,
+of the size at the outer of the two values of each,
+signed by the direction of the move.
+Under Assumption \ref{assumption.idealisedBook}
+every move is by one tick and that size is $\uniformDepth$,
+and the identity is \eqref{eq.idealisedUpdate}.
+The book $\hawOne$ departs from it in three ways:
+the events it places behind its touches contribute nothing to its imbalance,
+its touches at $t$ differ from those of $\cks$,
+and it moves through queues that need not hold $\uniformDepth$.
+Then $2\uniformDepth\discrepancy_t/\tickSizeOfLOB$ is the sum of three terms, one for each.
 Given the path,
-the expected discrepancy is the signed count weighted, type by type,
-by the difference $c_e$ of the impacts of one event on the two mid-prices.
-As $\effectiveDepth \to \infty$ the impact on $\hawOne$ and the placement part vanish,
-and Approximation \ref{approx.firstRegimeVariance} becomes
-Approximation \ref{approx.secondRegimeVariance}.
-Under H1,
-$\behindProbability_e$ is the probability that an event of type $e$ is placed behind its
-touch:
-zero for a market order,
+an event is placed behind its touch with a probability read off the book before it:
 $(1-\offsetParameter)^{k}$ for a limit order at a spread of $k$ ticks,
-and for a withdrawal one minus the share of the touch in the size of its side,
-which by \eqref{eq.sideSize} is close to one when $L$ is large.
-The depth $\effectiveDepth$ is the slope \eqref{eq.effectiveDepth};
-the mean outer size per tick crossed at the moves of $\hawOne$
-is a different statistic,
-and the two need not agree.
-Approximation \ref{approx.firstRegimeVariance} is a first-order description of the first
-regime:
-H1 and H2 hold on the books of $\hawOne$ only approximately,
-and the split of the variance into its flow and placement parts is qualitative.
+one less the share of the touch in its side for a withdrawal,
+and zero for a market order.
+The first term is the sum of these probabilities, signed by $\pressure$,
+plus a martingale whose variance given the path is known.
 
-\subsubsection{Uncertain sizes}
-\label{sec.uncertainSizes}
+What can be said of the variance depends on the regime.
+In the second,
+on horizons short against the life of a side,
+the best prices of $\hawOne$ seldom move,
+and $\discrepancy_t$ is close to $\midPriceOf{\cks}_t - \midPrice_0$,
+a function of the path.
+By \eqref{eq.idealisedUpdate} and \eqref{eq.flowVolatility}
+the variance of $\discrepancy_t/\tickSizeOfLOB$ then grows at about
+$\pressure^{\transpose}\countCovarianceRate\,\pressure/(2\uniformDepth)^{2}$
+per unit of time,
+nearly all of it flow part.
+In the first regime both mid-prices move.
+If each type of event were placed behind its touch with a fixed probability,
+and $\hawOne$ moved as a book of a fixed depth per tick,
+the variance would grow linearly in $t$,
+its flow part coming from the difference of the impacts of one event on the two mid-prices,
+and its placement part from the draws.
+Neither holds on the books of $\hawOne$,
+and the split they suggest is a first guess.
 
-We now set the book $\cks$ against $\hawQ$,
-whose sizes we count in units of $\meanSize$:
-in units its opening book is that of Definition \ref{def.threeBooks},
-and its $n$-th order carries $\xi_n := \orderSize_n / \meanSize$ units,
-with $\Expectation\,\xi_n = 1$.
-The statements of Sections \ref{sec.partingTime} and \ref{sec.discrepancy}
-are read for $\cks$ against $\hawQ$ item by item,
-and we list what changes.
+Random sizes change the comparison in kind.
+A market order or a withdrawal moves a touch of $\hawQ$
+whenever its size reaches the size resting there,
+possibly across several levels,
+and the lognormal law has unbounded support,
+so the books $\cks$ and $\hawQ$ are never quiet.
+Counted in units of $\meanSize$ the sizes have mean one,
+and to first order they leave the fluid touch and the two regimes as they are.
+The mean of $\discrepancy^{\hawQ}_t$ is still zero, by Proposition \ref{prop.discrepancyMoments},
+and its variance gains what the count of events does not see:
+the size of each order enters the placement part,
+and it makes random, given the path,
+both the depth through which $\hawQ$ moves and its whole-book imbalance.
+The size on a side of $\hawQ$ is a walk of a larger variance than \eqref{eq.sideSize},
+and its sides empty sooner.
 
-Lemma \ref{lemma.oneBestPrice} and Corollary \ref{corol.partingAtOneQuote}
-hold with $\hawQ$ in place of $\hawOne$, with the same proofs:
-a market buy walks the ask, and moves only it, up.
-In Proposition \ref{prop.partingProbability} the rows of the limit orders are unchanged,
-since the price of a limit order does not depend on its size,
-and those of the market orders and of the withdrawals change.
-
-\begin{prop}\label{prop.partingProbabilitySizes}
- In Proposition \ref{prop.partingProbability}, with $\hawQ$ in place of $\hawOne$,
- the book $\hawQ$ moves the touch of the side of the event
- \begin{enumerate}[label={\emph{\roman{*}}.}]
-  \item for a market order,
-        exactly when $\xi_n \geq \size^{\hawQ}$,
-        which has probability $\Prob(\xi_n \geq \size^{\hawQ})$,
-        to the first price at which the size of the side, cumulated from the touch,
-        exceeds $\xi_n$,
-        possibly several occupied levels away;
-  \item for a withdrawal,
-        exactly when it draws the touch and $\xi_n \geq \size^{\hawQ}$,
-        which has probability
-        $\Prob(\xi_n \geq \size^{\hawQ}) \, \size^{\hawQ} / \size^{\hawQ}(\tickSizeOfLOB\N)$,
-        by $g$ ticks.
- \end{enumerate}
- If the law of $\xi_n$ has unbounded support, as the lognormal law has,
- these probabilities are positive at every touch,
- and the books $\cks$ and $\hawQ$ are never quiet.
-\end{prop}
-\begin{proof}
- A market buy of $\xi_n$ units is matched against the ask in price-time priority,
- by the matching rule of Section \ref{sec.orderDrivenMarkets},
- and consumes the levels from the best ask until its size is exhausted:
- the best ask moves exactly when $\xi_n \geq \size^{\hawQ}$,
- to the first price at which the cumulated size exceeds $\xi_n$.
- A withdrawal cancels $\xi_n \wedge \size^{\hawQ}_{\arrivalTimes[]_n-}(p_n)$ at the price
- it draws,
- by Definition \ref{def.geometricPlacement}~\emph{iii.},
- and moves the touch exactly when it draws the touch and $\xi_n \geq \size^{\hawQ}$,
- to the next occupied price.
- The size $\xi_n$ is independent of $\sigmaAlgebra^{\multiCountingProc}$,
- of the earlier draws and of the level drawn,
- and $\Prob(\xi_n \geq \size) > 0$ for every $\size$ when its support is unbounded.
-\end{proof}
-
-\begin{remark}\label{remark.fluidScaleWithSizes}
- In \eqref{eq.hawkesTouch} for $\hawQ$,
- a limit order that joins the touch brings $\xi_n$ units,
- and a market order or a withdrawal at the touch removes $\xi_n \wedge \size^{\hawQ}$.
- With $\Expectation\,\xi_n = 1$ and $\Variance\,\xi_n < \infty$,
- the three steps of the proof of Proposition \ref{prop.fluidTouch} go through
- with $\xi_n$ in the martingale of step 2,
- except for two truncations:
- at the touch, which acts only when the touch holds a number of units of order one,
- and of the withdrawals behind the touch from levels holding fewer than $\xi_n$ units,
- which changes the size of a side by an amount that the argument does not control.
- To first order, therefore,
- the equation \eqref{eq.fluidTouch}, the time $\fluidEmptying$ and the two regimes of
- Corollary \ref{corol.twoRegimes} are unchanged,
- the first move of $\hawQ$ coming when its touch holds a number of units of order one
- rather than none.
-\end{remark}
-
-The mean of $\discrepancy^{\hawQ}_t$ is zero when the opening touches are equal,
-and its variance splits into a flow part and a placement part,
-by Proposition \ref{prop.discrepancyMoments}.
-Its decomposition gains one term.
-
-\begin{prop}\label{prop.discrepancyDecompositionSizes}
- Let $\behindSet$ be as in Lemma \ref{lemma.unitContribution}, read on $\hawQ$,
- and let $\hat{\xi}_n := \xi_n \wedge \size^{\hawQ}$
- for a market order or a withdrawal at the touch,
- $\size^{\hawQ}$ being the size before the event at the touch it acts on,
- and $\hat{\xi}_n := \xi_n$ otherwise.
- Then $2\uniformDepth\,\discrepancy^{\hawQ}_t / \tickSizeOfLOB$ is the right-hand side of
- \eqref{eq.discrepancyDecomposition} read on $\hawQ$, with sizes in units,
- plus
- \begin{equation*}
-  \sum_{n \, : \, \arrivalTimes[]_n \leq t}
-  \pressure_{\event[n]} \big( 1 - \hat{\xi}_n \big) \indicator{n \notin \behindSet} .
- \end{equation*}
-\end{prop}
-\begin{proof}
- The proof of Proposition \ref{prop.discrepancyDecomposition},
- with \eqref{eq.geometricContribution} in units in place of Lemma \ref{lemma.unitContribution}:
- $\orderFlowContribution^{\hawQ}/\meanSize
- = \pressure_{\event[n]} \hat{\xi}_n \indicator{n \notin \behindSet}$,
- and $\pressure_{\event[n]} - \pressure_{\event[n]} \hat{\xi}_n \indicator{n \notin \behindSet}
- = \pressure_{\event[n]} \indicator{n \in \behindSet}
- + \pressure_{\event[n]} (1 - \hat{\xi}_n) \indicator{n \notin \behindSet}$.
-\end{proof}
-
-The new term is the cost of the sizes,
-and it vanishes when every order carries one unit.
-Together with the first term of \eqref{eq.discrepancyDecomposition}
-it is the sum of
-$\pressure_{\event[n]} \big( 1 - \hat{\xi}_n \indicator{n \notin \behindSet} \big)$.
-Given $\sigmaAlgebra^{\multiCountingProc}$ and the draws of the earlier events,
-$\xi_n$ is independent of the event $\lbrace n \in \behindSet \rbrace$,
-with mean one,
-and that event has the probability $\behindProbability_n$, read on the books of $\hawQ$.
-Where $\hat{\xi}_n = \xi_n$,
-as for every limit order and for every event acting on a touch of more than $\xi_n$ units,
-the increment
-$\pressure_{\event[n]} \big( 1 - \xi_n \indicator{n \notin \behindSet}
-- \behindProbability_n \big)$
-therefore has conditional mean zero and conditional variance
-\begin{equation}\label{eq.sizePlacementVariance}
- \Variance\big( \xi_n \indicator{n \notin \behindSet} \big)
- = \behindProbability_n (1 - \behindProbability_n)
- + (1 - \behindProbability_n) \, \Variance\,\xi_n ,
-\end{equation}
-the variance being taken given $\sigmaAlgebra^{\multiCountingProc}$ and the earlier draws.
-
-\begin{remark}\label{remark.whatTheSizesAdd}
- Under H1 and H2 read on $\hawQ$, with $\effectiveDepth$ in units,
- and setting aside the truncation at the touch,
- the proof of Approximation \ref{approx.firstRegimeVariance} with the increments
- \eqref{eq.sizePlacementVariance}
- adds
- $\Variance\,\xi_n \sum_{e} (1 - \behindProbability_e) \stationaryIntensity[e]
- / (2\effectiveDepth)^{2}$
- to the rate of the placement part,
- the market orders entering with $\behindProbability_e = 0$.
- It is neither the whole of what the sizes add to the variance nor a bound on it.
- The truncation is not negligible:
- at each move of $\hawQ$ by a market order or a withdrawal at its touch,
- $\hat{\xi}_n$ is the size of the touch and not $\xi_n$,
- and the sum of $\pressure_{\event[n]} (\xi_n - \hat{\xi}_n)$ over these moves
- has a variance that grows with their number.
- The sizes also make the depth through which $\hawQ$ moves random, through its outer sizes,
- and they make the whole-book imbalance random given the path:
- up to the truncation of the withdrawals,
- the argument of \eqref{eq.sideSize} gives, in units,
- $\size^{b,\hawQ}_t(\tickSizeOfLOB\N) - \size^{a,\hawQ}_t(\tickSizeOfLOB\N)
- = \nthBestBidSize[1]_0 - \nthBestAskSize[1]_0
- + \sum_{n \, : \, \arrivalTimes[]_n \leq t} \pressure_{\event[n]} \xi_n$,
- whose variance given $\sigmaAlgebra^{\multiCountingProc}$ is
- $\Variance\,\xi_n \, \groundProc(t)$.
- The closed form carries none of the three.
- With random sizes,
- whether an event moves a touch depends on its size more than on the order of the events,
- and part of the variance moves from the flow part to the placement part.
- And the size resting on a side of $\hawQ$,
- which in $\hawOne$ is the walk \eqref{eq.sideSize}
- of variance rate $(\sideVector{b})^{\transpose}\countCovarianceRate\,\sideVector{b}$,
- has by the law of total variance the larger rate
- $(\sideVector{b})^{\transpose}\countCovarianceRate\,\sideVector{b}
- + \Variance\,\xi_n \, ( \stationaryIntensity[3] + \stationaryIntensity[2]
- + \stationaryIntensity[5] )$
- in units,
- and $\meanSize^{2}$ times it in shares.
-\end{remark}
+How fast the variance of the discrepancy grows in each regime,
+how much of it the path decides,
+and how much the sizes add to it,
+are left to measurement.

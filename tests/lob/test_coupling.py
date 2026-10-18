@@ -645,7 +645,7 @@ class TestTheClosedForm:
                 assert rates.total == rates.flow_part
 
     def test_it_is_the_formula_of_the_approximation(self):
-        """``approx.firstRegimeVariance`` written out, at ``alpha`` and ``S~`` of the order
+        """The first-regime closed form written out, at ``alpha`` and ``S~`` of the order
         that the books of haw-1 give at ``eta = 0.2``."""
         alpha, depth = np.array([0, 0, 0.724, 0.724, 0.963, 0.963]), 9.4
         rates = closed_form_rates(BALANCED, UniformDepth(20), PlacementStatistics(alpha, depth),
