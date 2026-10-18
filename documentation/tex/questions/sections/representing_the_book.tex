@@ -168,9 +168,11 @@ What does the snippet print?
  \choice \codehl{\{1003: 170, 1004: 50\}}
 \end{choices}
 \explanation{\codehl{int} truncates towards zero,
-so the two orders at 10.04 land on 1003 and 1004, one of them a tick off,
-and the order at 10.03 lands on 1002.
-\codehl{round}, as in \codehl{TickGrid.to\_ticks}, gives \codehl{\{1004: 150, 1003: 70\}}.}
+so the order at 10.04 read from the feed lands on 1003, a tick off,
+the one computed from a count of ticks on 1004,
+and the order at 10.03 on 1002, also a tick off.
+\codehl{round}, as in \codehl{TickGrid.to\_ticks} of \codehl{unito26.lob.messages},
+gives \codehl{\{1004: 150, 1003: 70\}}.}
 \end{question}
 
 \begin{question}
@@ -205,8 +207,8 @@ What does the snippet print?
 \end{choices}
 \explanation{Every entry of \codehl{shared} is the one dictionary \codehl{book.bids},
 which the market sell later reduces to 20 at 1001;
-\codehl{copied} holds a copy taken after the first message.
-The withdrawal acts on the ask side and leaves both unchanged.}
+\codehl{copied[0]} is a copy taken after the first message.
+The withdrawal acts on the ask side and does not touch the bids.}
 \end{question}
 
 \begin{question}

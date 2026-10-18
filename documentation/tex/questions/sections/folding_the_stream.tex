@@ -214,7 +214,8 @@ the withdrawal having emptied 1000.
 Two books are compared by folding the same stream through each,
 as in Section~\ref{notes:sec.fasterBook}.
 The driver \codehl{run}, of \codehl{unito26.lob.session}, is quoted below;
-\codehl{last\_traded\_size} is the number of shares the last message traded.
+\codehl{last\_traded\_size} is the number of shares the last message traded,
+and a \codehl{Counter} reads 0 at a key it does not hold.
 \begin{lstlisting}[caption={\protect\codehl{unito26.lob.session.run}, its docstring elided.}, label=listing.runTwiceOverOneGeneratorQuote]
 def run(book: AggregateBook, messages: Iterable[Message]) -> Counter:
 # ...
@@ -249,7 +250,8 @@ the second call of \codehl{run} folds nothing and returns an empty \codehl{Count
 which reads 0 at a missing key.
 \codehl{from\_levels} writes the levels into dictionaries of the new book,
 so \codehl{book\_b} still holds 100 at 1000.
-The stream is materialised before two books are compared.}
+For this reason Section~\ref{notes:sec.fasterBook} materialises the stream
+before two books are compared.}
 \end{question}
 
 \begin{question}
@@ -353,8 +355,8 @@ What does the snippet print?
  \choice \codehl{False True True True}
 \end{choices}
 \explanation{The log holds three bid deltas: 150 at 1000, then 30 at 1000, then 160 at 999.
-A delta writes an absolute size, so a repeated one changes nothing,
-and a lost one is overwritten by the next delta at its price;
+A delta writes an absolute size, so a repeat delivered next to the original changes nothing,
+and the loss of one is made good by the next delta at its price;
 the last delta has no successor, and without it 999 keeps 200.
 A repeated submission adds its 50 shares twice.}
 \end{question}
@@ -466,7 +468,7 @@ A row of type 5 is the execution of a hidden order, which rests at no visible le
 A trading halt writes rows of type 7 with size 0 and direction $-1$,
 whose price column carries a status code:
 $-1$ when trading halts, $0$ when quoting resumes and $1$ when trading resumes.
-A message is checked when it is constructed, by the method quoted below;
+A message is checked when it is constructed, and only then, by the method quoted below;
 \codehl{market\_order} gives a sell the price 0 and a buy the price \codehl{sys.maxsize}.
 \begin{lstlisting}[caption={\protect\codehl{unito26.lob.messages.Message.\_\_post\_init\_\_}}, label=listing.lobsterHaltRowsReplayedValidation]
 def __post_init__(self) -> None:

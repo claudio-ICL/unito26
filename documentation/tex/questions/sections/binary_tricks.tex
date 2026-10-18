@@ -139,8 +139,10 @@ What happens?
 \explanation{Counted up from the floor, the best ask is the lowest set bit,
 which B finds by Proposition~\ref{notes:prop.lowestSetBit};
 A returns the highest ask, 105, and its market buy fills from the top of the side.
-On the emptied side \codehl{0 \& -0} is $0$, whose \codehl{bit\_length} is $0$,
-so both return $95 - 1$, a price below the bid, and no error.}
+On the emptied side the integer is $0$, and so is \codehl{0 \& -0};
+the \codehl{bit\_length} of $0$ is $0$,
+so both return $95 - 1 = 94$, a price below the bid of 98, and no error:
+neither variant tests for an empty side.}
 \end{question}
 
 \begin{question}

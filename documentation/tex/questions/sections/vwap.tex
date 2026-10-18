@@ -119,7 +119,7 @@ What does the snippet print?
  \choice \codehl{1.25 1.25 1.25}
  \choice \codehl{1.25 0.75 0.75}
 \end{choices}
-\explanation{For one order the sweep cost is the VWAP of its fills less the mid before it:
+\explanation{For one market buy the sweep cost is the VWAP of its fills less the mid before it:
 $1002.25 - 1001 = \LOBspread/2 + 40/160$,
 larger than $\LOBspread/2$ because the order walks the book.
 The order empties 1002 and moves the mid to 1001.5,
@@ -194,7 +194,8 @@ What does the snippet print?
 The index $i$ of equation~\eqref{notes:eq.sweepCost} runs over the price grid,
 so the 40 shares at 1004 sit at level 3 and pay two ticks beyond the touch,
 $1 + 80/160$.
-\codehl{walk\_cost} counts occupied levels and charges them one tick, $1 + 40/160$;
+\codehl{walk\_cost} counts occupied levels,
+so that 1004 is level 2 and its 40 shares pay one tick beyond the touch, $1 + 40/160$;
 the two agree only where no gap falls within the sweep,
 Remark~\ref{notes:remark.gridAgainstOccupied}.}
 \end{question}
@@ -205,7 +206,8 @@ A frame of trades holds one row per message:
 the shares the message traded and their value in tick-shares,
 both zero for a message that traded nothing.
 Dividing one integer column of pandas by another gives a column of floats,
-in which $0/0$ is NaN and raises nothing.
+in which $0/0$ is NaN and raises nothing,
+and the method \codehl{mean} of a column skips the entries that are NaN.
 \begin{lstlisting}[caption={A ratio of sums, and a mean of ratios}, label=listing.vwapRatioOfSums]
 trades = pd.DataFrame({
     "Volume": [300, 0, 100],
@@ -318,7 +320,10 @@ Which statement holds?
 \explanation{B walks back over every trade of each window,
 and a window holds a fixed fraction of the day's trades:
 its work is about $n \cdot n/13$, quadratic in $n$.
-A makes two cumulative sums and $n$ binary searches of $\log_2 n$ steps each.}
+A makes two cumulative sums and $n$ binary searches of $\log_2 n$ steps each,
+about $4.8$ times the comparisons at $n = 4000$ as at $n = 1000$;
+the fixed cost of its calls of numpy does not grow,
+and at these sizes it weighs as much as the searches.}
 \end{question}
 
 \begin{question}
@@ -364,7 +369,8 @@ What happens?
 \end{choices}
 \explanation{The arguments of \codehl{np.where} are evaluated before it chooses among them,
 so A divides 0 by 0 in the empty window.
-C gives that window a VWAP of 0, which is a price, $1001$ below the mid,
+B leaves NaN there, which \codehl{np.nanmean} skips: $(1 + 1.5)/2$.
+C gives that window a VWAP of 0, which passes for a price $1001$ below the mid,
 and the mean is $(1 - 1001 + 1.5)/3$.
 The VWAP~\eqref{notes:eq.vwap} is defined only where $\volume_{t,w} > 0$.}
 \end{question}

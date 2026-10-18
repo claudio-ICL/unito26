@@ -74,7 +74,7 @@ the sum of $\totalIntensity(\arrivalTimes[ ]_n)$ over the events has the mean of
 so the mean over the events is
 $\Expectation[\totalIntensity^2]/\totalRate = (9 \cdot 1 + 2^2)/2 = 6.5$:
 an event arrives where the intensity is high.
-The clock gives $\totalRate = 2$,
+The count over the horizon gives $\totalRate = 2$,
 and after the jump each reading gains the column sum 3.}
 \end{question}
 
@@ -111,7 +111,9 @@ What does the snippet print?
 are independent $\mathrm{Exp}(1)$ variables, which is reference 2;
 reference 0 is the same test, sample and law scaled together by $1/3$.
 \codehl{stats.expon(3)} is $\mathrm{Exp}(1)$ moved to start at 3,
-and \codehl{scale=3} is a mean of 3, a rate of $1/3$.}
+and \codehl{scale=3} is a mean of 3, a rate of $1/3$;
+\codehl{stats.expon()} on the raw gaps compares a law of mean $1/3$ with one of mean 1,
+which 3000 draws reject.}
 \end{question}
 
 \begin{question}
@@ -151,7 +153,7 @@ What does the snippet print, approximately, line by line?
 the path on a clock a thousand times faster is the process with
 $\baseIntensity/1000$, $\excitation/1000$ and $\decay/1000$,
 and the third compensator is the first.
-In the second, a decay of 4 per millisecond leaves $\decayedCounts \approx 0$ at every event,
+In the second, a decay of 4 per millisecond leaves $\decayedCounts \approx 0$ at nearly every event,
 and $\compensator_0 \approx 250\,t + 0.7 N_0 + 0.05 N_1$ at the time $t$ in seconds,
 against about one buy a second.
 In the fourth the excitation term is a thousand times smaller,
@@ -236,7 +238,7 @@ What does the snippet print?
 \end{choices}
 \explanation{The jumps of $\multiCountingProc$ and $\decayedCounts$ cancel at an arrival,
 Remark~\ref{notes:remark.readPreJump},
-so B records the same numbers.
+so B records the same numbers, to rounding.
 C reads $\multiCountingProc(\timeHorizon) - \decayedCounts(\timeHorizon)$,
 which overstates $\compensator_0$ by $2.8/4 = 0.7$ at every buy:
 a residual is a difference of two such values, and the overstatement cancels in every residual but the first,
@@ -297,10 +299,11 @@ Which statement holds?
   and the time of A about quadruples with each doubling of $n$.
 \end{choices}
 \explanation{A carries the state from event to event at a constant cost.
-B sums over every earlier event, so event $k$ costs a time proportional to $k$, and the path a time quadratic in $n$.
+B sums over every earlier event, so event $k$ costs a fixed time plus one proportional to $k$,
+and the path a time that approaches the quadratic as $n$ grows.
 C carries the state too, and its cost per event is constant,
 but each interval costs a call of the integrator and its evaluations of the intensity,
-of the order of a hundred steps of A.}
+many steps of A.}
 \end{question}
 
 \begin{question}
@@ -376,7 +379,10 @@ What does the snippet print?
  \choice \codehl{True +0.0}, then \codehl{False -0.3}.
  \correctchoice \codehl{True +0.0}, then \codehl{True -0.3}.
 \end{choices}
-\explanation{Every residual of B is $\mathrm{Exp}(1)$, so the comparison of the margin passes.
+\explanation{Every residual of B is $\mathrm{Exp}(1)$,
+and pairing $U$ with $1 - U$ balances the sample,
+so that its empirical distribution function stays closer to the law than that of independent draws:
+the comparison of the margin passes.
 The adjacent pairs alternate between an antithetic pair and an independent one,
 so the lag-one autocorrelation is half of $-0.64$.
 Theorem~\ref{notes:thm.meyer1971} asserts a serial independence
@@ -500,10 +506,11 @@ Which statement holds?
  \choice The first is about $0.01$, the second well above it.
 \end{choices}
 \explanation{Under both specifications the two simulators draw the same law,
-and a test at its level rejects about once in a hundred.
+so a test that holds its level would reject about once in a hundred.
 The gaps of a Poisson flow are independent.
 The gaps along one path of the self-exciting pair are dependent,
-so the gaps of one path vary from path to path more than a sample of independent gaps would,
+so the distribution of the gaps of one path varies from path to path
+more than that of a sample of independent gaps would,
 and the test overstates its evidence;
 one statistic per independent path restores the level.}
 \end{question}

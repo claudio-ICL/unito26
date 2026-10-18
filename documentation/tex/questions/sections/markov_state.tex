@@ -158,6 +158,7 @@ the second is the one-way pair.
 Their branching ratios are 0.75 and 0.6,
 and over ten seconds $e^{-\decay(1 - \branchingRatio)h}$ is $e^{-10}$ and $e^{-16}$,
 negligible at two decimals.
+The option \codehl{z} of a format prints a negative number that rounds to zero as \codehl{0.00}.
 \begin{lstlisting}[caption={Two states of equal total intensity}, label=listing.totalIntensityIsNotTheState]
 def total_intensity(params, z):
     return (params.baseline + params.excitation @ z).sum()
@@ -172,7 +173,7 @@ for params, z1, z2 in (
     z1, z2 = np.array(z1), np.array(z2)
     gap = total_intensity(params, z1) - total_intensity(params, z2)
     more = total_count(params, z1) - total_count(params, z2)
-    print(f"{gap:.2f} {more:.2f}")
+    print(f"{gap:z.2f} {more:z.2f}")
 \end{lstlisting}
 What does the snippet print?
 \begin{choices}
@@ -260,7 +261,8 @@ Which estimates tend to the expectation as the number of draws grows?
  \correctchoice \codehl{estimate\_a} and \codehl{estimate\_d}.
  \choice All four.
 \end{choices}
-\explanation{The step reads the state and never the time, which it only accumulates,
+\explanation{The waiting times and the type that the step draws depend on the state alone;
+the time is only accumulated and returned,
 so the path after a time has a law fixed by the state at that time:
 \codehl{estimate\_d} is \codehl{estimate\_a} on a clock moved by $s$.
 \codehl{estimate\_b} counts thirty seconds after the path was at $z$,
@@ -320,7 +322,7 @@ as the number of paths grows?
 so \codehl{forecast\_a} conditions on $\decayedCounts(t+)$, the history at $t$.
 \codehl{forecast\_c} conditions on the state after the last event alone,
 and so averages over paths with further events before $t$,
-which this path has not had: it overstates the sells.
+which this path has not had: it overstates both components, the sells most.
 \codehl{forecast\_b} omits the flow, and \codehl{forecast\_d} runs it from the open.}
 \end{question}
 
@@ -469,7 +471,7 @@ Which functions return it?
  \choice All four.
 \end{choices}
 \explanation{By Proposition~\ref{notes:prop.forwardMean} the expectation over $(s, s+h]$
-depends on $h$ alone,
+given $\decayedCounts(s+) = z$ depends on the window only through $h$,
 and \codehl{window\_a} differences the horizons 2 and 1.
 \codehl{window\_b} conditions on the state at $s+1$ and averages over it:
 the forecast is affine in the state,
@@ -509,8 +511,7 @@ Which statement holds of the time per event?
  \choice Both are about the same at every $n$, and A is faster by a constant factor.
  \choice Both grow several-fold from $n = 1000$ to $n = 16000$.
  \correctchoice That of A is about the same at every $n$,
-  that of B grows several-fold from $n = 1000$ to $n = 16000$,
-  and at $n = 16000$ A is faster by more than ten times.
+  and that of B grows several-fold from $n = 1000$ to $n = 16000$.
 \end{choices}
 \explanation{A carries the state by the update~\eqref{notes:eq.update_of_exponential_intensity},
 a fixed amount of work per event.

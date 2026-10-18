@@ -11,8 +11,9 @@ and override how a side is stored and how its best price is found.
 \label{question.writesToABookAndAMessage}
 The spread of a book is a property of \codehl{AggregateBook}, quoted below.
 The class declares no \codehl{\_\_slots\_\_},
-and its constructor binds \codehl{bids} and \codehl{asks} as attributes of the instance,
-two dictionaries.
+its constructor binds \codehl{bids} and \codehl{asks} as attributes of the instance,
+two dictionaries,
+and neither the class nor the instance binds a name \codehl{best\_bid}.
 \codehl{limit\_order} returns an instance of \codehl{Message}, of \codehl{unito26.lob.messages},
 a data class declared under \codehl{@dataclass(frozen=True, slots=True)}
 with the fields \codehl{time}, \codehl{size}, \codehl{price}, \codehl{direction} and \codehl{kind}.
@@ -44,9 +45,9 @@ Which of the statements raise an exception?
  \choice (2) and (5), and no other.
  \choice (2), (3), (4) and (5), and no other.
 \end{choices}
-\explanation{An assignment to an attribute the instance lacks creates it,
-Remark~\ref{notes:remark.misspeltAttribute}, and an assignment to one it has rebinds it:
-(1) and (4) raise nothing.
+\explanation{No class binds \codehl{best\_bid},
+so (1) creates an attribute of the instance, Remark~\ref{notes:remark.misspeltAttribute},
+and (4) rebinds one the instance has: neither raises.
 A property refuses assignment, Remark~\ref{notes:remark.completeRule};
 its reading is the integer 2, which cannot be called, Table~\ref{notes:tab.kindsOfMethod};
 and a frozen data class refuses the assignment of a field.}
@@ -93,7 +94,7 @@ What happens?
 and the list a field refers to stays mutable, Remark~\ref{notes:remark.frozenIsShallow}:
 the append succeeds, and the property, computed at every reading, sums $100 + 50 + 100$.
 The assignment to \codehl{fills} is refused,
-and the counter of the book is changed by neither.}
+and \codehl{book.last\_traded\_size}, the 150 shares of the order, is changed by neither.}
 \end{question}
 
 \begin{question}
@@ -450,10 +451,12 @@ What happens?
  \choice A raises \codehl{TypeError}; B prints \codehl{MTA None}.
 \end{choices}
 \explanation{\codehl{\_empty\_like} calls the class of the book with \codehl{strict} alone:
-in A it binds \codehl{venue} and leaves \codehl{strict} without a value,
+in A it binds \codehl{False} to \codehl{venue} and leaves \codehl{strict} without a value,
+which raises \codehl{TypeError},
 and in B it builds a book of the default venue.
-The copy writes through \codehl{set\_size}, which on a \codehl{VenueBook} is that of
-\codehl{CachedBestBook}, Proposition~\ref{notes:prop.lateBinding}, so the cache of the clone holds 99.}
+The copy writes through \codehl{clone.set\_size}, which on a \codehl{VenueBook} is that of
+\codehl{CachedBestBook}, Definition~\ref{notes:def.attributeReference},
+so the cache of the clone holds 99.}
 \end{question}
 
 \begin{question}
@@ -579,9 +582,9 @@ What does the snippet print?
  \choice \codehl{[]}, then \codehl{['BitmapBook', 'TickArrayBook']}.
  \correctchoice \codehl{['TickArrayBook']}, then \codehl{['BitmapBook', 'TickArrayBook']}.
 \end{choices}
-\explanation{Both bands have the floor $99 - 64 = 35$,
-and that of \codehl{TickArrayBook} is $101 - 99 + 1 + 128 = 131$ wide, with the ceiling $35 + 130 = 165$.
-Neither order is marketable: the sell rests above the ceiling, the buy below both floors,
+\explanation{Both books have the floor $99 - 64 = 35$,
+and the band of \codehl{TickArrayBook} is $101 - 99 + 1 + 128 = 131$ wide, with the ceiling $35 + 130 = 165$.
+Neither order is marketable: the sell would rest above the ceiling, the buy below both floors,
 and \codehl{BitmapBook} has no ceiling.
 Each substitutes for \codehl{AggregateBook} only on the prices it can hold,
 Remark~\ref{notes:remark.limitsOfSubstitution}.}

@@ -296,7 +296,7 @@ at the arrival the intensities are $(3.5, 1.3)$,
 and the threshold $0.75 \cdot 4.8 = 3.6$ lies past the buys, so the order is a market sell.
 \codehl{DrawFirst} draws on the intensities $(6.8, 2.0)$ left by the last event,
 where $6.6$ falls among the buys,
-and then halves its own jump with the rest of the state, $(2.5, 1.0)$.}
+and then halves the state with its own jump in it, from $(2.5, 1.0)$ to $(1.25, 0.5)$.}
 \end{question}
 
 \begin{question}
@@ -483,7 +483,8 @@ What does the snippet print?
 A generator is used as given and advanced by every draw:
 the calls of \codehl{path(rng)} read consecutive stretches of its stream,
 and by the third it has moved past the numbers with which \codehl{default\_rng(5)} starts.
-Independent paths share one generator.}
+Paths that must be independent and reproducible are drawn from one generator,
+seeded once and passed to every simulator.}
 \end{question}
 
 \begin{question}

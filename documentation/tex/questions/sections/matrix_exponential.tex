@@ -118,7 +118,7 @@ and at $\forecastHorizon = 10$ terms of the order of $10^{27}$ cancel to a sum o
 what is left is their rounding, of the order of $10^{11}$.
 The terms of the series of $\excitation \forecastHorizon$ are non-negative matrices,
 since $\excitation \geq 0$,
-so their sum, of the order of $e^{30}$, loses no digit,
+so their sum, of the order of $e^{30}$, loses no digit to cancellation,
 and multiplying it by $e^{-40}$ costs one rounding.
 At $\forecastHorizon = 1$ the largest term is about $6.6^{6}/6! \approx 115$,
 and both sums are accurate.}
@@ -282,8 +282,9 @@ The pseudo-inverse sends $(1, 1)$ to zero,
 losing the mode that grows with $\forecastHorizon$,
 and leaves negative entries, which no integral of $e^{\hurwitzMatrix u} \geq 0$ has.
 The block exponential inverts nothing,
-and the closed form $\hurwitzMatrix^{-1}(e^{\hurwitzMatrix \forecastHorizon} - I)$
-needs $\branchingRatio < 1$.}
+while the closed form $\hurwitzMatrix^{-1}(e^{\hurwitzMatrix \forecastHorizon} - I)$
+needs $\hurwitzMatrix$ invertible, which fails at $\branchingRatio = 1$,
+and \codehl{np.linalg.solve} raises on it.}
 \end{question}
 
 \begin{question}
@@ -439,12 +440,14 @@ What does the snippet print?
 \explanation{At $z = m$ equation~\eqref{notes:eq.forwardMeanCountsDeviation} leaves
 $\forecastHorizon\stationaryIntensity$,
 and $\pressure^{\transpose}\stationaryIntensity = 0.5 - 1.5$:
-a drift that the pair carries whatever the state,
-in the two baseline terms, which direction symmetry would cancel.
-The descendants of the state are
+a drift that the pair carries whatever the state.
+It comes from the two baseline terms, which direction symmetry would cancel;
+at $z = m$ they sum to $-100 + 0.92$,
+and the descendants of the state,
 $\pressure^{\transpose}\branchingMatrix(I - \branchingMatrix)^{-1} m
-= -2.875 \cdot 0.125 - 1.5 \cdot 0.375$,
-part of $\forecastHorizon\stationaryIntensity$ and not added to it.}
+= -2.875 \cdot 0.125 - 1.5 \cdot 0.375 = -0.92$,
+make up the rest:
+they are part of $\forecastHorizon\stationaryIntensity$ and not added to it.}
 \end{question}
 
 \begin{question}
@@ -519,8 +522,11 @@ What does the snippet print, line by line?
 \end{choices}
 \explanation{On both pairs $\pressure^{\transpose}\excitation = \signedExcitation\pressure^{\transpose}$,
 with $\signedExcitation = \pm 2.6$,
-so $\pressure^{\transpose}\hurwitzMatrix = (\signedExcitation - 4)\pressure^{\transpose}$
-and the forecast is
+so $\pressure^{\transpose}\hurwitzMatrix = (\signedExcitation - 4)\pressure^{\transpose}$.
+Both baselines are $(0.25, 0.25)$, so $\pressure^{\transpose}\baseIntensity = 0$
+and the two baseline terms vanish,
+as in the proof of Proposition~\ref{notes:prop.shortHorizonForecast};
+the forecast is
 $\signedExcitation\big(1 - e^{(\signedExcitation - 4)\forecastHorizon}\big)/(4 - \signedExcitation)
 \cdot (z_1 - z_2)$:
 $2.6 \cdot 0.5034/1.4 \cdot 1.5$ and $-2.6 \cdot 0.9631/6.6 \cdot 1.5$.
@@ -566,7 +572,7 @@ Which statement holds?
 \explanation{A pays at each horizon for a call of \codehl{expm} made from the interpreter,
 which scales the matrix, evaluates a rational approximation and squares the result back.
 B makes one eigendecomposition,
-then $n$ scalar exponentials and $n$ products of $2 \times 2$ matrices
+then $2n$ scalar exponentials and $n$ products of $2 \times 2$ matrices
 inside a few array operations,
 whose work is still proportional to $n$.}
 \end{question}

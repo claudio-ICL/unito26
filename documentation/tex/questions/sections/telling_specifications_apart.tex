@@ -101,7 +101,8 @@ by Lemma~\ref{notes:lemma.perronFrobenius};
 S3 has trace $1.3$ and determinant $0.22$, hence eigenvalues $1.1$ and $0.2$.
 A column sum above one, the $1.2$ of S1, or a row sum above one, the $1.3$ of S2,
 does not make $\branchingRatio \geq 1$,
-and the constructor asks of the baselines only that they sum to a positive number.}
+and the constructor asks of the baselines only that they be non-negative
+and sum to a positive number, which the zero baseline of S4 satisfies.}
 \end{question}
 
 \begin{question}
@@ -178,7 +179,7 @@ and off-diagonal products $0.09$ and $0.36$,
 hence eigenvalues $0.5 \pm 0.3$ and $0.5 \pm 0.6$.
 The first is stationary, with $\stationaryIntensity = (0.75, 1.75)$;
 the second has $\branchingRatio = 1.1$ and no stationary version:
-its intensity grows as $e^{0.4t}$, equation~\eqref{notes:eq.supercriticalGrowth},
+its mean intensity grows as $e^{0.4t}$, equation~\eqref{notes:eq.supercriticalGrowth},
 its path reaches $10^{5}$ events long before $T$,
 and its fixed point $(I - \branchingMatrix)^{-1}\baseIntensity = (-1.64, -2.55)$ counts nothing.}
 \end{question}
@@ -459,7 +460,11 @@ Which statement holds, up to the sampling error?
 \end{choices}
 \explanation{A window of $0.01$ seconds holds $\totalRate w = 0.02$ events on average,
 Definition~\ref{notes:def.dimensionlessGroups},
-and seldom two, whatever the clustering, so its count has a variance near its mean.
+and seldom two:
+just after an event the intensity of the self-exciting pair is about $9.5$ a second,
+Question~\ref{question.palmMeanOfTheTotalIntensity},
+so the window catches a second event less than once in ten,
+and the variance of its count exceeds its mean by less than a tenth.
 A window of $100$ seconds, long against both relaxation times, holds whole clusters:
 $1/(1 - 0.1)^{2} \approx 1.2$ and $1/(1 - 0.75)^{2} = 16$.}
 \end{question}
@@ -501,8 +506,9 @@ by much more than their sampling error?
 \end{choices}
 \explanation{The columns of $\excitation$ sum to $3$ in both pairs,
 so the total intensity $0.5 + 3\,\mathbf{1}^{\transpose}\decayedCounts$,
-and with it the law of the event times, is common to the two,
-and the Fano factor of the total count is $16$ in both.
+and with it the law of the event times, is common to the two:
+the rate of the buys is $\stationaryIntensity[1] = 1$ in both,
+and the Fano factor of the total count about $16$.
 The types tell them apart:
 a cluster of the self-exciting pair piles its events on one type,
 and one of the cross-exciting pair alternates them,
@@ -546,7 +552,7 @@ Which statement holds?
 \end{choices}
 \explanation{$\baseIntensity$ is a right Perron vector of each $\branchingMatrix$,
 so the $k$-th term is $\branchingRatio^{k}\baseIntensity$,
-and A stops after about $\log(5 \times 10^{11})/(1 - \branchingRatio)$ terms:
+and A stops after $\log(5 \times 10^{11})/\log(1/\branchingRatio) \approx 27/(1 - \branchingRatio)$ terms:
 about $260$, $2700$ and $27000$.
 B solves one $2 \times 2$ system whatever $\branchingRatio$.}
 \end{question}

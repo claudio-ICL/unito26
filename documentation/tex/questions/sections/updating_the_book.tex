@@ -199,9 +199,9 @@ What does the snippet print with the variant?
 \explanation{\codehl{sorted} puts the eligible bids in increasing order, 999 before 1000,
 whereas the priority of equation~\eqref{notes:eq.orderingOfLimitOrders}
 matches a sell against the highest bid first.
-The order of 400 takes both eligible levels whole, so the order of the walk leaves no trace
+The sell of 400 takes both eligible levels whole, so the sequence of the walk leaves no trace
 in the book;
-the order of 250 takes the 200 shares at 999 and 50 of the 100 at 1000.
+the sell of 250 takes the 200 shares at 999 and 50 of the 100 at 1000.
 The loop runs over the list that \codehl{sorted} returns, not over the dictionary.}
 \end{question}
 
@@ -238,11 +238,12 @@ What happens?
  \choice Alternative A prints \codehl{998 100 350 349700};
   the variant prints \codehl{998 100 350} and a number larger than $10^{20}$.
 \end{choices}
-\explanation{The price of a fill is recorded and never read by the matching,
+\explanation{The price of a fill is read again only by line~13, to place what remains of the order,
+and both orders fill in full,
 so the book and the volume are the same.
-A records the resting prices, $100 \times 1000 + 200 \times 999 + 50 \times 998$;
+A records the resting prices, $100 \times 1000 + 200 \times 999 + 50 \times 998 = 349700$;
 the variant records 999 for the 250 shares of the limit sell,
-and the sentinel 0 for the 100 shares of the market sell.}
+and the sentinel 0 for the 100 shares of the market sell: $250 \times 999 = 249750$.}
 \end{question}
 
 \begin{question}
@@ -278,7 +279,8 @@ After which messages do Alternative~A and the variant leave the same book?
  \choice After (i), (ii) and (iv).
  \choice After all four.
 \end{choices}
-\explanation{For a sell, \codehl{best > p} stops the loop when the bid is above the limit,
+\explanation{For a buy $d = 1$, and the test of the variant is that of A.
+For a sell, \codehl{best > p} stops the loop when the bid is above the limit,
 where the order should trade, and lets it trade below the limit.
 The variant processes the sell at 1000 correctly because its 50 shares fit in the queue at its own price.
 The market sell, priced 0, trades nothing,
@@ -344,7 +346,7 @@ by the market-to-limit rule of Section~\ref{notes:sec.foldImplementation}.}
 The book writes every change of a size through \codehl{set\_size}
 and finds its best prices by \codehl{best\_price}, both quoted below.
 \codehl{apply} passes a submission to \codehl{submit},
-quoted below with what it records cut.
+quoted below without its comments and its records of what traded.
 A subclass overrides \codehl{set\_size} so that a price whose size reaches zero is kept.
 \begin{lstlisting}[caption={\protect\codehl{unito26.lob.orderbook.AggregateBook}: a write, and the best price. Docstrings elided.}, label=listing.setSizeKeepingEmptyLevelsStorage]
 def set_size(self, direction: int, price: int, size: int) -> None:
@@ -362,7 +364,7 @@ def best_price(self, direction: int) -> int | None:
         return None
     return max(levels) if direction == BUY else min(levels)
 \end{lstlisting}
-\begin{lstlisting}[caption={\protect\codehl{unito26.lob.orderbook.AggregateBook.submit}, abridged: the fills and the level changes it can record are cut.}, label=listing.setSizeKeepingEmptyLevelsSubmit]
+\begin{lstlisting}[caption={\protect\codehl{unito26.lob.orderbook.AggregateBook.submit}, abridged: its comments, and its records of what traded, are cut.}, label=listing.setSizeKeepingEmptyLevelsSubmit]
 def submit(self, message: Message, record: bool) -> SubmitResult | None:
     # ...
     remaining = message.size
@@ -564,8 +566,10 @@ What does the snippet print?
  \choice It raises \codehl{AssumptionBreach} at the second event.
 \end{choices}
 \explanation{The first share joins the bid, which then holds $\uniformDepth = 5$.
-The second is placed one tick inside, at 1001, which is the best ask:
-it trades the one share there, and the ask moves to 1002, five shares behind it.
+The second is placed one tick inside, at 1001, which is the best ask;
+the price behind it, 1002, holds five shares,
+so taking the one share at 1001 does not empty the side, and raises no \codehl{AssumptionBreach}.
+The ask moves to 1002.
 The third is placed at 1001 again, now inside a spread of two ticks,
 and opens a new best bid.}
 \end{question}
