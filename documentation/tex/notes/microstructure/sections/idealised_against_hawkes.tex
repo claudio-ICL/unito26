@@ -358,47 +358,38 @@ the parting time is decided by the moves of the best prices alone.
  set to one.
 \end{proof}
 
-At a spread of one tick the offsets play no part in the table:
-a limit order parts the mid-prices only when $\cks$ sends it to an opposite touch of one
-share,
-and a market order or a withdrawal only when it takes the last share of a touch in one book
-at least.
-
 \begin{corol}\label{corol.quietBook}
- Let $\firstMove^{\cks}$ and $\firstMove^{\hawOne}$ be the first times at which a best price
- of the book $\cks$ and of the book $\hawOne$ moves.
- Then both books keep the opening best prices on
- $[0, \firstMove^{\cks} \wedge \firstMove^{\hawOne})$,
- the first move of each is the first event that takes the last share of one of its touches,
- and
- \begin{equation*}
-  \partingTime = \firstMove^{\cks} \wedge \firstMove^{\hawOne}
- \end{equation*}
- unless the two books make the same move at that event.
+ At a spread of one tick,
+ an event moves a best price of the book $\cks$, or of the book $\hawOne$,
+ exactly when it takes the last share of one of the touches of that book.
  In particular, while the spread is one tick
  and every touch of the two books holds at least two shares,
  no event moves a best price of either:
  we say that the books are \emph{quiet}.
 \end{corol}
 \begin{proof}
- Before $\firstMove^{\cks} \wedge \firstMove^{\hawOne}$ no best price has moved,
- so both books keep the opening best prices and the spread of one tick.
- At a spread of one tick, by the proof of Proposition \ref{prop.partingProbability},
- a best price of $\cks$ moves exactly when a market order or a withdrawal takes the last
- share of a touch,
- or a limit order sent to the opposite touch takes the last share there;
- and a best price of $\hawOne$ moves exactly when a market order or a withdrawal takes the
- last share of a touch.
- This gives the second claim and the last.
- The mid-prices agree before $\firstMove^{\cks} \wedge \firstMove^{\hawOne}$,
- and at that event at least one book moves a best price;
- by Corollary \ref{corol.partingAtOneQuote} the mid-prices then differ,
- unless the other book makes the same move.
+ We read the proof of Proposition \ref{prop.partingProbability} at $k = 1$.
+ In the book $\cks$,
+ a market order or a withdrawal takes one share from a touch,
+ and a limit order joins its touch or takes one share from the opposite touch;
+ a best price moves exactly when the touch that loses the share held one.
+ In the book $\hawOne$,
+ a limit order rests at or behind the touch of its side and moves no best price,
+ and a market order or a withdrawal takes one share from a touch or from behind it;
+ a best price moves exactly when that share is the last of a touch.
 \end{proof}
 
-The same move needs a touch of one share in both books at the same event,
-emptied by the same market order or withdrawal,
-with $g = 1$ in $\hawOne$.
+\begin{defi}\label{def.firstMoves}
+ The \emph{first move} of the book $\cks$ is
+ \begin{equation*}
+  \firstMove^{\cks} := \inf \big\lbrace t \geq 0 :
+  \bestBidPriceOf{\cks}_t \neq \bestBidPrice_0
+  \text{ or }
+  \bestAskPriceOf{\cks}_t \neq \bestAskPrice_0 \big\rbrace ,
+ \end{equation*}
+ the first time at which a best price of $\cks$ moves;
+ the first move $\firstMove^{\hawOne}$ of the book $\hawOne$ is defined in the same way.
+\end{defi}
 
 Before its first move the book $\cks$ is a function of two walks.
 Let
@@ -454,8 +445,7 @@ be their running maximum.
  leave $\walkMaximum$ unchanged,
  and take one share from the best bid.
  The types of the ask are the same mutatis mutandis.
- At a spread of one tick,
- by the proof of Proposition \ref{prop.partingProbability},
+ By Corollary \ref{corol.quietBook},
  a best price of $\cks$ moves exactly at an event that takes the last share of a touch,
  at which $\min(x^{b}, x^{a})$ reaches zero;
  each event changes $x^{b}$ and $x^{a}$ by at most one,
@@ -610,7 +600,8 @@ and the touch follows an ordinary differential equation.
  for $s \leq \firstMove^{\hawOne}/\uniformDepth$.
  Then $\tilde{x} = x$ on $[0, \firstMove^{\hawOne}/\uniformDepth)$,
  and $\tilde{x}(\firstMove^{\hawOne}/\uniformDepth) = 0$,
- the event at $\firstMove^{\hawOne}$ taking the last share of the touch.
+ the event at $\firstMove^{\hawOne}$ taking the last share of the touch,
+ by Corollary \ref{corol.quietBook}.
  By the definition of $J_3$ and $J_5$,
  \begin{equation*}
   \tilde{x}(s)
@@ -730,15 +721,15 @@ and the touch follows an ordinary differential equation.
  With probability tending to one, therefore,
  $\firstMove^{\hawOne} < \firstMove^{\cks}$,
  and at $\firstMove^{\hawOne}$ the touches of $\cks$ hold at least two shares,
- so that $\cks$ does not make the same move,
- and Corollary \ref{corol.quietBook} gives $\partingTime = \firstMove^{\hawOne}$.
+ so that, by Corollary \ref{corol.quietBook},
+ the event at $\firstMove^{\hawOne}$ moves a best price of $\hawOne$ and none of $\cks$,
+ and $\partingTime = \firstMove^{\hawOne}$.
 
  \emph{ii.}
  Here $\fluidTouch > 0$ on every $[0, s_1]$,
  and Proposition \ref{prop.fluidTouch} gives
  $\Prob(\firstMove^{\hawOne} > \uniformDepth s_1) \to 1$ for every $s_1$.
- By Corollary \ref{corol.quietBook},
- $\partingTime \geq \firstMove^{\cks} \wedge \firstMove^{\hawOne}$,
+ Now $\partingTime \geq \firstMove^{\cks} \wedge \firstMove^{\hawOne}$,
  and both terms exceed $\uniformDepth s_1$ with probability tending to one.
 \end{proof}
 

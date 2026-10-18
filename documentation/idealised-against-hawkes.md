@@ -26,7 +26,7 @@ another module is named.
 | `eq.sideSize`, `remark.wholeBookImbalance` | a side of haw-1 holds $L\bar S + (\varpi^b)^\top N(t)$; the whole-book imbalance is $\varpi^\top N(t)$ | `side_vector` | `TestTheSideVectors` |
 | `def.partingTime`, `lemma.oneBestPrice`, `corol.partingAtOneQuote`, `exercise.partingAtOneQuote` | $\chi$; one best price per event; exactly one differs at $\chi$ | `CoupledFlows.first_price_discrepancy`, `.parting` (`Parting`, `Mover`); `first_price_discrepancy` | `TestTheParting` |
 | `prop.partingProbability` | the probability that an event parts the mid-prices | — | — |
-| `corol.quietBook` | $\chi = \psi^{\mathrm{CKS}} \wedge \psi^{\mathrm{haw}\text{-}1}$ unless the same move | `first_price_moves` (`FirstMoves`), `touch_walks` | `TestTheFirstMoves`, `TestTheParting` |
+| `corol.quietBook`, `def.firstMoves` | at one tick a best price moves exactly when the last share of a touch is taken; the quiet books; the first moves $\psi^{\mathrm{CKS}}$, $\psi^{\mathrm{haw}\text{-}1}$ | `first_price_moves` (`FirstMoves`), `touch_walks` | `TestTheFirstMoves`, `TestTheParting` |
 | `eq.touchWalks`, `prop.cksTouchWalks` | the touches of CKS from the touch walks and their running maximum; $\psi^{\mathrm{CKS}}$ a drawdown | `cks_touch_walks`, `cks_first_move` | `TestTheCKSTouchWalks` |
 | `eq.hawkesTouch`, `prop.fluidTouch`, `eq.countsFromNoPast`, `exercise.fluidTouch`, `corol.twoRegimes` | the fluid touch $r$, the time $s^*$, the two regimes | `fluid_touch`, `fluid_emptying_time` | `TestTheFluidTouch` |
 | `approx.secondRegime` | $\psi^{\mathrm{CKS}}$ at the diffusive scale $\bar S^2/(\varpi^b)^\top D\varpi^b$, the side at $L^2$ times it | `diffusive_scale` | — |
@@ -235,29 +235,24 @@ N)$. In both books a market order acts on the side of the event as a withdrawal 
 the touch, and its rows are those of the withdrawal with the probability of that draw set to
 one. $\square$
 
-At a spread of one tick the offsets play no part: a limit order parts the mid-prices only
-when CKS sends it to an opposite touch of one share, a market order or a withdrawal only
-when it takes the last share of a touch in one book at least.
+**Corollary** (`corol.quietBook`). At a spread of one tick, an event moves a best price of
+CKS, or of haw-1, exactly when it takes the last share of one of the touches of that book.
+While the spread is one tick and every touch of the two books holds at least two shares, no
+event moves a best price of either: the books are *quiet*.
 
-**Corollary** (`corol.quietBook`). With $\psi^{\mathrm{CKS}}$, $\psi^{\mathrm{haw}\text{-}1}$
-the first moves of a best price of each book: both keep the opening best prices on $[0,
-\psi^{\mathrm{CKS}} \wedge \psi^{\mathrm{haw}\text{-}1})$; the first move of each is the
-first event that takes the last share of one of its touches; and $\chi =
-\psi^{\mathrm{CKS}} \wedge \psi^{\mathrm{haw}\text{-}1}$ unless the two books make the same
-move at that event. While the spread is one tick and every touch holds at least two shares
-the books are *quiet*: no event moves a best price.
+*Proof.* The proof above at $k = 1$. In CKS a market order or a withdrawal takes one share
+from a touch, and a limit order joins its touch or takes one share from the opposite touch;
+a best price moves exactly when the touch that loses the share held one. In haw-1 a limit
+order rests at or behind its touch and moves no best price, and a market order or a
+withdrawal takes one share from a touch or from behind it; a best price moves exactly when
+that share is the last of a touch. $\square$
 
-*Proof.* Before the minimum nothing has moved, so the spread is one tick. There, by the
-proof above, a best price of CKS moves exactly when a market order or a withdrawal takes
-the last share of a touch, or a limit order sent to the opposite touch takes the last share
-there; one of haw-1 exactly when a market order or a withdrawal takes the last share of a
-touch. The mid-prices agree before the minimum, and at it one book moves; by
-`corol.partingAtOneQuote` they then differ unless the other makes the same move. $\square$
+**Definition** (`def.firstMoves`). The *first move* of CKS is $\psi^{\mathrm{CKS}} :=
+\inf\{t \ge 0 : P^{b,\mathrm{CKS}}_t \ne P^b_0 \text{ or } P^{a,\mathrm{CKS}}_t \ne P^a_0\}$,
+the first time a best price of CKS moves; $\psi^{\mathrm{haw}\text{-}1}$ likewise.
 
-The same move needs a touch of one share in both books, emptied by the same market order or
-withdrawal, with $g = 1$ in haw-1. `first_price_moves(...)` returns `FirstMoves(cks,
-hawkes, cks_time, hawkes_time)`, and `touch_walks(...)` the touch sizes of both books up to
-each first move.
+`first_price_moves(...)` returns `FirstMoves(cks, hawkes, cks_time, hawkes_time)`, and
+`touch_walks(...)` the touch sizes of both books up to each first move.
 
 **Touch walks** (`eq.touchWalks`). $\Upsilon^b(t) := \bar S + (\varpi^b)^\top N(t)$,
 $\Upsilon^a(t) := \bar S + (\varpi^a)^\top N(t)$, and $\bar\Upsilon(t) := \max(\bar S,
@@ -375,8 +370,8 @@ $\psi^{\mathrm{haw}\text{-}1} > \bar S s_-$. Its proof up to its last display do
 the sign of $r$; on $[0, s_+]$ it shows that on $\{\psi^{\mathrm{haw}\text{-}1} > \bar
 Ss_+\}$ the touch is near $\bar S r(s_+) < 0$, impossible; so $\psi^{\mathrm{haw}\text{-}1}
 \le \bar S s_+$ with probability tending to one. Then $\psi^{\mathrm{haw}\text{-}1} <
-\psi^{\mathrm{CKS}}$ and CKS does not make the same move, so $\chi =
-\psi^{\mathrm{haw}\text{-}1}$ by `corol.quietBook`. *ii.* $r > 0$ on every $[0, s_1]$, so
+\psi^{\mathrm{CKS}}$, and by `corol.quietBook` the event at $\psi^{\mathrm{haw}\text{-}1}$
+moves no best price of CKS, so $\chi = \psi^{\mathrm{haw}\text{-}1}$. *ii.* $r > 0$ on every $[0, s_1]$, so
 $\mathbb P(\psi^{\mathrm{haw}\text{-}1} > \bar S s_1) \to 1$ for every $s_1$, and $\chi \ge
 \psi^{\mathrm{CKS}} \wedge \psi^{\mathrm{haw}\text{-}1}$. $\square$
 
@@ -846,7 +841,7 @@ $\varpi^b$, $\varpi^a$ `side_vector(BUY)`, `side_vector(SELL)`. Base case as in 
 
 | # | notes | prediction | code | base case | how to check |
 | --- | --- | --- | --- | --- | --- |
-| P1 | `corol.partingAtOneQuote`, `corol.quietBook` | at $\chi$ exactly one best price differs; $\chi = \psi^{\mathrm{CKS}} \wedge \psi^{\mathrm{haw}\text{-}1}$ unless the same move | `CoupledFlows.parting`, `first_price_moves` | always; exceptions $\le 2\%$ of paths | per path |
+| P1 | `corol.partingAtOneQuote`, `corol.quietBook`, `def.firstMoves` | at $\chi$ exactly one best price differs; $\chi = \psi^{\mathrm{CKS}} \wedge \psi^{\mathrm{haw}\text{-}1}$ unless the same move | `CoupledFlows.parting`, `first_price_moves` | always; exceptions $\le 2\%$ of paths | per path |
 | P2 | `prop.partingProbability` | $\mathbb E\sum_{T_n\le\chi}p_n = 1$, type by type | — | — | compensator sum against frequency |
 | P3 | `prop.cksTouchWalks` | $\psi^{\mathrm{CKS}}$ from the counts | `cks_first_move`, `cks_touch_walks` | equal to the folded book on every path | `first_price_moves(...).cks` |
 | P4 | `prop.fluidTouch` | $r(s) = r_\infty + (1 - r_\infty)e^{-\lambda^*_5 s/L}$ | `fluid_touch` | $r_\infty = 1.667, 3.333, 5, 10$ at $\eta = 0.5, 0.6, 0.7, 1$ | mean touch of haw-1 at $\bar S s$ over $\bar S$ |

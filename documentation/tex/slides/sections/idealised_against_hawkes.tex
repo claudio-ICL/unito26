@@ -457,23 +457,22 @@ Each entry is the probability, given the path and the earlier draws, that the tw
   \frametitle{At one tick, two shares a touch keep the book quiet}
 \begin{corol}
 \label{corol.quietBook}
- At $\LOBspread = \tickSizeOfLOB$ with all four touches at two shares or more, no event moves a
- best price, and $\partingTime = \firstMove^{\cks} \wedge \firstMove^{\hawOne}$
- unless the books then move alike.
+ At $\LOBspread = \tickSizeOfLOB$ an event moves a best price of a book iff it takes the last
+ share of one of its touches.
 \end{corol}
+
+All four touches at two shares or more: the books are quiet
 
 $\firstMove^{\cks}$, $\firstMove^{\hawOne}$: the first move of a best price of each book
 
 Each first move: the first event emptying one of its touches
 \note{
-At a spread of one tick with every touch at two shares or more, every entry of the table is zero:
-a market order or a withdrawal takes one share from a touch of two or more, the CKS limit order at
-a full touch trades at an opposite touch of two or more, and a geometric limit order at one tick
-is placed at or behind its touch.
-Before the first move of either book no best price has moved, so the two agree on them and the
-spread is the opening tick. At that event at least one book moves, and the mid-prices part unless
-the other makes the same move. That needs a touch of one share in both books at the same event,
-emptied by the same market order or withdrawal, with $g = 1$ in $\hawOne$.
+At a spread of one tick, by the table at $k = 1$: a market order or a withdrawal takes one share
+from a touch, a CKS limit order at a full touch takes one share from the opposite touch, and a
+geometric limit order is placed at or behind its touch. A best price moves exactly when the share
+taken is the last of a touch, so with every touch at two shares or more no event moves one.
+The first move of a book is the first time one of its best prices moves. Before it the spread is
+the opening tick, so it is the first event that empties one of the touches of that book.
 }
 \end{frame}
 
@@ -673,8 +672,8 @@ In the first regime the CKS touch walks move by $o(\uniformDepth)$ on the scale 
 so their drawdown stays below $\uniformDepth$ and the CKS book does not move. The touch of
 $\hawOne$ follows $\fluidTouch$ up to $\fluidEmptying$, and it cannot stay positive much beyond,
 where the continued solution is negative: its first move is near $\uniformDepth\fluidEmptying$.
-There the CKS touches are near $\uniformDepth$, so the CKS book does not make the same move, and
-the quiet book gives $\partingTime = \firstMove^{\hawOne}$.
+There the CKS touches are near $\uniformDepth$, so the CKS book moves no best price, and
+$\partingTime = \firstMove^{\hawOne}$.
 From the threshold up the fluid touch is positive on every $[0, s_1]$, and neither book moves on
 the scale $\uniformDepth$. The proof of part ii stops there.
 }
