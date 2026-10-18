@@ -1,1 +1,551 @@
 \notebook{08-telling-specifications-apart}
+The questions of this section concern the exponential-kernel Hawkes processes
+of Definition~\ref{notes:def.exponentialHawkes},
+their stability and their clusters, Section~\ref{notes:sec.stability},
+and what a path drawn from one shows of its specification.
+The two types are the market buys and the market sells,
+types 1 and 2 of the notes and components 0 and 1 of every array.
+In $\excitation$ the row is excited and the column excites,
+Remark~\ref{notes:remark.indexOrder},
+so that \codehl{A[1, 0]}, which is $\excitation_{2,1}$,
+is the jump in the intensity of the sells at a buy.
+
+\codehl{HawkesParams(baseline, excitation, decay)} holds a specification
+$(\baseIntensity, \excitation, \decay)$;
+its property \codehl{branching\_matrix} is $\branchingMatrix = \excitation/\decay$,
+and its method \codehl{stationary\_intensity()} returns $\stationaryIntensity$,
+the solution of $(I - \branchingMatrix)\stationaryIntensity = \baseIntensity$
+by \codehl{np.linalg.solve}.
+\codehl{ExponentialHawkes(params, rng=s).events(T)} yields in time order
+the events \codehl{(t, e)} of one path on $(0, T]$,
+started empty, simulated exactly, and drawn by a generator seeded with \codehl{s}.
+The package ships five specifications of the pair, all at $\decay = 4$ per second:
+\begin{center}
+\begin{tabular}{@{}lcc@{}}
+ \toprule
+ & $\baseIntensity$ & $\excitation$ \\
+ \midrule
+ \codehl{config.weakly\_exciting\_pair\_params()} & $(0.9, 0.9)$
+ & $\begin{pmatrix} 0.3 & 0.1 \\ 0.1 & 0.3 \end{pmatrix}$ \\[10pt]
+ \codehl{config.self\_exciting\_pair\_params()} & $(0.25, 0.25)$
+ & $\begin{pmatrix} 2.8 & 0.2 \\ 0.2 & 2.8 \end{pmatrix}$ \\[10pt]
+ \codehl{config.cross\_exciting\_pair\_params()} & $(0.25, 0.25)$
+ & $\begin{pmatrix} 0.2 & 2.8 \\ 2.8 & 0.2 \end{pmatrix}$ \\[10pt]
+ \codehl{config.asymmetric\_pair\_params()} & $(0.2, 0.6)$
+ & $\begin{pmatrix} 1.2 & 4.8 \\ 0.4 & 0.8 \end{pmatrix}$ \\[10pt]
+ \codehl{config.one\_way\_pair\_params()} & $(0.4, 0.1)$
+ & $\begin{pmatrix} 0.8 & 0.0 \\ 4.0 & 2.4 \end{pmatrix}$ \\
+ \bottomrule
+\end{tabular}
+\end{center}
+
+\begin{question}
+\label{question.whichOrderFlowSpecificationsAreRefused}
+The constructor of \codehl{HawkesParams} checks the specification it is given.
+\begin{lstlisting}[caption={\protect\codehl{unito26.lob.hawkes.HawkesParams}: the checks of the constructor and the branching ratio, abridged.}, label=listing.whichOrderFlowSpecificationsAreRefusedChecks]
+def __post_init__(self) -> None:
+# ...
+    if np.any(self.baseline < 0):
+        raise ValueError("baseline intensities must be non-negative")
+    if np.any(self.excitation < 0):
+        raise ValueError(
+# ...
+        )
+    if self.baseline.sum() <= 0:
+        raise ValueError(
+# ...
+        )
+    if self.branching_ratio >= 1:
+        raise ValueError(
+# ...
+        )
+# ...
+@property
+def branching_matrix(self) -> np.ndarray:
+# ...
+    return self.excitation / self.decay
+# ...
+@property
+def branching_ratio(self) -> float:
+# ...
+    return float(np.max(np.abs(np.linalg.eigvals(self.branching_matrix))))
+\end{lstlisting}
+Four specifications of the market orders are proposed, all at $\decay = 4$.
+\begin{lstlisting}[caption={Four specifications, and those the constructor refuses}, label=listing.whichOrderFlowSpecificationsAreRefusedRun]
+specifications = {
+    "S1": ([0.4, 0.1], [[0.8, 0.0], [4.0, 2.4]]),
+    "S2": ([0.3, 0.3], [[2.4, 2.8], [0.8, 0.4]]),
+    "S3": ([0.2, 0.2], [[2.0, 1.8], [1.6, 3.2]]),
+    "S4": ([0.0, 0.5], [[1.2, 0.4], [0.4, 1.2]]),
+}
+refused = []
+for name, (baseline, excitation) in specifications.items():
+    try:
+        HawkesParams(baseline=baseline, excitation=excitation, decay=4.0)
+    except ValueError:
+        refused.append(name)
+print(refused)
+\end{lstlisting}
+What does the snippet print?
+\begin{choices}
+ \choice \codehl{[]}
+ \choice \codehl{['S1', 'S3']}
+ \correctchoice \codehl{['S3']}
+ \choice \codehl{['S3', 'S4']}
+ \choice \codehl{['S1', 'S2', 'S3']}
+\end{choices}
+\explanation{With $\branchingMatrix = \excitation/4$, S1 is triangular, with eigenvalues $0.2$ and $0.6$;
+both column sums of S2 are $0.8$, which forces $\branchingRatio = 0.8$
+by Lemma~\ref{notes:lemma.perronFrobenius};
+S3 has trace $1.3$ and determinant $0.22$, hence eigenvalues $1.1$ and $0.2$.
+A column sum above one, the $1.2$ of S1, or a row sum above one, the $1.3$ of S2,
+does not make $\branchingRatio \geq 1$,
+and the constructor asks of the baselines only that they sum to a positive number.}
+\end{question}
+
+\begin{question}
+\label{question.fixedPointSolvedAtAndAboveCriticality}
+Theorem~\ref{notes:thm.stationarity} gives the stationary intensity as the solution of
+$(I - \branchingMatrix)\stationaryIntensity = \baseIntensity$.
+The function below solves it on raw arrays,
+for one baseline and three excitation matrices of the market orders.
+\codehl{np.linalg.solve} raises \codehl{LinAlgError} on a matrix that is exactly singular,
+and $1 - 2.0/4.0$ is exactly $0.5$ in floating point.
+\begin{lstlisting}[caption={The fixed point, solved for three kernels}, label=listing.fixedPointSolvedAtAndAboveCriticality]
+def stationary(mu, excitation, beta):
+    return np.linalg.solve(np.eye(2) - excitation / beta, mu)
+
+mu = np.array([0.2, 0.2])
+for excitation in ([[2.0, 1.2], [1.2, 2.0]],
+                   [[2.0, 2.0], [2.0, 2.0]],
+                   [[2.0, 2.4], [2.4, 2.0]]):
+    try:
+        print(stationary(mu, np.array(excitation), 4.0))
+    except np.linalg.LinAlgError:
+        print("singular")
+\end{lstlisting}
+What does the snippet print, line by line?
+\begin{choices}
+ \correctchoice \codehl{[1. 1.]}, \codehl{singular}, \codehl{[-2. -2.]}
+ \choice \codehl{[1. 1.]}, \codehl{singular}, \codehl{singular}
+ \choice \codehl{[1. 1.]}, \codehl{singular}, \codehl{[2. 2.]}
+ \choice \codehl{[1. 1.]}, \codehl{[inf inf]}, \codehl{[-2. -2.]}
+\end{choices}
+\explanation{The rows of the three $\branchingMatrix$ sum to $0.8$, $1$ and $1.1$,
+and $\baseIntensity$ is proportional to $\mathbf{1}$, a right Perron vector of each,
+so the solution is $\baseIntensity/(1 - \branchingRatio)$ where $\branchingRatio \neq 1$,
+and $I - \branchingMatrix$ is singular where $\branchingRatio = 1$.
+The solve does not check $\branchingRatio < 1$:
+above it the fixed point exists and is negative,
+as Remark~\ref{notes:remark.strictBaseline} requires,
+and is the intensity of no process.}
+\end{question}
+
+\begin{question}
+\label{question.lookalikeKernelsOneSupercritical}
+\codehl{ExponentialHawkes} reads from its parameters
+only the attributes \codehl{baseline}, \codehl{excitation}, \codehl{decay} and \codehl{dimension},
+and checks none of them.
+A \codehl{SimpleNamespace}, of the module \codehl{types}, carrying the four
+stands in for \codehl{HawkesParams}, whose constructor is then never called.
+\codehl{islice(iterable, n)}, of the module \codehl{itertools},
+yields at most the first $n$ items of \codehl{iterable}, and draws no more.
+The two specifications below differ only in \codehl{A[0, 1]},
+the excitation of the buys by the sells,
+and a desk expects of each about $\totalRate T$ events on $(0, T]$,
+with $\totalRate = \mathbf{1}^{\transpose}\stationaryIntensity$.
+\begin{lstlisting}[caption={Two paths, each stopped at $10^{5}$ events}, label=listing.lookalikeKernelsOneSupercritical]
+for excitation in ([[2.0, 0.4], [3.6, 2.0]], [[2.0, 1.6], [3.6, 2.0]]):
+    params = SimpleNamespace(
+        baseline=np.array([0.2, 0.2]),
+        excitation=np.array(excitation),
+        decay=4.0,
+        dimension=2,
+    )
+    path = ExponentialHawkes(params, rng=1).events(4000.0)
+    print(len(list(islice(path, 100_000))))
+\end{lstlisting}
+What does the snippet print?
+\begin{choices}
+ \choice About $10^{4}$ on both lines.
+ \choice About $10^{4}$, then about $1.7 \times 10^{4}$.
+ \choice $10^{5}$ on both lines.
+ \correctchoice About $10^{4}$, then $10^{5}$.
+\end{choices}
+\explanation{Both $\branchingMatrix = \excitation/4$ have diagonal $0.5$
+and off-diagonal products $0.09$ and $0.36$,
+hence eigenvalues $0.5 \pm 0.3$ and $0.5 \pm 0.6$.
+The first is stationary, with $\stationaryIntensity = (0.75, 1.75)$;
+the second has $\branchingRatio = 1.1$ and no stationary version:
+its intensity grows as $e^{0.4t}$, equation~\eqref{notes:eq.supercriticalGrowth},
+its path reaches $10^{5}$ events long before $T$,
+and its fixed point $(I - \branchingMatrix)^{-1}\baseIntensity = (-1.64, -2.55)$ counts nothing.}
+\end{question}
+
+\begin{question}
+\label{question.buysWithNeitherImmigrantsNorExciters}
+As in Question~\ref{question.lookalikeKernelsOneSupercritical},
+a \codehl{SimpleNamespace} stands in for \codehl{HawkesParams}.
+The market buys of the specification below have no immigrants.
+\begin{lstlisting}[caption={A specification with a branching ratio of 2}, label=listing.buysWithNeitherImmigrantsNorExciters]
+params = SimpleNamespace(
+    baseline=np.array([0.0, 0.5]),
+    excitation=np.array([[8.0, 0.0], [2.0, 2.0]]),
+    decay=4.0,
+    dimension=2,
+)
+events = ExponentialHawkes(params, rng=1).events(1e4)
+types = [event_type for _, event_type in events]
+print((np.bincount(types, minlength=2) / 1e4).round(1))
+\end{lstlisting}
+What happens?
+\begin{choices}
+ \choice The run does not end: $\branchingRatio = 2$, and the intensity grows without bound.
+ \choice It prints \codehl{[0. 0.5]}.
+ \choice It prints \codehl{[0. 0.8]}.
+ \correctchoice It prints \codehl{[0. 1.]}.
+\end{choices}
+\explanation{The intensity of the buys is $8\decayedCounts_1$,
+and $\decayedCounts_1$ stays at zero, the buys having neither immigrants nor an exciter:
+no buy occurs, and the sells are a one-type process with $\branchingMatrix = 0.5$,
+of rate $0.5/(1 - 0.5)$; $0.75$ counts their first generation alone.
+The process is stationary with $\branchingRatio = 2$, Remark~\ref{notes:remark.strictBaseline}:
+Theorem~\ref{notes:thm.stationarity} needs $\baseIntensity > 0$ entrywise.}
+\end{question}
+
+\begin{question}
+\label{question.balanceOfBuysAndSellsAgainstImmigrants}
+Two of the specifications of the table, the asymmetric pair and the one-way pair.
+\begin{lstlisting}[caption={The share of the buys on a long path of each}, label=listing.balanceOfBuysAndSellsAgainstImmigrants]
+for params in (config.asymmetric_pair_params(),
+               config.one_way_pair_params()):
+    events = ExponentialHawkes(params, rng=5).events(2e4)
+    types = np.array([event_type for _, event_type in events])
+    print(round(np.mean(types == 0), 2))
+\end{lstlisting}
+What does the snippet print, up to a sampling error of a few thousandths?
+\begin{choices}
+ \choice \codehl{0.25}, then \codehl{0.8}
+ \correctchoice \codehl{0.67}, then \codehl{0.25}
+ \choice \codehl{0.57}, then \codehl{0.46}
+ \choice \codehl{0.25}, then \codehl{0.76}
+\end{choices}
+\explanation{By Theorem~\ref{notes:thm.stationarity}, $\stationaryIntensity = (2, 1)$ and $(0.5, 1.5)$:
+the immigrants are three quarters sells in the first pair and four fifths buys in the second,
+and the flow reverses both.
+A sell of the asymmetric pair has $1.2$ buy children,
+and a buy of the one-way pair one sell child;
+the first generation alone, $\baseIntensity + \branchingMatrix\baseIntensity$, gives $0.57$ and $0.46$,
+and the transposed kernels $0.25$ and $0.76$, Remark~\ref{notes:remark.indexOrder}.}
+\end{question}
+
+\begin{question}
+\label{question.endogenousFractionWeighsTheColumnSums}
+Four numbers are computed on the asymmetric pair.
+\begin{lstlisting}[caption={The branching ratio, the endogenous fraction, and two weighted sums}, label=listing.endogenousFractionWeighsTheColumnSums]
+params = config.asymmetric_pair_params()
+gamma, mu = params.branching_matrix, params.baseline
+lam = params.stationary_intensity()
+print(round(params.branching_ratio, 4),
+      round(1 - mu.sum() / lam.sum(), 4),
+      round(gamma.sum(axis=0) @ lam / lam.sum(), 4),
+      round(gamma.sum(axis=1) @ lam / lam.sum(), 4))
+\end{lstlisting}
+What does the snippet print?
+\begin{choices}
+ \choice \codehl{0.6 0.6 0.7333 1.1}
+ \choice \codehl{0.6 0.7333 1.1 0.7333}
+ \correctchoice \codehl{0.6 0.7333 0.7333 1.1}
+ \choice \codehl{ValueError}
+ \choice \codehl{0.6 0.6 0.6 0.6}
+\end{choices}
+\explanation{$\branchingMatrix$ has trace $0.5$ and determinant $-0.06$, hence eigenvalues $0.6$ and $-0.1$,
+and $\stationaryIntensity = (2, 1)$.
+Summing $\stationaryIntensity = \baseIntensity + \branchingMatrix\stationaryIntensity$ over the types
+makes the endogenous fraction~\eqref{notes:eq.endogenousFraction}
+the mean of the column sums $(0.4, 1.4)$, the direct offspring of each type,
+weighted by $\stationaryIntensity/\totalRate$;
+it is $\branchingRatio$ in particular when the column sums are constant,
+Corollary~\ref{notes:corol.constantClusterSize}.}
+\end{question}
+
+\begin{question}
+\label{question.clusterSizeByFounderAndItsTranspose}
+By Proposition~\ref{notes:prop.clusterRepresentation},
+an event of type $\eone$ has a Poisson number of direct offspring of type $e$,
+of mean $\branchingMatrix\subscriptee$, independently of every other event.
+Each function below follows $n$ clusters founded by an event of the type \codehl{founder}
+and returns their mean size, the founder included;
+column $i$ of \codehl{generation} counts by type the current generation of cluster $i$,
+and \codehl{rng.poisson(m)} draws, for each entry of the array \codehl{m},
+a Poisson variable of that mean.
+\begin{lstlisting}[caption={Alternative A}, label=listing.clusterSizeByFounderAndItsTransposeA]
+def mean_size(branching, founder, n, rng):
+    generation = np.zeros((2, n), dtype=int)
+    generation[founder] = 1
+    sizes = np.ones(n, dtype=int)
+    while generation.any():
+        generation = rng.poisson(branching @ generation)
+        sizes += generation.sum(axis=0)
+    return sizes.mean()
+\end{lstlisting}
+\begin{lstlisting}[caption={Alternative B}, label=listing.clusterSizeByFounderAndItsTransposeB]
+def mean_size(branching, founder, n, rng):
+    generation = np.zeros((2, n), dtype=int)
+    generation[founder] = 1
+    sizes = np.ones(n, dtype=int)
+    while generation.any():
+        generation = rng.poisson(branching.T @ generation)
+        sizes += generation.sum(axis=0)
+    return sizes.mean()
+\end{lstlisting}
+\begin{lstlisting}[caption={Run once with each alternative, on the one-way pair}, label=listing.clusterSizeByFounderAndItsTransposeRun]
+gamma = config.one_way_pair_params().branching_matrix
+rng = np.random.default_rng(4)
+print(round(mean_size(gamma, 0, 20_000, rng), 1),
+      round(mean_size(gamma, 1, 20_000, rng), 1))
+\end{lstlisting}
+What happens?
+\begin{choices}
+ \choice Both print numbers near $2.5$ and $2.5$.
+ \choice Both print numbers near $4.4$ and $2.5$.
+ \choice A prints numbers near $1.25$ and $5.6$; B prints numbers near $4.4$ and $2.5$.
+ \correctchoice A prints numbers near $4.4$ and $2.5$; B prints numbers near $1.25$ and $5.6$.
+ \choice A prints numbers near $4.4$ and $2.5$;
+  the loop of B does not end, a sell having $1.6$ direct offspring under $\branchingMatrix^{\transpose}$.
+\end{choices}
+\explanation{In A the expected next generation is $\branchingMatrix$ times the current one,
+so the mean sizes are the column sums of $(I - \branchingMatrix)^{-1}$, $(4.375, 2.5)$,
+Proposition~\ref{notes:prop.clusterSize};
+a sell has only sell children, and its cluster is $1/(1 - 0.6)$.
+B follows $\branchingMatrix^{\transpose}$, whose spectral radius is also $0.6$,
+so its clusters are finite in spite of the column sum $1.6$,
+and its mean sizes are the row sums $(1.25, 5.625)$.}
+\end{question}
+
+\begin{question}
+\label{question.balancedTargetOnTheAsymmetricShape}
+The class method below builds a specification
+from a target stationary intensity and the shape of the excitation,
+the shape being rescaled to a given branching ratio by \codehl{rescaled\_excitation}.
+\codehl{Decay} and \codehl{BranchingRatio}, of \codehl{unito26.lob.messages}, are float types.
+\begin{lstlisting}[caption={\protect\codehl{unito26.lob.hawkes.HawkesParams.from\_stationary\_intensity}, abridged.}, label=listing.balancedTargetFromStationaryIntensity]
+@classmethod
+def from_stationary_intensity(
+    cls,
+    stationary: np.ndarray,
+    shape: np.ndarray,
+    decay: Decay,
+    branching_ratio: BranchingRatio,
+) -> "HawkesParams":
+# ...
+    excitation = rescaled_excitation(shape, decay, branching_ratio)
+    stationary = np.asarray(stationary, dtype=float)
+    baseline = stationary - (excitation / float(decay)) @ stationary
+    if np.any(baseline < 0):
+# ...
+        raise ValueError(
+# ...
+        )
+    return cls(baseline=baseline, excitation=excitation, decay=decay)
+\end{lstlisting}
+\begin{lstlisting}[caption={\protect\codehl{unito26.lob.hawkes.rescaled\_excitation}, abridged.}, label=listing.balancedTargetRescaledExcitation]
+def rescaled_excitation(
+    shape: np.ndarray, decay: Decay, branching_ratio: BranchingRatio
+) -> np.ndarray:
+# ...
+    shape = np.asarray(shape, dtype=float)
+    current = float(np.max(np.abs(np.linalg.eigvals(shape / float(decay)))))
+# ...
+    return shape * (float(branching_ratio) / current)
+\end{lstlisting}
+The shape of the asymmetric pair is held,
+and the target moved to one buy and one sell a second.
+\begin{lstlisting}[caption={A balanced target on a ladder of branching ratios}, label=listing.balancedTargetOnTheAsymmetricShapeRun]
+shape = config.asymmetric_pair_params().excitation
+target = np.array([1.0, 1.0])
+for rho in (0.2, 0.3, 0.5):
+    try:
+        params = HawkesParams.from_stationary_intensity(
+            target, shape, Decay(4.0), BranchingRatio(rho)
+        )
+        print(rho, params.baseline.round(2))
+    except ValueError:
+        print(rho, "refused")
+\end{lstlisting}
+What does the snippet print, line by line?
+\begin{choices}
+ \correctchoice \codehl{0.2 [0.5 0.9]}, \codehl{0.3 [0.25 0.85]}, \codehl{0.5 refused}
+ \choice \codehl{0.2 [0.87 0.53]}, \codehl{0.3 [0.8 0.3]}, \codehl{0.5 refused}
+ \choice \codehl{0.2 [0.5 0.9]}, \codehl{0.3 [0.25 0.85]}, \codehl{0.5 [-0.25 0.75]}
+ \choice \codehl{0.2 [0.7 0.94]}, \codehl{0.3 [0.55 0.91]}, \codehl{0.5 [0.25 0.85]}
+ \choice \codehl{refused} on all three lines.
+\end{choices}
+\explanation{The shape's $\branchingMatrix$ has eigenvalues $0.6$ and $-0.1$,
+so it is scaled by $\branchingRatio/0.6$,
+and at the target $\mathbf{1}$ the baseline $\mathbf{1} - \branchingMatrix\mathbf{1}$
+subtracts the scaled row sums, $(2.5\branchingRatio, 0.5\branchingRatio)$;
+the column sums would be those of a transposed kernel.
+The sells excite the buys, $2\branchingRatio$ buy children to a sell,
+and no non-negative baseline keeps the buys at one a second beyond $\branchingRatio = 0.4$.}
+\end{question}
+
+\begin{question}
+\label{question.selfAndCrossPairsRelaxAtDifferentRates}
+The self- and the cross-exciting pairs share $\baseIntensity$,
+$\stationaryIntensity = (1, 1)$ and $\branchingRatio = 0.75$,
+and the second is the first with its rows swapped.
+\codehl{params.hurwitz\_matrix} is $\hurwitzMatrix = \excitation - \decay I$,
+and \codehl{params.relaxation\_time()} is $1/(\decay(1 - \branchingRatio))$,
+Definition~\ref{notes:def.relaxationTime}.
+\codehl{np.linalg.eigvals} returns the eigenvalues as complex numbers,
+and \codehl{.real} keeps their real parts.
+\begin{lstlisting}[caption={The decay rates of the mean response, and the relaxation time}, label=listing.selfAndCrossPairsRelaxAtDifferentRates]
+for params in (config.self_exciting_pair_params(),
+               config.cross_exciting_pair_params()):
+    rates = -np.linalg.eigvals(params.hurwitz_matrix).real
+    print(np.sort(rates).round(2), round(params.relaxation_time(), 2))
+\end{lstlisting}
+What does the snippet print?
+\begin{choices}
+ \choice \codehl{[1. 1.4] 1.0} on both lines.
+ \correctchoice \codehl{[1. 1.4] 1.0}, then \codehl{[1. 6.6] 1.0}
+ \choice \codehl{[1. 1.4] 1.0}, then \codehl{[1. 6.6] 0.15}
+ \choice \codehl{[0.25 0.35] 4.0}, then \codehl{[0.25 1.65] 4.0}
+\end{choices}
+\explanation{$\branchingMatrix$ has diagonal $0.7$ and off-diagonal $0.05$ in the self-exciting pair,
+the reverse in the other, hence eigenvalues $0.7 \pm 0.05$ and $0.05 \pm 0.7$,
+and those of $\hurwitzMatrix$ are $\decay(\gamma_i - 1)$,
+Proposition~\ref{notes:prop.hurwitzCriterion}.
+The two share the Perron eigenvalue $0.75$, and with it the relaxation time,
+the time constant of the slowest mode;
+the other mode, the imbalance of buys and sells, decays at $1.4$ and at $6.6$ per second.}
+\end{question}
+
+\begin{question}
+\label{question.fanoFactorInShortAndLongWindows}
+For the counts of a path in consecutive windows of length $w$,
+the Fano factor is the variance of the counts over their mean:
+it is 1 at every $w$ for a Poisson process.
+The weakly and the self-exciting pairs have the same total rate, $\totalRate = 2$,
+and relaxation times of about $0.28$ and $1$ second.
+In windows long against the relaxation time,
+the Fano factor of the total count of a pair whose $\branchingMatrix$ has constant column sums
+approaches $1/(1 - \branchingRatio)^{2}$.
+\begin{lstlisting}[caption={The Fano factor of the counts in windows of length \protect\codehl{window}}, label=listing.fanoFactorInShortAndLongWindowsFano]
+def fano(times, window, horizon):
+    counts = np.bincount((times // window).astype(int),
+                         minlength=round(horizon / window))
+    return counts.var() / counts.mean()
+\end{lstlisting}
+\begin{lstlisting}[caption={Windows of $0.01$ and of $100$ seconds on one path of each pair}, label=listing.fanoFactorInShortAndLongWindowsRun]
+for params in (config.weakly_exciting_pair_params(),
+               config.self_exciting_pair_params()):
+    events = ExponentialHawkes(params, rng=6).events(1e5)
+    times = np.array([t for t, _ in events])
+    print(round(fano(times, 0.01, 1e5), 2),
+          round(fano(times, 100.0, 1e5), 1))
+\end{lstlisting}
+Which statement holds, up to the sampling error?
+\begin{choices}
+ \choice At both widths the Fano factor is near $1.2$ for the weakly exciting pair
+  and near $16$ for the self-exciting one.
+ \correctchoice At $w = 0.01$ both are within $0.1$ of $1$;
+  at $w = 100$ they are near $1.2$ and near $16$.
+ \choice At $w = 0.01$ they are near $1.2$ and near $16$;
+  at $w = 100$ both are within $0.1$ of $1$.
+ \choice Both are within $0.1$ of $1$ at both widths, the two pairs having the same total rate.
+\end{choices}
+\explanation{A window of $0.01$ seconds holds $\totalRate w = 0.02$ events on average,
+Definition~\ref{notes:def.dimensionlessGroups},
+and seldom two, whatever the clustering, so its count has a variance near its mean.
+A window of $100$ seconds, long against both relaxation times, holds whole clusters:
+$1/(1 - 0.1)^{2} \approx 1.2$ and $1/(1 - 0.75)^{2} = 16$.}
+\end{question}
+
+\begin{question}
+\label{question.statisticsThatTellSelfFromCross}
+The function below prints four statistics of one path of $10^{5}$ seconds:
+the rate of the buys,
+the Fano factor of the total count in windows of $100$ seconds,
+the correlation of the counts of buys and of sells in those windows,
+and the share of the sells that are followed by a sell.
+\begin{lstlisting}[caption={Four statistics of one path}, label=listing.statisticsThatTellSelfFromCrossStatistics]
+def statistics(params, seed):
+    path = np.array(list(ExponentialHawkes(params, rng=seed).events(1e5)))
+    times, types = path[:, 0], path[:, 1].astype(int)
+    window = (times // 100).astype(int)
+    buys = np.bincount(window[types == 0], minlength=1000)
+    sells = np.bincount(window[types == 1], minlength=1000)
+    total = buys + sells
+    after_sell = types[1:][types[:-1] == 1]
+    print(round(buys.sum() / 1e5, 2),
+          round(total.var() / total.mean(), 1),
+          round(np.corrcoef(buys, sells)[0, 1], 2),
+          round(np.mean(after_sell == 1), 2))
+\end{lstlisting}
+\begin{lstlisting}[caption={The self- and the cross-exciting pair}, label=listing.statisticsThatTellSelfFromCrossRun]
+statistics(config.self_exciting_pair_params(), 1)
+statistics(config.cross_exciting_pair_params(), 2)
+\end{lstlisting}
+Which of the four statistics differ between the two lines
+by much more than their sampling error?
+\begin{choices}
+ \choice None: the two pairs share $\baseIntensity$, $\stationaryIntensity$ and $\branchingRatio$.
+ \choice The Fano factor alone.
+ \correctchoice The correlation and the share of sells followed by a sell, and only they.
+ \choice The Fano factor, the correlation and the share of sells followed by a sell.
+ \choice The share of sells followed by a sell alone:
+  windows of $100$ seconds hold whole clusters and mix their types.
+\end{choices}
+\explanation{The columns of $\excitation$ sum to $3$ in both pairs,
+so the total intensity $0.5 + 3\,\mathbf{1}^{\transpose}\decayedCounts$,
+and with it the law of the event times, is common to the two,
+and the Fano factor of the total count is $16$ in both.
+The types tell them apart:
+a cluster of the self-exciting pair piles its events on one type,
+and one of the cross-exciting pair alternates them,
+so that its counts of buys and of sells move together and its sells are followed more often by buys.}
+\end{question}
+
+\begin{question}
+\label{question.stationaryIntensityBySeriesAgainstSolve}
+By Lemma~\ref{notes:lemma.perronFrobenius},
+$(I - \branchingMatrix)^{-1} = \sum_{k \geq 0}\branchingMatrix^{k}$ when $\branchingRatio < 1$,
+so the stationary intensity can be summed as well as solved for.
+\begin{lstlisting}[caption={Alternative A}, label=listing.stationaryIntensityBySeriesAgainstSolveA]
+def by_series(mu, gamma, tolerance):
+    total, term = mu.copy(), mu.copy()
+    while np.abs(term).max() > tolerance:
+        term = gamma @ term
+        total = total + term
+    return total
+\end{lstlisting}
+\begin{lstlisting}[caption={Alternative B}, label=listing.stationaryIntensityBySeriesAgainstSolveB]
+def by_solve(mu, gamma):
+    return np.linalg.solve(np.eye(len(mu)) - gamma, mu)
+\end{lstlisting}
+Both are run at $\baseIntensity = (0.5, 0.5)$ on
+$\branchingMatrix = \branchingRatio\left(\begin{smallmatrix} 0.7 & 0.3 \\ 0.3 & 0.7 \end{smallmatrix}\right)$
+for $\branchingRatio = 0.9$, $0.99$ and $0.999$,
+A with \codehl{tolerance=1e-12}, and timed.
+For $\branchingRatio$ close to $1$, $\log\branchingRatio \approx -(1 - \branchingRatio)$.
+Which statement holds?
+\begin{choices}
+ \correctchoice B is faster at every $\branchingRatio$;
+  the time of A grows about tenfold from one $\branchingRatio$ to the next,
+  and that of B does not change.
+ \choice A is faster: it makes only products of a matrix and a vector,
+  where B factorises $I - \branchingMatrix$.
+ \choice B is faster by a factor that does not change:
+  neither time depends on $\branchingRatio$.
+ \choice B is faster;
+  the time of A grows by about the same amount from one $\branchingRatio$ to the next,
+  as $\log(1/(1 - \branchingRatio))$ does.
+\end{choices}
+\explanation{$\baseIntensity$ is a right Perron vector of each $\branchingMatrix$,
+so the $k$-th term is $\branchingRatio^{k}\baseIntensity$,
+and A stops after about $\log(5 \times 10^{11})/(1 - \branchingRatio)$ terms:
+about $260$, $2700$ and $27000$.
+B solves one $2 \times 2$ system whatever $\branchingRatio$.}
+\end{question}
