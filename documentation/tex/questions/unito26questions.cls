@@ -107,7 +107,7 @@
   \expandafter\g@addto@macro\expandafter\questions@keyrows\expandafter{\questions@row}%
 }
 \newcommand{\keysection}[2]{%
-  \multicolumn{3}{@{}l@{}}{\rule{0pt}{18pt}\textbf{Section~#1},
+  \multicolumn{3}{@{}>{\raggedright\arraybackslash}p{\textwidth}@{}}{\rule{0pt}{18pt}\textbf{Section~#1},
   verified by \texttt{notebooks/sample-questions/#2.ipynb}}\\[2pt]}
 \newcommand{\keyrow}[3]{#1 & #2 & #3 \\[2pt]}
 \newcommand{\printkey}{%
