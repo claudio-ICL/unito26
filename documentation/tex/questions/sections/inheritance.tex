@@ -10,6 +10,9 @@ and override how a side is stored and how its best price is found.
 \begin{question}
 \label{question.writesToABookAndAMessage}
 The spread of a book is a property of \codehl{AggregateBook}, quoted below.
+The class declares no \codehl{\_\_slots\_\_},
+and its constructor binds \codehl{bids} and \codehl{asks} as attributes of the instance,
+two dictionaries.
 \codehl{limit\_order} returns an instance of \codehl{Message}, of \codehl{unito26.lob.messages},
 a data class declared under \codehl{@dataclass(frozen=True, slots=True)}
 with the fields \codehl{time}, \codehl{size}, \codehl{price}, \codehl{direction} and \codehl{kind}.

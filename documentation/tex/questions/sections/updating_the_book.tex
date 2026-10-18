@@ -297,6 +297,8 @@ The snippet compares the book left by each message with the book left by its two
 \codehl{apply} processes a submission as Alternative~A of
 Question~\ref{question.precomputedMarketPartOnAWalkingSell} does,
 and \codehl{book.bids} and \codehl{book.asks} are the two dictionaries of the book.
+A message is refused when its size or its price is negative,
+and accepted when either is zero.
 \begin{lstlisting}[caption={An order as its two parts}, label=listing.splittingAMarketOrderSplit]
 def split(book, message):
     d, p = message.direction, message.price

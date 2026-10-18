@@ -327,7 +327,8 @@ A VWAP is computed over three windows, the second of which traded nothing,
 and compared with the mid at the start of each.
 Under \codehl{np.errstate(invalid="raise")}
 an invalid floating-point operation on arrays, such as $0/0$,
-raises \codehl{FloatingPointError} instead of returning NaN.
+raises \codehl{FloatingPointError} instead of returning NaN;
+arithmetic on a NaN already present is not invalid, and returns NaN.
 \codehl{np.divide(x, y, out=z, where=m)} divides only where \codehl{m} holds
 and leaves \codehl{z} as it was elsewhere,
 and \codehl{np.nanmean} is the mean of the entries that are not NaN.
