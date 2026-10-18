@@ -45,6 +45,7 @@ from unito26.lob.simulate import EventType, MarkParams, OrderFlowSimulator
 
 __all__ = [
     "SizeUnit",
+    "OpeningTouch",
     "RecordedEvents",
     "Replay",
     "Mover",
@@ -74,6 +75,10 @@ __all__ = [
 #: factor by which its opening book multiplies the CKS one.  A ``NewType`` because it is a
 #: count of shares standing beside ``Sbar``, a count of units.
 SizeUnit = NewType("SizeUnit", int)
+
+#: ``r(0)``, the size at the opening touch of a side over ``Sbar``, in ``(0, 1]``: where the
+#: fluid touch starts.  A ``NewType`` so that it is not swapped with the scaled time.
+OpeningTouch = NewType("OpeningTouch", float)
 
 
 @dataclass(frozen=True, slots=True, eq=False)
@@ -823,48 +828,61 @@ def cks_first_move(
 
 
 def fluid_touch(
-    params: HawkesParams, marks: MarkParams, levels: GridDepth, scaled_time: np.ndarray
+    params: HawkesParams,
+    marks: MarkParams,
+    levels: GridDepth,
+    opening: OpeningTouch,
+    scaled_time: np.ndarray,
 ) -> np.ndarray:
-    """``r(s)``, the fluid touch of haw-1: its best bid at time ``Sbar s``, over ``Sbar``, in
-    the limit of a large ``Sbar`` (Proposition ``prop.fluidTouch``).
+    """``r(s)``, the fluid touch of haw-1: the size at the touch of either side at time
+    ``Sbar s``, over ``Sbar``, in the limit of a large ``Sbar`` in which that side's opening
+    touch over ``Sbar`` tends to ``opening`` (Proposition ``prop.fluidTouch``).
 
     At a spread of one tick a limit order joins the touch with probability ``eta`` and goes
     behind it otherwise, a market order takes a share from it, and a withdrawal draws it in
-    proportion to its size, the side holding ``L Sbar`` to first order.  So
+    proportion to its size, the side holding ``(L - 1 + r(0)) Sbar`` to first order.  So,
+    with ``L_x = L - 1 + r(0)``,
 
-        ``r' = eta lambda*_3 - lambda*_2 - (lambda*_5 / L) r``,  ``r(0) = 1``,
+        ``r' = eta lambda*_3 - lambda*_2 - (lambda*_5 / L_x) r``,  ``r(0) = opening``,
 
     with ``L`` the ``levels`` of a side of the opening book and ``eta`` the depth decay of
     ``marks``.  The solution relaxes to
-    ``r_inf = L (eta lambda*_3 - lambda*_2) / lambda*_5``.
+    ``r_inf = L_x (eta lambda*_3 - lambda*_2) / lambda*_5``.
     """
     market, limit, withdrawal = _side_rates(params)
-    settled = levels * (marks.depth_decay * limit - market) / withdrawal
-    return settled + (1.0 - settled) * np.exp(-withdrawal * np.asarray(scaled_time) / levels)
+    side_size = levels - 1 + opening
+    settled = side_size * (marks.depth_decay * limit - market) / withdrawal
+    decay = np.exp(-withdrawal * np.asarray(scaled_time) / side_size)
+    return settled + (opening - settled) * decay
 
 
-def fluid_emptying_time(params: HawkesParams, marks: MarkParams, levels: GridDepth) -> float:
-    """``s*``, the time at which the fluid touch reaches zero, in units of ``Sbar``
-    (Corollary ``corol.twoRegimes``):
+def fluid_emptying_time(
+    params: HawkesParams, marks: MarkParams, levels: GridDepth, opening: OpeningTouch
+) -> float:
+    """``s*``, the time at which the fluid touch from ``opening`` reaches zero, in units of
+    ``Sbar``:
 
-        ``s* = (L / lambda*_5) log(1 + lambda*_5 / (L (lambda*_2 - eta lambda*_3)))``.
+        ``s* = (L_x / lambda*_5) log(1 + lambda*_5 r(0) / (L_x (lambda*_2 - eta lambda*_3)))``,
 
-    In the first regime, ``eta lambda*_3 < lambda*_2``, ``chi / Sbar`` tends to it and the
-    Hawkes book moves first.  Otherwise the fluid touch stays above zero, and ``s*`` is
+    with ``L_x = L - 1 + r(0)``.  In the first regime, ``eta lambda*_3 < lambda*_2``,
+    ``chi / Sbar`` tends to the smaller of the two sides' emptying times (Corollary
+    ``corol.twoRegimes``).  Otherwise the fluid touch stays above zero, and ``s*`` is
     infinite.
     """
     market, limit, withdrawal = _side_rates(params)
     drain = market - marks.depth_decay * limit
     if drain <= 0:
         return np.inf
-    return float(levels / withdrawal * np.log1p(withdrawal / (levels * drain)))
+    side_size = levels - 1 + opening
+    return float(side_size / withdrawal * np.log1p(withdrawal * opening / (side_size * drain)))
 
 
 def diffusive_scale(params: HawkesParams, uniform_depth: UniformDepth) -> float:
     """``Sbar^2 / (varpi^b)' D varpi^b``, in seconds: the time over which the standard
     deviation of a touch walk reaches ``Sbar``.  In the second regime ``psi^CKS``, and with
-    it ``chi``, is of this order (Approximation ``approx.secondRegime``); a side of ``L Sbar``
-    lasts of the order of ``L^2`` times as long."""
+    it ``chi``, is of this order (Approximation ``approx.secondRegime``); a side of the
+    opening book, which holds about ``L Sbar``, lasts of the order of ``L^2`` times as
+    long."""
     bid = side_vector(BUY)
     return float(uniform_depth**2 / (bid @ params.count_covariance_rate() @ bid))
 

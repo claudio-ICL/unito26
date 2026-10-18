@@ -23,14 +23,15 @@ another module is named.
 | notes | statement | code | tests |
 | --- | --- | --- | --- |
 | `def.threeBooks`, `assumption.balancedFlow` | the books CKS, haw-1, haw-q on one path; balance; the event $G$ | `RecordedEvents.drawn`, `.replay`, `CoupledFlows.on` (`.breach`), `simulate.OrderFlowSimulator.driven_by`; `config.balanced_order_flow_params`, `.unit_mark_params`, `.uncertain_size_mark_params`, `.uncertain_size_unit` | `TestTheSimulatorStream`, `TestRecordedEvents`, `TestTheFrozenRecords`, `TestThePair`, `TestTheStop` |
-| `eq.sideSize`, `remark.wholeBookImbalance` | a side of haw-1 holds $L\bar S + (\varpi^b)^\top N(t)$; the whole-book imbalance is $\varpi^\top N(t)$ | `side_vector` | `TestTheSideVectors` |
+| `eq.sideSize`, `remark.wholeBookImbalance` | a side of haw-1 holds $S^b_0(\tau\mathbb N) + (\varpi^b)^\top N(t)$, $S^b_0(\tau\mathbb N) = (L-1)\bar S + S^{b,1}_0$; the whole-book imbalance is $S^{b,1}_0 - S^{a,1}_0 + \varpi^\top N(t)$ | `side_vector` | `TestTheSideVectors` |
 | `def.partingTime`, `lemma.oneBestPrice`, `corol.partingAtOneQuote`, `exercise.partingAtOneQuote` | $\chi$; one best price per event; exactly one differs at $\chi$ | `CoupledFlows.first_price_discrepancy`, `.parting` (`Parting`, `Mover`); `first_price_discrepancy` | `TestTheParting` |
 | `prop.partingProbability` | the probability that an event parts the mid-prices | — | — |
 | `corol.quietBook`, `def.firstMoves` | at one tick a best price moves exactly when the last share of a touch is taken; the quiet books; the first moves $\psi^{\mathrm{CKS}}$, $\psi^{\mathrm{haw}\text{-}1}$ | `first_price_moves` (`FirstMoves`), `touch_walks` | `TestTheFirstMoves`, `TestTheParting` |
 | `eq.touchWalks`, `prop.cksTouchWalks` | the touches of CKS from the touch walks and their running maximum; $\psi^{\mathrm{CKS}}$ a drawdown | `cks_touch_walks`, `cks_first_move` | `TestTheCKSTouchWalks` |
-| `eq.hawkesTouch`, `prop.fluidTouch`, `eq.countsFromNoPast`, `exercise.fluidTouch`, `corol.twoRegimes` | the fluid touch $r$, the time $s^*$, the two regimes | `fluid_touch`, `fluid_emptying_time` | `TestTheFluidTouch` |
+| `prop.hawkesTouch`, `eq.hawkesTouch` | the touches of haw-1 before $\psi^{\mathrm{haw}\text{-}1}$ from the counts and the draws; $\psi^{\mathrm{haw}\text{-}1}$ the first time one reaches zero | `touch_walks` | `TestTheFirstMoves` |
+| `prop.fluidTouch`, `eq.countsFromNoPast`, `exercise.fluidTouch`, `corol.twoRegimes` | the fluid touches $r^b$, $r^a$ from the opening touches, the times $s^*_b$, $s^*_a$ and $s^* = s^*_b \wedge s^*_a$, the two regimes | `fluid_touch`, `fluid_emptying_time` (`OpeningTouch`) | `TestTheFluidTouch` |
 | `approx.secondRegime` | $\psi^{\mathrm{CKS}}$ at the diffusive scale $\bar S^2/(\varpi^b)^\top D\varpi^b$, the side at $L^2$ times it | `diffusive_scale` | — |
-| `def.discrepancy`, `prop.discrepancyMoments` | $\mathcal D_t$: zero before $\chi$, symmetric, bounded below, flow and placement parts | `cks_mids`, `hawkes_mids`, `variance_split` | `TestTheMidsOnAClock`, `TestTheVarianceSplit` |
+| `def.discrepancy`, `prop.discrepancyMoments` | $\mathcal D_t$: zero before $\chi$; symmetric and bounded below when the opening touches are equal; flow and placement parts | `cks_mids`, `hawkes_mids`, `variance_split` | `TestTheMidsOnAClock`, `TestTheVarianceSplit` |
 | `def.outerSize`, `prop.touchIdentity`, `corol.touchIdentityUnderTheAssumption` | the touch identity on any book | `distance_terms` (`CKSDepthMismatch` is zero) | `TestTheDistance` |
 | `lemma.unitContribution`, `eq.geometricContribution`, `prop.discrepancyDecomposition` | $e_n = \varpi_{E_n}\mathbf 1\{n\notin\mathcal H\}\hat q_n$; the three terms of $2\bar S\mathcal D_t/\tau$ | `distance_terms` (`ImbalanceMismatch`, `TouchSizeMismatch`, `DepthMismatch`) | `TestTheDistance` |
 | `prop.placementMartingale` | $\alpha_n$, the martingale $M^{\mathcal H}$ | `PlacementStatistics.behind_probability` (pooled by type) | `TestThePlacementStatistics` |
@@ -57,19 +58,20 @@ which $\Sigma$ exchanges $e$.
 
 **The three books** (`def.threeBooks`). The flow $(T_n, E_n, q_n)_{n\ge1}$ of
 `def.orderFlowProcess`, with no event before time zero. The opening book has a spread of
-one tick and $L$ levels per side, one on every tick, each of $\bar S$. Folded from it:
+one tick and $L$ levels per side, one on every tick; its best bid holds $S^{b,1}_0$ shares
+and its best ask $S^{a,1}_0$, with $1 \le S^{b,1}_0, S^{a,1}_0 \le \bar S$, and every other
+level $\bar S$. Folded from it:
 
 - **CKS**, by the messages of `example.idealisedPlacement` made of $(T_n, E_n)$;
 - **haw-1**, by those of `def.geometricPlacement` made of $(T_n, E_n, 1)$;
 - **haw-q**, by those made of $(T_n, E_n, q_n)$, from the opening book with every size
   multiplied by $\bar q$.
 
-The opening book satisfies part *iii.* of `assumption.idealisedBook` with both touches
-full, so CKS is the book of `example.idealisedPlacement`, along which `eq.idealisedUpdate`
-holds. A quantity of a book carries its name as a superscript; a quantity indexed by $T_n$
-is read after the $n$-th event, $T_0 := 0$ the opening. $\mathfrak F^N$ is generated by the
-arrival times and types; $S^b_t(\tau\mathbb N) := \sum_p S^b_t(p)$ is the size on the whole
-bid.
+The opening book satisfies part *iii.* of `assumption.idealisedBook`, so CKS is the book of
+`example.idealisedPlacement`, along which `eq.idealisedUpdate` holds. A quantity of a book
+carries its name as a superscript; a quantity indexed by $T_n$ is read after the $n$-th
+event, $T_0 := 0$ the opening. $\mathfrak F^N$ is generated by the arrival times and types;
+$S^b_t(\tau\mathbb N) := \sum_p S^b_t(p)$ is the size on the whole bid.
 
 CKS draws nothing, so it is $\mathfrak F^N$-measurable. The geometric placement draws an
 offset or the level of a withdrawal for each event, and haw-q a size besides; given
@@ -111,7 +113,8 @@ of the path with its mirror, by its definition. Where this matters:
 **In the code.** `RecordedEvents.drawn(process, horizon)` records one path; `.replay()`
 gives a `Replay` that yields it again, and `OrderFlowSimulator.driven_by(replay, marks,
 reference_price, rng)` places it with fresh marks. `CoupledFlows.on(events, marks,
-size_unit, uniform_depth, touches, levels, rng)` folds CKS and one Hawkes book — haw-1 with
+size_unit, uniform_depth, touches, levels, rng)`, with `touches` the price and the size of
+each opening touch, folds CKS and one Hawkes book — haw-1 with
 `config.unit_mark_params()` and `SizeUnit(1)`, haw-q with
 `config.uncertain_size_mark_params()` and `config.uncertain_size_unit()` — reading sizes in
 units of `size_unit`, so that haw-1 is haw-q at zero size variance. Its `frame` has a row
@@ -124,20 +127,24 @@ buy rests in full on it (`eq.limitPrice`), a market sell removes one share, and 
 else changes it. With $\varpi^b := e_3 - e_2 - e_5$, $\varpi^a := e_4 - e_1 - e_6$
 (`side_vector(BUY)`, `side_vector(SELL)`):
 
-$$S^{b,\mathrm{haw}\text{-}1}_t(\tau\mathbb N) = L\bar S + (\varpi^b)^\top N(t), \qquad
-S^{a,\mathrm{haw}\text{-}1}_t(\tau\mathbb N) = L\bar S + (\varpi^a)^\top N(t),$$
+$$S^{b,\mathrm{haw}\text{-}1}_t(\tau\mathbb N) = S^b_0(\tau\mathbb N) + (\varpi^b)^\top
+N(t), \qquad S^{a,\mathrm{haw}\text{-}1}_t(\tau\mathbb N) = S^a_0(\tau\mathbb N) +
+(\varpi^a)^\top N(t),$$
 
-and $\varpi^b - \varpi^a = \varpi$. Under balance $(\varpi^b)^\top\lambda^* = 0$, so by
-`eq.forwardMeanCountsDeviation` from no past the mean of $(\varpi^b)^\top N(t)$ is bounded
-in $t$ (it is $-(\varpi^b)^\top A\Phi(t)m$, about $-0.43$ shares in the long run on the
-base case below), and its variance grows as $t(\varpi^b)^\top D\varpi^b$. A side lasts of
-the order of $(L\bar S)^2/(\varpi^b)^\top D\varpi^b$, $L^2$ times the time in which the walk
-moves by $\bar S$. A limit buy meets the floor only when $\zeta_n \ge P^a_{T_n-}/\tau - 1$,
-of probability $(1-\eta)^{P^a_{T_n-}/\tau - 1}$.
+with $S^b_0(\tau\mathbb N) = (L-1)\bar S + S^{b,1}_0$ and $S^a_0(\tau\mathbb N) =
+(L-1)\bar S + S^{a,1}_0$ the sides of the opening book, and $\varpi^b - \varpi^a = \varpi$.
+Under balance $(\varpi^b)^\top\lambda^* = 0$, so by `eq.forwardMeanCountsDeviation` from no
+past the mean of $(\varpi^b)^\top N(t)$ is bounded in $t$ (it is $-(\varpi^b)^\top
+A\Phi(t)m$, about $-0.43$ shares in the long run on the base case below), and its variance
+grows as $t(\varpi^b)^\top D\varpi^b$. A side of the opening book, of more than $(L-1)\bar S$
+shares and at most $L\bar S$, lasts of the order of $(L\bar S)^2/(\varpi^b)^\top D\varpi^b$,
+$L^2$ times the time in which the walk moves by $\bar S$. A limit buy meets the floor only
+when $\zeta_n \ge P^a_{T_n-}/\tau - 1$, of probability $(1-\eta)^{P^a_{T_n-}/\tau - 1}$.
 
 **The whole-book imbalance** (`remark.wholeBookImbalance`). $S^{b,\mathrm{haw}\text{-}1}_t
-(\tau\mathbb N) - S^{a,\mathrm{haw}\text{-}1}_t(\tau\mathbb N) = \varpi^\top N(t)$, whatever
-the draws. CKS has the same: every event changes its sides as it changes those of haw-1,
+(\tau\mathbb N) - S^{a,\mathrm{haw}\text{-}1}_t(\tau\mathbb N) = S^{b,1}_0 - S^{a,1}_0 +
+\varpi^\top N(t)$, whatever the draws: the imbalance of the opening touches plus the signed
+count. CKS has the same: every event changes its sides as it changes those of haw-1,
 except a limit order sent to the opposite touch, which lowers both sides by one share. CKS
 turns this imbalance into a mid-price at the fixed depth $\bar S$ per tick; haw-1 has no
 fixed depth.
@@ -254,9 +261,9 @@ the first time a best price of CKS moves; $\psi^{\mathrm{haw}\text{-}1}$ likewis
 `first_price_moves(...)` returns `FirstMoves(cks, hawkes, cks_time, hawkes_time)`, and
 `touch_walks(...)` the touch sizes of both books up to each first move.
 
-**Touch walks** (`eq.touchWalks`). $\Upsilon^b(t) := \bar S + (\varpi^b)^\top N(t)$,
-$\Upsilon^a(t) := \bar S + (\varpi^a)^\top N(t)$, and $\bar\Upsilon(t) := \max(\bar S,
-\max_{s\le t}\max(\Upsilon^b(s), \Upsilon^a(s)))$.
+**Touch walks** (`eq.touchWalks`). $\Upsilon^b(t) := S^{b,1}_0 + (\varpi^b)^\top N(t)$,
+$\Upsilon^a(t) := S^{a,1}_0 + (\varpi^a)^\top N(t)$, and $\bar\Upsilon(t) := \max(\bar S,
+\max_{s\le t}\max(\Upsilon^b(s), \Upsilon^a(s)))$, their running maximum floored at $\bar S$.
 
 **Proposition** (`prop.cksTouchWalks`). For $t < \psi^{\mathrm{CKS}}$,
 $S^{b,1,\mathrm{CKS}}_t = \Upsilon^b(t) - (\bar\Upsilon(t) - \bar S)$ and
@@ -265,47 +272,66 @@ $S^{a,1,\mathrm{CKS}}_t = \Upsilon^a(t) - (\bar\Upsilon(t) - \bar S)$, and
 $$\psi^{\mathrm{CKS}} = \inf\{t : \bar\Upsilon(t) - \min(\Upsilon^b(t), \Upsilon^a(t)) = \bar S\}.$$
 
 $\psi^{\mathrm{CKS}}$ is $\mathfrak F^N$-measurable, and under balance the means of
-$\Upsilon^b(t) - \bar S$ and $\Upsilon^a(t) - \bar S$ are bounded in $t$.
+$\Upsilon^b(t) - S^{b,1}_0$ and $\Upsilon^a(t) - S^{a,1}_0$ are bounded in $t$.
 
-*Proof.* Write $x^b$, $x^a$ for the right-hand sides: $\bar S$ at zero, at most $\bar S$
-since $\bar\Upsilon$ dominates both walks. Induction on the events before
-$\psi^{\mathrm{CKS}}$, before which no best price of CKS has moved, so its spread is one
-tick. A limit buy raises $\Upsilon^b$ by one, and $\bar\Upsilon$ by one exactly when
-$\Upsilon^b = \bar\Upsilon$, i.e. $x^b = \bar S$. If $x^b < \bar S$ it joins the best bid
-and $x^b$ rises with it; if $x^b = \bar S$ the best bid is full, the order trades a share at
-the best ask, $x^b$ stays and $x^a$ falls by one, as the touches do. A market sell or a
-withdrawal from the bid lowers $\Upsilon^b$ by one, leaves $\bar\Upsilon$, and takes a share
-from the best bid. The ask is the same. At a spread of one tick a best price of CKS moves
-exactly at an event that takes the last share of a touch, where $\min(x^b, x^a)$ reaches
-zero; each event changes $x^b$, $x^a$ by at most one. From no past
-`eq.forwardMeanCountsDeviation` gives $\mathbb E N(t) - t\lambda^* = -A\Phi(t)m$, bounded
-since $\rho < 1$, and $(\varpi^b)^\top\lambda^* = (\varpi^a)^\top\lambda^* = 0$. $\square$
+*Proof.* Write $x^b$, $x^a$ for the right-hand sides: the opening touches at zero, since
+$\bar\Upsilon(0) = \bar S$, and at most $\bar S$ since $\bar\Upsilon$ dominates both walks.
+Induction on the events before $\psi^{\mathrm{CKS}}$, before which no best price of CKS has
+moved, so its spread is one tick. A limit buy raises $\Upsilon^b$ by one, and $\bar\Upsilon$
+by one exactly when $\Upsilon^b = \bar\Upsilon$, i.e. $x^b = \bar S$. If $x^b < \bar S$ it
+joins the best bid and $x^b$ rises with it; if $x^b = \bar S$ the best bid is full, the
+order trades a share at the best ask, $x^b$ stays and $x^a$ falls by one, as the touches do.
+A market sell or a withdrawal from the bid lowers $\Upsilon^b$ by one, leaves
+$\bar\Upsilon$, and takes a share from the best bid. The ask is the same. At a spread of one
+tick a best price of CKS moves exactly at an event that takes the last share of a touch,
+where $\min(x^b, x^a)$ reaches zero; each event changes $x^b$, $x^a$ by at most one. From no
+past `eq.forwardMeanCountsDeviation` gives $\mathbb E N(t) - t\lambda^* = -A\Phi(t)m$,
+bounded since $\rho < 1$, and $(\varpi^b)^\top\lambda^* = (\varpi^a)^\top\lambda^* = 0$.
+$\square$
 
 The cap removes from both walks the same $\bar\Upsilon - \bar S$, the number of limit
-orders CKS has sent to the opposite touch, and so couples the two sides.
+orders CKS has sent to the opposite touch, and so couples the two sides:
+$\psi^{\mathrm{CKS}}$ is the first time one walk falls $\bar S$ below $\bar\Upsilon$.
 `cks_touch_walks(events, uniform_depth, touches)` returns the walks, the running maximum and
 the touches they give; `cks_first_move(events, uniform_depth, touches)` returns
 $\psi^{\mathrm{CKS}}$ without folding a book.
 
-**The touch of haw-1** (`eq.hawkesTouch`). Before $\psi^{\mathrm{haw}\text{-}1}$ the spread
-is one tick and
+The touches of haw-1 have no cap, and they depend on the draws as well as on the path.
 
-$$S^{b,1,\mathrm{haw}\text{-}1}_t = \bar S + \sum_{n:T_n\le t,\,E_n=3}\mathbf 1\{\zeta_n = 0\}
-- N_2(t) - \sum_{n:T_n\le t,\,E_n=5}\mathbf 1\{p_n = P^b_{T_n-}\},$$
+**Proposition** (`prop.hawkesTouch`). For $t < \psi^{\mathrm{haw}\text{-}1}$
+(`eq.hawkesTouch`),
 
-with no cap; a limit buy joins with probability $\eta$, a withdrawal draws the touch with
-probability $S^{b,1,\mathrm{haw}\text{-}1}_{T_n-}/S^{b,\mathrm{haw}\text{-}1}_{T_n-}(\tau
-\mathbb N)$, the denominator being `eq.sideSize`.
+$$S^{b,1,\mathrm{haw}\text{-}1}_t = S^{b,1}_0 + \sum_{n:T_n\le t,\,E_n=3}\mathbf 1\{\zeta_n =
+0\} - N_2(t) - \sum_{n:T_n\le t,\,E_n=5}\mathbf 1\{p_n = P^b_{T_n-}\},$$
+
+and likewise the ask, with the types 4, 1, 6. Given $\mathfrak F^N$ and the earlier draws,
+$\{\zeta_n = 0\}$ has probability $\eta$ and $\{p_n = P^b_{T_n-}\}$ probability
+$S^{b,1,\mathrm{haw}\text{-}1}_{T_n-}/S^{b,\mathrm{haw}\text{-}1}_{T_n-}(\tau\mathbb N)$, the
+denominator being `eq.sideSize`. $\psi^{\mathrm{haw}\text{-}1}$ is the first time one of the
+two right-hand sides reaches zero.
+
+*Proof.* Before $\psi^{\mathrm{haw}\text{-}1}$ no best price of haw-1 has moved, so its
+spread is the opening tick. A limit buy is priced at $P^a_{T_n-} - \tau(1 + \zeta_n) =
+P^b_{T_n-} - \tau\zeta_n$ (`eq.limitPrice`): it joins the best bid exactly when $\zeta_n =
+0$, probability $\eta$ by `eq.priceOffset`, and goes behind it otherwise. A market sell takes
+one share from the best bid; a withdrawal from the bid one share from the level it draws,
+the best bid with the probability stated (`def.geometricPlacement` *iii.*). The other three
+types act on the ask. By `corol.quietBook` a best price of haw-1 moves exactly at an event
+that takes the last share of a touch, at which one right-hand side reaches zero; each event
+changes them by at most one. $\square$
 
 **Proposition** (`prop.fluidTouch`). Let $\bar S \to \infty$ with $L$, $\eta$ and the
-specification fixed. Let
+specification fixed, and with $S^{x,1}_0/\bar S \to r^x(0) \in (0, 1]$ for $x \in \{b,
+a\}$. Let $L_x := L - 1 + r^x(0)$, the limit of $S^x_0(\tau\mathbb N)/\bar S$, and let
+$r^x$ solve (`eq.fluidTouch`)
 
-$$r'(s) = \eta\lambda^*_3 - \lambda^*_2 - \frac{\lambda^*_5}{L}r(s), \qquad r(0) = 1,$$
+$$(r^x)'(s) = \eta\lambda^*_3 - \lambda^*_2 - \frac{\lambda^*_5}{L_x}r^x(s)$$
 
-i.e. $r(s) = r_\infty + (1 - r_\infty)e^{-\lambda^*_5 s/L}$ with $r_\infty := L(\eta
-\lambda^*_3 - \lambda^*_2)/\lambda^*_5$, and let $r > 0$ on $[0, s_1]$. Then in probability
-$\sup_{s\le s_1}|S^{b,1,\mathrm{haw}\text{-}1}_{\bar S s}/\bar S - r(s)| \to 0$ and
-$\mathbb P(\psi^{\mathrm{haw}\text{-}1} > \bar S s_1) \to 1$; the same of the ask.
+from $r^x(0)$, i.e. $r^x(s) = r^x_\infty + (r^x(0) - r^x_\infty)e^{-\lambda^*_5 s/L_x}$ with
+$r^x_\infty := L_x(\eta\lambda^*_3 - \lambda^*_2)/\lambda^*_5$. Let $r^b$ and $r^a$ be
+positive on $[0, s_1]$. Then in probability $\sup_{s\le s_1}|S^{b,1,\mathrm{haw}\text{-}1}_{\bar
+S s}/\bar S - r^b(s)| \to 0$, $\sup_{s\le s_1}|S^{a,1,\mathrm{haw}\text{-}1}_{\bar S s}/\bar
+S - r^a(s)| \to 0$, and $\mathbb P(\psi^{\mathrm{haw}\text{-}1} > \bar S s_1) \to 1$.
 
 *Proof.* Three steps. Doob's inequality: $\mathbb E\sup_{t\le T}X(t)^2 \le 4\mathbb
 E X(T)^2$ for a square-integrable martingale. Gronwall's inequality: a bounded $f \ge 0$
@@ -324,7 +350,7 @@ $f(s) \le ae^{b\mu((0,s])}$.
    $\mathbb P(\sup_{t\le T}|Z(t+)| > T^{3/4}) = O(T^{-1/2})$. With $T = \bar S s_1$ and the
    martingale term bounded by Doob and Chebyshev, $N^{\bar S}(s) := N(\bar S s)/\bar S$
    satisfies $\sup_{s\le s_1}|N^{\bar S}(s) - s\lambda^*| \to 0$, and by `eq.sideSize` and
-   balance $S^{b,\mathrm{haw}\text{-}1}_{\bar S s}(\tau\mathbb N)/\bar S \to L$ uniformly.
+   balance $S^{b,\mathrm{haw}\text{-}1}_{\bar S s}(\tau\mathbb N)/\bar S \to L_b$ uniformly.
 2. *The draws.* $\delta_n := \mathbf 1\{\zeta_n = 0\} - \eta$ for a limit buy, $\delta_n :=
    \mathbf 1\{p_n = P^b_{T_n-}\} - S^{b,1}_{T_n-}/S^b_{T_n-}(\tau\mathbb N)$ for a withdrawal
    from the bid, zero otherwise: conditional mean zero, $|\delta_n| \le 1$. Given $\mathfrak
@@ -334,61 +360,76 @@ $f(s) \le ae^{b\mu((0,s])}$.
 3. *Gronwall.* $x(s) := S^{b,1}_{\bar S s}/\bar S$, $y(s) := S^b_{\bar S s}(\tau\mathbb
    N)/\bar S$, and $\tilde x$ the right-hand side of `eq.hawkesTouch` at $\bar S s$ over
    $\bar S$, for $s \le \psi^{\mathrm{haw}\text{-}1}/\bar S$: $\tilde x = x$ before, $\tilde x
-   = 0$ at $\psi^{\mathrm{haw}\text{-}1}/\bar S$, and
-   $$\tilde x(s) = 1 + \eta N^{\bar S}_3(s) - N^{\bar S}_2(s) - \int_{(0,s]}\frac{\tilde
-   x(s'-)}{y(s'-)}dN^{\bar S}_5(s') + \frac{J_3(\bar S s) - J_5(\bar S s)}{\bar S},$$
-   against $r(s) = 1 + (\eta\lambda^*_3 - \lambda^*_2)s - \int_0^s\lambda^*_5 r/L$. Subtract;
-   use $|\tilde x/y - r/L| \le |\tilde x - r|/y + |r||1/y - 1/L|$ with $y \ge L/2$, which holds
-   on $[0, s_1]$ with probability tending to one. For $s \le s_1 \wedge
-   \psi^{\mathrm{haw}\text{-}1}/\bar S$, $|\tilde x(s) - r(s)| \le \bar\delta_{\bar S} +
-   \frac2L\int_{(0,s]}|\tilde x(s'-) - r(s')|dN^{\bar S}_5(s')$, with $\bar\delta_{\bar S}$ the
-   supremum over $s \le s_1$ of $\eta|N^{\bar S}_3 - \lambda^*_3 s| + |N^{\bar S}_2 -
-   \lambda^*_2 s| + |J_3 - J_5|/\bar S + \sup|r|\sup|1/y - 1/L|\,N^{\bar S}_5(s_1) +
-   |\int_0^s r\,(dN^{\bar S}_5 - \lambda^*_5 ds')|/L$. All tend to zero by steps 1 and 2, the
-   last after an integration by parts. Gronwall for $dN^{\bar S}_5$, atoms $1/\bar S$:
-   $\sup_{s\le s_1\wedge\psi/\bar S}|\tilde x - r| \le \bar\delta_{\bar S}e^{2N^{\bar
-   S}_5(s_1)/L} \to 0$. On $\{\psi^{\mathrm{haw}\text{-}1} \le \bar S s_1\}$ the left side is at
-   least $r(\psi/\bar S) \ge \min_{[0,s_1]}r > 0$, since $\tilde x$ vanishes there; hence
-   $\mathbb P(\psi^{\mathrm{haw}\text{-}1} > \bar S s_1) \to 1$, and on that event $x = \tilde
-   x$ on $[0, s_1]$. The ask uses types 4, 1, 6, of the same intensities. $\square$
+   = 0$ at $\psi^{\mathrm{haw}\text{-}1}/\bar S$ if the event there takes the last share of the
+   best bid, and
+   $$\tilde x(s) = \frac{S^{b,1}_0}{\bar S} + \eta N^{\bar S}_3(s) - N^{\bar S}_2(s) -
+   \int_{(0,s]}\frac{\tilde x(s'-)}{y(s'-)}dN^{\bar S}_5(s') + \frac{J_3(\bar S s) - J_5(\bar
+   S s)}{\bar S},$$
+   against $r^b(s) = r^b(0) + (\eta\lambda^*_3 - \lambda^*_2)s - \int_0^s\lambda^*_5 r^b/L_b$.
+   Subtract; use $|\tilde x/y - r^b/L_b| \le |\tilde x - r^b|/y + |r^b||1/y - 1/L_b|$ with $y
+   \ge L_b/2$, which holds on $[0, s_1]$ with probability tending to one. For $s \le s_1 \wedge
+   \psi^{\mathrm{haw}\text{-}1}/\bar S$, $|\tilde x(s) - r^b(s)| \le \bar\delta_{\bar S} +
+   \frac2{L_b}\int_{(0,s]}|\tilde x(s'-) - r^b(s')|dN^{\bar S}_5(s')$, with $\bar\delta_{\bar
+   S}$ the supremum over $s \le s_1$ of $|S^{b,1}_0/\bar S - r^b(0)| + \eta|N^{\bar S}_3 -
+   \lambda^*_3 s| + |N^{\bar S}_2 - \lambda^*_2 s| + |J_3 - J_5|/\bar S + \sup|r^b|\sup|1/y -
+   1/L_b|\,N^{\bar S}_5(s_1) + |\int_0^s r^b\,(dN^{\bar S}_5 - \lambda^*_5 ds')|/L_b$. All tend
+   to zero by the hypothesis on the opening and steps 1 and 2, the last after an integration
+   by parts. Gronwall for $dN^{\bar S}_5$, atoms $1/\bar S$: $\sup_{s\le
+   s_1\wedge\psi/\bar S}|\tilde x - r^b| \le \bar\delta_{\bar S}e^{2N^{\bar S}_5(s_1)/L_b} \to
+   0$. On the event that $\psi^{\mathrm{haw}\text{-}1} \le \bar S s_1$ and the event at
+   $\psi^{\mathrm{haw}\text{-}1}$ empties the best bid, the left side is at least $r^b(\psi/\bar
+   S) \ge \min_{[0,s_1]}r^b > 0$, since $\tilde x$ vanishes there, so that event has
+   probability tending to zero. The ask is the same, from its own opening, with the types 4,
+   1, 6, of the same intensities. Hence $\mathbb P(\psi^{\mathrm{haw}\text{-}1} > \bar S s_1)
+   \to 1$, and on that event $x = \tilde x$ on $[0, s_1]$, which gives the two limits.
+   $\square$
 
 **Corollary** (`corol.twoRegimes`). As $\bar S \to \infty$:
 
-- *i.* if $\eta\lambda^*_3 < \lambda^*_2$, the fluid touch reaches zero at
-  $$s^* = \frac{L}{\lambda^*_5}\log\Big(1 + \frac{\lambda^*_5}{L(\lambda^*_2 - \eta\lambda^*_3)}\Big),$$
-  $\chi/\bar S \to s^*$ and $\psi^{\mathrm{haw}\text{-}1}/\bar S \to s^*$ in probability,
-  and $\mathbb P(\chi = \psi^{\mathrm{haw}\text{-}1}) \to 1$;
-- *ii.* if $\eta\lambda^*_3 \ge \lambda^*_2$, $r > 0$ on $[0, \infty)$ and $\chi/\bar S \to
-  \infty$ in probability. At equality $r(s) = e^{-\lambda^*_5 s/L}$.
+- *i.* if $\eta\lambda^*_3 < \lambda^*_2$, the fluid touch of the side $x$ reaches zero at
+  $$s^*_x = \frac{L_x}{\lambda^*_5}\log\Big(1 + \frac{\lambda^*_5 r^x(0)}{L_x(\lambda^*_2 -
+  \eta\lambda^*_3)}\Big),$$
+  and, with $s^* := s^*_b \wedge s^*_a$, $\chi/\bar S \to s^*$ and
+  $\psi^{\mathrm{haw}\text{-}1}/\bar S \to s^*$ in probability, and $\mathbb P(\chi =
+  \psi^{\mathrm{haw}\text{-}1}) \to 1$: a touch of haw-1 empties first;
+- *ii.* if $\eta\lambda^*_3 \ge \lambda^*_2$, the fluid touches are positive on $[0,
+  \infty)$ and $\chi/\bar S \to \infty$ in probability. At equality $r^x(s) =
+  r^x(0)e^{-\lambda^*_5 s/L_x}$.
 
-*Proof.* By step 1 and balance, $\sup_{t\le\bar S s_1}|\Upsilon^{b}(t) - \bar S|/\bar S \to
-0$ and likewise for the ask, so $\bar\Upsilon - \min(\Upsilon^b, \Upsilon^a) < \bar S$ on
-$[0, \bar S s_1]$ with probability tending to one: $\mathbb P(\psi^{\mathrm{CKS}} > \bar S
-s_1) \to 1$, the touches of CKS holding at least two shares there. *i.* $s^*$ is
-`exercise.fluidTouch`. Let $s_- < s^* < s_+$. The proposition on $[0, s_-]$ gives
-$\psi^{\mathrm{haw}\text{-}1} > \bar S s_-$. Its proof up to its last display does not use
-the sign of $r$; on $[0, s_+]$ it shows that on $\{\psi^{\mathrm{haw}\text{-}1} > \bar
-Ss_+\}$ the touch is near $\bar S r(s_+) < 0$, impossible; so $\psi^{\mathrm{haw}\text{-}1}
-\le \bar S s_+$ with probability tending to one. Then $\psi^{\mathrm{haw}\text{-}1} <
+*Proof.* By step 1 and balance, $\sup_{t\le\bar S s_1}|\Upsilon^{b}(t) - S^{b,1}_0|/\bar S
+\to 0$ and likewise for the ask. Since $\bar\Upsilon(0) = \bar S$ and the opening touches
+are at least $\bar S\min(r^b(0), r^a(0))/2$ for $\bar S$ large, $\bar\Upsilon -
+\min(\Upsilon^b, \Upsilon^a) < \bar S$ on $[0, \bar S s_1]$ with probability tending to one:
+$\mathbb P(\psi^{\mathrm{CKS}} > \bar S s_1) \to 1$, the touches of CKS holding at least two
+shares there. *i.* $s^*_x$ is `exercise.fluidTouch`. Let $s_- < s^* < s_+$, and $x$ a side
+with $s^*_x = s^*$. The proposition on $[0, s_-]$ gives $\psi^{\mathrm{haw}\text{-}1} > \bar
+S s_-$. Its proof up to its last display does not use the sign of $r^x$; on $[0, s_+]$ it
+shows that on $\{\psi^{\mathrm{haw}\text{-}1} > \bar Ss_+\}$ the touch of the side $x$ is
+near $\bar S r^x(s_+) < 0$, impossible; so $\psi^{\mathrm{haw}\text{-}1} \le \bar S s_+$ with
+probability tending to one. Then $\psi^{\mathrm{haw}\text{-}1} <
 \psi^{\mathrm{CKS}}$, and by `corol.quietBook` the event at $\psi^{\mathrm{haw}\text{-}1}$
-moves no best price of CKS, so $\chi = \psi^{\mathrm{haw}\text{-}1}$. *ii.* $r > 0$ on every $[0, s_1]$, so
+moves no best price of CKS, so $\chi = \psi^{\mathrm{haw}\text{-}1}$. *ii.* $r^b$ and $r^a$
+are positive on every $[0, s_1]$, so
 $\mathbb P(\psi^{\mathrm{haw}\text{-}1} > \bar S s_1) \to 1$ for every $s_1$, and $\chi \ge
 \psi^{\mathrm{CKS}} \wedge \psi^{\mathrm{haw}\text{-}1}$. $\square$
 
 The threshold is $\eta = \lambda^*_2/\lambda^*_3$: the rate at which limit buys join the
 touch of haw-1 against the rate at which market sells take from it. `fluid_touch(params,
-marks, levels, scaled_time)` is $r$ and `fluid_emptying_time(params, marks, levels)` is
-$s^*$, infinite in the second regime.
+marks, levels, opening, scaled_time)` is $r^x$ and `fluid_emptying_time(params, marks,
+levels, opening)` is $s^*_x$, infinite in the second regime, with `opening` the
+`OpeningTouch` $r^x(0)$.
 
 **Approximation** (`approx.secondRegime`). If $\eta\lambda^*_3 > \lambda^*_2$ and $\bar S$
-is large: by `eq.hawkesTouch` the touch of haw-1 relaxes, at the rate $\lambda^*_5/(L\bar S)$
-per share of deviation, towards $(r_\infty/L)S^{b,\mathrm{haw}\text{-}1}_t(\tau\mathbb N)$,
-which by `eq.sideSize` is $r_\infty\bar S$ plus a multiple of a driftless walk, and it
-fluctuates about that centre by $O(\sqrt{\bar S})$. It reaches zero by a large deviation of
-the fluctuation, or when the side is nearly exhausted, at the scale $(L\bar S)^2/(\varpi^b)^\top
+is large, with opening touches as in `prop.fluidTouch`: by `eq.hawkesTouch` the touch of the
+side $x$ of haw-1 relaxes, at the rate $\lambda^*_5/(L_x\bar S)$ per share of deviation,
+towards $(r^x_\infty/L_x)S^{x,\mathrm{haw}\text{-}1}_t(\tau\mathbb N)$, which by
+`eq.sideSize` is $r^x_\infty\bar S$ plus a multiple of a driftless walk, and it fluctuates
+about that centre by $O(\sqrt{\bar S})$. It reaches zero by a large deviation of the
+fluctuation, or when the side is nearly exhausted, at the scale $(L\bar S)^2/(\varpi^b)^\top
 D\varpi^b$. CKS moves at the diffusive scale: $\bar S^{-1}(\Upsilon^b(\bar S^2 s) - \bar S,
-\Upsilon^a(\bar S^2 s) - \bar S)$ converges in law to a Brownian motion $(W^b, W^a)$ with
-$\mathrm{Cov}(W^x(s), W^y(s)) = s(\varpi^x)^\top D\varpi^y$, and $\psi^{\mathrm{CKS}}/\bar S^2$
+\Upsilon^a(\bar S^2 s) - \bar S)$ converges in law to a Brownian motion $(W^b, W^a)$ started
+at $(r^b(0) - 1, r^a(0) - 1)$, with $\mathrm{Cov}(W^x(s), W^y(s)) = s(\varpi^x)^\top
+D\varpi^y$, and $\psi^{\mathrm{CKS}}/\bar S^2$
 to the first $s$ with $\max(0, \sup_{s'\le s}\max(W^b, W^a)(s')) - \min(W^b, W^a)(s) = 1$.
 Both scales are of order $\bar S^2$, in the ratio of $\mathbb E\psi^{\mathrm{CKS}}$ to
 $L^2\bar S^2/(\varpi^b)^\top D\varpi^b$. Away from the threshold and for $L$ large, $\chi =
@@ -406,8 +447,10 @@ the continuity of the drawdown functional at Brownian paths.
 
 Base case `config.balanced_order_flow_params()`: the resilient shape at $\rho = 0.5$, $\beta
 = 4$, $\lambda^* = (1, 1, 2.5, 2.5, 1.5, 1.5)$, $\mu = (0.442, 0.442, 0.521, 0.521, 1.140,
-1.140)$; $\bar S = 20$, $L = 10$; threshold $\eta = 0.4$; $(\varpi^b)^\top D\varpi^b =
-2.9849$, $(\varpi^b)^\top D\varpi^a = 0.0767$.
+1.140)$; $\bar S = 20$, $L = 10$; both opening touches full, $S^{b,1}_0 = S^{a,1}_0 = \bar
+S$, so $r^b(0) = r^a(0) = 1$ and $L_b = L_a = L$; threshold $\eta = 0.4$; $(\varpi^b)^\top
+D\varpi^b = 2.9849$, $(\varpi^b)^\top D\varpi^a = 0.0767$. Every number in this note is for
+the full opening unless another is stated.
 
 - *Lemma, corollaries.* 240 paths × 10 values of $\eta$, 1000 s: exactly one best price
   differs at $\chi$ on every pair; $\chi = \psi^{\mathrm{CKS}} \wedge
@@ -449,7 +492,7 @@ Base case `config.balanced_order_flow_params()`: the resilient shape at $\rho = 
   | 0.7 | 10 | 10 | 2444 s | 24.4 | 3289 s | every path |
   | 0.7 | 10 | 20 | 12598 s | 31.5 | 12630 s | every path |
 
-  At $\eta = 0.5$ ($r_\infty = 1.67$) a best price of haw-1 moved within $9\bar S + 10$ s on
+  At $\eta = 0.5$ ($r^x_\infty = 1.67$) a best price of haw-1 moved within $9\bar S + 10$ s on
   23, 2, 0, 0 of 96 paths at $\bar S = 20, 40, 80, 160$; at $\eta \ge 0.7$, $L = 10$, $\bar S
   = 20$, on none within 1500 s, short against the life of a side ($\approx 13\,400$ s).
 
@@ -463,15 +506,17 @@ uniform_depth, touches, levels, clock)` and `hawkes_mids(events, marks, size_uni
 uniform_depth, touches, levels, clock, rng)` read the two mids on a clock.
 
 **Proposition** (`prop.discrepancyMoments`). On $G$: *i.* $\mathcal D_t = 0$ on $\{\chi >
-t\}$. *ii.* The law of $\mathcal D_t$ is symmetric about zero; $\mathbb E\mathcal D_t = 0$.
-*iii.* $\mathrm{Var}\,\mathcal D_t = \mathbb E[\mathcal D_t^2; \chi \le t] \ge (\tau/2)^2
-\mathbb P(\mathcal D_t \ne 0)$. *iv.* $\mathrm{Var}\,\mathcal D_t = \mathrm{Var}(\mathbb
+t\}$. *ii.* If $S^{b,1}_0 = S^{a,1}_0$, the law of $\mathcal D_t$ is symmetric about zero;
+$\mathbb E\mathcal D_t = 0$. *iii.* Under the hypothesis of *ii.*, $\mathrm{Var}\,\mathcal
+D_t = \mathbb E[\mathcal D_t^2; \chi \le t] \ge (\tau/2)^2 \mathbb P(\mathcal D_t \ne 0)$.
+*iv.* $\mathrm{Var}\,\mathcal D_t = \mathrm{Var}(\mathbb
 E[\mathcal D_t \mid \mathfrak F^N]) + \mathbb E[\mathrm{Var}(P^{m,\mathrm{haw}\text{-}1}_t
 \mid \mathfrak F^N)]$, the *flow part* and the *placement part* (see §2 on the event). All
 four hold for $\chi^{\mathrm{haw}\text{-}q}$, $\mathcal D^{\mathrm{haw}\text{-}q}_t$.
 
 *Proof.* *i.* is the definition. *ii.* The reflection $p \mapsto 2P^m_0 - p$ maps the tick
-grid to itself, exchanges bid and ask, and fixes the opening book. On $G$ every message of
+grid to itself, exchanges bid and ask, and maps the opening book to itself, its two touches
+being equal. On $G$ every message of
 the path and of its mirror is that of `example.idealisedPlacement` or of parts *i.*–*iii.*
 of `def.geometricPlacement` (neither the floor nor the price of an empty side is used), and
 these commute with the reflection, the type replaced by its mirror: the CKS rules are the
@@ -550,12 +595,12 @@ P^{a}|}{\tau}\Big)\Big],$$
 
 the last sum read on haw-1.
 
-*Proof.* CKS: `prop.idealisedUpdate` over $(0, t]$ with the lemma and opening touches
-$\bar S$: $2\bar S(P^{m,\mathrm{CKS}}_t - P^m_0)/\tau = \varpi^\top N(t) - (S^{b,1,
-\mathrm{CKS}}_t - \bar S) + (S^{a,1,\mathrm{CKS}}_t - \bar S)$. haw-1: the touch identity
-over $(0, t]$, adding and subtracting $\bar S|\Delta_nP|/\tau$ in each signed term, whose
-signed sum is $2\bar S(P^{m,\mathrm{haw}\text{-}1}_t - P^m_0)/\tau$. Subtract, and use the
-lemma for $\mathrm{OFI}^{\mathrm{haw}\text{-}1}$. $\square$
+*Proof.* CKS: `prop.idealisedUpdate` over $(0, t]$ with the lemma and
+`eq.idealisedResidual`: $2\bar S(P^{m,\mathrm{CKS}}_t - P^m_0)/\tau = \varpi^\top N(t) -
+(S^{b,1,\mathrm{CKS}}_t - S^{b,1}_0) + (S^{a,1,\mathrm{CKS}}_t - S^{a,1}_0)$. haw-1: the
+touch identity over $(0, t]$, adding and subtracting $\bar S|\Delta_nP|/\tau$ in each signed
+term, whose signed sum is $2\bar S(P^{m,\mathrm{haw}\text{-}1}_t - P^m_0)/\tau$. Subtract,
+and use the lemma for $\mathrm{OFI}^{\mathrm{haw}\text{-}1}$. $\square$
 
 The three terms: the events haw-1 places behind its touches; the mismatch of the touches at
 $t$, bounded when those of haw-1 are; the mismatch of the depth haw-1 moves through, zero on
@@ -596,8 +641,8 @@ the last term bounding the placement part (`second_regime_rate(params, uniform_d
 
 *Proof.* On $\{\psi^{\mathrm{haw}\text{-}1} > t\}$ the mid of haw-1 stays at $P^m_0$.
 $(P^{m,\mathrm{CKS}}_t - P^m_0)/\tau = \varpi^\top N(t)/(2\bar S) +
-\varepsilon^{\mathrm{CKS}}_{t,t}/\tau$ with $|\varepsilon^{\mathrm{CKS}}_{t,t}/\tau| \le
-(\bar S - 1)/(2\bar S)$. By `eq.countsFromNoPast`, $\varpi^\top N(t) = \varpi^\top(I -
+\varepsilon^{\mathrm{CKS}}_{t,t}/\tau$ with $|\varepsilon^{\mathrm{CKS}}_{t,t}| \le \tau$ by
+`eq.idealisedUpdate`. By `eq.countsFromNoPast`, $\varpi^\top N(t) = \varpi^\top(I -
 \Gamma)^{-1}M(t)$ up to a term bounded in mean square, since $\varpi^\top\lambda^* = 0$. The
 components of $M$ have no common jumps (`eq.noCommonJumps`) and $\mathbb E M_e(t)^2 =
 \mathbb E\Lambda_e(t) = t\lambda^*_e + O(1)$ from no past; so the variance is
@@ -612,7 +657,8 @@ Cauchy–Schwarz, the fourth moments being $O(t^2)$. $\square$
 for $\alpha \in [0,1]^{d_E}$. *H2, fixed depth:* there is $\tilde S > 0$ with $2\tilde
 S(P^{m,\mathrm{haw}\text{-}1}_t - P^m_0)/\tau = \mathrm{OFI}^{\mathrm{haw}\text{-}1}_{t,t} +
 R_t$, $\mathbb E R_t^2$ bounded in $t$. By the touch identity, $-R_t$ is
-$(S^{b,1,\mathrm{haw}\text{-}1}_t - \bar S) - (S^{a,1,\mathrm{haw}\text{-}1}_t - \bar S)$ plus
+$(S^{b,1,\mathrm{haw}\text{-}1}_t - S^{b,1}_0) - (S^{a,1,\mathrm{haw}\text{-}1}_t -
+S^{a,1}_0)$ plus
 the last sum of the decomposition with $\tilde S$ for $\bar S$. When
 $\mathrm{Var}\,P^{m,\mathrm{haw}\text{-}1}_t \to \infty$, H2 and Cauchy–Schwarz identify the
 depth (`eq.effectiveDepth`):
@@ -636,9 +682,14 @@ of haw-1 by $\varpi_e(1 - \alpha_e)/(2\tilde S)$ in mean; $c_e$ is the differenc
 **Approximation** (`approx.firstRegimeVariance`). Under H1 and H2, with $O(1)$ bounded in
 mean square uniformly in $t$,
 
-$$\frac{\mathcal D_t}{\tau} = (\varpi\circ c)^\top N(t) + \frac{M^{\mathcal H}_t}{2\tilde S}
-+ O(1), \qquad \mathbb E\Big[\frac{\mathcal D_t}{\tau}\Big|\mathfrak F^N\Big] = (\varpi\circ
+$$\frac{\mathcal D_t}{\tau} = (\varpi\circ c)^\top N(t) + \frac{M^{\mathcal H}_t}{2\tilde S} + O(1),$$
+
+if $S^{b,1}_0 = S^{a,1}_0$,
+
+$$\mathbb E\Big[\frac{\mathcal D_t}{\tau}\Big|\mathfrak F^N\Big] = (\varpi\circ
 c)^\top(N(t) - t\lambda^*) + O(1),$$
+
+and
 
 $$\mathrm{Var}\Big(\frac{\mathcal D_t}{\tau}\Big) = t(\varpi\circ c)^\top D(\varpi\circ c) +
 t\sum_e\frac{\alpha_e(1-\alpha_e)\lambda^*_e}{(2\tilde S)^2} + O(\sqrt t),$$
@@ -646,19 +697,20 @@ t\sum_e\frac{\alpha_e(1-\alpha_e)\lambda^*_e}{(2\tilde S)^2} + O(\sqrt t),$$
 the flow part and the placement part.
 
 *Proof.* Under H1 $\sum\varpi_{E_n}\alpha_n = (\varpi\circ\alpha)^\top N(t)$, so by H2 and
-the placement martingale $(P^{m,\mathrm{haw}\text{-}1}_t - P^m_0)/\tau = (\varpi\circ(\mathbf
-1 - \alpha))^\top N(t)/(2\tilde S) - M^{\mathcal H}_t/(2\tilde S) + R_t/(2\tilde S)$. CKS
-gives $\varpi^\top N(t)/(2\bar S) + O(1)$; subtract for the first identity. The exchange of
-the path with its mirror maps an event of type $e$ placed behind to one of type $\Sigma(e)$
-placed behind, on the reflected book, and preserves the law of the path and its draws; so
-under H1 $\alpha_{\Sigma(e)} = \alpha_e$. The entries of $c$ then agree on each pair while
-those of $\varpi$ have opposite signs, so $(\varpi\circ c)^\top\lambda^* = 0$ by
-$\Sigma\lambda^* = \lambda^*$; with $\mathbb E[M^{\mathcal H}_t\mid\mathfrak F^N] = 0$ this
-gives the second. Variance: the flow term as in the previous proof; $\mathrm{Var}\,M^{\mathcal
-H}_t = \sum_e\alpha_e(1-\alpha_e)\mathbb E N_e(t) = t\sum_e\alpha_e(1-\alpha_e)\lambda^*_e +
-O(1)$; the two uncorrelated; bounded terms $O(\sqrt t)$. The conditional mean is
-$(\varpi\circ c)^\top N(t)$ up to $O(1)$, so its variance is the first term and the second
-is the rest. $\square$
+the placement martingale $(P^{m,\mathrm{haw}\text{-}1}_t - P^m_0)/\tau =
+(\varpi\circ(\mathbf 1 - \alpha))^\top N(t)/(2\tilde S) - M^{\mathcal H}_t/(2\tilde S) +
+R_t/(2\tilde S)$. CKS gives $\varpi^\top N(t)/(2\bar S) + O(1)$; subtract for the first
+identity. If the opening touches are equal, the exchange of the path with its mirror maps an
+event of type $e$ placed behind to one of type $\Sigma(e)$ placed behind, on the reflected
+book, and preserves the law of the path and its draws; so under H1 $\alpha_{\Sigma(e)} =
+\alpha_e$. The entries of $c$ then agree on each pair while those of $\varpi$ have opposite
+signs, so $(\varpi\circ c)^\top\lambda^* = 0$ by $\Sigma\lambda^* = \lambda^*$; with
+$\mathbb E[M^{\mathcal H}_t\mid\mathfrak F^N] = 0$ this gives the second. Variance: the flow
+term as in the previous proof; $\mathrm{Var}\,M^{\mathcal H}_t =
+\sum_e\alpha_e(1-\alpha_e)\mathbb E N_e(t) = t\sum_e\alpha_e(1-\alpha_e)\lambda^*_e + O(1)$;
+the two uncorrelated; bounded terms $O(\sqrt t)$. The conditional mean is $(\varpi\circ
+c)^\top N(t)$ up to $O(1)$, so its variance is the first term and the second is the rest.
+$\square$
 
 As $\tilde S \to \infty$ this becomes the second-regime approximation. $\alpha_e$ is zero
 for a market order, $(1-\eta)^k$ for a limit order at spread $k$, and for a withdrawal one
@@ -718,17 +770,18 @@ estimator. The remaining misfit has four measured sources:
    and the mid of haw-1 drifts towards the thinner side, at $10^{-5}$ ticks per share of
    imbalance per second, three to six standard errors from zero on windows from 500 s. The
    resulting $t^3$ term reaches the linear one near 4500–5500 s at $\eta = 0.1, 0.2$. A rate
-   exists between the relaxation of the shape of haw-1, of order $L\bar S/\lambda^*_5 = 133$
+   exists between the relaxation of the shape of haw-1, of order $L_x\bar S/\lambda^*_5 = 133$
    s, and that time; the rates above are measured there.
 
 ---
 
 ## 5. Uncertain sizes
 
-CKS against haw-q, sizes in units of $\bar q$: opening levels hold $\bar S$ units, the
-$n$-th order $\xi_n := q_n/\bar q$ units, $\mathbb E\xi_n = 1$. `lemma.oneBestPrice` and
-`corol.partingAtOneQuote` hold with the same proofs; in `prop.partingProbability` the
-limit-order rows are unchanged, the price of a limit order not depending on its size.
+CKS against haw-q, sizes in units of $\bar q$: in units the opening book is that of
+`def.threeBooks`, the $n$-th order carries $\xi_n := q_n/\bar q$ units, $\mathbb E\xi_n =
+1$. `lemma.oneBestPrice` and `corol.partingAtOneQuote` hold with the same proofs; in
+`prop.partingProbability` the limit-order rows are unchanged, the price of a limit order not
+depending on its size.
 
 **Proposition** (`prop.partingProbabilitySizes`). In units, haw-q moves the touch of the
 side of the event *i.* for a market order exactly when $\xi_n \ge S^{\mathrm{haw}\text{-}q}$,
@@ -751,11 +804,12 @@ With $\mathbb E\xi_n = 1$, $\mathrm{Var}\,\xi_n < \infty$ the three steps go thr
 $\xi_n$ in the martingale of step 2, except two truncations: at the touch, acting only when
 it holds $O(1)$ units, and of withdrawals behind the touch from levels of fewer than $\xi_n$
 units, which change a side by an amount the argument does not control. To first order
-$r$, $s^*$ and the two regimes are unchanged, the first move of haw-q coming when its touch
-holds $O(1)$ units rather than none.
+`eq.fluidTouch`, $s^*$ and the two regimes are unchanged, the first move of haw-q coming when
+its touch holds $O(1)$ units rather than none.
 
-$\mathbb E\mathcal D^{\mathrm{haw}\text{-}q}_t = 0$ and the split holds, by
-`prop.discrepancyMoments`, the split on the draws that keep the sides of haw-q occupied.
+$\mathbb E\mathcal D^{\mathrm{haw}\text{-}q}_t = 0$ when the opening touches are equal, and
+the split holds, by `prop.discrepancyMoments`, the split on the draws that keep the sides of
+haw-q occupied.
 
 **Proposition** (`prop.discrepancyDecompositionSizes`). With $\mathcal H$ read on haw-q and
 $\hat\xi_n := \xi_n \wedge S^{\mathrm{haw}\text{-}q}$ for a market order or a withdrawal at
@@ -781,19 +835,21 @@ $$\mathrm{Var}(\xi_n\mathbf 1\{n\notin\mathcal H\}) = \alpha_n(1 - \alpha_n) + (
 
 **Remark** (`remark.whatTheSizesAdd`). Under H1, H2 read on haw-q, $\tilde S$ in units, and
 setting aside the truncation at the touch, the proof of `approx.firstRegimeVariance` with
-these increments adds $\mathrm{Var}\,\xi_n\sum_e(1-\alpha_e)\lambda^*_e/(2\tilde S)^2$ to the
-placement rate, market orders entering with $\alpha_e = 0$
-(`closed_form_rates(..., size_variance)`). It is neither the whole of what the sizes add nor a bound on it. The truncation is
-not negligible: at each move of haw-q by a market order or a withdrawal at its touch,
-$\hat\xi_n$ is the touch and not $\xi_n$, and $\sum\varpi_{E_n}(\xi_n - \hat\xi_n)$ over these
-moves has a variance that grows with their number. The sizes also make the depth haw-q moves
-through random, through its outer sizes, and the whole-book imbalance random given the
-path: up to the truncation of withdrawals it is $\sum_{T_n\le t}\varpi_{E_n}\xi_n$ in units,
-of conditional variance $\mathrm{Var}\,\xi_n N_{\mathfrak g}(t)$. The closed form carries
-none of the three. Whether an event moves a touch depends on its size more than on the
-order of the events, and part of the variance moves from the flow part to the placement
-part. A side of haw-q has variance rate $(\varpi^b)^\top D \varpi^b + \mathrm{Var}\,\xi_n
-(\lambda^*_3 + \lambda^*_2 + \lambda^*_5)$ in units, $\bar q^2$ times it in shares.
+these increments adds $\mathrm{Var}\,\xi_n\sum_e(1-\alpha_e)\lambda^*_e/(2\tilde S)^2$ to
+the placement rate, market orders entering with $\alpha_e = 0$
+(`closed_form_rates(..., size_variance)`). It is neither the whole of what the sizes add nor
+a bound on it. The truncation is not negligible: at each move of haw-q by a market order or
+a withdrawal at its touch, $\hat\xi_n$ is the touch and not $\xi_n$, and
+$\sum\varpi_{E_n}(\xi_n - \hat\xi_n)$ over these moves has a variance that grows with their
+number. The sizes also make the depth
+haw-q moves through random, through its outer sizes, and the whole-book imbalance random
+given the path: up to the truncation of withdrawals it is $S^{b,1}_0 - S^{a,1}_0 +
+\sum_{T_n\le t}\varpi_{E_n}\xi_n$ in units, of conditional variance $\mathrm{Var}\,\xi_n
+N_{\mathfrak g}(t)$. The closed form carries none of the three. Whether an event moves a
+touch depends on its size more than on the order of the events, and part of the variance
+moves from the flow part to the placement part. A side of haw-q has variance rate
+$(\varpi^b)^\top D \varpi^b + \mathrm{Var}\,\xi_n (\lambda^*_3 + \lambda^*_2 + \lambda^*_5)$
+in units, $\bar q^2$ times it in shares.
 
 ### Evidence for §5
 
@@ -834,7 +890,8 @@ $\mathrm{Var}\,\xi = e^{0.64} - 1 = 0.896$; $\tilde S$ from the moves.
 ## 6. What the notes predict
 
 Inputs: `params = config.balanced_order_flow_params()`, `marks` (whose `depth_decay` is
-$\eta$), `uniform_depth` $\bar S$, `levels` $L$, `size_unit` $\bar q$, $\mathrm{Var}\,\xi$.
+$\eta$), `uniform_depth` $\bar S$, `levels` $L$, `opening` $r^x(0)$, `size_unit` $\bar q$,
+$\mathrm{Var}\,\xi$.
 $\lambda^*$ is `params.stationary_intensity()`, $D$ `params.count_covariance_rate()`,
 $\varpi^b$, $\varpi^a$ `side_vector(BUY)`, `side_vector(SELL)`. Base case as in §3, $\bar S =
 20$, $L = 10$, $\bar q = 100$, log-sd $0.8$.
@@ -844,16 +901,16 @@ $\varpi^b$, $\varpi^a$ `side_vector(BUY)`, `side_vector(SELL)`. Base case as in 
 | P1 | `corol.partingAtOneQuote`, `corol.quietBook`, `def.firstMoves` | at $\chi$ exactly one best price differs; $\chi = \psi^{\mathrm{CKS}} \wedge \psi^{\mathrm{haw}\text{-}1}$ unless the same move | `CoupledFlows.parting`, `first_price_moves` | always; exceptions $\le 2\%$ of paths | per path |
 | P2 | `prop.partingProbability` | $\mathbb E\sum_{T_n\le\chi}p_n = 1$, type by type | — | — | compensator sum against frequency |
 | P3 | `prop.cksTouchWalks` | $\psi^{\mathrm{CKS}}$ from the counts | `cks_first_move`, `cks_touch_walks` | equal to the folded book on every path | `first_price_moves(...).cks` |
-| P4 | `prop.fluidTouch` | $r(s) = r_\infty + (1 - r_\infty)e^{-\lambda^*_5 s/L}$ | `fluid_touch` | $r_\infty = 1.667, 3.333, 5, 10$ at $\eta = 0.5, 0.6, 0.7, 1$ | mean touch of haw-1 at $\bar S s$ over $\bar S$ |
-| P5 | `corol.twoRegimes` | $\chi \approx \bar S s^*$ in the first regime | `fluid_emptying_time` | $s^* = 1.2155, 1.7491, 3.1334, 5.2564$ at $\eta = 0.1, 0.2, 0.3, 0.35$; $\bar Ss^* = 24.3, 35.0, 62.7, 105.1$ s | $\psi^{\mathrm{haw}\text{-}1}/\bar S$ at $\bar S = 20, \dots, 160$, from below |
+| P4 | `prop.fluidTouch` | $r^x(s) = r^x_\infty + (r^x(0) - r^x_\infty)e^{-\lambda^*_5 s/L_x}$ | `fluid_touch` | at $r^x(0) = 1$: $r^x_\infty = 1.667, 3.333, 5, 10$ at $\eta = 0.5, 0.6, 0.7, 1$ | mean touch of haw-1 at $\bar S s$ over $\bar S$ |
+| P5 | `corol.twoRegimes` | $\chi \approx \bar S s^*$, $s^* = s^*_b \wedge s^*_a$, in the first regime | `fluid_emptying_time` | $s^* = 1.2155, 1.7491, 3.1334, 5.2564$ at $\eta = 0.1, 0.2, 0.3, 0.35$; $\bar Ss^* = 24.3, 35.0, 62.7, 105.1$ s; from $r^x(0) = 0.5$, $s^*_x = 0.9285$ at $\eta = 0.2$ | $\psi^{\mathrm{haw}\text{-}1}/\bar S$ at $\bar S = 20, \dots, 160$, from below |
 | P6 | `approx.secondRegime` | $\mathbb E\psi^{\mathrm{CKS}} \approx 0.31\,\bar S^2/(\varpi^b)^\top D\varpi^b$; haw-1 moves with the exhaustion of a side, at $L^2$ times the scale | `diffusive_scale` | scale $134.0$ s; $\mathbb E\psi^{\mathrm{CKS}} \approx 41$ s | mean of P3; $\psi^{\mathrm{haw}\text{-}1}$ against the exhaustion time |
-| P7 | `prop.discrepancyMoments` | $\mathbb E\mathcal D_t = 0$; the lower bound; the split | `variance_split` | — | paths × mark seeds |
+| P7 | `prop.discrepancyMoments` | $\mathbb E\mathcal D_t = 0$ and the lower bound when the opening touches are equal; the split | `variance_split` | — | paths × mark seeds |
 | P8 | `prop.discrepancyDecomposition`, `prop.discrepancyDecompositionSizes` | the decomposition, per event | `distance_terms` | exact | per event |
 | P9 | `prop.placementMartingale` | $\mathrm{Var}\,M^{\mathcal H}_t = \mathbb E\sum\alpha_n(1-\alpha_n)$, $\alpha_n$ on the spread of haw-1 | — | exact | independent paths, one mark seed each |
 | P10 | `approx.secondRegimeVariance` | $\varpi^\top D\varpi/(2\bar S)^2$, all flow, on horizons short against the life of a side | `second_regime_rate` | $0.003635$ ticks²/s | $\eta \ge 0.7$ |
 | P11 | `approx.firstRegimeVariance` | flow $(\varpi\circ c)^\top D(\varpi\circ c)$, placement $\sum_e\alpha_e(1-\alpha_e)\lambda^*_e/(2\tilde S)^2$, $\tilde S$ by regression | `closed_form_rates(params, uniform_depth, PlacementStatistics.of(pairs), 0.0)` | table of §4 | rates on $[500, 1500]$ s |
 | P12 | `remark.whatTheSizesAdd` | placement plus $\mathrm{Var}\,\xi\sum_e(1-\alpha_e)\lambda^*_e/(2\tilde S)^2$, a lower bound | `closed_form_rates(…, e^{σ²} − 1)` | table of §5 | same |
-| P13 | `eq.sideSize`, `remark.wholeBookImbalance` | sides $L\bar S + (\varpi^b)^\top N(t)$, whole-book imbalance $\varpi^\top N(t)$, for haw-1 | `side_vector` | exact | per event |
+| P13 | `eq.sideSize`, `remark.wholeBookImbalance` | sides $S^x_0(\tau\mathbb N) + (\varpi^x)^\top N(t)$, whole-book imbalance $S^{b,1}_0 - S^{a,1}_0 + \varpi^\top N(t)$, for haw-1 | `side_vector` | exact | per event |
 | P14 | `eq.sideSize`, `remark.whatTheSizesAdd` | lifetime $(L\bar S)^2/(\varpi^b)^\top D\varpi^b$, with sizes $(L\bar S)^2/[(\varpi^b)^\top D\varpi^b + \mathrm{Var}\,\xi(\lambda^*_3 + \lambda^*_2 + \lambda^*_5)]$ | `CoupledFlows.breach` | 13 400 s; 5357 s | fraction of runs with an empty side |
 
 Estimators for P11–P12 (`PlacementStatistics.of`): $\alpha_e$ is the fraction of the events
@@ -877,7 +934,8 @@ book has relaxed ($\approx 133$ s) and before the drift of source 4 of §4 matte
 - the books alone, for fans: `first_price_discrepancy`, `first_price_moves` with
   `FirstMoves`, `touch_walks`, `cks_mids`, `hawkes_mids`;
 - the statistics: `variance_split`, `distance_terms`;
-- the predictions: `side_vector`, `cks_touch_walks`, `cks_first_move`, `fluid_touch`,
+- the predictions: `side_vector`, `cks_touch_walks`, `cks_first_move`, `OpeningTouch` (a
+  `NewType` of `float`, the opening touch over $\bar S$), `fluid_touch`,
   `fluid_emptying_time`, `diffusive_scale`, `second_regime_rate`, `PlacementStatistics`
   (`behind_probability`, `effective_depth`, `of`), `VarianceRates` (`flow_part`,
   `placement_part`, `total`), `closed_form_rates`.

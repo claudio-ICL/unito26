@@ -19,7 +19,9 @@ Finally we ask what random order sizes change.
  and let the \emph{opening book} have a spread of one tick
  and $L$ levels on each side,
  one on every tick,
- each holding $\uniformDepth$.
+ its best bid holding $\nthBestBidSize[1]_0$ shares and its best ask $\nthBestAskSize[1]_0$,
+ with $1 \leq \nthBestBidSize[1]_0, \nthBestAskSize[1]_0 \leq \uniformDepth$,
+ and every other level $\uniformDepth$.
  Three books are folded from the opening book:
  \begin{enumerate}[label={\emph{\roman{*}}.}]
   \item the book $\cks$,
@@ -36,7 +38,6 @@ Finally we ask what random order sizes change.
 \end{defi}
 
 The opening book satisfies part \emph{iii.} of Assumption \ref{assumption.idealisedBook},
-with both touches full,
 so the book $\cks$ is the book of Example \ref{example.idealisedPlacement}:
 our version of the book of \cite{CKS14pri},
 along which \eqref{eq.idealisedUpdate} holds.
@@ -127,11 +128,14 @@ and
 $\sideVector{a} := \unitVector_4 - \unitVector_1 - \unitVector_6$,
 \begin{equation}\label{eq.sideSize}
  \size^{b,\hawOne}_t(\tickSizeOfLOB\N)
- = L\uniformDepth + (\sideVector{b})^{\transpose}\multiCountingProc(t) ,
+ = \size^{b}_0(\tickSizeOfLOB\N) + (\sideVector{b})^{\transpose}\multiCountingProc(t) ,
  \qquad
  \size^{a,\hawOne}_t(\tickSizeOfLOB\N)
- = L\uniformDepth + (\sideVector{a})^{\transpose}\multiCountingProc(t) .
+ = \size^{a}_0(\tickSizeOfLOB\N) + (\sideVector{a})^{\transpose}\multiCountingProc(t) ,
 \end{equation}
+where $\size^{b}_0(\tickSizeOfLOB\N) = (L-1)\uniformDepth + \nthBestBidSize[1]_0$
+and $\size^{a}_0(\tickSizeOfLOB\N) = (L-1)\uniformDepth + \nthBestAskSize[1]_0$
+are the sizes of the two sides of the opening book.
 The entries of $\sideVector{b}$ are the shares that an event of each type brings to the bid,
 those of $\sideVector{a}$ the shares it brings to the ask,
 and $\sideVector{b} - \sideVector{a} = \pressure$.
@@ -140,7 +144,9 @@ so that by \eqref{eq.forwardMeanCountsDeviation} from no past
 the mean of $(\sideVector{b})^{\transpose}\multiCountingProc(t)$ is bounded in $t$,
 and by the argument of the proof of Proposition \ref{prop.forecastAtLongHorizons}
 its variance grows as $t \, (\sideVector{b})^{\transpose}\countCovarianceRate\,\sideVector{b}$.
-A side of $L\uniformDepth$ shares therefore lasts a time of the order of
+A side of the opening book,
+of more than $(L-1)\uniformDepth$ shares and at most $L\uniformDepth$,
+therefore lasts a time of the order of
 $(L\uniformDepth)^{2} / (\sideVector{b})^{\transpose}\countCovarianceRate\,\sideVector{b}$,
 which is $L^{2}$ times the time in which the same walk moves by $\uniformDepth$.
 
@@ -148,9 +154,10 @@ which is $L^{2}$ times the time in which the same walk moves by $\uniformDepth$.
  By \eqref{eq.sideSize} and $\sideVector{b} - \sideVector{a} = \pressure$,
  \begin{equation*}
   \size^{b,\hawOne}_t(\tickSizeOfLOB\N) - \size^{a,\hawOne}_t(\tickSizeOfLOB\N)
-  = \pressure^{\transpose}\multiCountingProc(t) :
+  = \nthBestBidSize[1]_0 - \nthBestAskSize[1]_0
+  + \pressure^{\transpose}\multiCountingProc(t) :
  \end{equation*}
- the whole-book imbalance of $\hawOne$ is the signed count,
+ the whole-book imbalance of $\hawOne$ is that of the opening touches plus the signed count,
  whatever the offsets and the levels drawn.
  The book $\cks$ has the same whole-book imbalance.
  Every event changes the size on each side of $\cks$ as it changes that of $\hawOne$,
@@ -394,9 +401,9 @@ the parting time is decided by the moves of the best prices alone.
 Before its first move the book $\cks$ is a function of two walks.
 Let
 \begin{equation}\label{eq.touchWalks}
- \touchWalk{b}(t) := \uniformDepth + (\sideVector{b})^{\transpose}\multiCountingProc(t) ,
+ \touchWalk{b}(t) := \nthBestBidSize[1]_0 + (\sideVector{b})^{\transpose}\multiCountingProc(t) ,
  \qquad
- \touchWalk{a}(t) := \uniformDepth + (\sideVector{a})^{\transpose}\multiCountingProc(t)
+ \touchWalk{a}(t) := \nthBestAskSize[1]_0 + (\sideVector{a})^{\transpose}\multiCountingProc(t)
 \end{equation}
 be the \emph{touch walks},
 and let
@@ -404,7 +411,7 @@ and let
  \walkMaximum(t) := \max \Big( \uniformDepth ,
  \max_{s \leq t} \max\big( \touchWalk{b}(s), \touchWalk{a}(s) \big) \Big)
 \end{equation*}
-be their running maximum.
+be their running maximum, floored at $\uniformDepth$.
 
 \begin{prop}\label{prop.cksTouchWalks}
  For $t < \firstMove^{\cks}$,
@@ -423,12 +430,12 @@ be their running maximum.
   \Big\rbrace .
  \end{equation*}
  In particular $\firstMove^{\cks}$ is $\sigmaAlgebra^{\multiCountingProc}$-measurable,
- and under balance the means of $\touchWalk{b}(t) - \uniformDepth$
- and $\touchWalk{a}(t) - \uniformDepth$ are bounded in $t$.
+ and under balance the means of $\touchWalk{b}(t) - \nthBestBidSize[1]_0$
+ and $\touchWalk{a}(t) - \nthBestAskSize[1]_0$ are bounded in $t$.
 \end{prop}
 \begin{proof}
  Write $x^{b}$ and $x^{a}$ for the two right-hand sides,
- both equal to $\uniformDepth$ at $t = 0$,
+ equal to the opening touches at $t = 0$, since $\walkMaximum(0) = \uniformDepth$,
  and both at most $\uniformDepth$, since $\walkMaximum$ dominates both walks.
  We argue by induction on the events before $\firstMove^{\cks}$,
  before which no best price of the book $\cks$ has moved,
@@ -464,59 +471,91 @@ The cap of part \emph{iii.} of Assumption \ref{assumption.idealisedBook}
 removes from both the same quantity $\walkMaximum - \uniformDepth$,
 which is the number of limit orders that $\cks$ has sent to the opposite touch,
 and so couples the two sides:
-$\firstMove^{\cks}$ is the first time one walk falls $\uniformDepth$ below the running
-maximum of both.
+$\firstMove^{\cks}$ is the first time one walk falls $\uniformDepth$ below
+$\walkMaximum$.
 
-Before $\firstMove^{\hawOne}$ the spread of $\hawOne$ is one tick as well,
-and its best bid evolves by
-\begin{equation}\label{eq.hawkesTouch}
- \nthBestBidSize[1,\hawOne]_t
- = \uniformDepth
- + \sum_{n \, : \, \arrivalTimes[]_n \leq t, \, \event[n] = 3}
- \indicator{\priceOffset_n = 0}
- - \countingProc[2](t)
- - \sum_{n \, : \, \arrivalTimes[]_n \leq t, \, \event[n] = 5}
- \indicator{p_n = \bestBidPrice_{\arrivalTimes[]_n-}} ,
-\end{equation}
-with no cap:
-a limit buy joins the touch when $\priceOffset_n = 0$, with probability $\offsetParameter$,
-and goes behind it otherwise;
-a market sell takes one share from it;
-and a withdrawal from the bid draws it with probability
-$\nthBestBidSize[1,\hawOne]_{\arrivalTimes[]_n-}
-/ \size^{b,\hawOne}_{\arrivalTimes[]_n-}(\tickSizeOfLOB\N)$,
-the denominator being \eqref{eq.sideSize}.
+The touches of $\hawOne$ have no cap,
+and they depend on the draws of the placement as well as on the path.
+
+\begin{prop}\label{prop.hawkesTouch}
+ For $t < \firstMove^{\hawOne}$,
+ \begin{equation}\label{eq.hawkesTouch}
+  \nthBestBidSize[1,\hawOne]_t
+  = \nthBestBidSize[1]_0
+  + \sum_{n \, : \, \arrivalTimes[]_n \leq t, \, \event[n] = 3}
+  \indicator{\priceOffset_n = 0}
+  - \countingProc[2](t)
+  - \sum_{n \, : \, \arrivalTimes[]_n \leq t, \, \event[n] = 5}
+  \indicator{p_n = \bestBidPrice_{\arrivalTimes[]_n-}} ,
+ \end{equation}
+ and likewise for the best ask, with the types $4$, $1$ and $6$.
+ Given $\sigmaAlgebra^{\multiCountingProc}$ and the draws of the earlier events,
+ the event $\lbrace \priceOffset_n = 0 \rbrace$ has probability $\offsetParameter$,
+ and the event $\lbrace p_n = \bestBidPrice_{\arrivalTimes[]_n-} \rbrace$ has probability
+ $\nthBestBidSize[1,\hawOne]_{\arrivalTimes[]_n-}
+ / \size^{b,\hawOne}_{\arrivalTimes[]_n-}(\tickSizeOfLOB\N)$,
+ the denominator being \eqref{eq.sideSize}.
+ The first move $\firstMove^{\hawOne}$ is the first time
+ at which one of the two right-hand sides reaches zero.
+\end{prop}
+\begin{proof}
+ Before $\firstMove^{\hawOne}$ no best price of $\hawOne$ has moved,
+ so that its spread is the opening tick.
+ A limit buy is priced at
+ $\bestAskPrice_{\arrivalTimes[]_n-} - \tickSizeOfLOB(1 + \priceOffset_n)
+ = \bestBidPrice_{\arrivalTimes[]_n-} - \tickSizeOfLOB\priceOffset_n$
+ by \eqref{eq.limitPrice},
+ so it joins the best bid exactly when $\priceOffset_n = 0$,
+ which has probability $\offsetParameter$ by \eqref{eq.priceOffset},
+ and goes behind it otherwise.
+ A market sell takes one share from the best bid.
+ A withdrawal from the bid takes one share from the level it draws,
+ which is the best bid with the probability stated,
+ by Definition \ref{def.geometricPlacement}~\emph{iii.}
+ The other three types act on the ask.
+ By Corollary \ref{corol.quietBook},
+ a best price of $\hawOne$ moves exactly at an event that takes the last share of a touch,
+ at which one of the two right-hand sides reaches zero;
+ each event changes them by at most one.
+\end{proof}
+
 As $\uniformDepth$ grows,
-over horizons proportional to $\uniformDepth$,
-the counts follow their means,
-and the touch follows an ordinary differential equation.
+with opening touches that grow in proportion,
+the counts follow their means over horizons proportional to $\uniformDepth$,
+and each touch of $\hawOne$ follows an ordinary differential equation.
 
 \begin{prop}\label{prop.fluidTouch}
- Let $\uniformDepth \to \infty$, with $L$, $\offsetParameter$ and the specification fixed.
- Let $\fluidTouch$ solve
+ Let $\uniformDepth \to \infty$, with $L$, $\offsetParameter$ and the specification fixed,
+ and with $\size^{x,1}_0 / \uniformDepth \to \fluidTouch^{x}(0) \in (0, 1]$
+ for each side $x \in \lbrace b, a \rbrace$.
+ Let $L_x := L - 1 + \fluidTouch^{x}(0)$,
+ the limit of $\size^{x}_0(\tickSizeOfLOB\N) / \uniformDepth$,
+ and let $\fluidTouch^{x}$ solve
  \begin{equation}\label{eq.fluidTouch}
-  \fluidTouch\derivative(s)
+  (\fluidTouch^{x})\derivative(s)
   = \offsetParameter\stationaryIntensity[3] - \stationaryIntensity[2]
-  - \frac{\stationaryIntensity[5]}{L} \, \fluidTouch(s) ,
-  \qquad
-  \fluidTouch(0) = 1 ,
+  - \frac{\stationaryIntensity[5]}{L_x} \, \fluidTouch^{x}(s)
  \end{equation}
+ from $\fluidTouch^{x}(0)$,
  that is
- $\fluidTouch(s) = \fluidTouch_{\infty}
- + (1 - \fluidTouch_{\infty}) \, e^{-\stationaryIntensity[5] s / L}$
+ $\fluidTouch^{x}(s) = \fluidTouch^{x}_{\infty}
+ + (\fluidTouch^{x}(0) - \fluidTouch^{x}_{\infty}) \, e^{-\stationaryIntensity[5] s / L_x}$
  with
- $\fluidTouch_{\infty} := L \, (\offsetParameter\stationaryIntensity[3]
- - \stationaryIntensity[2]) / \stationaryIntensity[5]$,
- and let $s_1 > 0$ be such that $\fluidTouch > 0$ on $[0, s_1]$.
+ $\fluidTouch^{x}_{\infty} := L_x (\offsetParameter\stationaryIntensity[3]
+ - \stationaryIntensity[2]) / \stationaryIntensity[5]$.
+ Let $s_1 > 0$ be such that $\fluidTouch^{b}$ and $\fluidTouch^{a}$ are positive on
+ $[0, s_1]$.
  Then, in probability,
  \begin{equation*}
   \sup_{s \leq s_1} \Big\vert
-  \frac{\nthBestBidSize[1,\hawOne]_{\uniformDepth s}}{\uniformDepth} - \fluidTouch(s)
+  \frac{\nthBestBidSize[1,\hawOne]_{\uniformDepth s}}{\uniformDepth} - \fluidTouch^{b}(s)
   \Big\vert \to 0 ,
   \qquad
-  \Prob\big( \firstMove^{\hawOne} > \uniformDepth s_1 \big) \to 1 ,
+  \sup_{s \leq s_1} \Big\vert
+  \frac{\nthBestAskSize[1,\hawOne]_{\uniformDepth s}}{\uniformDepth} - \fluidTouch^{a}(s)
+  \Big\vert \to 0 ,
  \end{equation*}
- and the same holds of the best ask.
+ and $\Prob\big( \firstMove^{\hawOne} > \uniformDepth s_1 \big) \to 1$.
 \end{prop}
 \begin{proof}
  We proceed in three steps.
@@ -567,7 +606,7 @@ and the touch follows an ordinary differential equation.
  \end{equation*}
  in probability,
  and in particular, by \eqref{eq.sideSize} and balance,
- $\size^{b,\hawOne}_{\uniformDepth s}(\tickSizeOfLOB\N) / \uniformDepth \to L$
+ $\size^{b,\hawOne}_{\uniformDepth s}(\tickSizeOfLOB\N) / \uniformDepth \to L_b$
  uniformly on $[0, s_1]$.
 
  \emph{The draws.}
@@ -599,73 +638,80 @@ and the touch follows an ordinary differential equation.
  $t = \uniformDepth s$, divided by $\uniformDepth$,
  for $s \leq \firstMove^{\hawOne}/\uniformDepth$.
  Then $\tilde{x} = x$ on $[0, \firstMove^{\hawOne}/\uniformDepth)$,
- and $\tilde{x}(\firstMove^{\hawOne}/\uniformDepth) = 0$,
- the event at $\firstMove^{\hawOne}$ taking the last share of the touch,
+ and $\tilde{x}(\firstMove^{\hawOne}/\uniformDepth) = 0$
+ if the event at $\firstMove^{\hawOne}$ takes the last share of the best bid,
  by Corollary \ref{corol.quietBook}.
  By the definition of $J_3$ and $J_5$,
  \begin{equation*}
   \tilde{x}(s)
-  = 1 + \offsetParameter\, \countingProc[3]^{\uniformDepth}(s)
+  = \frac{\nthBestBidSize[1]_0}{\uniformDepth}
+  + \offsetParameter\, \countingProc[3]^{\uniformDepth}(s)
   - \countingProc[2]^{\uniformDepth}(s)
   - \int_{(0,s]} \frac{\tilde{x}(s'-)}{y(s'-)} \, d\countingProc[5]^{\uniformDepth}(s')
   + \frac{J_{3}(\uniformDepth s) - J_{5}(\uniformDepth s)}{\uniformDepth} ,
  \end{equation*}
  while
- $\fluidTouch(s) = 1 + (\offsetParameter\stationaryIntensity[3] - \stationaryIntensity[2]) s
- - \int_{0}^{s} \stationaryIntensity[5] \fluidTouch(s')/L \, ds'$.
+ $\fluidTouch^{b}(s) = \fluidTouch^{b}(0)
+ + (\offsetParameter\stationaryIntensity[3] - \stationaryIntensity[2]) s
+ - \int_{0}^{s} \stationaryIntensity[5] \fluidTouch^{b}(s')/L_b \, ds'$.
  Subtract,
  and use
- $\vert \tilde{x}/y - \fluidTouch/L \vert
- \leq \vert \tilde{x} - \fluidTouch \vert / y + \vert \fluidTouch \vert \,
- \vert 1/y - 1/L \vert$
- with $y \geq L/2$,
+ $\vert \tilde{x}/y - \fluidTouch^{b}/L_b \vert
+ \leq \vert \tilde{x} - \fluidTouch^{b} \vert / y + \vert \fluidTouch^{b} \vert \,
+ \vert 1/y - 1/L_b \vert$
+ with $y \geq L_b/2$,
  which holds on $[0, s_1]$ with probability tending to one by step 1.
  For $s \leq s_1 \wedge \firstMove^{\hawOne}/\uniformDepth$ this gives
  \begin{equation*}
-  \vert \tilde{x}(s) - \fluidTouch(s) \vert
+  \vert \tilde{x}(s) - \fluidTouch^{b}(s) \vert
   \leq \bar{\delta}_{\uniformDepth}
-  + \frac{2}{L} \int_{(0,s]} \vert \tilde{x}(s'-) - \fluidTouch(s') \vert \,
+  + \frac{2}{L_b} \int_{(0,s]} \vert \tilde{x}(s'-) - \fluidTouch^{b}(s') \vert \,
   d\countingProc[5]^{\uniformDepth}(s') ,
  \end{equation*}
  where $\bar{\delta}_{\uniformDepth}$ is the supremum over $s \leq s_1$ of
- $\offsetParameter \vert \countingProc[3]^{\uniformDepth}(s) - \stationaryIntensity[3] s \vert
+ $\vert \nthBestBidSize[1]_0 / \uniformDepth - \fluidTouch^{b}(0) \vert
+ + \offsetParameter \vert \countingProc[3]^{\uniformDepth}(s) - \stationaryIntensity[3] s \vert
  + \vert \countingProc[2]^{\uniformDepth}(s) - \stationaryIntensity[2] s \vert
  + \vert J_3(\uniformDepth s) - J_5(\uniformDepth s) \vert / \uniformDepth
- + \sup_{[0,s_1]} \vert \fluidTouch \vert \, \sup_{[0,s_1]} \vert 1/y - 1/L \vert \,
+ + \sup_{[0,s_1]} \vert \fluidTouch^{b} \vert \, \sup_{[0,s_1]} \vert 1/y - 1/L_b \vert \,
  \countingProc[5]^{\uniformDepth}(s_1)
- + \vert \int_{0}^{s} \fluidTouch(s') \,
- ( d\countingProc[5]^{\uniformDepth}(s') - \stationaryIntensity[5] \, ds' ) \vert / L$.
- The first four terms tend to zero in probability by steps 1 and 2;
+ + \vert \int_{0}^{s} \fluidTouch^{b}(s') \,
+ ( d\countingProc[5]^{\uniformDepth}(s') - \stationaryIntensity[5] \, ds' ) \vert / L_b$.
+ The first five terms tend to zero in probability,
+ by the hypothesis on the opening and by steps 1 and 2;
  so does the last,
  which an integration by parts writes as
- $\vert \fluidTouch(s) ( \countingProc[5]^{\uniformDepth}(s) - \stationaryIntensity[5] s )
- - \int_{0}^{s} \fluidTouch\derivative(s')
- ( \countingProc[5]^{\uniformDepth}(s') - \stationaryIntensity[5] s' ) \, ds' \vert / L$.
+ $\vert \fluidTouch^{b}(s) ( \countingProc[5]^{\uniformDepth}(s) - \stationaryIntensity[5] s )
+ - \int_{0}^{s} (\fluidTouch^{b})\derivative(s')
+ ( \countingProc[5]^{\uniformDepth}(s') - \stationaryIntensity[5] s' ) \, ds' \vert / L_b$.
  Gronwall's inequality for the measure $d\countingProc[5]^{\uniformDepth}$,
  whose atoms are $1/\uniformDepth$,
  gives
  \begin{equation*}
   \sup_{s \leq s_1 \wedge \firstMove^{\hawOne}/\uniformDepth}
-  \vert \tilde{x}(s) - \fluidTouch(s) \vert
-  \leq \bar{\delta}_{\uniformDepth} \, e^{2 \countingProc[5]^{\uniformDepth}(s_1)/L} \to 0
+  \vert \tilde{x}(s) - \fluidTouch^{b}(s) \vert
+  \leq \bar{\delta}_{\uniformDepth} \, e^{2 \countingProc[5]^{\uniformDepth}(s_1)/L_b} \to 0
  \end{equation*}
  in probability.
- On $\lbrace \firstMove^{\hawOne} \leq \uniformDepth s_1 \rbrace$
+ On the event that $\firstMove^{\hawOne} \leq \uniformDepth s_1$
+ and that the event at $\firstMove^{\hawOne}$ empties the best bid,
  the left-hand side is at least
- $\fluidTouch(\firstMove^{\hawOne}/\uniformDepth) \geq \min_{[0,s_1]} \fluidTouch > 0$,
- since $\tilde{x}$ vanishes at $\firstMove^{\hawOne}/\uniformDepth$.
+ $\fluidTouch^{b}(\firstMove^{\hawOne}/\uniformDepth) \geq \min_{[0,s_1]} \fluidTouch^{b} > 0$,
+ since $\tilde{x}$ vanishes at $\firstMove^{\hawOne}/\uniformDepth$,
+ so that this event has probability tending to zero.
+ The ask is the same, from its own opening,
+ with the types $4$, $1$ and $6$,
+ whose stationary intensities are those of $3$, $2$ and $5$.
  Hence $\Prob(\firstMove^{\hawOne} > \uniformDepth s_1) \to 1$,
  and on that event $x = \tilde{x}$ on $[0, s_1]$,
- which is the first claim.
- The ask is the same, with the types $4$, $1$ and $6$,
- whose stationary intensities are those of $3$, $2$ and $5$.
+ which gives the two limits.
 \end{proof}
 
 \begin{exercise}\label{exercise.fluidTouch}
  Solve \eqref{eq.fluidTouch}.
- Show that $\fluidTouch > 0$ on $[0, \infty)$ if and only if
+ Show that $\fluidTouch^{x} > 0$ on $[0, \infty)$ if and only if
  $\offsetParameter\stationaryIntensity[3] \geq \stationaryIntensity[2]$,
- and that otherwise $\fluidTouch$ reaches zero at the time $\fluidEmptying$ of
+ and that otherwise $\fluidTouch^{x}$ reaches zero at the time $\fluidEmptying_{x}$ of
  \eqref{eq.fluidEmptying}.
 \end{exercise}
 
@@ -673,29 +719,34 @@ and the touch follows an ordinary differential equation.
  Let $\uniformDepth \to \infty$ as in Proposition \ref{prop.fluidTouch}.
  \begin{enumerate}[label={\emph{\roman{*}}.}]
   \item If $\offsetParameter\stationaryIntensity[3] < \stationaryIntensity[2]$,
-        the fluid touch reaches zero at
+        the fluid touch of the side $x$ reaches zero at
         \begin{equation}\label{eq.fluidEmptying}
-         \fluidEmptying
-         = \frac{L}{\stationaryIntensity[5]}
-         \log \Big( 1 + \frac{\stationaryIntensity[5]}
-         {L \, (\stationaryIntensity[2] - \offsetParameter\stationaryIntensity[3])} \Big) ,
+         \fluidEmptying_{x}
+         = \frac{L_x}{\stationaryIntensity[5]}
+         \log \Big( 1 + \frac{\stationaryIntensity[5] \, \fluidTouch^{x}(0)}
+         {L_x (\stationaryIntensity[2] - \offsetParameter\stationaryIntensity[3])} \Big) ,
         \end{equation}
-        and $\partingTime/\uniformDepth \to \fluidEmptying$
+        and, with $\fluidEmptying := \fluidEmptying_{b} \wedge \fluidEmptying_{a}$,
+        $\partingTime/\uniformDepth \to \fluidEmptying$
         and $\firstMove^{\hawOne}/\uniformDepth \to \fluidEmptying$ in probability,
         with $\Prob(\partingTime = \firstMove^{\hawOne}) \to 1$:
-        the touch of $\hawOne$ empties first,
+        a touch of $\hawOne$ empties first,
         and the first move is that of $\hawOne$.
   \item If $\offsetParameter\stationaryIntensity[3] \geq \stationaryIntensity[2]$,
-        the fluid touch is positive on $[0, \infty)$,
+        the fluid touches are positive on $[0, \infty)$,
         and $\partingTime/\uniformDepth \to \infty$ in probability.
  \end{enumerate}
 \end{corol}
 \begin{proof}
  By step 1 of the proof of Proposition \ref{prop.fluidTouch} and balance,
  $\sup_{t \leq \uniformDepth s_1}
- \vert \touchWalk{b}(t) - \uniformDepth \vert / \uniformDepth$
- and its ask counterpart tend to zero in probability for every $s_1$,
- so that, with probability tending to one,
+ \vert \touchWalk{b}(t) - \nthBestBidSize[1]_0 \vert / \uniformDepth$
+ and its ask counterpart tend to zero in probability for every $s_1$.
+ Since $\walkMaximum(0) = \uniformDepth$
+ and the opening touches are at least
+ $\uniformDepth \min(\fluidTouch^{b}(0), \fluidTouch^{a}(0))/2$
+ for $\uniformDepth$ large,
+ with probability tending to one
  $\walkMaximum - \min(\touchWalk{b}, \touchWalk{a}) < \uniformDepth$
  on $[0, \uniformDepth s_1]$.
  By Proposition \ref{prop.cksTouchWalks}, then,
@@ -705,16 +756,17 @@ and the touch follows an ordinary differential equation.
 
  \emph{i.}
  The formula for $\fluidEmptying$ is Exercise \ref{exercise.fluidTouch}.
- Let $s_{-} < \fluidEmptying < s_{+}$.
+ Let $s_{-} < \fluidEmptying < s_{+}$,
+ and let $x$ be a side with $\fluidEmptying_{x} = \fluidEmptying$.
  Proposition \ref{prop.fluidTouch} on $[0, s_{-}]$ gives
  $\Prob\big( \firstMove^{\hawOne} > \uniformDepth s_{-} \big) \to 1$.
  Its proof, up to its last display,
- does not use the sign of $\fluidTouch$;
- run on $[0, s_{+}]$, where $\fluidTouch$ continues the solution,
+ does not use the sign of $\fluidTouch^{x}$;
+ run on $[0, s_{+}]$, where $\fluidTouch^{x}$ continues the solution,
  it shows that on
  $\lbrace \firstMove^{\hawOne} > \uniformDepth s_{+} \rbrace$
- the touch at $\uniformDepth s_{+}$ is close to
- $\uniformDepth\fluidTouch(s_{+}) < 0$,
+ the touch of the side $x$ at $\uniformDepth s_{+}$ is close to
+ $\uniformDepth\fluidTouch^{x}(s_{+}) < 0$,
  which a size cannot be,
  so that
  $\Prob\big( \firstMove^{\hawOne} \leq \uniformDepth s_{+} \big) \to 1$.
@@ -726,7 +778,7 @@ and the touch follows an ordinary differential equation.
  and $\partingTime = \firstMove^{\hawOne}$.
 
  \emph{ii.}
- Here $\fluidTouch > 0$ on every $[0, s_1]$,
+ Here $\fluidTouch^{b}$ and $\fluidTouch^{a}$ are positive on every $[0, s_1]$,
  and Proposition \ref{prop.fluidTouch} gives
  $\Prob(\firstMove^{\hawOne} > \uniformDepth s_1) \to 1$ for every $s_1$.
  Now $\partingTime \geq \firstMove^{\cks} \wedge \firstMove^{\hawOne}$,
@@ -738,19 +790,20 @@ $\offsetParameter\stationaryIntensity[3] - \stationaryIntensity[2]$:
 the rate at which limit buys join the best bid of $\hawOne$
 against the rate at which market sells take from it.
 The withdrawals take from the touch in proportion to its share of the side,
-and pull it towards $\fluidTouch_{\infty}\uniformDepth$.
+and pull it towards $\fluidTouch^{x}_{\infty}\uniformDepth$.
 In the first regime the book $\cks$ plays no part in $\partingTime$.
 In the second the proof of Corollary \ref{corol.twoRegimes} stops at the fluid scale,
 and what follows it is an approximation.
 
 \begin{approximation}\label{approx.secondRegime}
  Let $\offsetParameter\stationaryIntensity[3] > \stationaryIntensity[2]$,
- and let $\uniformDepth$ be large.
+ and let $\uniformDepth$ be large,
+ with opening touches as in Proposition \ref{prop.fluidTouch}.
  By \eqref{eq.hawkesTouch},
- the touch of $\hawOne$ relaxes,
- at the rate $\stationaryIntensity[5]/(L\uniformDepth)$ per share of deviation,
- towards $(\fluidTouch_{\infty}/L) \, \size^{b,\hawOne}_t(\tickSizeOfLOB\N)$,
- which by \eqref{eq.sideSize} is $\fluidTouch_{\infty}\uniformDepth$
+ the touch of the side $x$ of $\hawOne$ relaxes,
+ at the rate $\stationaryIntensity[5]/(L_x\uniformDepth)$ per share of deviation,
+ towards $(\fluidTouch^{x}_{\infty}/L_x) \, \size^{x,\hawOne}_t(\tickSizeOfLOB\N)$,
+ which by \eqref{eq.sideSize} is $\fluidTouch^{x}_{\infty}\uniformDepth$
  plus a multiple of a walk without drift,
  and it fluctuates about that centre by $O(\sqrt{\uniformDepth})$.
  It reaches zero by a large deviation of the fluctuation,
@@ -763,7 +816,8 @@ and what follows it is an approximation.
   \touchWalk{b}(\uniformDepth^{2} s) - \uniformDepth ,
   \touchWalk{a}(\uniformDepth^{2} s) - \uniformDepth \Big)
  \end{equation*}
- converges in law to a Brownian motion $(\brownianMotion^{b}, \brownianMotion^{a})$ with
+ converges in law to a Brownian motion $(\brownianMotion^{b}, \brownianMotion^{a})$
+ started at $(\fluidTouch^{b}(0) - 1, \fluidTouch^{a}(0) - 1)$, with
  $\CoVariance\big( \brownianMotion^{x}(s), \brownianMotion^{y}(s) \big)
  = s \, (\sideVector{x})^{\transpose}\countCovarianceRate\,\sideVector{y}$
  for $x, y \in \lbrace b, a \rbrace$,
@@ -804,7 +858,7 @@ which turns the convergence in law of the walks into that of $\firstMove^{\cks}$
 
 After the parting time the two mid-prices move apart.
 We study their difference:
-its mean, which is zero,
+its mean, which is zero when the two opening touches are equal,
 and its variance,
 which we split into the part that the path of events decides
 and the part that the placement of the orders adds.
@@ -823,9 +877,11 @@ and so does $\discrepancy_t$.
  For every $t$ on the horizon considered:
  \begin{enumerate}[label={\emph{\roman{*}}.}]
   \item $\discrepancy_t = 0$ on $\lbrace \partingTime > t \rbrace$;
-  \item the law of $\discrepancy_t$ is symmetric about zero,
+  \item if $\nthBestBidSize[1]_0 = \nthBestAskSize[1]_0$,
+        the law of $\discrepancy_t$ is symmetric about zero,
         and in particular $\Expectation\,\discrepancy_t = 0$;
-  \item $\Variance\,\discrepancy_t
+  \item under the hypothesis of \emph{ii.},
+        $\Variance\,\discrepancy_t
         = \Expectation\big[ \discrepancy_t^{2} ; \, \partingTime \leq t \big]
         \geq (\tickSizeOfLOB/2)^{2} \, \Prob(\discrepancy_t \neq 0)$;
   \item $\Variance\,\discrepancy_t
@@ -864,7 +920,8 @@ and the variance that the draws of $\hawOne$ add given the path.
  The reflection $p \mapsto 2\midPrice_0 - p$ maps the tick grid to itself,
  since $2\midPrice_0 = \bestBidPrice_0 + \bestAskPrice_0$,
  exchanges the bid and the ask,
- and maps the opening book of Definition \ref{def.threeBooks} to itself.
+ and maps the opening book of Definition \ref{def.threeBooks} to itself,
+ its two touches being equal.
  On $G$,
  every message of the path and of its mirror is that of
  Example \ref{example.idealisedPlacement}
@@ -1089,12 +1146,12 @@ move.
 \end{prop}
 \begin{proof}
  For the book $\cks$, Proposition \ref{prop.idealisedUpdate} over $(0, t]$,
- with Lemma \ref{lemma.unitContribution} and the opening touches of $\uniformDepth$, gives
+ with Lemma \ref{lemma.unitContribution} and \eqref{eq.idealisedResidual}, gives
  \begin{equation*}
   \frac{2\uniformDepth}{\tickSizeOfLOB} \big( \midPriceOf{\cks}_t - \midPrice_0 \big)
   = \pressure^{\transpose}\multiCountingProc(t)
-  - \big( \nthBestBidSize[1,\cks]_t - \uniformDepth \big)
-  + \big( \nthBestAskSize[1,\cks]_t - \uniformDepth \big) .
+  - \big( \nthBestBidSize[1,\cks]_t - \nthBestBidSize[1]_0 \big)
+  + \big( \nthBestAskSize[1,\cks]_t - \nthBestAskSize[1]_0 \big) .
  \end{equation*}
  For the book $\hawOne$,
  write \eqref{eq.touchIdentity} over $(0, t]$,
@@ -1107,8 +1164,8 @@ move.
  \begin{equation*}
   \frac{2\uniformDepth}{\tickSizeOfLOB} \big( \midPriceOf{\hawOne}_t - \midPrice_0 \big)
   = \OFI^{\hawOne}_{t,t}
-  - \big( \nthBestBidSize[1,\hawOne]_t - \uniformDepth \big)
-  + \big( \nthBestAskSize[1,\hawOne]_t - \uniformDepth \big)
+  - \big( \nthBestBidSize[1,\hawOne]_t - \nthBestBidSize[1]_0 \big)
+  + \big( \nthBestAskSize[1,\hawOne]_t - \nthBestAskSize[1]_0 \big)
   - \sum_{n \, : \, \arrivalTimes[]_n \leq t} \big[ \cdots \big] ,
  \end{equation*}
  the bracket being that of \eqref{eq.discrepancyDecomposition}.
@@ -1217,9 +1274,8 @@ by Approximation \ref{approx.secondRegime}.
  $(\midPriceOf{\cks}_t - \midPrice_0)/\tickSizeOfLOB
  = \pressure^{\transpose}\multiCountingProc(t)/(2\uniformDepth)
  + \residual^{\cks}_{t,t}/\tickSizeOfLOB$,
- where by \eqref{eq.idealisedResidual}
- $\vert \residual^{\cks}_{t,t}/\tickSizeOfLOB \vert \leq (\uniformDepth - 1)/(2\uniformDepth)$,
- the touches of $\cks$ lying between one share and $\uniformDepth$.
+ where $\vert \residual^{\cks}_{t,t} \vert \leq \tickSizeOfLOB$
+ by \eqref{eq.idealisedUpdate}.
  By \eqref{eq.countsFromNoPast},
  $\pressure^{\transpose}\multiCountingProc(t)$ is
  $\pressure^{\transpose}(I - \branchingMatrix)^{-1}\martingale(t)$
@@ -1258,7 +1314,8 @@ and a closed form needs two hypotheses on its books:
 \end{enumerate}
 By \eqref{eq.touchIdentity} over $(0, t]$,
 $-R_t$ is the sum of
-$(\nthBestBidSize[1,\hawOne]_t - \uniformDepth) - (\nthBestAskSize[1,\hawOne]_t - \uniformDepth)$
+$(\nthBestBidSize[1,\hawOne]_t - \nthBestBidSize[1]_0)
+- (\nthBestAskSize[1,\hawOne]_t - \nthBestAskSize[1]_0)$
 and of the last sum of \eqref{eq.discrepancyDecomposition} with $\effectiveDepth$ in place
 of $\uniformDepth$:
 H2 says that $\hawOne$ moves as if it held $\effectiveDepth$ on every tick it crosses,
@@ -1295,7 +1352,9 @@ $c_e$ is the difference of the two impacts.
   \frac{\discrepancy_t}{\tickSizeOfLOB}
   = (\pressure \circ c)^{\transpose}\multiCountingProc(t)
   + \frac{\martingale^{\behindSet}_t}{2\effectiveDepth} + O(1) ,
-  \qquad
+ \end{equation*}
+ if $\nthBestBidSize[1]_0 = \nthBestAskSize[1]_0$,
+ \begin{equation*}
   \Expectation\Big[ \frac{\discrepancy_t}{\tickSizeOfLOB}
   \,\Big\vert\, \sigmaAlgebra^{\multiCountingProc} \Big]
   = (\pressure \circ c)^{\transpose}
@@ -1328,7 +1387,8 @@ $c_e$ is the difference of the two impacts.
  = \pressure^{\transpose}\multiCountingProc(t)/(2\uniformDepth) + O(1)$,
  as in the proof of Approximation \ref{approx.secondRegimeVariance},
  and subtracting gives the first identity.
- The exchange of the path with its mirror,
+ If the opening touches are equal,
+ the exchange of the path with its mirror,
  of the proof of Proposition \ref{prop.discrepancyMoments},
  maps an event of type $e$ placed behind its touch
  to an event of type $\swapMatrix(e)$ placed behind its touch,
@@ -1386,7 +1446,7 @@ and the split of the variance into its flow and placement parts is qualitative.
 
 We now set the book $\cks$ against $\hawQ$,
 whose sizes we count in units of $\meanSize$:
-its opening levels hold $\uniformDepth$ units,
+in units its opening book is that of Definition \ref{def.threeBooks},
 and its $n$-th order carries $\xi_n := \orderSize_n / \meanSize$ units,
 with $\Expectation\,\xi_n = 1$.
 The statements of Sections \ref{sec.partingTime} and \ref{sec.discrepancy}
@@ -1454,7 +1514,7 @@ and those of the market orders and of the withdrawals change.
  rather than none.
 \end{remark}
 
-The mean of $\discrepancy^{\hawQ}_t$ is zero,
+The mean of $\discrepancy^{\hawQ}_t$ is zero when the opening touches are equal,
 and its variance splits into a flow part and a placement part,
 by Proposition \ref{prop.discrepancyMoments}.
 Its decomposition gains one term.
@@ -1526,7 +1586,8 @@ the variance being taken given $\sigmaAlgebra^{\multiCountingProc}$ and the earl
  up to the truncation of the withdrawals,
  the argument of \eqref{eq.sideSize} gives, in units,
  $\size^{b,\hawQ}_t(\tickSizeOfLOB\N) - \size^{a,\hawQ}_t(\tickSizeOfLOB\N)
- = \sum_{n \, : \, \arrivalTimes[]_n \leq t} \pressure_{\event[n]} \xi_n$,
+ = \nthBestBidSize[1]_0 - \nthBestAskSize[1]_0
+ + \sum_{n \, : \, \arrivalTimes[]_n \leq t} \pressure_{\event[n]} \xi_n$,
  whose variance given $\sigmaAlgebra^{\multiCountingProc}$ is
  $\Variance\,\xi_n \, \groundProc(t)$.
  The closed form carries none of the three.

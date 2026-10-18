@@ -14,6 +14,7 @@ from unito26.lob import config
 from unito26.lob.coupling import (
     CoupledFlows,
     Mover,
+    OpeningTouch,
     Parting,
     PlacementStatistics,
     RecordedEvents,
@@ -571,45 +572,62 @@ class TestTheCKSTouchWalks:
 L = GridDepth(10)
 
 
+FULL = OpeningTouch(1.0)
+OPENINGS = [FULL, OpeningTouch(0.5), OpeningTouch(0.2)]
+
+
 def with_decay(depth_decay):
     return dataclasses.replace(UNIT, depth_decay=depth_decay)
 
 
 class TestTheFluidTouch:
+    @pytest.mark.parametrize("opening", OPENINGS)
     @pytest.mark.parametrize("depth_decay", [0.1, 0.2, 0.35, 0.7])
-    def test_it_solves_its_equation(self, depth_decay):
+    def test_it_solves_its_equation(self, depth_decay, opening):
         market, limit, withdrawal = 1.0, 2.5, 1.5
         s = np.linspace(0.0, 4.0, 401)
         step = 1e-6
-        r = fluid_touch(BALANCED, with_decay(depth_decay), L, s)
-        slope = (fluid_touch(BALANCED, with_decay(depth_decay), L, s + step) - r) / step
-        assert r[0] == pytest.approx(1.0, abs=1e-12)
+        marks = with_decay(depth_decay)
+        r = fluid_touch(BALANCED, marks, L, opening, s)
+        slope = (fluid_touch(BALANCED, marks, L, opening, s + step) - r) / step
+        assert r[0] == pytest.approx(opening, abs=1e-12)
         assert slope == pytest.approx(
-            depth_decay * limit - market - withdrawal / L * r, abs=1e-5
+            depth_decay * limit - market - withdrawal / (L - 1 + opening) * r, abs=1e-5
         )
 
+    @pytest.mark.parametrize("opening", OPENINGS)
     @pytest.mark.parametrize("depth_decay", [0.1, 0.2, 0.3, 0.35])
-    def test_in_the_first_regime_it_reaches_zero_at_s_star(self, depth_decay):
-        s_star = fluid_emptying_time(BALANCED, with_decay(depth_decay), L)
+    def test_in_the_first_regime_it_reaches_zero_at_s_star(self, depth_decay, opening):
+        s_star = fluid_emptying_time(BALANCED, with_decay(depth_decay), L, opening)
         s = np.linspace(0.0, s_star, 200)
-        r = fluid_touch(BALANCED, with_decay(depth_decay), L, s)
+        r = fluid_touch(BALANCED, with_decay(depth_decay), L, opening, s)
         assert r[-1] == pytest.approx(0.0, abs=1e-12) and (r[:-1] > 0).all()
 
+    @pytest.mark.parametrize("opening", OPENINGS)
     @pytest.mark.parametrize("depth_decay", [0.4, 0.5, 0.7, 1.0])
-    def test_in_the_second_regime_it_stays_positive_and_s_star_is_infinite(self, depth_decay):
-        assert fluid_emptying_time(BALANCED, with_decay(depth_decay), L) == np.inf
-        r = fluid_touch(BALANCED, with_decay(depth_decay), L, np.geomspace(1e-3, 1e4, 50))
+    def test_in_the_second_regime_it_stays_positive_and_s_star_is_infinite(
+        self, depth_decay, opening
+    ):
+        marks = with_decay(depth_decay)
+        assert fluid_emptying_time(BALANCED, marks, L, opening) == np.inf
+        r = fluid_touch(BALANCED, marks, L, opening, np.geomspace(1e-3, 1e4, 50))
         assert (r > 0).all()
-        assert r[-1] == pytest.approx(L * (depth_decay * 2.5 - 1.0) / 1.5, abs=1e-8)
+        assert r[-1] == pytest.approx(
+            (L - 1 + opening) * (depth_decay * 2.5 - 1.0) / 1.5, abs=1e-8
+        )
 
     def test_the_base_case_is_the_documented_one(self):
-        s_star = [fluid_emptying_time(BALANCED, with_decay(eta), L)
+        s_star = [fluid_emptying_time(BALANCED, with_decay(eta), L, FULL)
                   for eta in (0.1, 0.2, 0.3, 0.35)]
         assert s_star == pytest.approx([1.2155, 1.7491, 3.1334, 5.2564], abs=1e-4)
         assert diffusive_scale(BALANCED, UniformDepth(20)) == pytest.approx(134.0, abs=0.05)
         assert second_regime_rate(BALANCED, UniformDepth(20)) == pytest.approx(
             0.003635, abs=1e-6
         )
+
+    def test_from_half_a_touch_s_star_is_pinned(self):
+        s_star = fluid_emptying_time(BALANCED, with_decay(0.2), L, OpeningTouch(0.5))
+        assert s_star == pytest.approx(0.9285, abs=1e-4)
 
 
 class TestTheClosedForm:
