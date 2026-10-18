@@ -182,6 +182,26 @@ class OrderFlowSimulator:
         self.rng = rng if isinstance(rng, np.random.Generator) else np.random.default_rng(rng)
         self._hawkes = ExponentialHawkes(self.params, rng=self.rng)
 
+    @classmethod
+    def driven_by(
+        cls,
+        source,
+        marks: MarkParams,
+        reference_price: int,
+        rng: np.random.Generator | int | None = None,
+    ) -> "OrderFlowSimulator":
+        """Marks drawn on ``rng`` for the events of ``source``, which the marks do not touch.
+
+        ``source`` is anything with ``params`` and ``events(horizon)``, as a Hawkes process
+        has.  The constructor draws events and marks on one generator, so its events are not
+        those of ``ExponentialHawkes(params, rng=seed)``, and a withdrawal dropped on an empty
+        side draws no mark, so they depend on the book as well.  Here the events are fixed
+        outside and only the marks are drawn, and the same path can be placed another way.
+        """
+        simulator = cls(source.params, marks, reference_price, rng)
+        simulator._hawkes = source
+        return simulator
+
     # ---- marks ---------------------------------------------------------------
 
     def _size(self) -> int:

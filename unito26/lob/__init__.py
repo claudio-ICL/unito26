@@ -33,6 +33,9 @@ The strand is built as a ladder of increasing complexity, and the modules follow
 ``idealised``
     the idealised book of section 1.4: a flow of unit orders at the touches that keeps
     its assumption true, so that the identity of the order flow imbalance holds exactly.
+``coupling``
+    the idealised and the geometric placement of one recorded path of events, folded from
+    one opening book, and the first event after which the two books differ.
 ``imbalance_regression``
     the two regressions of the mid-price change on the imbalances -- the contemporaneous
     one, which is a statement about price formation, and the predictive one, which is a

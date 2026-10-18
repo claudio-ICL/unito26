@@ -86,6 +86,10 @@ __all__ = [
     "resilient_mark_params",
     "shallow_mark_params",
     "deep_mark_params",
+    "WITHDRAWAL_FREE_ORDER_FLOW_PARAMS",
+    "UNIT_MARK_PARAMS",
+    "withdrawal_free_order_flow_params",
+    "unit_mark_params",
     "SELF_EXCITING_PAIR_PARAMS",
     "CROSS_EXCITING_PAIR_PARAMS",
     "ASYMMETRIC_PAIR_PARAMS",
@@ -280,6 +284,99 @@ DEEP_MARK_PARAMS: list[dict] = [
      "SigmaLogSize": 0.8, "Lot": 10},
 ]
 
+#: The resilient flow without withdrawals: the flow on which the idealised and the geometric
+#: placement of the same events can agree.  The withdrawal coordinates, components and causes
+#: 4 and 5, are zero in the kernel and in the baseline, and the remaining block keeps the
+#: resilient shape, rescaled to a branching ratio of 0.5.  The baselines are
+#: ``mu = (I - Gamma) lambda*`` for a stationary intensity of 2.5 events a second of each of
+#: the four order types, so that on each side limit orders arrive at the rate of the market
+#: orders that consume it, and the total rate is 10 a second.  The limit-order baseline is
+#: 0.242 against a stationary 2.5; at a branching ratio of 0.6 it would be negative.  The
+#: endogenous fraction is 0.690.
+WITHDRAWAL_FREE_ORDER_FLOW_PARAMS: list[dict] = [
+    {"Component": 0, "Cause": 0, "BaseIntensity": 1.3094171014,
+     "Kernel": 1.4779649775, "Decay": 4.0},
+    {"Component": 0, "Cause": 1, "BaseIntensity": None,
+     "Kernel": 0.3284366617, "Decay": 4.0},
+    {"Component": 0, "Cause": 2, "BaseIntensity": None,
+     "Kernel": 0.0492654993, "Decay": 4.0},
+    {"Component": 0, "Cause": 3, "BaseIntensity": None,
+     "Kernel": 0.0492654993, "Decay": 4.0},
+    {"Component": 0, "Cause": 4, "BaseIntensity": None,
+     "Kernel": 0.0000000000, "Decay": 4.0},
+    {"Component": 0, "Cause": 5, "BaseIntensity": None,
+     "Kernel": 0.0000000000, "Decay": 4.0},
+    {"Component": 1, "Cause": 0, "BaseIntensity": None,
+     "Kernel": 0.3284366617, "Decay": 4.0},
+    {"Component": 1, "Cause": 1, "BaseIntensity": 1.3094171014,
+     "Kernel": 1.4779649775, "Decay": 4.0},
+    {"Component": 1, "Cause": 2, "BaseIntensity": None,
+     "Kernel": 0.0492654993, "Decay": 4.0},
+    {"Component": 1, "Cause": 3, "BaseIntensity": None,
+     "Kernel": 0.0492654993, "Decay": 4.0},
+    {"Component": 1, "Cause": 4, "BaseIntensity": None,
+     "Kernel": 0.0000000000, "Decay": 4.0},
+    {"Component": 1, "Cause": 5, "BaseIntensity": None,
+     "Kernel": 0.0000000000, "Decay": 4.0},
+    {"Component": 2, "Cause": 0, "BaseIntensity": None,
+     "Kernel": 0.1642183309, "Decay": 4.0},
+    {"Component": 2, "Cause": 1, "BaseIntensity": None,
+     "Kernel": 3.1201482859, "Decay": 4.0},
+    {"Component": 2, "Cause": 2, "BaseIntensity": 0.2419979510,
+     "Kernel": 0.1642183309, "Decay": 4.0},
+    {"Component": 2, "Cause": 3, "BaseIntensity": None,
+     "Kernel": 0.1642183309, "Decay": 4.0},
+    {"Component": 2, "Cause": 4, "BaseIntensity": None,
+     "Kernel": 0.0000000000, "Decay": 4.0},
+    {"Component": 2, "Cause": 5, "BaseIntensity": None,
+     "Kernel": 0.0000000000, "Decay": 4.0},
+    {"Component": 3, "Cause": 0, "BaseIntensity": None,
+     "Kernel": 3.1201482859, "Decay": 4.0},
+    {"Component": 3, "Cause": 1, "BaseIntensity": None,
+     "Kernel": 0.1642183309, "Decay": 4.0},
+    {"Component": 3, "Cause": 2, "BaseIntensity": None,
+     "Kernel": 0.1642183309, "Decay": 4.0},
+    {"Component": 3, "Cause": 3, "BaseIntensity": 0.2419979510,
+     "Kernel": 0.1642183309, "Decay": 4.0},
+    {"Component": 3, "Cause": 4, "BaseIntensity": None,
+     "Kernel": 0.0000000000, "Decay": 4.0},
+    {"Component": 3, "Cause": 5, "BaseIntensity": None,
+     "Kernel": 0.0000000000, "Decay": 4.0},
+    {"Component": 4, "Cause": 0, "BaseIntensity": None,
+     "Kernel": 0.0000000000, "Decay": 4.0},
+    {"Component": 4, "Cause": 1, "BaseIntensity": None,
+     "Kernel": 0.0000000000, "Decay": 4.0},
+    {"Component": 4, "Cause": 2, "BaseIntensity": None,
+     "Kernel": 0.0000000000, "Decay": 4.0},
+    {"Component": 4, "Cause": 3, "BaseIntensity": None,
+     "Kernel": 0.0000000000, "Decay": 4.0},
+    {"Component": 4, "Cause": 4, "BaseIntensity": 0.0000000000,
+     "Kernel": 0.0000000000, "Decay": 4.0},
+    {"Component": 4, "Cause": 5, "BaseIntensity": None,
+     "Kernel": 0.0000000000, "Decay": 4.0},
+    {"Component": 5, "Cause": 0, "BaseIntensity": None,
+     "Kernel": 0.0000000000, "Decay": 4.0},
+    {"Component": 5, "Cause": 1, "BaseIntensity": None,
+     "Kernel": 0.0000000000, "Decay": 4.0},
+    {"Component": 5, "Cause": 2, "BaseIntensity": None,
+     "Kernel": 0.0000000000, "Decay": 4.0},
+    {"Component": 5, "Cause": 3, "BaseIntensity": None,
+     "Kernel": 0.0000000000, "Decay": 4.0},
+    {"Component": 5, "Cause": 4, "BaseIntensity": None,
+     "Kernel": 0.0000000000, "Decay": 4.0},
+    {"Component": 5, "Cause": 5, "BaseIntensity": 0.0000000000,
+     "Kernel": 0.0000000000, "Decay": 4.0},
+]
+
+#: Orders of one share, each limit order one tick from the opposite touch: the marks under
+#: which the geometric placement acts at the touches, as the idealised one does.
+#: ``SigmaLogSize`` is positive because the schema requires it; a size other than one is a
+#: draw forty standard deviations out.
+UNIT_MARK_PARAMS: list[dict] = [
+    {"DepthDecay": 1.0, "MeanLogSize": 0.0,
+     "SigmaLogSize": 0.01, "Lot": 1},
+]
+
 #: Three flows of two abstract types, at the decay of the flows above.  They are for reading
 #: self-excitation before it is given a meaning in the book.
 #:
@@ -363,6 +460,16 @@ def trending_order_flow_params() -> HawkesParams:
 def trending_mark_params() -> MarkParams:
     """The marks the trending regime is studied with."""
     return MarkParams.from_records(TRENDING_MARK_PARAMS)
+
+
+def withdrawal_free_order_flow_params() -> HawkesParams:
+    """The resilient shape with no withdrawals, limit orders balancing market orders."""
+    return HawkesParams.from_records(WITHDRAWAL_FREE_ORDER_FLOW_PARAMS)
+
+
+def unit_mark_params() -> MarkParams:
+    """Orders of one share, limit orders one tick from the opposite touch."""
+    return MarkParams.from_records(UNIT_MARK_PARAMS)
 
 
 def self_exciting_pair_params() -> HawkesParams:

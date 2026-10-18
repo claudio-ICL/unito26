@@ -13,7 +13,8 @@ literally, the sentinel price would take the axis to 10^10.
 
 The book figures go through ``levels_map`` and know nothing about how a book stores its
 levels; the session figures read the LOBSTER frame and its statistics; the point-process
-figures take event times and types, and samples to set against a formula.
+figures take event times and types, and samples to set against a formula; the figures of
+two placements read a :class:`unito26.lob.coupling.CoupledPlacements`.
 """
 
 from __future__ import annotations
@@ -42,6 +43,17 @@ __all__ = [
     "counting_figure",
     "monte_carlo_figure",
     "exponential_qq_figure",
+    "coupled_mid_figure",
+    "coupled_touch_figure",
+    "coupled_path_figure",
+    "coupled_book_figure",
+    "coupled_depth_figure",
+    "discrepancy_survival_figure",
+    "discrepancy_survival_panels",
+    "agreement_figure",
+    "distance_terms_figure",
+    "fan_panels_figure",
+    "discrepancy_figure",
 ]
 
 #: The first four slots of the categorical palette, in order.  A side keeps its colour
@@ -906,4 +918,493 @@ def exponential_qq_figure(residuals: dict, levels: int = 1000, title: str = ""):
         figure.update_xaxes(title_text="Exp(1) quantile", row=1, col=column)
     figure.update_yaxes(title_text="sample quantile", row=1, col=1)
     figure.update_layout(title=title, height=420)
+    return figure
+
+
+# ---- two placements of one flow ---------------------------------------------------
+
+#: Which placement a trace is about: one colour each in every figure of a pair, and the
+#: dash as a second encoding, so that the two books stay apart where their lines coincide.
+IDEALISED_COLOUR = PALETTE[2]
+GEOMETRIC_COLOUR = PALETTE[4]
+IDEALISED_DASH = "dot"
+GEOMETRIC_DASH = "solid"
+PLACEMENT_STYLE = {
+    "Idealised": dict(color=IDEALISED_COLOUR, dash=IDEALISED_DASH),
+    "Geometric": dict(color=GEOMETRIC_COLOUR, dash=GEOMETRIC_DASH),
+}
+
+
+def _first_discrepancy_line(figure, pair, annotated: bool, **where) -> None:
+    """A vertical rule at the first event after which the books differ, if there is one."""
+    time = pair.first_discrepancy_time
+    if time is None:
+        return
+    label = dict(annotation_text="first discrepancy χ<sup>≠</sup>", annotation_font_color=INK,
+                 annotation_position="top right") if annotated else {}
+    figure.add_vline(x=time, line=dict(color=INK, width=1, dash="dash"), **label, **where)
+
+
+def _placement_steps(times, values, placement: str, **kwargs):
+    style = PLACEMENT_STYLE[placement]
+    return _steps(
+        times, values, placement.lower(), style["color"],
+        line=dict(color=style["color"], width=2.5, dash=style["dash"]), **kwargs,
+    )
+
+
+def coupled_mid_figure(pair):
+    """The mid-price of both books over time, and beneath it the geometric minus the
+    idealised one, which is zero until the first discrepancy."""
+    from plotly.subplots import make_subplots
+
+    frame = pair.frame
+    times = frame["TimeStamp"]
+    figure = make_subplots(
+        rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.08, row_heights=[0.65, 0.35],
+        subplot_titles=("Mid-price P<sup>m</sup>", "P<sup>m,geo</sup> − P<sup>m,id</sup>"),
+    )
+    for placement in PLACEMENT_STYLE:
+        figure.add_trace(
+            _placement_steps(times, frame[f"{placement}MidPrice"], placement), row=1, col=1
+        )
+    difference = frame["GeometricMidPrice"] - frame["IdealisedMidPrice"]
+    figure.add_trace(
+        _steps(times, difference, "difference", INK, line=dict(color=INK, width=1.5),
+               showlegend=False),
+        row=2, col=1,
+    )
+    _first_discrepancy_line(figure, pair, True, row=1, col=1)
+    _first_discrepancy_line(figure, pair, False, row=2, col=1)
+    figure.update_layout(
+        title="The mid-price under the two placements", template="simple_white",
+        hovermode="x unified", height=560, legend=dict(orientation="h", y=1.08, x=0),
+    )
+    figure.update_yaxes(title_text="ticks", row=1, col=1)
+    figure.update_yaxes(title_text="ticks", row=2, col=1)
+    figure.update_xaxes(title_text="time (s)", row=2, col=1)
+    return figure
+
+
+def coupled_touch_figure(pair):
+    """The size at each touch of both books over time, the bid above and the ask below."""
+    from plotly.subplots import make_subplots
+
+    frame = pair.frame
+    times = frame["TimeStamp"]
+    figure = make_subplots(
+        rows=2, cols=1, shared_xaxes=True, shared_yaxes="all", vertical_spacing=0.08,
+        subplot_titles=("Size at the best bid S<sup>b</sup>", "Size at the best ask S<sup>a</sup>"),
+    )
+    for row, side in enumerate(("Bid", "Ask"), start=1):
+        for placement in PLACEMENT_STYLE:
+            figure.add_trace(
+                _placement_steps(
+                    times, frame[f"{placement}{side}Size1"], placement, showlegend=row == 1
+                ),
+                row=row, col=1,
+            )
+        figure.update_yaxes(title_text="shares", rangemode="tozero", row=row, col=1)
+        _first_discrepancy_line(figure, pair, row == 1, row=row, col=1)
+    figure.update_layout(
+        title="The touches under the two placements", template="simple_white",
+        hovermode="x unified", height=560, legend=dict(orientation="h", y=1.08, x=0),
+    )
+    figure.update_xaxes(title_text="time (s)", row=2, col=1)
+    return figure
+
+
+def coupled_path_figure(pair, title: str = ""):
+    """The mid-price and the two touches of both books, on one time axis.
+
+    Until the first discrepancy the books are equal and each geometric line hides its
+    idealised one; the rule marks where they part.
+    """
+    from plotly.subplots import make_subplots
+
+    frame = pair.frame
+    times = frame["TimeStamp"]
+    rows = {
+        "MidPrice": "Mid-price P<sup>m</sup> (ticks)",
+        "BidSize1": "Size at the best bid S<sup>b</sup> (shares)",
+        "AskSize1": "Size at the best ask S<sup>a</sup> (shares)",
+    }
+    figure = make_subplots(
+        rows=3, cols=1, shared_xaxes=True, vertical_spacing=0.07,
+        row_heights=[0.4, 0.3, 0.3], subplot_titles=tuple(rows.values()),
+    )
+    for row, column in enumerate(rows, start=1):
+        for placement in PLACEMENT_STYLE:
+            figure.add_trace(
+                _placement_steps(
+                    times, frame[f"{placement}{column}"], placement, showlegend=row == 1
+                ),
+                row=row, col=1,
+            )
+        _first_discrepancy_line(figure, pair, row == 1, row=row, col=1)
+    figure.update_yaxes(tickformat=".1f", row=1, col=1)
+    figure.update_yaxes(rangemode="tozero", row=2, col=1)
+    figure.update_yaxes(rangemode="tozero", row=3, col=1)
+    figure.update_xaxes(title_text="time (s)", row=3, col=1)
+    figure.update_layout(
+        title=title, template="simple_white", hovermode="x unified", height=700,
+        legend=dict(orientation="h", y=1.07, x=0),
+    )
+    return figure
+
+
+def coupled_book_figure(pair, event: int, depth: int, title: str = ""):
+    """Both books after ``event``, side by side on one price axis, ``depth`` levels a side."""
+    import plotly.graph_objects as go
+    from plotly.subplots import make_subplots
+
+    depths = {"Idealised": pair.idealised_depth, "Geometric": pair.geometric_depth}
+    figure = make_subplots(
+        rows=1, cols=2, shared_yaxes=True, shared_xaxes=True, horizontal_spacing=0.05,
+        subplot_titles=tuple(f"{placement}, after event {event}" for placement in depths),
+    )
+    for column, depth_frame in enumerate(depths.values(), start=1):
+        row = depth_frame.loc[event]
+        bids = row[row > 0].sort_index(ascending=False).head(depth)
+        asks = (-row[row < 0]).sort_index().head(depth)
+        for name, side, colour in (("bid", bids, BID_COLOUR), ("ask", asks, ASK_COLOUR)):
+            figure.add_trace(
+                go.Bar(
+                    x=side.to_numpy(), y=side.index.to_numpy(), orientation="h", name=name,
+                    marker=dict(color=colour, line=dict(color=SURFACE, width=2)),
+                    showlegend=column == 1,
+                    hovertemplate="%{y}: %{x} shares<extra>" + name + "</extra>",
+                ),
+                row=1, col=column,
+            )
+        figure.update_xaxes(title_text="size (shares)", row=1, col=column)
+    figure.update_yaxes(title_text="price (ticks)", dtick=1, row=1, col=1)
+    figure.update_layout(
+        title=title, template="simple_white", barmode="overlay", bargap=0.15, height=460,
+        legend=dict(orientation="h", y=1.1, x=0),
+    )
+    return figure
+
+
+#: Bid size positive, ask size negative, on the two side colours about a neutral zero.
+DEPTH_SCALE = [[0.0, ASK_COLOUR], [0.5, "#f0efea"], [1.0, BID_COLOUR]]
+
+
+def coupled_depth_figure(pair):
+    """The whole of both books over time, as heatmaps side by side on one price axis.
+
+    A cell is the size resting at a price in ticks after an event, positive on the bid and
+    negative on the ask, so the boundary between the colours is the spread.  The two
+    panels share one colour scale.
+    """
+    import numpy as np
+    import plotly.graph_objects as go
+    from plotly.subplots import make_subplots
+
+    depths = {"Idealised": pair.idealised_depth, "Geometric": pair.geometric_depth}
+    prices = sorted(set(pair.idealised_depth.columns) | set(pair.geometric_depth.columns))
+    top = max(float(np.abs(depth.to_numpy()).max(initial=0.0)) for depth in depths.values())
+    times = pair.frame["TimeStamp"].to_numpy()
+    figure = make_subplots(
+        rows=1, cols=2, shared_yaxes=True, shared_xaxes=True, horizontal_spacing=0.04,
+        subplot_titles=tuple(depths),
+    )
+    for column, depth in enumerate(depths.values(), start=1):
+        z = depth.reindex(columns=prices, fill_value=0.0).to_numpy(dtype=float).T
+        figure.add_trace(
+            go.Heatmap(
+                x=times, y=prices, z=z, zmin=-top, zmax=top, zmid=0.0,
+                colorscale=DEPTH_SCALE, showscale=column == 2,
+                colorbar=dict(title="size", tickfont=dict(color=MUTED)),
+                hovertemplate="%{x:.3f} s, %{y}: %{z}<extra></extra>",
+            ),
+            row=1, col=column,
+        )
+        figure.update_xaxes(title_text="time (s)", row=1, col=column)
+        _first_discrepancy_line(figure, pair, column == 1, row=1, col=column)
+    figure.update_yaxes(title_text="price (ticks)", row=1, col=1)
+    figure.update_layout(
+        title="The book under the two placements", template="simple_white", height=520
+    )
+    return figure
+
+
+def discrepancy_survival_figure(times, horizon: float, theoretical=None):
+    """The fraction of paths whose books have not yet differed, against time.
+
+    ``times`` holds the first discrepancy time of each path, NaN for a path whose books
+    never differed by ``horizon``.  Every path is followed to the same horizon, so the
+    curve is the plain empirical survival function on ``[0, horizon]``.  ``theoretical``,
+    when given, is ``(t, S(t))`` and is drawn as a line.
+    """
+    import numpy as np
+    import plotly.graph_objects as go
+
+    times = np.asarray(times, dtype=float)
+    observed = np.sort(times[np.isfinite(times)])
+    paths = times.size
+    figure = go.Figure(
+        _steps(
+            np.r_[0.0, observed, horizon],
+            np.r_[1.0, 1.0 - np.arange(1, observed.size + 1) / paths,
+                  1.0 - observed.size / paths],
+            "empirical", GEOMETRIC_COLOUR,
+            hovertemplate="%{x:.3f} s: %{y:.3f}<extra>empirical</extra>",
+        )
+    )
+    if theoretical is not None:
+        grid, survival = theoretical
+        figure.add_trace(
+            go.Scatter(
+                x=grid, y=survival, mode="lines", name="theoretical",
+                line=dict(color=INK, width=1.5, dash="dot"),
+            )
+        )
+    figure.update_layout(
+        title=f"Survival of the first discrepancy, {paths} paths", template="simple_white",
+        height=420, xaxis_title="time (s)", yaxis_title="fraction not yet differed",
+        yaxis_range=[0, 1.02], legend=dict(orientation="h", y=1.08, x=0),
+    )
+    return figure
+
+
+#: The curves set against the coupled runs, in the order they are given: ink first.
+FORMULA_LINES = (
+    dict(color=INK, width=2, dash="dot"),
+    dict(color=MUTED, width=2, dash="dash"),
+    dict(color=MUTED, width=1.5, dash="dashdot"),
+)
+
+
+def discrepancy_survival_panels(times: dict, clock, theoretical: dict, title: str = ""):
+    """The survival of the first discrepancy in a grid of panels, on a logarithmic time axis.
+
+    ``times[row][column]`` holds the first discrepancy time of each path of one experiment,
+    NaN where the books had not differed by the end of ``clock``; its empirical survival
+    is drawn as steps in the geometric colour.  ``theoretical[row][column]`` maps a name to
+    a curve on ``clock``, drawn in the styles of ``FORMULA_LINES`` by position, one legend
+    entry a name.
+    """
+    import numpy as np
+    import plotly.graph_objects as go
+    from plotly.subplots import make_subplots
+
+    clock = np.asarray(clock, dtype=float)
+    row_labels = list(times)
+    column_labels = list(next(iter(times.values())))
+    figure = make_subplots(
+        rows=len(row_labels), cols=len(column_labels), shared_xaxes=True, shared_yaxes=True,
+        horizontal_spacing=0.025, vertical_spacing=0.1,
+        subplot_titles=[f"{row}, {column}" for row in row_labels for column in column_labels],
+    )
+    shown = set()
+    for r, row in enumerate(row_labels, start=1):
+        for c, column in enumerate(column_labels, start=1):
+            sample = np.asarray(times[row][column], dtype=float)
+            parted = np.sort(sample[np.isfinite(sample)])
+            survival = 1.0 - np.searchsorted(parted, clock, side="right") / sample.size
+            figure.add_trace(
+                _steps(clock, survival, "coupled runs", GEOMETRIC_COLOUR,
+                       line=dict(color=GEOMETRIC_COLOUR, width=2.5),
+                       showlegend="coupled runs" not in shown, legendgroup="coupled runs",
+                       hovertemplate="%{x:.3f} s: %{y:.3f}<extra>coupled runs</extra>"),
+                row=r, col=c,
+            )
+            shown.add("coupled runs")
+            for slot, (name, curve) in enumerate(theoretical[row][column].items()):
+                figure.add_trace(
+                    go.Scatter(
+                        x=clock, y=curve, mode="lines", name=name, legendgroup=name,
+                        line=FORMULA_LINES[slot], showlegend=name not in shown,
+                        hovertemplate="%{x:.3f} s: %{y:.3f}<extra>" + name + "</extra>",
+                    ),
+                    row=r, col=c,
+                )
+                shown.add(name)
+    figure.update_xaxes(type="log", range=[np.log10(clock[0]), np.log10(clock[-1])],
+                        dtick=1)
+    for c in range(1, len(column_labels) + 1):
+        figure.update_xaxes(title_text="time (s)", row=len(row_labels), col=c)
+    for r in range(1, len(row_labels) + 1):
+        figure.update_yaxes(title_text="P(χ<sup>≠</sup> > t)", row=r, col=1)
+    figure.update_yaxes(range=[0, 1.04])
+    figure.update_layout(
+        title=title, template="simple_white", height=300 * len(row_labels) + 160,
+        legend=dict(orientation="h", y=-0.3 / len(row_labels), x=0), hovermode="x unified",
+    )
+    return figure
+
+
+def agreement_figure(tables: dict, title: str = ""):
+    """The frequency of agreement at a limit event against ``eta (1 - eta)^zeta*``, one panel per
+    ``DepthDecay``.
+
+    ``tables`` maps a depth decay to :func:`unito26.lob.coupling.agreement_by_case`.  A case
+    is a marker at its target offset, a circle when the touch of the order's side held less
+    than ``Sbar`` and a diamond when it was full, with two standard errors either side.
+    """
+    import numpy as np
+    import plotly.graph_objects as go
+    from plotly.subplots import make_subplots
+
+    from unito26.lob.coupling import agreement_probability
+
+    figure = make_subplots(
+        rows=1, cols=len(tables), shared_yaxes=True, horizontal_spacing=0.04,
+        subplot_titles=[f"η = {decay:g}" for decay in tables],
+    )
+    for column, (decay, table) in enumerate(tables.items(), start=1):
+        offsets = np.arange(-1, int(table["TargetOffset"].max()) + 1)
+        figure.add_trace(
+            go.Scatter(
+                x=offsets, y=agreement_probability(offsets, decay), mode="lines+markers",
+                name="η(1−η)<sup>ζ*</sup>", showlegend=column == 1,
+                line=dict(color=INK, width=1.5, dash="dot"),
+                marker=dict(color=INK, size=9, symbol="line-ew-open", line=dict(width=2)),
+                hovertemplate="ζ* = %{x}: %{y:.3f}<extra>η(1−η)^ζ*</extra>",
+            ),
+            row=1, col=column,
+        )
+        for full, symbol, label in ((False, "circle", "touch below S̄"),
+                                    (True, "diamond", "touch at S̄")):
+            cases = table[table.index.get_level_values("TouchFull") == full]
+            figure.add_trace(
+                go.Scatter(
+                    x=cases["TargetOffset"], y=cases["Agreed"], mode="markers",
+                    name=f"coupled runs, {label}", showlegend=column == 1,
+                    marker=dict(color=GEOMETRIC_COLOUR, size=11, symbol=symbol,
+                                line=dict(color=SURFACE, width=2)),
+                    error_y=dict(type="data", array=2 * cases["StandardError"],
+                                 color=GEOMETRIC_COLOUR, thickness=1.5, width=4),
+                    customdata=np.c_[cases.index.get_level_values("Spread"),
+                                     cases["LimitEvents"]],
+                    hovertemplate="spread %{customdata[0]} ticks, %{customdata[1]} events: "
+                                  "%{y:.3f}<extra></extra>",
+                ),
+                row=1, col=column,
+            )
+        figure.update_xaxes(title_text="target offset ζ*", dtick=1, row=1, col=column)
+    figure.update_yaxes(title_text="frequency of agreement", range=[-0.03, 1.03], row=1, col=1)
+    figure.update_layout(
+        title=title, template="simple_white", height=440,
+        legend=dict(orientation="h", y=-0.2, x=0),
+    )
+    return figure
+
+
+def distance_terms_figure(terms, title: str = ""):
+    """The distance ``2 Sbar (P^m_geometric - P^m_idealised)`` after each event, and the
+    three terms it is the sum of, signed as they enter, on one time axis and one scale.
+
+    ``terms`` is :func:`unito26.lob.coupling.distance_terms`.
+    """
+    from plotly.subplots import make_subplots
+
+    rows = {
+        "2S̄ (P<sup>m,geo</sup> − P<sup>m,id</sup>)": terms["Distance"],
+        "(a) OFI<sup>geo</sup> − OFI<sup>id</sup>": terms["ImbalanceMismatch"],
+        "−(b) the best sizes, geometric less idealised": -terms["TouchSizeMismatch"],
+        "−(c) the outer sizes of the geometric moves, less S̄ a tick": -terms["DepthMismatch"],
+    }
+    figure = make_subplots(
+        rows=len(rows), cols=1, shared_xaxes=True, shared_yaxes="all", vertical_spacing=0.06,
+        subplot_titles=tuple(rows),
+    )
+    for row, (name, values) in enumerate(rows.items(), start=1):
+        colour = GEOMETRIC_COLOUR if row == 1 else INK
+        figure.add_trace(
+            _steps(terms["TimeStamp"], values, name, colour,
+                   line=dict(color=colour, width=2 if row == 1 else 1.5), showlegend=False),
+            row=row, col=1,
+        )
+        figure.add_hline(y=0, line=dict(color=AXIS, width=1), row=row, col=1)
+        figure.update_yaxes(title_text="shares", row=row, col=1)
+    figure.update_xaxes(title_text="time (s)", row=len(rows), col=1)
+    figure.update_layout(title=title, template="simple_white", hovermode="x unified",
+                         height=760)
+    return figure
+
+
+def fan_panels_figure(
+    paths: dict, clock, curves: dict, shown: int, y_title: str, shared_yaxes, title: str = ""
+):
+    """A fan of paths in a grid of panels, with summary curves over it.
+
+    ``paths[row][column]`` is an array with a row per path and a column per time of
+    ``clock``; its first ``shown`` rows are drawn as thin lines.  ``curves[row][column]``
+    maps a name to a curve on ``clock``, the first drawn in the geometric colour and the
+    others in the styles of ``FORMULA_LINES``, one legend entry a name.  ``shared_yaxes`` is
+    plotly's: True within a row, ``"all"`` across the grid, False for none.
+    """
+    import numpy as np
+    import plotly.graph_objects as go
+    from plotly.subplots import make_subplots
+
+    row_labels = list(paths)
+    column_labels = list(next(iter(paths.values())))
+    figure = make_subplots(
+        rows=len(row_labels), cols=len(column_labels), shared_xaxes=True,
+        shared_yaxes=shared_yaxes, horizontal_spacing=0.025 if shared_yaxes else 0.06,
+        vertical_spacing=0.1,
+        subplot_titles=[f"{row}, {column}" for row in row_labels for column in column_labels],
+    )
+    legend = set()
+    for r, row in enumerate(row_labels, start=1):
+        for c, column in enumerate(column_labels, start=1):
+            sample = np.asarray(paths[row][column], dtype=float)
+            for k, path in enumerate(sample[:shown]):
+                figure.add_trace(
+                    go.Scatter(
+                        x=clock, y=path, mode="lines", name="a path", legendgroup="a path",
+                        line=dict(color=AXIS, width=1), hoverinfo="skip",
+                        showlegend=k == 0 and "a path" not in legend,
+                    ),
+                    row=r, col=c,
+                )
+            legend.add("a path")
+            for slot, (name, curve) in enumerate(curves[row][column].items()):
+                line = (dict(color=GEOMETRIC_COLOUR, width=2.5) if slot == 0
+                        else FORMULA_LINES[slot - 1])
+                figure.add_trace(
+                    go.Scatter(
+                        x=clock, y=curve, mode="lines", name=name, legendgroup=name,
+                        line=line, showlegend=name not in legend,
+                        hovertemplate="%{x:.0f} s: %{y:.2f}<extra>" + name + "</extra>",
+                    ),
+                    row=r, col=c,
+                )
+                legend.add(name)
+    for c in range(1, len(column_labels) + 1):
+        figure.update_xaxes(title_text="time (s)", row=len(row_labels), col=c)
+    for r in range(1, len(row_labels) + 1):
+        figure.update_yaxes(title_text=y_title, row=r, col=1)
+    figure.update_layout(
+        title=title, template="simple_white", height=320 * len(row_labels) + 160,
+        legend=dict(orientation="h", y=-0.3 / len(row_labels), x=0),
+    )
+    return figure
+
+
+def discrepancy_figure(discrepancies: dict, title: str = ""):
+    """A measure of how far the two books lie apart, against ``DepthDecay``.
+
+    ``discrepancies`` maps a label -- a size law, say -- to a series indexed by the depth
+    decay.  One line per label, the colour by slot.
+    """
+    import plotly.graph_objects as go
+
+    figure = go.Figure()
+    for slot, (label, series) in enumerate(discrepancies.items()):
+        colour = PALETTE[slot % len(PALETTE)]
+        figure.add_trace(
+            go.Scatter(
+                x=series.index, y=series.to_numpy(), name=label, mode="lines+markers",
+                line=dict(color=colour, width=2), marker=dict(color=colour, size=8),
+                hovertemplate="DepthDecay %{x}: %{y:.4g}<extra>" + label + "</extra>",
+            )
+        )
+    figure.update_layout(
+        title=title, template="simple_white", height=420,
+        xaxis_title="DepthDecay", legend=dict(orientation="h", y=1.08, x=0),
+    )
     return figure
