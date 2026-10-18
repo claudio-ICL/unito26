@@ -217,45 +217,38 @@
 \newcommand{\signedFlow}{Y}
 \newcommand{\countCovarianceRate}{D}
 \newcommand{\flowVolatility}{\volatilityCoefficient_{\signedFlow}}
-% Two books driven by the same events: the idealised and the geometric placement, and the
-% mid-price of either. Not i, which is the index of a level.
-\newcommand{\idealisedBook}{\mathrm{id}}
-\newcommand{\geometricBook}{\mathrm{geo}}
+% The book of the idealised placement, after Cont, Kukanov and Stoikov.
+\newcommand{\cks}{\mathrm{CKS}}
+% The book of the geometric placement with orders of one share.
+\newcommand{\hawOne}{\mathrm{haw}\text{-}1}
+% The book of the geometric placement with orders of random size.
+\newcommand{\hawQ}{\mathrm{haw}\text{-}q}
+% The mid-price of the book named in the superscript.
 \newcommand{\midPriceOf}[1]{\price^{m,{#1}}}
 % The size at the outer of the two values of a best price that moves.
 \newcommand{\outerSize}{\hat{\size}}
-% The offset at which the geometric placement prices a limit order where the idealised one
-% does, the limit types, and their sum along the path. Sigma is the volatility, so the
-% stopping times are chi: the first discrepancy of the two books, the first event the
-% idealised placement cannot place, and the exit of the touch walks.
-\newcommand{\targetOffset}{\priceOffset^{*}}
-\newcommand{\limitTypes}{\mathrm{lim}}
-\newcommand{\cumulativeTargetOffset}{J}
-\newcommand{\discrepancyTime}{\chi^{\neq}}
-\newcommand{\breachTime}{\chi^{\emptyset}}
-\newcommand{\walkExitTime}{\chi^{\partial}}
+% The first time the mid-prices of two books differ. Sigma is the volatility.
+\newcommand{\partingTime}{\chi}
+% The first time a best price of a book moves.
+\newcommand{\firstMove}{\psi}
+% The difference of two mid-prices. D is the count covariance rate.
+\newcommand{\discrepancy}{\mathcal{D}}
+% A touch walk: the opening depth plus the shares the events have brought to one touch.
 \newcommand{\touchWalk}[1]{\Upsilon^{#1}}
-% The argument and the exponent of the generating functional of the counts, and the rate at
-% which the generating function of the limit-order count decays.
-\newcommand{\pgfArgument}{x}
-\newcommand{\pgfExponent}{\psi}
-\newcommand{\decouplingRate}{c}
-% The slope of the geometric mid-price on the signed count, and what it leaves.
-\newcommand{\effectiveImpact}{\gamma}
-\newcommand{\impactRemainder}{\xi}
-% The signed pressure of the cluster of an event, (I - Gamma)^{-T} pressure, and the volatility
-% of the part of the geometric mid-price that the signed count does not explain.
-\newcommand{\clusterPressure}{\bar{\pressure}}
-\newcommand{\orthogonalVolatility}{\volatilityCoefficient_{\perp}}
-% The geometric book seen from its best bid, the state it forms with the decayed counts, the
-% move of its mid-price at an event, the drift of that move, the solution of the Poisson
-% equation of the drift, and the move corrected by it.
-\newcommand{\bookShape}{\mathcal{B}}
-\newcommand{\geometricState}{\mathcal{Y}}
-\newcommand{\midMove}{\delta}
-\newcommand{\midDrift}{\bar{\midMove}}
-\newcommand{\poissonSolution}{g}
-\newcommand{\correctedMove}{\tilde{\midMove}}
+% The running maximum of the two touch walks.
+\newcommand{\walkMaximum}{\bar{\Upsilon}}
+% The shares an event of each type brings to one side. Not u, the right Perron vector.
+\newcommand{\sideVector}[1]{\pressure^{#1}}
+% The fluid touch, in units of the opening depth.
+\newcommand{\fluidTouch}{r}
+% The time, in units of the opening depth, at which the fluid touch reaches zero.
+\newcommand{\fluidEmptying}{s^{*}}
+% The probability that an event is placed behind the touch of its side. Not beta, the decay.
+\newcommand{\behindProbability}{\alpha}
+% The events that a geometric book places behind the touch of their side. Not B, the bid orders.
+\newcommand{\behindSet}{\mathcal{H}}
+% The depth per tick at the moves of a best price of a geometric book.
+\newcommand{\effectiveDepth}{\tilde{\size}}
 
 %% THE FASTER BOOK %%
 % The occupied prices of a side, and the band of ticks an array-backed book indexes:

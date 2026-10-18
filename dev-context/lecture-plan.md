@@ -21,7 +21,7 @@ One notes section per class, and slides and a notebook in every class.
 | Class 3 | §1.3 `sec.pointProcesses` | 34 frames | `04-simulating-self-excitation` · `05-moments-and-timescales` · `06-simulation-and-goodness-of-fit`, interleaved with the deck |
 | Class 4 | §1.4 `sec.priceFormation`, §1.5 `sec.lobsterEmpirics` | 29 + 4 frames | `07-the-order-flow-imbalance` · `08-forecasting-the-mid`, interleaved with the deck |
 | Laboratory, 13 October | §1.3.3, §1.3.4, on the implementation | none | `09-hawkes-processes-in-the-lab` |
-| Class 5, 19 October | §1.4.4 `sec.idealisedAgainstHawkes` | 34 frames | `10-the-idealised-book-against-the-hawkes-book`, interleaved with the deck |
+| Class 5, 19 October | §1.4.4 `sec.idealisedAgainstHawkes`: `sec.threeFlows`, `sec.partingTime`, `sec.discrepancy`, `sec.uncertainSizes` | 34 frames | `10-the-idealised-book-against-the-hawkes-book`, interleaved with the deck |
 
 ---
 
@@ -205,7 +205,7 @@ The cut order lives in each file's header, so it is read where it is needed. In 
 | 2 | the consolidated tape — Regulation NMS is background and plays no part in the assignment | the nomenclature frame, the vendor names surviving under the schematic; then hand the fold's termination argument to the notebook |
 | 3 | the Markov state, its generator spoken over the $Z$ path | the index order, said over the definition; then the three routes, said over the QQ schematic |
 | 4 | the total response, as a clause on the frame before it | the position of the bid in shares; then the schematic of the residual absorbing the flow |
-| 5 | the decoupling rate, said over the generating functional | the two contributions of a geometric order, said over the decomposition; then the exhaustion of a side and the deleted withdrawals, said over the table of the two regimes |
+| 5 | the picture of the drawdown, said over the touch walks | the table of the two placements, said over the CKS placement; then the decomposition with sizes, said over what the sizes add |
 
 **Class 3 carries the second-order block, the scalar case and sub- and supercriticality**,
 which the brief for lectures 3 and 4 asked for, on one two-type process with abstract types.
@@ -354,6 +354,7 @@ cannot read anything before teaching, so a checklist gated on it could never clo
 | `notebooks/lectures/07-the-order-flow-imbalance.ipynb` | ☑ | ☑ | ☑ | ☐ |
 | `notebooks/lectures/08-forecasting-the-mid.ipynb` | ☑ | ☑ | ☑ | ☐ |
 | `notebooks/lectures/09-hawkes-processes-in-the-lab.ipynb` | ☑ | ☑ | ☑ | ☐ |
+| `notebooks/lectures/10-the-idealised-book-against-the-hawkes-book.ipynb` | ☑ | ☑ | ☑ | ☐ |
 | `unito26slides.cls` and `slide_formatting.tex` | ☑ | ☑ | ☑ | ☑ |
 | the three two-type pairs of `config`, and their tests | ☑ | ☑ | ☑ | ☐ |
 | `hawkes`: the timescales, the covariance, simulation from a state | ☑ | ☑ | ☑ | ☐ |

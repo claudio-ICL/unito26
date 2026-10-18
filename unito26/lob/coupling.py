@@ -1,57 +1,79 @@
-"""The idealised and the geometric placement of one order flow, on the same events.
+"""The CKS placement and the geometric placement of one order flow, on the same events.
 
 Example ``example.idealisedPlacement`` and Definition ``def.geometricPlacement`` of the
-notes turn the events of a six-type Hawkes process into messages in two ways.  The first
-keeps Assumption ``assumption.idealisedBook`` true, so that the identity of the order flow
-imbalance is exact; the second is the flow the package simulates.  Drawn on one path of
-events and folded from one opening book, the two books are equal until the placements turn
-an event into different orders, and :class:`CoupledPlacements` records both
-sessions, aligned on the event, and the first event after which they differ.
+notes turn the events of a six-type Hawkes process into messages in two ways.  The first,
+CKS after the stylised book of Cont, Kukanov and Stoikov, sends orders of one share to the
+touches and keeps Assumption ``assumption.idealisedBook`` true, so that the identity of the
+order flow imbalance is exact; the second is the flow the package simulates.  Three flows
+are read on one recorded path, from one opening book:
 
-With orders of one share and ``DepthDecay`` one, the geometric placement sends a limit order
-one tick from the opposite touch, and a market order takes one share from the opposite
-touch under both.  A limit order is the same order exactly when the idealised placement
-sends it to that price too: at a spread of one tick, to a touch holding less than ``Sbar``, and at a spread
-of two, from a touch holding ``Sbar``.  A withdrawal differs whenever the geometric
-placement draws a level behind the touch.
+* CKS;
+* haw-1, the geometric placement with orders of one share;
+* haw-q, the geometric placement with sizes of mean ``mbar``, on the opening book with
+  every size multiplied by ``mbar``.
+
+Sizes are read in units of ``mbar``, the :data:`SizeUnit`, so that haw-1 is haw-q at zero
+size variance.  The object is ``chi``, the first event after which the mid-prices of CKS
+and of a Hawkes flow differ, and from it the discrepancy
+``D_t = P^{m,CKS}_t - P^{m,haw}_t``.  The marks are drawn independently of the path, so
+the variance of ``D_t`` across paths and marks is the variance of its mean given the path
+plus the mean of its variance given the path: :func:`variance_split`.
+
+The notes assume that no side of either book empties over the horizon.  The folds here
+detect the event that would empty one and stop before it.
+
+The last section is what the notes predict of the pair, each prediction a function of the
+specification and of the opening book: the touch walks of CKS and its first move, the fluid
+touch of haw-1 and the time it empties, the two timescales of the parting, and the closed
+form of the variance, with the two statistics of the Hawkes book it reads.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Iterator
+from enum import Enum
+from typing import Iterator, NewType
 
 import numpy as np
 import pandas as pd
 
-from unito26.lob import frames
-from unito26.lob.hawkes import HawkesParams
+from unito26.lob.hawkes import Clock, HawkesParams
 from unito26.lob.idealised import AssumptionBreach, IdealisedFlow, UniformDepth, idealised_book
-from unito26.lob.messages import BUY, SELL, GridDepth, Message, PriceUnit, ReportedDepth
-from unito26.lob.orderbook import AggregateBook
-from unito26.lob.session import MarketSession
-from unito26.lob.simulate import EventJournal, EventType, MarkParams, OrderFlowSimulator
-from unito26.lob.statistics import SessionStatistics
+from unito26.lob.messages import BUY, SELL, GridDepth, Message
+from unito26.lob.orderbook import AggregateBook, SubmitResult
+from unito26.lob.simulate import EventType, MarkParams, OrderFlowSimulator
 
 __all__ = [
+    "SizeUnit",
     "RecordedEvents",
     "Replay",
-    "CoupledPlacements",
-    "first_discrepancy",
-    "target_offsets",
-    "agreement_probability",
-    "touch_shares",
-    "conditional_survival",
-    "limit_event_outcomes",
-    "agreement_by_case",
-    "idealised_readings",
-    "geometric_readings",
-    "geometric_mid_moves",
+    "Mover",
+    "Parting",
+    "FirstMoves",
+    "CoupledFlows",
+    "first_price_discrepancy",
+    "first_price_moves",
+    "touch_walks",
+    "cks_mids",
+    "hawkes_mids",
+    "variance_split",
     "distance_terms",
-    "touch_walk_exit",
+    "side_vector",
+    "cks_touch_walks",
+    "cks_first_move",
+    "fluid_touch",
+    "fluid_emptying_time",
+    "diffusive_scale",
+    "second_regime_rate",
+    "PlacementStatistics",
+    "VarianceRates",
+    "closed_form_rates",
 ]
 
-STATISTICS = SessionStatistics((GridDepth(1),), (), (1,))
+#: ``mbar``, the shares in one unit of size: the mean order size of a Hawkes flow, and the
+#: factor by which its opening book multiplies the CKS one.  A ``NewType`` because it is a
+#: count of shares standing beside ``Sbar``, a count of units.
+SizeUnit = NewType("SizeUnit", int)
 
 
 @dataclass(frozen=True, slots=True, eq=False)
@@ -134,83 +156,221 @@ class Replay:
             yield float(times[index]), int(types[index])
 
 
-def _signed_levels(book: AggregateBook) -> dict[int, int]:
-    """The whole book as one map, ``+S`` at a bid price and ``-S`` at an ask price.
+# ---- one book and its placement ------------------------------------------------------
 
-    The book never crosses, so no price carries both signs, and two books are equal exactly
-    when their maps are.
+
+class _Fold:
+    """A book and the stream of messages its placement sends it.
+
+    Iterating applies each message and yields it with what :meth:`AggregateBook.apply`
+    returned, so that between two steps the book holds the result of the last.
     """
-    asks = {price: -size for price, size in book.levels_map(SELL).items()}
-    return dict(book.levels_map(BUY)) | asks
+
+    def __init__(
+        self, name: str, book: AggregateBook, stream: Iterator[Message], record: bool
+    ):
+        self.name = name
+        self.book = book
+        self._stream = stream
+        self._record = record
+
+    def __iter__(self) -> Iterator[tuple[Message, SubmitResult | None]]:
+        for message in self._stream:
+            yield message, self.book.apply(message, self._record)
+
+    def occupied(self) -> Iterator[tuple[Message, SubmitResult | None]]:
+        """The same steps, stopped by an :class:`AssumptionBreach` naming the book at the
+        first message that would leave a side of it empty.  The CKS placement refuses to
+        send that message; a geometric one is applied, and not yielded."""
+        try:
+            for message, result in self:
+                for direction, side in ((BUY, "bid"), (SELL, "ask")):
+                    if not self.book.levels_map(direction):
+                        raise AssumptionBreach(
+                            f"at {message.time:.6f} s the {side} side empties"
+                        )
+                yield message, result
+        except AssumptionBreach as breach:
+            raise AssumptionBreach(f"{self.name} book: {breach}") from None
 
 
-def _until_breach(stream: Iterator[Message], breaches: list) -> Iterator[Message]:
-    try:
-        yield from stream
-    except AssumptionBreach as breach:
-        breaches.append(breach)
-
-
-def _recording(stream: Iterator[Message], book: AggregateBook, states: list) -> Iterator[Message]:
-    """The stream, recording the whole book after each message.
-
-    A message is applied by the consumer between one ``next`` and the following one, so on
-    resuming the book holds its result.
-    """
-    for message in stream:
-        yield message
-        states.append(_signed_levels(book))
-
-
-def _touch_frame(session: MarketSession) -> pd.DataFrame:
-    """Per row: the mid, the two touches in ticks with an empty side as NaN, and ``e_n``."""
-    book = session.lobster_book
-    frame = pd.DataFrame(
-        {
-            "MidPrice": session.stats["MidPrice"].to_numpy(),
-            "BidPrice1": book["BidPrice1"].where(book["BidPrice1"] != frames.BID_PADDING),
-            "BidSize1": book["BidSize1"],
-            "AskPrice1": book["AskPrice1"].where(book["AskPrice1"] != frames.ASK_PADDING),
-            "AskSize1": book["AskSize1"],
-            "OrderFlowContribution": session.stats["OrderFlowContribution"].to_numpy(),
-        }
+def _hawkes_opening(
+    size_unit: SizeUnit,
+    uniform_depth: UniformDepth,
+    touches: dict[int, tuple[int, int]],
+    levels: GridDepth,
+) -> AggregateBook:
+    """``idealised_book(uniform_depth, touches, levels)``, every size times ``size_unit``."""
+    book = idealised_book(uniform_depth, touches, levels)
+    bids, asks = (
+        {price: size * size_unit for price, size in book.levels_map(direction).items()}
+        for direction in (BUY, SELL)
     )
-    return frame.reset_index(drop=True).astype(float)
+    return AggregateBook.from_levels(bids, asks)
+
+
+def _cks_fold(
+    events: RecordedEvents,
+    uniform_depth: UniformDepth,
+    touches: dict[int, tuple[int, int]],
+    levels: GridDepth,
+    record: bool,
+) -> _Fold:
+    book = idealised_book(uniform_depth, touches, levels)
+    stream = IdealisedFlow(events.replay(), uniform_depth).stream(book, events.horizon, None)
+    return _Fold("CKS", book, stream, record)
+
+
+def _hawkes_fold(
+    events: RecordedEvents,
+    marks: MarkParams,
+    size_unit: SizeUnit,
+    uniform_depth: UniformDepth,
+    touches: dict[int, tuple[int, int]],
+    levels: GridDepth,
+    rng: np.random.Generator | int | None,
+    record: bool,
+) -> _Fold:
+    """The geometric placement of ``events``; its reference price, read only while a side is
+    empty, is the opening bid."""
+    book = _hawkes_opening(size_unit, uniform_depth, touches, levels)
+    simulator = OrderFlowSimulator.driven_by(events.replay(), marks, touches[BUY][0], rng)
+    return _Fold("Hawkes", book, simulator.stream(book, events.horizon, None), record)
+
+
+def _prices(book: AggregateBook) -> tuple[int, int]:
+    return book.best_bid_price, book.best_ask_price
+
+
+def _touch(book: AggregateBook) -> tuple[int, int, int, int]:
+    """``(P^b, S^b, P^a, S^a)``, of a book with both sides occupied."""
+    bid, ask = book.best_bid_price, book.best_ask_price
+    return bid, book.size_at(BUY, bid), ask, book.size_at(SELL, ask)
+
+
+# ---- the parting ----------------------------------------------------------------------
+
+
+class Mover(Enum):
+    """The book whose best price moved at the parting, or both, to different prices."""
+
+    CKS = "CKS"
+    HAWKES = "Haw"
+    BOTH = "both"
+
+
+@dataclass(frozen=True, slots=True)
+class Parting:
+    """``chi``: the event after which the mids of the CKS and the Hawkes book first differ.
+
+    Before it the two books have the same best prices.  An event moves at most one best
+    price of each book, and the same one when it moves both, so at ``chi`` exactly one best
+    price differs: the one on ``side``.  ``moved`` says which book moved it.
+    """
+
+    event: int
+    time: float
+    event_type: EventType
+    moved: Mover
+    side: int
+
+
+def _parting(
+    events: RecordedEvents,
+    event: int,
+    before: tuple[int, int],
+    cks: tuple[int, int],
+    hawkes: tuple[int, int],
+) -> Parting:
+    """The parting at ``event``, from the best prices ``(P^b, P^a)`` the books shared before
+    it and those of each after it."""
+    side = BUY if cks[0] != hawkes[0] else SELL
+    k = 0 if side == BUY else 1
+    moved = {
+        (True, False): Mover.CKS,
+        (False, True): Mover.HAWKES,
+        (True, True): Mover.BOTH,
+    }[(cks[k] != before[k], hawkes[k] != before[k])]
+    return Parting(
+        event, float(events.times[event]), EventType(int(events.types[event])), moved, side
+    )
+
+
+# ---- the pair -------------------------------------------------------------------------
+
+
+def _contributions(bid, bid_size, ask, ask_size) -> np.ndarray:
+    """``e_n`` by (``eq.orderFlowContribution``), each row of the touches against the one
+    before it."""
+    return (
+        (bid[1:] >= bid[:-1]) * bid_size[1:] - (bid[1:] <= bid[:-1]) * bid_size[:-1]
+        - (ask[1:] <= ask[:-1]) * ask_size[1:] + (ask[1:] >= ask[:-1]) * ask_size[:-1]
+    )
+
+
+def _book_columns(prefix: str, touches: np.ndarray, unit: int) -> dict[str, np.ndarray]:
+    """The columns of one book, the sizes read in units of ``unit`` shares, from
+    ``(P^b, S^b, P^a, S^a)`` at the opening and after each event."""
+    bid, ask = touches[:, 0], touches[:, 2]
+    bid_size, ask_size = touches[:, 1] / unit, touches[:, 3] / unit
+    return {
+        f"{prefix}MidPrice": (bid[1:] + ask[1:]) / 2,
+        f"{prefix}BidPrice1": bid[1:],
+        f"{prefix}AskPrice1": ask[1:],
+        f"{prefix}BidSize1": bid_size[1:],
+        f"{prefix}AskSize1": ask_size[1:],
+        f"{prefix}OrderFlowContribution": _contributions(bid, bid_size, ask, ask_size),
+    }
+
+
+def _signed_levels(book: AggregateBook, unit: int) -> dict[int, float]:
+    """The whole book in units, ``+S`` at a bid price and ``-S`` at an ask price.  The book
+    never crosses, so no price carries both signs."""
+    asks = {price: -size / unit for price, size in book.levels_map(SELL).items()}
+    return {price: size / unit for price, size in book.levels_map(BUY).items()} | asks
+
+
+def _depth_frame(
+    opening: dict[int, float], changes: list[tuple[int, int, float]], rows: int
+) -> pd.DataFrame:
+    """The whole book after each of ``rows`` events, from the opening and the signed size
+    each event left at each price it changed: a row per event, a column per price."""
+    prices = sorted(set(opening) | {price for _, price, _ in changes})
+    column = {price: k for k, price in enumerate(prices)}
+    depth = np.full((rows + 1, len(prices)), np.nan)
+    depth[0] = [opening.get(price, 0.0) for price in prices]
+    for event, price, size in changes:
+        depth[event + 1, column[price]] = size
+    frame = pd.DataFrame(depth, columns=pd.Index(prices, name="Price")).ffill().iloc[1:]
+    frame.index = pd.RangeIndex(rows, name="Event")
+    return frame
 
 
 @dataclass(frozen=True, eq=False)
-class CoupledPlacements:
-    """The two placements of one path of events, folded from copies of one opening book.
+class CoupledFlows:
+    """The CKS book and one Hawkes book of a path of events, folded from one opening.
 
-    ``frame`` has a row per event, indexed by ``Event``: its time and type, the mid, the
-    touches and ``e_n`` of each book after it, under ``Idealised`` and ``Geometric``
-    prefixes, and ``BooksDiffer``.  The books differ after an event when they differ at
-    some price, on either side, in what rests there; the touches alone do not decide it,
-    since a limit order behind one changes the depth and no touch.
+    The Hawkes book opens from the CKS one with every size times ``size_unit``.  ``frame``
+    has a row per event, indexed by ``Event``: ``TimeStamp`` and ``EventType``, then for
+    each book after the event, under the prefixes ``CKS`` and ``Haw``, ``MidPrice``,
+    ``BidPrice1`` and ``AskPrice1`` in ticks, ``BidSize1`` and ``AskSize1`` in units, and
+    ``OrderFlowContribution``, ``e_n`` in units, read against the opening on the first row;
+    and ``MidsDiffer``.  ``cks_depth`` and ``hawkes_depth`` are the whole books, a row per
+    event and a column per price in ticks, holding the size in units at a bid price and
+    minus the size at an ask price.
 
-    The geometric placement drops a withdrawal from an empty side, so its session may have
-    fewer rows than there are events.  The row of a dropped event repeats the book before it
-    and has ``e_n = 0``, or NaN where a side is empty, as the session has it.
-
-    The idealised placement cannot continue past an event that would empty a side.  The
-    pair then stops before that event, both placements reading the events before it, and
-    ``breach`` holds the :class:`AssumptionBreach`; it is None for a pair that reached the
-    horizon.  A pair that stopped at a breach without a discrepancy says nothing of when
-    one would have come.
-
-    ``idealised_depth`` and ``geometric_depth`` are the whole books, a row per event and a
-    column per price in ticks, holding the size at a bid price and minus the size at an ask
-    price.
+    The pair stops before the first event that would empty a side of either book, and
+    ``breach`` holds the :class:`AssumptionBreach` naming it; it is None for a pair that
+    reached the horizon.  ``events`` are the events read.
     """
 
     events: RecordedEvents
-    idealised: MarketSession
-    geometric: MarketSession
-    idealised_journal: EventJournal
-    geometric_journal: EventJournal
+    size_unit: SizeUnit
+    uniform_depth: UniformDepth
+    touches: dict[int, tuple[int, int]]
     frame: pd.DataFrame
-    idealised_depth: pd.DataFrame
-    geometric_depth: pd.DataFrame
+    cks_depth: pd.DataFrame
+    hawkes_depth: pd.DataFrame
     breach: AssumptionBreach | None
 
     @classmethod
@@ -218,429 +378,599 @@ class CoupledPlacements:
         cls,
         events: RecordedEvents,
         marks: MarkParams,
+        size_unit: SizeUnit,
         uniform_depth: UniformDepth,
         touches: dict[int, tuple[int, int]],
         levels: GridDepth,
         rng: np.random.Generator | int | None = None,
-    ) -> "CoupledPlacements":
-        """Both placements of ``events``, from ``idealised_book(uniform_depth, touches, levels)``.
+    ) -> "CoupledFlows":
+        """Both books of ``events``, from ``idealised_book(uniform_depth, touches, levels)``.
 
-        ``rng`` draws the marks of the geometric placement, the idealised one drawing
-        nothing.  Its reference price, read only when a side is empty, is the opening bid.
+        ``rng`` draws the marks of the Hawkes book, the CKS one drawing nothing.
         """
-        opening = idealised_book(uniform_depth, touches, levels)
+        folds = {
+            "CKS": _cks_fold(events, uniform_depth, touches, levels, True),
+            "Haw": _hawkes_fold(
+                events, marks, size_unit, uniform_depth, touches, levels, rng, True
+            ),
+        }
+        units = {"CKS": 1, "Haw": size_unit}
+        touch = {prefix: [_touch(fold.book)] for prefix, fold in folds.items()}
+        opening = {
+            prefix: _signed_levels(fold.book, units[prefix]) for prefix, fold in folds.items()
+        }
+        changes = {prefix: [] for prefix in folds}
+        breach = None
+        try:
+            for event, steps in enumerate(zip(*(fold.occupied() for fold in folds.values()))):
+                for (prefix, fold), (_, result) in zip(folds.items(), steps):
+                    touch[prefix].append(_touch(fold.book))
+                    changes[prefix].extend(
+                        (event, delta.price, delta.side * delta.resting / units[prefix])
+                        for delta in result.deltas
+                    )
+        except AssumptionBreach as caught:
+            breach = caught
 
-        book, journal, states, breaches = opening.copy(), EventJournal.empty(), [], []
-        flow = IdealisedFlow(events.replay(), uniform_depth)
-        stream = _until_breach(flow.stream(book, events.horizon, journal), breaches)
-        idealised = MarketSession.from_occupied_levels(
-            book, _recording(stream, book, states), ReportedDepth(1), STATISTICS,
-            PriceUnit(1), True,
+        read = len(touch["CKS"]) - 1
+        seen = events.head(read) if breach else events
+        columns = {"TimeStamp": seen.times, "EventType": seen.types}
+        for prefix in folds:
+            columns |= _book_columns(
+                prefix, np.array(touch[prefix], dtype=np.int64), units[prefix]
+            )
+        frame = pd.DataFrame(columns, index=pd.RangeIndex(read, name="Event"))
+        frame["MidsDiffer"] = frame["CKSMidPrice"] != frame["HawMidPrice"]
+        cks_depth, hawkes_depth = (
+            _depth_frame(opening[prefix], changes[prefix], read) for prefix in folds
         )
-        idealised_journal, idealised_states = journal, states
-        seen = events.head(len(journal)) if breaches else events
-
-        book, journal, states = opening.copy(), EventJournal.empty(), []
-        simulator = OrderFlowSimulator.driven_by(seen.replay(), marks, touches[BUY][0], rng)
-        geometric = MarketSession.from_occupied_levels(
-            book, _recording(simulator.stream(book, seen.horizon, journal), book, states),
-            ReportedDepth(1), STATISTICS, PriceUnit(1), True,
-        )
-
-        emitted = np.array(journal.emitted, dtype=bool)
-        # The opening book has both sides occupied, so the first event is never dropped and
-        # every row index here is at least zero.
-        row = np.cumsum(emitted) - 1
-        geometric_states = [states[i] for i in row]
-
-        geometric_touch = _touch_frame(geometric).iloc[row].reset_index(drop=True)
-        unchanged = ~emitted & geometric_touch["MidPrice"].notna().to_numpy()
-        geometric_touch.loc[unchanged, "OrderFlowContribution"] = 0.0
-        frame = pd.concat(
-            [
-                pd.DataFrame({"TimeStamp": seen.times, "EventType": seen.types}),
-                _touch_frame(idealised).add_prefix("Idealised"),
-                geometric_touch.add_prefix("Geometric"),
-            ],
-            axis=1,
-        )
-        frame["BooksDiffer"] = [a != b for a, b in zip(idealised_states, geometric_states)]
-        frame.index.name = "Event"
         return cls(
-            seen, idealised, geometric, idealised_journal, journal, frame,
-            _depth_frame(idealised_states), _depth_frame(geometric_states),
-            breaches[0] if breaches else None,
+            seen, size_unit, uniform_depth, touches, frame, cks_depth, hawkes_depth, breach
         )
 
     @property
-    def first_discrepancy(self) -> int | None:
-        """The first event after which the books differ, None if they never do."""
-        differ = self.frame["BooksDiffer"].to_numpy()
+    def first_price_discrepancy(self) -> int | None:
+        """``chi``, the first event after which the mids differ, None if they do not by the
+        stop."""
+        differ = self.frame["MidsDiffer"].to_numpy()
         return int(np.argmax(differ)) if differ.any() else None
 
     @property
-    def first_discrepancy_time(self) -> float | None:
-        first = self.first_discrepancy
+    def first_price_discrepancy_time(self) -> float | None:
+        first = self.first_price_discrepancy
         return None if first is None else float(self.frame["TimeStamp"].iloc[first])
 
+    @property
+    def parting(self) -> Parting | None:
+        """The :class:`Parting` at ``chi``, None if the mids do not differ by the stop."""
+        first = self.first_price_discrepancy
+        if first is None:
+            return None
+        prices = self.frame[
+            ["CKSBidPrice1", "CKSAskPrice1", "HawBidPrice1", "HawAskPrice1"]
+        ].to_numpy()
+        before = (
+            tuple(prices[first - 1, :2]) if first > 0
+            else (self.touches[BUY][0], self.touches[SELL][0])
+        )
+        return _parting(
+            self.events, first, before, tuple(prices[first, :2]), tuple(prices[first, 2:])
+        )
 
-def _depth_frame(states: list[dict[int, int]]) -> pd.DataFrame:
-    depth = pd.DataFrame.from_records(states).fillna(0.0)
-    depth = depth.reindex(columns=sorted(depth.columns), fill_value=0.0)
-    depth.index.name = "Event"
-    depth.columns.name = "Price"
-    return depth
+
+# ---- folds for fans: the books alone --------------------------------------------------
 
 
-# ---- the first discrepancy, event by event -----------------------------------------
-
-LIMIT_TYPES = (EventType.LIMIT_BUY, EventType.LIMIT_SELL)
-WITHDRAWAL_TYPES = (EventType.WITHDRAW_BUY, EventType.WITHDRAW_SELL)
-
-
-def first_discrepancy(
+def first_price_discrepancy(
     events: RecordedEvents,
     marks: MarkParams,
+    size_unit: SizeUnit,
     uniform_depth: UniformDepth,
     touches: dict[int, tuple[int, int]],
     levels: GridDepth,
     rng: np.random.Generator | int | None = None,
-) -> int | None:
-    """``CoupledPlacements.on(...).first_discrepancy``, folding the two books alone and
-    stopping at it.
+) -> Parting | None:
+    """``CoupledFlows.on(...).parting``, folding the two books alone and stopping at it.
 
-    A breach of the assumption before the books differ raises :class:`AssumptionBreach`,
-    where the pair would record it.
+    An event that would empty a side of either book before the parting raises
+    :class:`AssumptionBreach`, where the pair would record it.
     """
-    idealised = idealised_book(uniform_depth, touches, levels)
-    geometric = idealised.copy()
-    flow = IdealisedFlow(events.replay(), uniform_depth)
-    simulator = OrderFlowSimulator.driven_by(events.replay(), marks, touches[BUY][0], rng)
-    # Until the books differ the geometric book has both sides occupied, so it drops no
-    # event and the two streams stay aligned.
-    pairs = zip(
-        flow.stream(idealised, events.horizon, None),
-        simulator.stream(geometric, events.horizon, None),
-    )
-    for event, (idealised_message, geometric_message) in enumerate(pairs):
-        idealised.apply(idealised_message, record=False)
-        geometric.apply(geometric_message, record=False)
-        if _signed_levels(idealised) != _signed_levels(geometric):
-            return event
+    cks = _cks_fold(events, uniform_depth, touches, levels, False)
+    hawkes = _hawkes_fold(events, marks, size_unit, uniform_depth, touches, levels, rng, False)
+    before = _prices(cks.book)
+    for event, _ in enumerate(zip(cks.occupied(), hawkes.occupied())):
+        now, other = _prices(cks.book), _prices(hawkes.book)
+        if sum(now) != sum(other):
+            return _parting(events, event, before, now, other)
+        before = now
     return None
 
 
-def target_offsets(
+def _walk(fold: _Fold, unit: int) -> tuple[list[tuple[float, float]], int | None]:
+    """``(S^b, S^a)`` in units at the opening and after each event before the first that
+    moves a best price, and that event, None if there is none."""
+    book = fold.book
+    opening = _prices(book)
+    sizes = [(book.best_bid_size / unit, book.best_ask_size / unit)]
+    for event, _ in enumerate(fold.occupied()):
+        if _prices(book) != opening:
+            return sizes, event
+        sizes.append((book.best_bid_size / unit, book.best_ask_size / unit))
+    return sizes, None
+
+
+@dataclass(frozen=True, slots=True)
+class FirstMoves:
+    """``psi^CKS`` and ``psi^haw``: the first event at which each book moves a best price,
+    and its time, None for a book that does not by the horizon."""
+
+    cks: int | None
+    hawkes: int | None
+    cks_time: float | None
+    hawkes_time: float | None
+
+
+def first_price_moves(
     events: RecordedEvents,
+    marks: MarkParams,
+    size_unit: SizeUnit,
     uniform_depth: UniformDepth,
     touches: dict[int, tuple[int, int]],
     levels: GridDepth,
-) -> pd.DataFrame:
-    """At each limit event, the book the idealised placement finds it, and ``zeta*_n``.
-
-    A row per limit event, indexed by ``Event``, its position in the path: ``TimeStamp``,
-    ``EventType``, the ``Spread`` in ticks and ``TouchFull``, whether the touch of the
-    order's side holds ``Sbar``, both before the event, and ``TargetOffset``,
-    ``Spread - 1 - TouchFull``.  It is the offset at which (eq.limitPrice) prices the order
-    where the idealised placement does, and is minus one when the idealised order trades,
-    which no offset reproduces.  The idealised placement draws nothing, so the frame is a
-    function of the path; a breach raises :class:`AssumptionBreach`.
-    """
-    book = idealised_book(uniform_depth, touches, levels)
-    flow = IdealisedFlow(events.replay(), uniform_depth)
-    rows = []
-    for event, message in enumerate(flow.stream(book, events.horizon, None)):
-        kind = EventType(int(events.types[event]))
-        if kind in LIMIT_TYPES:
-            touch = book.best_price(kind.direction)
-            full = book.size_at(kind.direction, touch) == uniform_depth
-            rows.append((event, events.times[event], int(kind), book.spread, full))
-        book.apply(message, record=False)
-    frame = pd.DataFrame(
-        rows, columns=["Event", "TimeStamp", "EventType", "Spread", "TouchFull"]
-    ).set_index("Event")
-    frame["TargetOffset"] = frame["Spread"] - 1 - frame["TouchFull"].astype(int)
-    return frame
-
-
-def agreement_probability(target_offset, depth_decay: float) -> np.ndarray:
-    """``q(zeta*) = eta (1 - eta)^zeta*``, the probability (eq.priceOffset) gives the offset
-    ``zeta*``, and ``q(-1) = 0``."""
-    offset = np.asarray(target_offset)
-    return np.where(
-        offset >= 0, depth_decay * (1.0 - depth_decay) ** np.maximum(offset, 0), 0.0
+    rng: np.random.Generator | int | None = None,
+) -> FirstMoves:
+    """Each book folded alone to its first move.  The CKS placement draws nothing, so
+    ``psi^CKS`` is a function of the path.  An event that would empty a side of a book
+    before its move raises :class:`AssumptionBreach`."""
+    _, cks = _walk(_cks_fold(events, uniform_depth, touches, levels, False), 1)
+    _, hawkes = _walk(
+        _hawkes_fold(events, marks, size_unit, uniform_depth, touches, levels, rng, False),
+        size_unit,
     )
 
+    def time(event: int | None) -> float | None:
+        return None if event is None else float(events.times[event])
 
-def touch_shares(
+    return FirstMoves(cks, hawkes, time(cks), time(hawkes))
+
+
+def touch_walks(
+    events: RecordedEvents,
+    marks: MarkParams,
+    size_unit: SizeUnit,
+    uniform_depth: UniformDepth,
+    touches: dict[int, tuple[int, int]],
+    levels: GridDepth,
+    rng: np.random.Generator | int | None = None,
+) -> pd.DataFrame:
+    """The touch sizes of both books, in units, from the opening to the first move of each.
+
+    Indexed by ``TimeStamp``, the opening at zero and then each event up to the later of the
+    two first moves: ``CKSBidSize1``, ``CKSAskSize1``, ``HawBidSize1``, ``HawAskSize1``, NaN
+    in the columns of a book from its first move on.  A book that does not move holds its
+    sizes to the horizon.
+    """
+    walks = {
+        "CKS": _walk(_cks_fold(events, uniform_depth, touches, levels, False), 1),
+        "Haw": _walk(
+            _hawkes_fold(events, marks, size_unit, uniform_depth, touches, levels, rng, False),
+            size_unit,
+        ),
+    }
+    rows = max(len(sizes) + (move is not None) for sizes, move in walks.values())
+    columns = {}
+    for prefix, (sizes, _) in walks.items():
+        padded = np.full((rows, 2), np.nan)
+        padded[: len(sizes)] = sizes
+        columns[f"{prefix}BidSize1"], columns[f"{prefix}AskSize1"] = padded.T
+    index = pd.Index(np.r_[0.0, events.times[: rows - 1]], name="TimeStamp")
+    return pd.DataFrame(columns, index=index)
+
+
+def _mid(book: AggregateBook) -> float:
+    mid = book.mid_price
+    return np.nan if mid is None else mid
+
+
+def _on_clock(
+    times: np.ndarray, opening: float, mids: list[float], clock: Clock
+) -> np.ndarray:
+    """The mid after the last of ``times`` at or before each time of ``clock``, ``opening``
+    before the first of them."""
+    return np.r_[opening, mids][np.searchsorted(times, clock, side="right")]
+
+
+def cks_mids(
     events: RecordedEvents,
     uniform_depth: UniformDepth,
     touches: dict[int, tuple[int, int]],
     levels: GridDepth,
-) -> pd.DataFrame:
-    """At each withdrawal, the share of its side that rests at the best quote, on the book
-    the idealised placement finds it.
+    clock: Clock,
+) -> np.ndarray:
+    """``P^{m,CKS}`` after the last event at or before each time of ``clock``.  It is NaN
+    from the first event that would empty a side, where the CKS book stops."""
+    fold = _cks_fold(events, uniform_depth, touches, levels, False)
+    opening, mids = _mid(fold.book), []
+    try:
+        for _ in fold.occupied():
+            mids.append(_mid(fold.book))
+    except AssumptionBreach:
+        mids.append(np.nan)
+    return _on_clock(events.times[: len(mids)], opening, mids, clock)
 
-    A row per withdrawal, indexed by ``Event``: ``TimeStamp``, ``EventType`` and
-    ``TouchShare``.  With orders of one share the geometric withdrawal is the idealised one
-    exactly when the level it draws is the best quote, which by Definition
-    ``def.geometricPlacement`` *iii.* has that probability.  A breach raises
-    :class:`AssumptionBreach`.
+
+def hawkes_mids(
+    events: RecordedEvents,
+    marks: MarkParams,
+    size_unit: SizeUnit,
+    uniform_depth: UniformDepth,
+    touches: dict[int, tuple[int, int]],
+    levels: GridDepth,
+    clock: Clock,
+    rng: np.random.Generator | int | None = None,
+) -> np.ndarray:
+    """``P^{m,haw}`` after the last event at or before each time of ``clock``, NaN while a
+    side is empty.
+
+    The fold runs on past an empty side, as the simulator does: a withdrawal from it is
+    dropped, and a limit order facing it is priced against the opening bid.
     """
-    book = idealised_book(uniform_depth, touches, levels)
-    flow = IdealisedFlow(events.replay(), uniform_depth)
-    rows = []
-    for event, message in enumerate(flow.stream(book, events.horizon, None)):
-        kind = EventType(int(events.types[event]))
-        if kind in WITHDRAWAL_TYPES:
-            side = book.levels_map(kind.direction)
-            share = side[book.best_price(kind.direction)] / sum(side.values())
-            rows.append((event, events.times[event], int(kind), share))
-        book.apply(message, record=False)
+    fold = _hawkes_fold(events, marks, size_unit, uniform_depth, touches, levels, rng, False)
+    opening, times, mids = _mid(fold.book), [], []
+    for message, _ in fold:
+        times.append(message.time)
+        mids.append(_mid(fold.book))
+    return _on_clock(np.array(times), opening, mids, clock)
+
+
+def variance_split(discrepancies: np.ndarray) -> pd.DataFrame:
+    """The mean of ``D_t`` and the split of its variance, at each time.
+
+    ``discrepancies`` has shape ``(paths, mark seeds, times)``, with at least two of each:
+    every path is drawn independently, and its books are placed once per mark seed.  A row
+    per time:
+
+    * ``Mean`` and its ``StandardError``, the spread of the path means over the square root
+      of their number, since the paths are independent and the seeds of one path are not;
+    * ``PlacementPart``, the mean across paths of the variance over seeds, which estimates
+      ``E Var[D_t | path]``;
+    * ``FlowPart``, the variance across paths of the mean over seeds, less ``PlacementPart``
+      over the number of seeds, which estimates ``Var E[D_t | path]``;
+    * ``Total``, their sum, which estimates ``Var D_t``.
+
+    The variances divide by one less than their counts, and the mean over ``n`` seeds
+    carries ``1/n`` of the placement variance, which ``FlowPart`` takes back; so the three
+    estimates are unbiased.  ``FlowPart`` can come out negative on a small sample.
+    """
+    sample = np.asarray(discrepancies, dtype=float)
+    paths, seeds = sample.shape[:2]
+    means = sample.mean(axis=1)
+    placement = sample.var(axis=1, ddof=1).mean(axis=0)
+    flow = means.var(axis=0, ddof=1) - placement / seeds
     return pd.DataFrame(
-        rows, columns=["Event", "TimeStamp", "EventType", "TouchShare"]
-    ).set_index("Event")
-
-
-def conditional_survival(times, agreement, clock: np.ndarray) -> np.ndarray:
-    """``P(chi > t | the events)``, the product of ``agreement`` over the ``times`` at or
-    before ``t``, at every ``t`` of ``clock``.
-
-    ``agreement`` is the probability that the event at each of ``times`` leaves the books
-    equal, given that they were equal before it: :func:`agreement_probability` at a limit
-    order, the ``TouchShare`` of :func:`touch_shares` at a withdrawal, one at a market
-    order, with orders of one share.  The offsets and the levels drawn are independent of
-    the events and of each other, so the probability that every event agrees is the product.
-    """
-    product = np.r_[1.0, np.cumprod(np.asarray(agreement, dtype=float))]
-    return product[np.searchsorted(np.asarray(times, dtype=float), clock, side="right")]
-
-
-def limit_event_outcomes(offsets: pd.DataFrame, first: int | None) -> pd.DataFrame:
-    """The limit events of ``offsets`` up to the first discrepancy ``first``, with
-    ``Agreed``: whether the books still agree after the event.  Past the first discrepancy
-    the book is no longer the idealised one, and a limit event there says nothing of the
-    rule."""
-    reached = offsets if first is None else offsets.loc[offsets.index <= first]
-    return reached.assign(Agreed=reached.index != first)
-
-
-#: The touch whose walk an event of each type moves, and by how much.
-WALK_STEPS = {
-    EventType.MARKET_BUY: (SELL, -1),
-    EventType.MARKET_SELL: (BUY, -1),
-    EventType.LIMIT_BUY: (BUY, +1),
-    EventType.LIMIT_SELL: (SELL, +1),
-    EventType.WITHDRAW_BUY: (BUY, -1),
-    EventType.WITHDRAW_SELL: (SELL, -1),
-}
-
-
-def touch_walk_exit(
-    events: RecordedEvents, touches: dict[int, tuple[int, int]], uniform_depth: UniformDepth
-) -> float | None:
-    """``tau_G``, the first time a touch walk leaves ``[1, Sbar]``, None if neither does.
-
-    The walk of a side starts from the size at its touch and moves by one share at each
-    event acting on that touch.  Before ``tau_G`` the idealised book keeps both prices and
-    its touches are the walks; at it a touch is cleared, or a limit order meets a full
-    touch.
-    """
-    walk = {BUY: touches[BUY][1], SELL: touches[SELL][1]}
-    for time, kind in zip(events.times, events.types):
-        side, step = WALK_STEPS[EventType(int(kind))]
-        walk[side] += step
-        if not 1 <= walk[side] <= uniform_depth:
-            return float(time)
-    return None
-
-
-def agreement_by_case(outcomes: pd.DataFrame, depth_decay: float) -> pd.DataFrame:
-    """The frequency of agreement at the limit events of ``outcomes``, by the book each found,
-    against ``q(zeta*)``.
-
-    ``outcomes`` is :func:`limit_event_outcomes` of any number of paths, concatenated.  A row
-    per ``(Spread, TouchFull)``: its ``TargetOffset``, the ``LimitEvents`` observed there,
-    the frequency ``Agreed`` with its binomial ``StandardError``, and the ``Formula``.
-    """
-    grouped = outcomes.groupby(["Spread", "TouchFull"])
-    table = pd.DataFrame(
         {
-            "TargetOffset": grouped["TargetOffset"].first(),
-            "LimitEvents": grouped.size(),
-            "Agreed": grouped["Agreed"].mean(),
+            "Mean": means.mean(axis=0),
+            "StandardError": means.std(axis=0, ddof=1) / np.sqrt(paths),
+            "Total": flow + placement,
+            "FlowPart": flow,
+            "PlacementPart": placement,
         }
     )
-    table["StandardError"] = np.sqrt(
-        table["Agreed"] * (1.0 - table["Agreed"]) / table["LimitEvents"]
-    )
-    table["Formula"] = agreement_probability(table["TargetOffset"], depth_decay)
-    return table
 
 
-def _readings(book: AggregateBook) -> tuple[float, int, int]:
-    """The mid, NaN with a side empty, and the total size on each side."""
-    mid = book.mid_price
-    return (
-        np.nan if mid is None else mid,
-        sum(book.levels_map(BUY).values()),
-        sum(book.levels_map(SELL).values()),
-    )
+def _touch_rows(pair: CoupledFlows, prefix: str) -> np.ndarray:
+    """``(P^b, S^b, P^a, S^a)`` of one book of ``pair``, in units, the opening first."""
+    opening = np.array([[*pair.touches[BUY], *pair.touches[SELL]]], dtype=float)
+    columns = [f"{prefix}{name}" for name in ("BidPrice1", "BidSize1", "AskPrice1", "AskSize1")]
+    return np.vstack([opening, pair.frame[columns].to_numpy(dtype=float)])
 
 
-def _read_on_clock(stream: Iterator[Message], book: AggregateBook, clock: np.ndarray):
-    """``_readings`` of the book after the last message at or before each time of
-    ``clock``, the stream folded into it."""
-    readings, next_time = [], 0
-    for message in stream:
-        while next_time < clock.size and clock[next_time] < message.time:
-            readings.append(_readings(book))
-            next_time += 1
-        book.apply(message, record=False)
-    readings.extend([_readings(book)] * (clock.size - next_time))
-    return np.array(readings, dtype=float)
-
-
-def _readings_frame(readings: np.ndarray, clock: np.ndarray) -> pd.DataFrame:
-    return pd.DataFrame(
-        readings, index=pd.Index(clock, name="Time"),
-        columns=["MidPrice", "BidDepth", "AskDepth"],
-    )
-
-
-def idealised_readings(
-    events: RecordedEvents,
-    uniform_depth: UniformDepth,
-    touches: dict[int, tuple[int, int]],
-    levels: GridDepth,
-    clock: np.ndarray,
-) -> pd.DataFrame:
-    """The idealised book at every time of ``clock``, after the last event at or before it:
-    ``MidPrice``, and ``BidDepth`` and ``AskDepth``, the total size on each side.  A breach
-    of the assumption raises :class:`AssumptionBreach`."""
-    clock = np.asarray(clock, dtype=float)
-    book = idealised_book(uniform_depth, touches, levels)
-    stream = IdealisedFlow(events.replay(), uniform_depth).stream(book, events.horizon, None)
-    return _readings_frame(_read_on_clock(stream, book, clock), clock)
-
-
-def geometric_readings(
-    events: RecordedEvents,
-    marks: MarkParams,
-    uniform_depth: UniformDepth,
-    touches: dict[int, tuple[int, int]],
-    levels: GridDepth,
-    clock: np.ndarray,
-    rng: np.random.Generator | int | None = None,
-) -> pd.DataFrame:
-    """The geometric book from ``idealised_book(uniform_depth, touches, levels)``, read as
-    :func:`idealised_readings` reads the idealised one; the mid is NaN while a side is
-    empty."""
-    clock = np.asarray(clock, dtype=float)
-    book = idealised_book(uniform_depth, touches, levels)
-    simulator = OrderFlowSimulator.driven_by(events.replay(), marks, touches[BUY][0], rng)
-    stream = simulator.stream(book, events.horizon, None)
-    return _readings_frame(_read_on_clock(stream, book, clock), clock)
-
-
-def _touch_moves(touch: pd.DataFrame, uniform_depth: UniformDepth) -> pd.DataFrame:
-    """Per event of one book, from its touches with the opening prepended: ``e_n`` by
-    (``eq.orderFlowContribution``), and the size at the outer of the two values of each best
-    price that moved, less ``Sbar`` per tick moved, signed by the move."""
-    bid, bid_size = touch["BidPrice1"].to_numpy(), touch["BidSize1"].to_numpy()
-    ask, ask_size = touch["AskPrice1"].to_numpy(), touch["AskSize1"].to_numpy()
-    up_bid, down_bid = bid[1:] > bid[:-1], bid[1:] < bid[:-1]
-    up_ask, down_ask = ask[1:] > ask[:-1], ask[1:] < ask[:-1]
-    contribution = (
-        ~down_bid * bid_size[1:] - ~up_bid * bid_size[:-1]
-        - ~up_ask * ask_size[1:] + ~down_ask * ask_size[:-1]
-    )
-    outer_bid = np.where(up_bid, bid_size[:-1], np.where(down_bid, bid_size[1:], 0.0))
-    outer_ask = np.where(up_ask, ask_size[1:], np.where(down_ask, ask_size[:-1], 0.0))
+def _moves(touches: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """Per event, from ``(P^b, S^b, P^a, S^a)`` with the opening first: the signed ticks the
+    best bid moved and the size at the outer of its two values, then the same of the best
+    ask.  The outer value is the one further from the other side, and a price that did not
+    move has an outer size of zero."""
+    bid, bid_size, ask, ask_size = touches.T
     move_bid, move_ask = np.diff(bid), np.diff(ask)
-    depth = (
+    outer_bid = np.where(move_bid > 0, bid_size[:-1], np.where(move_bid < 0, bid_size[1:], 0.0))
+    outer_ask = np.where(move_ask > 0, ask_size[1:], np.where(move_ask < 0, ask_size[:-1], 0.0))
+    return move_bid, outer_bid, move_ask, outer_ask
+
+
+def _depth_mismatch(touches: np.ndarray, uniform_depth: UniformDepth) -> np.ndarray:
+    """Per event, the outer size of each best price that moved, less ``Sbar`` per tick
+    moved, signed by the move."""
+    move_bid, outer_bid, move_ask, outer_ask = _moves(touches)
+    return (
         np.sign(move_bid) * (outer_bid - uniform_depth * np.abs(move_bid))
         + np.sign(move_ask) * (outer_ask - uniform_depth * np.abs(move_ask))
     )
-    return pd.DataFrame({"Contribution": contribution, "DepthMismatch": depth})
 
 
-def distance_terms(
-    pair: CoupledPlacements, uniform_depth: UniformDepth, touches: dict[int, tuple[int, int]]
-) -> pd.DataFrame:
-    """``2 Sbar (P^m_geometric - P^m_idealised)`` after each event, in ticks, and its three
-    terms.
+def distance_terms(pair: CoupledFlows) -> pd.DataFrame:
+    """``2 Sbar D`` after each event, in units times ticks, and its three terms.
 
-    ``ImbalanceMismatch`` is the geometric minus the idealised order flow imbalance since the
-    opening; ``TouchSizeMismatch`` is the geometric minus the idealised bid size, less the
-    same of the ask; ``DepthMismatch`` sums, over the moves of a geometric best price, the size
-    at the outer of its two values less ``Sbar`` per tick moved, signed by the move.  Then
-    ``Distance = ImbalanceMismatch - TouchSizeMismatch - DepthMismatch``, while both sides
-    of both books are occupied.  ``IdealisedDepthMismatch`` is the same sum on the idealised
-    book, where every move is one tick onto or off a queue of ``Sbar`` and the sum is zero;
-    that is Proposition ``prop.idealisedUpdate``.  ``touches`` are those of the opening book.
+    For any book with both sides occupied, ``e_n`` is the change of ``S^b - S^a``, plus
+    ``2 Sbar`` times the change of the mid, plus, for each best price that moved, the size
+    at the outer of its two values less ``Sbar`` per tick moved, signed by the move.  Summed
+    from the opening and differenced across the two books, which open alike in units,
+
+        ``Distance = ImbalanceMismatch - TouchSizeMismatch - DepthMismatch``,
+
+    each term CKS less Hawkes: ``ImbalanceMismatch`` of the order flow imbalance since the
+    opening, ``TouchSizeMismatch`` of ``S^b - S^a``, and ``DepthMismatch`` of the sums of the
+    last term.  ``CKSDepthMismatch`` is the CKS sum alone.  Every move of a CKS best price is
+    one tick onto or off a queue of ``Sbar``, so it is zero; that is Proposition
+    ``prop.idealisedUpdate``.
     """
-    opening = pd.DataFrame(
-        {"BidPrice1": [touches[BUY][0]], "BidSize1": [touches[BUY][1]],
-         "AskPrice1": [touches[SELL][0]], "AskSize1": [touches[SELL][1]]},
-        dtype=float,
-    )
-    moves, books = {}, {}
-    for placement in ("Idealised", "Geometric"):
-        columns = [f"{placement}{column}" for column in opening.columns]
-        book = pair.frame[columns].set_axis(opening.columns, axis=1).reset_index(drop=True)
-        books[placement] = book
-        moves[placement] = _touch_moves(pd.concat([opening, book], ignore_index=True),
-                                        uniform_depth)
-    sizes = {
-        placement: (book["BidSize1"] - book["AskSize1"]).to_numpy()
-        for placement, book in books.items()
-    }
+    frame = pair.frame
+    imbalance, sizes, depth = {}, {}, {}
+    for prefix in ("CKS", "Haw"):
+        touches = _touch_rows(pair, prefix)
+        imbalance[prefix] = np.cumsum(frame[f"{prefix}OrderFlowContribution"].to_numpy())
+        sizes[prefix] = touches[1:, 1] - touches[1:, 3]
+        depth[prefix] = np.cumsum(_depth_mismatch(touches, pair.uniform_depth))
     return pd.DataFrame(
         {
-            "TimeStamp": pair.frame["TimeStamp"].to_numpy(),
-            "Distance": 2 * uniform_depth * (
-                pair.frame["GeometricMidPrice"] - pair.frame["IdealisedMidPrice"]
+            "TimeStamp": frame["TimeStamp"].to_numpy(),
+            "Distance": 2 * pair.uniform_depth * (
+                frame["CKSMidPrice"] - frame["HawMidPrice"]
             ).to_numpy(),
-            "ImbalanceMismatch": np.cumsum(
-                moves["Geometric"]["Contribution"] - moves["Idealised"]["Contribution"]
-            ).to_numpy(),
-            "TouchSizeMismatch": sizes["Geometric"] - sizes["Idealised"],
-            "DepthMismatch": np.cumsum(moves["Geometric"]["DepthMismatch"]).to_numpy(),
-            "IdealisedDepthMismatch": np.cumsum(moves["Idealised"]["DepthMismatch"]).to_numpy(),
+            "ImbalanceMismatch": imbalance["CKS"] - imbalance["Haw"],
+            "TouchSizeMismatch": sizes["CKS"] - sizes["Haw"],
+            "DepthMismatch": depth["CKS"] - depth["Haw"],
+            "CKSDepthMismatch": depth["CKS"],
         },
-        index=pair.frame.index,
+        index=frame.index,
     )
 
 
-def geometric_mid_moves(
-    events: RecordedEvents,
-    marks: MarkParams,
-    uniform_depth: UniformDepth,
-    touches: dict[int, tuple[int, int]],
-    levels: GridDepth,
-    rng: np.random.Generator | int | None = None,
-) -> pd.DataFrame:
-    """Every move of the mid-price of the geometric book, from ``idealised_book(uniform_depth,
-    touches, levels)``.
+# ---- what the notes predict -----------------------------------------------------------
 
-    A row per move: ``TimeStamp``, the ``Move`` in ticks from the last mid defined before it,
-    and ``AcrossEmptySide``, whether a side was empty in between.  While a side is empty the
-    mid is undefined and the geometric placement prices a limit order against its fixed
-    reference price instead of the opposite best quote, so a move across an empty side is
-    not a move the book made from where it stood.
+_SIDE_CHANGES = {
+    BUY: {EventType.LIMIT_BUY: 1.0, EventType.MARKET_SELL: -1.0, EventType.WITHDRAW_BUY: -1.0},
+    SELL: {EventType.LIMIT_SELL: 1.0, EventType.MARKET_BUY: -1.0, EventType.WITHDRAW_SELL: -1.0},
+}
+
+
+def side_vector(direction: int) -> np.ndarray:
+    """``varpi^b`` for ``BUY``, ``varpi^a`` for ``SELL``: by type, the shares an event of one
+    share adds to the side, if it rests there in full, or takes from it.
+
+    A limit order of the side adds one; a market order of the other direction and a
+    withdrawal from the side take one.  ``varpi^b - varpi^a`` is the pressure ``varpi``.
     """
-    book = idealised_book(uniform_depth, touches, levels)
-    simulator = OrderFlowSimulator.driven_by(events.replay(), marks, touches[BUY][0], rng)
-    last, emptied, rows = book.mid_price, False, []
-    for message in simulator.stream(book, events.horizon, None):
-        book.apply(message, record=False)
-        mid = book.mid_price
-        if mid is None:
-            emptied = True
-        elif mid != last:
-            rows.append((message.time, mid - last, emptied))
-            last, emptied = mid, False
-        else:
-            emptied = False
-    return pd.DataFrame(rows, columns=["TimeStamp", "Move", "AcrossEmptySide"])
+    vector = np.zeros(len(EventType))
+    for event, change in _SIDE_CHANGES[direction].items():
+        vector[event] = change
+    return vector
+
+
+def _pressure() -> np.ndarray:
+    return np.array([event.pressure for event in EventType], dtype=float)
+
+
+def _side_rates(params: HawkesParams) -> tuple[float, float, float]:
+    """``(lambda*_2, lambda*_3, lambda*_5)``, the types counted from one as in the notes: the
+    stationary rates of the market orders that take from the bid, of the limit orders that
+    join it, and of the withdrawals from it.  Under direction symmetry the ask's are the
+    same."""
+    stationary = params.stationary_intensity()
+    return (
+        float(stationary[EventType.MARKET_SELL]),
+        float(stationary[EventType.LIMIT_BUY]),
+        float(stationary[EventType.WITHDRAW_BUY]),
+    )
+
+
+def _cks_walks(
+    events: RecordedEvents, uniform_depth: UniformDepth, touches: dict[int, tuple[int, int]]
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """``Upsilon^b``, ``Upsilon^a`` and their running maximum floored at ``Sbar``, at the
+    opening and after each event."""
+    walks = [
+        touches[direction][1] + np.r_[0.0, np.cumsum(side_vector(direction)[events.types])]
+        for direction in (BUY, SELL)
+    ]
+    maximum = np.maximum(uniform_depth, np.maximum.accumulate(np.maximum(*walks)))
+    return walks[0], walks[1], maximum
+
+
+def cks_touch_walks(
+    events: RecordedEvents, uniform_depth: UniformDepth, touches: dict[int, tuple[int, int]]
+) -> pd.DataFrame:
+    """The touch walks of the CKS book, and the touches they give before its first move.
+
+    ``Upsilon^b = S^b_0 + (varpi^b)' N`` and ``Upsilon^a = S^a_0 + (varpi^a)' N`` count what
+    arrives at each touch of the opening book, whose sizes ``touches`` gives.  A limit order
+    at a full touch trades a share at the opposite one instead of joining its own, and the
+    number of those is the running maximum of the two walks, floored at ``Sbar``, less
+    ``Sbar``.  So before the first move each CKS touch is its walk less that number
+    (Proposition ``prop.cksTouchWalks``): the cap couples the two sides.
+
+    Indexed by ``TimeStamp``, the opening at zero and then each event up to ``psi^CKS``
+    included, or to the horizon: ``BidTouchWalk``, ``AskTouchWalk``, ``RunningMaximum``,
+    ``CKSBidSize1`` and ``CKSAskSize1``.  On the row of ``psi^CKS`` one touch reads zero.
+    """
+    bid, ask, maximum = _cks_walks(events, uniform_depth, touches)
+    move = cks_first_move(events, uniform_depth, touches)
+    rows = len(bid) if move is None else move + 2
+    frame = pd.DataFrame(
+        {
+            "BidTouchWalk": bid,
+            "AskTouchWalk": ask,
+            "RunningMaximum": maximum,
+            "CKSBidSize1": bid - (maximum - uniform_depth),
+            "CKSAskSize1": ask - (maximum - uniform_depth),
+        },
+        index=pd.Index(np.r_[0.0, events.times], name="TimeStamp"),
+    )
+    return frame.iloc[:rows]
+
+
+def cks_first_move(
+    events: RecordedEvents, uniform_depth: UniformDepth, touches: dict[int, tuple[int, int]]
+) -> int | None:
+    """``psi^CKS`` from the counts alone: the first event after which one touch walk lies
+    ``Sbar`` below the running maximum of both, None if none does by the horizon.
+
+    It is the first event at which the CKS book, opened from ``touches``, moves a best
+    price, and it is computed without folding a book.
+    """
+    bid, ask, maximum = _cks_walks(events, uniform_depth, touches)
+    emptied = maximum - np.minimum(bid, ask) >= uniform_depth
+    return int(np.argmax(emptied)) - 1 if emptied.any() else None
+
+
+def fluid_touch(
+    params: HawkesParams, marks: MarkParams, levels: GridDepth, scaled_time: np.ndarray
+) -> np.ndarray:
+    """``r(s)``, the fluid touch of haw-1: its best bid at time ``Sbar s``, over ``Sbar``, in
+    the limit of a large ``Sbar`` (Proposition ``prop.fluidTouch``).
+
+    At a spread of one tick a limit order joins the touch with probability ``eta`` and goes
+    behind it otherwise, a market order takes a share from it, and a withdrawal draws it in
+    proportion to its size, the side holding ``L Sbar`` to first order.  So
+
+        ``r' = eta lambda*_3 - lambda*_2 - (lambda*_5 / L) r``,  ``r(0) = 1``,
+
+    with ``L`` the ``levels`` of a side of the opening book and ``eta`` the depth decay of
+    ``marks``.  The solution relaxes to
+    ``r_inf = L (eta lambda*_3 - lambda*_2) / lambda*_5``.
+    """
+    market, limit, withdrawal = _side_rates(params)
+    settled = levels * (marks.depth_decay * limit - market) / withdrawal
+    return settled + (1.0 - settled) * np.exp(-withdrawal * np.asarray(scaled_time) / levels)
+
+
+def fluid_emptying_time(params: HawkesParams, marks: MarkParams, levels: GridDepth) -> float:
+    """``s*``, the time at which the fluid touch reaches zero, in units of ``Sbar``
+    (Corollary ``corol.twoRegimes``):
+
+        ``s* = (L / lambda*_5) log(1 + lambda*_5 / (L (lambda*_2 - eta lambda*_3)))``.
+
+    In the first regime, ``eta lambda*_3 < lambda*_2``, ``chi / Sbar`` tends to it and the
+    Hawkes book moves first.  Otherwise the fluid touch stays above zero, and ``s*`` is
+    infinite.
+    """
+    market, limit, withdrawal = _side_rates(params)
+    drain = market - marks.depth_decay * limit
+    if drain <= 0:
+        return np.inf
+    return float(levels / withdrawal * np.log1p(withdrawal / (levels * drain)))
+
+
+def diffusive_scale(params: HawkesParams, uniform_depth: UniformDepth) -> float:
+    """``Sbar^2 / (varpi^b)' D varpi^b``, in seconds: the time over which the standard
+    deviation of a touch walk reaches ``Sbar``.  In the second regime ``psi^CKS``, and with
+    it ``chi``, is of this order (Approximation ``approx.secondRegime``); a side of ``L Sbar``
+    lasts of the order of ``L^2`` times as long."""
+    bid = side_vector(BUY)
+    return float(uniform_depth**2 / (bid @ params.count_covariance_rate() @ bid))
+
+
+def second_regime_rate(params: HawkesParams, uniform_depth: UniformDepth) -> float:
+    """``varpi' D varpi / (2 Sbar)^2``, in ticks squared a second: the rate of ``Var D_t``
+    while no best price of the Hawkes book moves (Approximation
+    ``approx.secondRegimeVariance``).  ``D_t`` is then the CKS mid less the opening one, a
+    function of the path, and the whole rate is its flow part."""
+    pressure = _pressure()
+    return float(pressure @ params.count_covariance_rate() @ pressure / (2 * uniform_depth) ** 2)
+
+
+def _imbalance_and_move(pair: CoupledFlows) -> tuple[float, float]:
+    """``OFI^haw_{T,T}``, in units, and ``Pi_T = 2 (P^m_T - P^m_0)`` in ticks, of the Hawkes
+    book of ``pair`` at its last event."""
+    imbalance = pair.frame["HawOrderFlowContribution"].sum()
+    touches = _touch_rows(pair, "Haw")
+    move = touches[-1, 0] + touches[-1, 2] - touches[0, 0] - touches[0, 2]
+    return float(imbalance), float(move)
+
+
+@dataclass(frozen=True, slots=True, eq=False)
+class PlacementStatistics:
+    """``alpha`` and ``S~``: what Approximation ``approx.firstRegimeVariance`` reads of the
+    books of a Hawkes flow, under its hypotheses H1 and H2.
+
+    * ``behind_probability`` is ``alpha_e``, by type: the fraction of the events of the type
+      that the book places behind the touch of their side, the set ``ℋ`` of Lemma
+      ``lemma.unitContribution``.  Those are the limit orders and withdrawals with
+      ``e_n = 0``; a market order, which always acts at a touch, has none.  It is NaN for a
+      type with no event.
+    * ``effective_depth`` is ``S~``, in units: by ``eq.effectiveDepth``, the slope of the
+      regression of the order flow imbalance of the book since the opening on
+      ``Pi_T = 2 (P^m_T - P^m_0) / tau``, across runs to one horizon.  It is infinite when
+      no best price moves.  The mean outer size per tick crossed at the moves is a
+      different statistic.
+    """
+
+    behind_probability: np.ndarray
+    effective_depth: float
+
+    @classmethod
+    def of(cls, pairs: list[CoupledFlows]) -> "PlacementStatistics":
+        """The two statistics of the Hawkes books of ``pairs``, runs to one horizon:
+        ``alpha`` pooled over their events, ``S~`` regressed across them."""
+        frames = [pair.frame for pair in pairs]
+        types = np.concatenate([frame["EventType"].to_numpy() for frame in frames])
+        behind = np.concatenate(
+            [frame["HawOrderFlowContribution"].to_numpy() == 0 for frame in frames]
+        )
+        dimension = len(EventType)
+        counts = np.bincount(types, minlength=dimension)
+        placed_behind = np.bincount(types, weights=behind, minlength=dimension)
+        behind_probability = np.divide(
+            placed_behind, counts, out=np.full(dimension, np.nan), where=counts > 0
+        )
+        imbalance, move = np.array([_imbalance_and_move(pair) for pair in pairs]).T
+        if not move.any():
+            return cls(behind_probability, np.inf)
+        slope = np.cov(imbalance, move)[0, 1] / np.var(move, ddof=1)
+        return cls(behind_probability, float(slope))
+
+
+@dataclass(frozen=True, slots=True)
+class VarianceRates:
+    """The rates, in ticks squared a second, at which the flow part and the placement part
+    of ``Var D_t`` grow."""
+
+    flow_part: float
+    placement_part: float
+
+    @property
+    def total(self) -> float:
+        return self.flow_part + self.placement_part
+
+
+def closed_form_rates(
+    params: HawkesParams,
+    uniform_depth: UniformDepth,
+    statistics: PlacementStatistics,
+    size_variance: float,
+) -> VarianceRates:
+    """The two rates of ``Var D_t`` in the first regime, by Approximation
+    ``approx.firstRegimeVariance``.
+
+    ``c_e = 1 / (2 Sbar) - (1 - alpha_e) / (2 S~)`` is the impact of one event of type ``e``
+    on the CKS mid less its mean impact on the Hawkes one, and the flow part is
+    ``(varpi o c)' D (varpi o c)``.  The placement part is
+    ``sum_e alpha_e (1 - alpha_e) lambda*_e / (2 S~)^2``, whether an event lands behind its
+    touch.  With an infinite ``S~`` the mid of the Hawkes book does not move, and the rates
+    are those of :func:`second_regime_rate`.
+
+    ``size_variance`` is ``Var xi`` of the sizes in units, zero for haw-1.  Otherwise each
+    event enters the placement part with the variance ``eq.sizePlacementVariance``,
+    ``alpha_e (1 - alpha_e) + (1 - alpha_e) Var xi``, which adds
+    ``Var xi sum_e (1 - alpha_e) lambda*_e / (2 S~)^2``.  By Remark
+    ``remark.whatTheSizesAdd`` that term, the truncation at the touch being set aside, is
+    neither the whole of what the sizes add nor a bound on it, and for haw-q the rates are
+    not a closed form of the variance.
+    """
+    alpha = statistics.behind_probability
+    depth = 2 * statistics.effective_depth
+    impact = _pressure() * (1 / (2 * uniform_depth) - (1 - alpha) / depth)
+    noise = alpha * (1 - alpha) + (1 - alpha) * size_variance
+    return VarianceRates(
+        float(impact @ params.count_covariance_rate() @ impact),
+        float(noise @ params.stationary_intensity() / depth**2),
+    )

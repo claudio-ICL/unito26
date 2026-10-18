@@ -1,22 +1,20 @@
-% CLASS 5 -- the last subsection of the notes' section 1.4, sec.idealisedAgainstHawkes, with
-% its subsubsections sec.firstDiscrepancy, sec.distanceOfMidPrices and sec.withWithdrawals.
-% Taught on Monday 19 October, after section 1.5. The class opens on the code of the
-% idealised placement, then drives it and the geometric placement with one path of events, and
-% compares the two books: first through the time at which they part, then through the distance
-% of their mid-prices, without withdrawals and with them.
+% CLASS 5 -- the last subsection of the notes' section 1.4, sec.idealisedAgainstHawkes.
+% Taught on Monday 19 October, after section 1.5. Equation eq.idealisedUpdate is exact for the
+% book of the CKS placement. The class drives that book and the Hawkes flow, placed
+% geometrically, with the same events from one opening book, and asks how far the identity
+% carries over: first through the time at which the two mid-prices part, then through their
+% discrepancy after it, then with orders of random size. 34 frames.
 %
-% SWITCH POINTS, each signposted in the \note of the frame before it:
-%   after "One path of events, two placements"             -> 10, section 1
-%   after "The books part at a full touch facing one tick" -> 10, sections 2-3
-%   after "Pinned at one tick"                             -> 10, section 4
-%   after "The variance of the distance"                   -> 10, section 5
-%   after "The stationary rate of the distance --- 2 of 2" -> 10, section 6
-%   after "The two regimes"                                -> 10, section 7
+% SWITCH POINTS to notebook 10-the-idealised-book-against-the-hawkes-book, each signposted in
+% the \note of the frame before it:
+%   after "The standing assumption"                -> 1. Three flows on one path
+%   after "The second regime is diffusive"         -> 2. When the mid-prices part
+%   after "The first regime in closed form"        -> 3. The discrepancy: mean and variance
+%   after "A side of haw-q empties sooner"         -> 4. Uncertain sizes
 %
-% Overrunning, cut in this order: the decoupling rate (said over the second frame of the
-% generating functional), then the two contributions of a geometric order (their cases said
-% over the decomposition), then the exhaustion of a side and the deleted withdrawals (both
-% said over the table of the two regimes).
+% Overrunning, cut in this order: the picture of the drawdown (said over the touch walks), then
+% the table of the two placements (said over the CKS placement), then the decomposition with
+% sizes (said over what the sizes add).
 %
 % THE FRAME CONTRACT. These slides are projection material, not reference material: the
 % students read the notes, and they only ever see a frame while it is being talked over.
@@ -33,33 +31,33 @@
 % Open the class on the chapter roadmap, as classes 1 and 2 do. Do not close on a summary
 % frame: a slide that recites what the class just did is the spoken half written down.
 %
-% The placement of the package is shown as a bare `algorithmic' environment, as class 2
-% shows the fold: `algorithm' is a float, and floats do not place inside a frame.
+% The CKS placement is shown as a bare `algorithmic' environment, as class 2 shows the fold:
+% `algorithm' is a float, and floats do not place inside a frame. A lemma of the notes is
+% beamer's own `lemma', on beamer's counter. The slides class declares no `approximation', so an
+% approximation of the notes is a `remark' titled Approximation, under the notes' label.
+% The event G of the notes, on which every statement is made, is stated once, on the frame of
+% the standing assumption, and no statement carries it.
 %
 % LABELS. A label is defined once across the class files, and a cross-file \ref prints ??
-% under \includeonly. Class 5 owns: assumption.twoPlacements, def.targetOffset,
-% lemma.agreementRule, prop.coincidenceBeforeDiscrepancy, prop.couplingSurvival,
-% remark.couplingAtUnitOffsetParameter, prop.countGeneratingFunctional,
-% corol.decouplingRate, prop.spreadPinnedAtOneTick, prop.touchIdentity,
-% prop.geometricContribution, prop.geometricWithdrawalContribution, prop.depthAccumulates,
-% corol.geometricExhaustion, remark.depthBalance, prop.distanceDecomposition,
-% prop.mirrorSymmetry, prop.distanceSecondMoments, lemma.withdrawalAgreement,
-% prop.couplingSurvivalWithWithdrawals, eq.idealisedMidAsCount, prop.stationaryDistanceRate,
-% remark.withdrawalsDeleted, remark.twoRegimes.
-% eq.effectiveImpact is the unlabelled display of the first frame of the stationary rate, and
-% hypotheses H0 to H2 are a list on the frame before it.
-% def.firstDiscrepancy, eq.touchWalks, def.outerSize, corol.touchIdentityUnderTheAssumption
-% and corol.thinnedImbalance survive as captions and carry no label here; the two exercises
-% of the subsection are set in the \note.
+% under \includeonly. Class 5 owns: def.threeBooks, assumption.balancedFlow, def.partingTime,
+% lemma.oneBestPrice, corol.partingAtOneQuote, prop.partingProbability, corol.quietBook,
+% prop.cksTouchWalks, prop.fluidTouch, corol.twoRegimes, approx.secondRegime, def.discrepancy,
+% prop.discrepancyMoments, prop.touchIdentity, lemma.unitContribution,
+% prop.discrepancyDecomposition, prop.placementMartingale, approx.secondRegimeVariance,
+% approx.firstRegimeVariance, prop.partingProbabilitySizes, remark.fluidScaleWithSizes,
+% prop.discrepancyDecompositionSizes, remark.whatTheSizesAdd.
+% def.outerSize and corol.touchIdentityUnderTheAssumption survive as captions, and
+% remark.wholeBookImbalance in the \note of the standing assumption; none carries a label here.
+% Hypotheses H1 and H2 are a list on the frame before approx.firstRegimeVariance.
 % assumption.idealisedBook, prop.idealisedUpdate, def.orderFlowImbalance,
-% def.orderFlowProcess, prop.signedSizeContribution and def.directionSymmetry belong to
-% class 4, and prop.decompositionOfLimitOrder to class 1; example.idealisedPlacement,
-% def.geometricPlacement and remark.depthBehindTheQuotes carry no label anywhere in the deck.
-% Each is RESTATED HERE WITHOUT LABELS.
+% def.orderFlowProcess, prop.signedSizeContribution, def.directionSymmetry and
+% prop.forecastAtLongHorizons belong to class 4; example.idealisedPlacement and
+% def.geometricPlacement carry no label anywhere in the deck. Each is RESTATED HERE WITHOUT
+% LABELS.
 %
 % A frame holds 218pt of body -- eighteen 12pt lines, or seven two-line paragraphs.
 
-\subsection{The idealised book against the geometric book}
+\subsection{The idealised flow against the Hawkes flow}
 
 \begin{frame}
   \frametitle{Outline}
@@ -85,68 +83,86 @@
 \end{tikzpicture}
 \end{center}
 
-The idealised book against the book the flow builds
+The first time the mid-prices part
 
-When the two books part
+Their discrepancy after it
 
-How far apart their mid-prices go
+Orders of random size
 \note{
-The identity of the idealised book is exact under an assumption that the book generated by the
-flow never satisfies. This class measures what the assumption costs. We place the events of one
-Hawkes process in two ways: so that the assumption holds, and by the geometric rule of the
-simulator. Both books are folded from the same opening book by the same events, and we compare
-them, first through the time at which they part, then through the distance between their
-mid-prices once they have parted.
+We return to section 1.4 after the recorded data of section 1.5. Section 1.4 wrote the change
+of the mid-price as the order flow imbalance over $2\uniformDepth$, plus a residual of at most a
+tick, under an assumption on the book. The book that the Hawkes flow of the simulator builds
+does not satisfy it. This class measures, on that flow, how far the identity carries over: first
+the time at which the mid-prices of the two books first part, then their discrepancy after it,
+then what changes when the orders carry random sizes.
 }
 \end{frame}
 
 \begin{frame}
-  \frametitle{From a Hawkes event to a unit order}
+  \frametitle{For the CKS book the update holds on every path}
+\[
+ \Delta\midPrice_{t,\ofiWindow}
+ = \frac{\tickSizeOfLOB}{2\uniformDepth}\OFI_{t,\ofiWindow} + \residual_{t,\ofiWindow},
+ \qquad
+ \vert\residual_{t,\ofiWindow}\vert \leq \tickSizeOfLOB
+\]
+
+$\cks$: our version of the book of Cont, Kukanov and Stoikov
+
+$\OFI^{\cks}_{t,t} = \pressure^{\transpose}\multiCountingProc(t)$: the signed count
+
+The Hawkes flow, placed geometrically: the same events, one opening book
+\note{
+The update of class 4, under the idealised book. The placement of the next frame satisfies the
+assumption on every path, so for its book, which we call the CKS book, the update holds event by
+event, and every event contributes its pressure: the imbalance is the signed count.
+The simulator places the same events geometrically, and its book satisfies the assumption at no
+value of $\offsetParameter$. We fold both from one opening book with the same events and ask how
+far the identity carries over to the second.
+}
+\end{frame}
+
+\begin{frame}
+  \frametitle{From a Hawkes event to a CKS order}
 {\footnotesize
 \begin{algorithmic}
  \REQUIRE the book before $\arrivalTimes[]_n$, and the type $\event[n]$, of direction $d$
- \IF{$\event[n]$ would take the last share of a side}
- \STATE stop: $\arrivalTimes[]_n$ is the breach
- \ELSIF{$\event[n]$ is a market order}
- \STATE submit one share at the best quote of the side $-d$
+ \IF{$\event[n]$ is a market order}
+ \STATE submit one share at the touch of the side $-d$
  \ELSIF{$\event[n]$ is a withdrawal}
- \STATE cancel one share at the best quote of the side $d$
- \ELSIF{the best quote of the side $d$ holds less than $\uniformDepth$}
- \STATE submit one share there
- \ELSIF{one tick beyond it is the best quote of the side $-d$}
- \STATE submit one share at that quote, where it trades
+ \STATE cancel one share at the touch of the side $d$
+ \ELSIF{the touch of the side $d$ holds less than $\uniformDepth$}
+ \STATE submit one share at that touch
+ \ELSIF{the spread is one tick}
+ \STATE submit one share at the touch of the side $-d$, where it trades
  \ELSE
- \STATE submit one share one tick beyond it, a new best quote
+ \STATE submit one share one tick inside the spread, a new touch
  \ENDIF
 \end{algorithmic}
 }
 
-\codehl{IdealisedFlow}: nothing drawn beyond the event
+Nothing drawn beyond the event: $\cks$ is $\sigmaAlgebra^{\multiCountingProc}$-measurable
 
-\codehl{AssumptionBreach}: the touch holds one share, the tick behind none
+The placement of class 4 under which the idealised book holds
 \note{
-This is the placement of the package, in the module of the idealised book. The function that
-builds an opening book takes the two touches and the number of levels, and puts
-$\uniformDepth$ on every tick behind each touch. The stream checks the book against the
-assumption once, before the first message, since the flow keeps the assumption true but cannot
-make it so. Then each event of the Hawkes process becomes one message, read against the book as
-it stands, and the matching is left to the ordinary book.
-A market order is submitted as a limit order of one share at the opposite touch, so its market
-part is its whole size. The sizes are units because part ii of the assumption needs them: an
-order of two shares can overshoot the cap, or reach past a touch that holds one.
-The behind-the-touch queues are contiguous, so a side is about to empty exactly when its touch
-holds one share and the tick behind it holds none. That event is not moved or dropped: it ends
-the stream.
+Each event of the Hawkes process becomes one message of one share, read against the book as it
+stands, and the matching is the ordinary matching of the book. A market order is a limit order of
+one share at the opposite touch, so its market part is its whole size. A limit order at a full
+touch opens a new touch one tick inside the spread; at a spread of one tick there is no such
+tick, and it trades one share at the opposite touch, as a market order would.
+The sizes are units because an order of two shares may reach past a touch that holds one, against
+part ii of the assumption. $\sigmaAlgebra^{\multiCountingProc}$ is the $\sigma$-algebra of the
+arrival times and the types: the CKS book is a function of the opening book and of the path.
 }
 \end{frame}
 
 \begin{frame}
-  \frametitle{Two placements of one event}
+  \frametitle{The CKS and the geometric placement of one event}
 \begin{center}
 {\footnotesize
-\begin{tabular}{@{}lp{3.5cm}p{3.9cm}@{}}
+\begin{tabular}{@{}lp{3.3cm}p{4.0cm}@{}}
 \toprule
-event & idealised & geometric \\
+event & CKS & geometric \\
 \midrule
 market buy & one share at $\bestAskPrice$ & $\orderSize_n$ shares, walking the ask \\
 limit buy & one share at $\bestBidPrice$, or one tick above it once full
@@ -160,405 +176,594 @@ withdrawal, bid & one share from $\bestBidPrice$
 
 $\Prob(\priceOffset_n = k) = \offsetParameter(1-\offsetParameter)^{k}$, independent of the flow
 
-Geometric placement: the assumption at no $\offsetParameter$
+$\orderSize_n$: one share, or lognormal of mean $\meanSize$
 \note{
-The sell types are the mirror image. The first column is the placement of the last frame, under
-which the assumption holds up to the first event that would empty a side, and the identity of
-the idealised book holds along the path.
-The second column is the placement of the simulator. It satisfies the assumption at no value of
-$\offsetParameter$: a limit order arrives behind the best quote of its side with probability
-$(1-\offsetParameter)^{\LOBspread/\tickSizeOfLOB}$, and a withdrawal falls behind it whenever
-the price drawn is not the best. At $\offsetParameter = 1$ the first failure disappears and the
-second does not; and no limit order then arrives behind a quote, where part iii asks every
-queue to hold $\uniformDepth$.
-Under the idealised placement a limit order may initiate a transaction, at a full touch facing
-a spread of one tick. Under the geometric one it never does.
+The sell types are the mirror image. The first column is the algorithm of the last frame. The
+second is the geometric placement of class 4: a market order walks the opposite side; a limit
+order is priced $1 + \priceOffset_n$ ticks from the opposite best quote, so it rests in full on
+its own side, behind its touch when $\priceOffset_n \geq \LOBspread/\tickSizeOfLOB$; a
+withdrawal draws an occupied price of its side in proportion to the size resting there, and
+cancels its size or what rests there, whichever is less.
+Under the CKS placement a limit order may initiate a transaction. Under the geometric placement
+it never does.
 }
 \end{frame}
 
 \begin{frame}
-  \frametitle{One path of events, two placements}
-\begin{assumption}
-\label{assumption.twoPlacements}
- From one opening book satisfying part iii, the \emph{idealised book} folds the idealised
- placement of $(\arrivalTimes[]_n, \event[n])$, the \emph{geometric book} the geometric
- placement of $(\arrivalTimes[]_n, \event[n], \orderSize_n)$.
-\end{assumption}
-
-Superscripts $\idealisedBook$, $\geometricBook$: the book a quantity is read on
-
-$\breachTime$: the first arrival the idealised placement cannot place
-
-Idealised book: $\sigmaAlgebra^{\multiCountingProc}$-measurable, defined on $[0, \breachTime)$
-\note{
-Both sides of the opening book are occupied. $\sigmaAlgebra^{\multiCountingProc}$ is the
-$\sigma$-algebra of the arrival times and the types. The idealised placement draws nothing
-beyond the events, so the idealised book is a function of the opening book and of the path;
-the geometric book also reads the sizes and the offsets.
-We take the best bid of either book above one tick: the geometric placement floors a limit
-price at one tick, and the statements that read a limit price assume no floor is met.
-Now to notebook 10, section 1. To compare two placements the events must be the same and only
-the placement may differ. A simulator and a Hawkes process on the same seed give different
-paths, since every mark drawn shifts the draws that follow, so the events are drawn once and
-each placement reads its own replay of them.
-}
-\end{frame}
-
-\begin{frame}
-  \frametitle{The target offset}
+  \frametitle{Three books on one path}
 \begin{defi}
-\label{def.targetOffset}
- For a limit event at $\arrivalTimes[]_n < \breachTime$,
- $\targetOffset_n := \LOBspread^{\idealisedBook}_{\arrivalTimes[]_n-}/\tickSizeOfLOB - 1
- - \indicator{\size^{\idealisedBook}_{\arrivalTimes[]_n-} = \uniformDepth}$.
+\label{def.threeBooks}
+ From one opening book of spread one tick, with $L$ levels of $\uniformDepth$ a side, fold:\par
+ \hfill\begin{tabular}{lll}
+  $\cks$ & CKS & $(\arrivalTimes[]_n, \event[n])$ \\
+  $\hawOne$ & geometric & $(\arrivalTimes[]_n, \event[n], 1)$ \\
+  $\hawQ$ & geometric & $(\arrivalTimes[]_n, \event[n], \orderSize_n)$,
+  opening sizes $\times\,\meanSize$
+ \end{tabular}\hfill\null
 \end{defi}
 
-$\size^{\idealisedBook}_{\arrivalTimes[]_n-}$: the size at the best quote of its own side
+$(\arrivalTimes[]_n, \event[n])_n$: the arrival times and types of the Hawkes process
 
-Until the distance: $\orderSize_n = 1$, $\baseIntensity_5 = \baseIntensity_6 = 0$
+$\orderSize_n$: the lognormal sizes of the order flow, of mean $\meanSize$
 \note{
-In the first half of the class the orders have size one and the flow has no withdrawals: the
-baselines of the two withdrawal types are zero and their rows and columns of $\excitation$ are
-null, so these types carry no event almost surely, and the path is a Hawkes process on the four
-types of market and limit orders.
-The target offset is the offset at which the geometric rule prices the order where the
-idealised placement does: at the best quote of its side when that quote holds less than
-$\uniformDepth$, one tick inside it when it holds $\uniformDepth$. It is read on the idealised
-book, so it is $\sigmaAlgebra^{\multiCountingProc}$-measurable.
+The opening book has one level on every tick, so it satisfies part iii of the assumption with
+both touches full. $\hawOne$ is the Hawkes flow with orders of one share and the geometric rule
+for prices; $\hawQ$ gives the orders the sizes of the order flow of class 4, lognormal of mean
+$\meanSize$, which act as an uncertainty in the size of an observed order. A quantity of a book carries its superscript, as in
+$\midPriceOf{\cks}_t$ or $\nthBestBidSize[1,\hawOne]_t$, and a quantity indexed by
+$\arrivalTimes[]_n$ is read after the $n$-th event.
+The geometric placement draws for each event an offset or a level, and $\hawQ$ also a size. Given
+$\sigmaAlgebra^{\multiCountingProc}$ and the draws of the earlier events, these have the laws of
+the geometric placement, the level of a withdrawal being drawn on the book as the earlier events
+left it. We represent that draw by $U_n$, uniform on $(0,1)$ and independent of the path and of
+the other draws: the withdrawal takes the first level of its side, counted from the touch
+outwards, at which the cumulated size exceeds $U_n$ times the size of the side.
 }
 \end{frame}
 
 \begin{frame}
-  \frametitle{Where the idealised limit order goes}
+  \frametitle{Each step changes one thing}
 \begin{center}
-{\footnotesize
-\begin{tabular}{@{}llc@{}}
-\toprule
-book before, $\LOBspread = k\tickSizeOfLOB$ & idealised limit order & $\targetOffset_n$ \\
-\midrule
-$\size^{d} < \uniformDepth$ & joins its best quote & $k - 1$ \\
-$\size^{d} = \uniformDepth$, $k \geq 2$ & one tick inside, a new best quote & $k - 2$ \\
-$\size^{d} = \uniformDepth$, $k = 1$ & trades at the opposite best quote & $-1$ \\
-\bottomrule
-\end{tabular}
-}
+\begin{tikzpicture}[font=\scriptsize, node distance=1.5cm,
+    book/.style={draw=gray!60, rounded corners=2pt, align=center, inner sep=4pt,
+                 text width=1.9cm, fill=gray!8}]
+  \node[book, fill=blue!12] (c) {$\cks$\\[2pt] CKS placement\\one share};
+  \node[book, right=of c] (h) {$\hawOne$\\[2pt] geometric placement\\one share};
+  \node[book, right=of h, fill=orange!15] (q)
+       {$\hawQ$\\[2pt] geometric placement\\$\orderSize_n$ shares};
+  \draw[-{Stealth}, gray!70] (c) -- node[above, align=center] {where the\\orders go} (h);
+  \draw[-{Stealth}, gray!70] (h) -- node[above, align=center] {the size of\\each order} (q);
+\end{tikzpicture}
 \end{center}
 
-$\size^{d}$: the size at the best quote of the order's side
+$\cks$ against $\hawOne$: the cost of placing orders away from the touch
 
-$\targetOffset_n = -1$: no offset reproduces the order
+Against $\hawQ$: also the cost of not seeing each size
 \note{
-The three cases are exhaustive, since part iii caps a touch at $\uniformDepth$. In the third
-the idealised order trades one share at the opposite best quote, and the geometric rule, which
-prices strictly on its own side of the opposite best quote, never sends such an order.
+The CKS book and $\hawOne$ receive the same events and the same sizes, and differ only in where
+the orders go. $\hawOne$ and $\hawQ$ receive the same events and use the same placement, and
+differ only in the size of each order. The update of the CKS book counts events, by the
+signed-size contribution of class 4. So the comparison with $\hawOne$ measures the cost of
+placing the orders away from the touch, and the comparison with $\hawQ$ adds the cost of not
+seeing the size of each order.
 }
 \end{frame}
 
 \begin{frame}
-  \frametitle{The agreement rule}
+  \frametitle{The standing assumption}
+\begin{assumption}
+\label{assumption.balancedFlow}
+ Direction-symmetric, $\branchingRatio < 1$, balanced per side:
+ $\stationaryIntensity[3] = \stationaryIntensity[2] + \stationaryIntensity[5]$ and
+ $\stationaryIntensity[4] = \stationaryIntensity[1] + \stationaryIntensity[6]$.
+ The opening best bid lies above one tick.
+\end{assumption}
+
+$\swapMatrix\stationaryIntensity = \stationaryIntensity$: the two conditions are one
+
+$\size^{b,\hawOne}_t(\tickSizeOfLOB\N) = L\uniformDepth
++ (\sideVector{b})^{\transpose}\multiCountingProc(t)$: a walk of bounded mean
+
+Statements on $G$: no empty side or floor, on path and mirror
+\note{
+Throughout, we work on the event $G$ that, on the horizon considered, on the path and on its
+mirror, no side of any of the three books is empty and no limit price meets the floor of the
+geometric placement. Every statement of the class is made on $G$, and expectations and laws are
+taken on it. $G$ changes the laws of the draws only by the probability of its complement, small
+on a book of many levels priced far above one tick, and it is invariant under the exchange of the
+path with its mirror, the path $(\arrivalTimes[]_n, \swapMatrix(\event[n]))_n$ with the same draws.
+With orders of one share a withdrawal removes one share wherever it is drawn, so the whole bid of
+$\hawOne$ is $L\uniformDepth$ plus the limit buys less the market sells and the withdrawals from
+the bid: $\sideVector{b} = \unitVector_3 - \unitVector_2 - \unitVector_5$, likewise
+$\sideVector{a}$, and $\sideVector{b} - \sideVector{a} = \pressure$. Under balance the mean of the
+walk is bounded and its variance grows as
+$t\,(\sideVector{b})^{\transpose}\countCovarianceRate\sideVector{b}$, so a side lasts a time of
+the order of $(L\uniformDepth)^2/(\sideVector{b})^{\transpose}\countCovarianceRate\sideVector{b}$,
+the life of a side.
+The difference of the two sides is the whole-book imbalance of $\hawOne$, the signed count,
+whatever the draws. The CKS book has the same, and turns it into a mid-price at the fixed depth
+$\uniformDepth$ per tick; $\hawOne$ has no fixed depth.
+Now to notebook 10, section 1, Three flows on one path.
+}
+\end{frame}
+
+\begin{frame}
+  \frametitle{The mid-prices part at $\partingTime$}
+\begin{defi}
+\label{def.partingTime}
+ $\partingTime := \inf\{t \geq 0 : \midPriceOf{\cks}_t \neq \midPriceOf{\hawOne}_t\}$.
+\end{defi}
+
+Before $\partingTime$: the same mid-prices, possibly different queues
+
+For $\hawQ$: the same, with $\hawQ$ in place of $\hawOne$
+\note{
+The parting time compares the mid-prices only. The queues of the two books may differ long
+before it: a limit order that the geometric placement puts behind the touch, or a withdrawal
+drawn behind it, changes a queue of $\hawOne$ and no best price.
+}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Each event moves one best price at most}
 \begin{lemma}
-\label{lemma.agreementRule}
- If the books coincide just before $\arrivalTimes[]_n < \breachTime$, they coincide after it
- iff $\event[n]$ is a market type, or a limit type with $\priceOffset_n = \targetOffset_n$.
+\label{lemma.oneBestPrice}
+ In each book an event moves at most one best price, in the direction
+ $\pressure_{\event[n]}$.
+ At agreeing best prices, $\cks$ and $\hawOne$ never move different ones.
 \end{lemma}
 
-Given $\sigmaAlgebra^{\multiCountingProc}$ and the past offsets:
-$\offsetParameter(1-\offsetParameter)^{\targetOffset_n}\indicator{\targetOffset_n \geq 0}$
+$\pressure_{\event[n]} = +1$: up; $\pressure_{\event[n]} = -1$: down
+
+CKS limit order, full touch, spread one tick: the opposite price
 \note{
-A market buy is $(\arrivalTimes[]_n, 1, \infty, +1)$ under the geometric placement, and a limit
-buy of one share at the best ask under the idealised one, whose market part is its whole size
-by the decomposition of class 1. The best ask holds at least one share, so both trade one share
-there and rest nothing.
-For a limit order of direction $d$, with $\tilde{p}_n$ the idealised price,
-$d(p_n - \tilde{p}_n) = \tickSizeOfLOB(\targetOffset_n - \priceOffset_n)$, so equal offsets give
-the same message. Otherwise the size resting at $p_n$ differs by one between the two books. The
-probability is the geometric law at $\targetOffset_n$, the offsets being independent of the flow
-and of one another.
+Take a buy type; the sell types are the same mutatis mutandis. A market buy trades at the best
+ask and changes nothing else: one share in the CKS book and in $\hawOne$, $\orderSize_n$
+shares walking the ask in $\hawQ$. Consuming the lowest asks can only raise the best ask.
+A geometric limit buy is priced below the best ask and rests in full on the bid: adding size can
+only raise the best bid or leave it. The CKS limit buy joins the best bid, or opens a level one
+tick above it, or, at a full best bid facing a spread of one tick, trades one share at the best
+ask; in the last case only the best ask can move, and up. A withdrawal from the bid removes size
+from the bid alone, and can only lower the best bid.
+For the second claim, the only event that moves different prices in the two books would be that
+last CKS limit order. At a spread of one tick the geometric limit buy is priced at or behind the
+best bid, and it moves no best price.
 }
 \end{frame}
 
 \begin{frame}
-  \frametitle{Before the first discrepancy the books are one}
-\begin{prop}
-\label{prop.coincidenceBeforeDiscrepancy}
- The books, and their mid-prices, coincide on $[0, \discrepancyTime)$. $\discrepancyTime$ is
- the first limit event before $\breachTime$ with $\priceOffset_n \neq \targetOffset_n$, else
- $\breachTime$.
-\end{prop}
-
-$\discrepancyTime$: the first $\arrivalTimes[]_n < \breachTime$ after which some size differs
-
-On $[0, \discrepancyTime)$: the geometric book satisfies the assumption
-\note{
-By induction on the events, with the agreement rule deciding each one while the books coincide.
-The mid-prices may still coincide after $\discrepancyTime$: an order resting behind the best
-quote of its side changes the book and not the mid-price. So the first discrepancy is at most
-the first time at which the two mid-prices differ.
-}
-\end{frame}
-
-\begin{frame}
-  \frametitle{The books part at a full touch facing one tick}
-\begin{center}
-\begin{tikzpicture}[x=0.62cm, y=0.32cm, font=\scriptsize,
-    bid/.style={fill=blue!45, draw=blue!65}, ask/.style={fill=orange!45, draw=orange!70}]
-  \foreach \panel/\shift/\bb/\aa in {before/0/5/5, idealised/5.6/5/4, geometric/11.2/6/5} {
-    \begin{scope}[xshift=\shift*0.62cm]
-      \booksizeaxis{0.4}{4.7}{6}{2}
-      \draw[gray!55] (0.4,0) -- (4.7,0);
-      \draw[gray!60, dashed] (0.4,5) -- (4.7,5);
-      \draw[bid] (1-0.26,0) rectangle (1+0.26,5);
-      \draw[bid] (2-0.26,0) rectangle (2+0.26,\bb);
-      \draw[ask] (3-0.26,0) rectangle (3+0.26,\aa);
-      \draw[ask] (4-0.26,0) rectangle (4+0.26,5);
-      \node[below] at (2,-0.2) {$\bestBidPrice$};
-      \node[below] at (3,-0.2) {$\bestAskPrice$};
-      \node at (2.55,8.2) {\panel};
-    \end{scope}
-  }
-  \node[right, gray!40!black] at (15.9,5) {$\uniformDepth$};
-\end{tikzpicture}
-\end{center}
-
-A limit buy, $\priceOffset_n = 0$: $\targetOffset_n = -1$
-
-Idealised trades at $\bestAskPrice$, geometric rests at $\bestBidPrice$
-
-Mid-prices still equal
-\note{
-The bid holds $\uniformDepth$ at a spread of one tick. The idealised limit buy is placed one tick
-above the full bid, which is the best ask, and trades a share there: the ask falls to
-$\uniformDepth - 1$. The geometric limit buy at offset zero rests one tick below the best ask,
-which is the best bid: the bid holds $\uniformDepth + 1$, against part iii of the assumption.
-The target offset is $-1$, so the books part whatever the offset. The mid-prices are still
-equal after the event, and part at a later one, when one book clears a queue that the other
-does not.
-Now to notebook 10, sections 2 and 3. Section 2 finds this event on the path of section 1, and
-section 3 tests the agreement rule on every limit event of a thousand paths up to the first
-discrepancy, case by case: every case observed often enough meets its formula to within about
-one standard error.
-}
-\end{frame}
-
-\begin{frame}
-  \frametitle{The conditional survival law}
-\begin{prop}
-\label{prop.couplingSurvival}
- \[
-  \Prob\big(\discrepancyTime > t \,\big\vert\, \sigmaAlgebra^{\multiCountingProc}\big)
-  = \offsetParameter^{\countingProc[\limitTypes](t)}
-  (1-\offsetParameter)^{\cumulativeTargetOffset(t)} \indicator{\breachTime > t}
- \]
-\end{prop}
-
-$\countingProc[\limitTypes] = \countingProc[3] + \countingProc[4]$: the count of limit orders
-
-$\cumulativeTargetOffset(t)$: the sum of their target offsets, $\infty$ at a $-1$
-
-A functional of the idealised path alone
-\note{
-The event that the books survive to $t$ is the intersection of $\{\breachTime > t\}$ with the
-events $\{\priceOffset_n = \targetOffset_n\}$ over the limit events of $(0, t]$. The first event
-and every target offset are $\sigmaAlgebra^{\multiCountingProc}$-measurable, the offsets are
-independent of $\sigmaAlgebra^{\multiCountingProc}$ and of one another, and the conditional
-probability is the product of the agreement probabilities.
-Read factor by factor: a limit order parts the books with probability $1 - \offsetParameter$
-when it joins a best quote facing a spread of one tick, with a probability that grows with the
-spread otherwise, and with certainty at a full best quote facing a spread of one tick.
-}
-\end{frame}
-
-\begin{frame}
-  \frametitle{Every factor is at most $\offsetParameter$}
-\begin{remark}
-\label{remark.couplingAtUnitOffsetParameter}
- \[
-  \offsetParameter^{\countingProc[\limitTypes](t)}
-  \indicator{\breachTime > t, \, \cumulativeTargetOffset(t) = 0}
-  \leq \Prob\big(\discrepancyTime > t \,\big\vert\, \sigmaAlgebra^{\multiCountingProc}\big)
-  \leq \offsetParameter^{\countingProc[\limitTypes](t)}
- \]
-\end{remark}
-
-$\offsetParameter = 1$: $\discrepancyTime$ the first limit event with $\targetOffset_n \neq 0$
-\note{
-Equality holds in each factor at a target offset of zero. At $\offsetParameter = 1$ every offset
-is zero almost surely, and the first discrepancy is a function of the path: the first limit
-event before the breach whose target offset is not zero. The path does not depend on
-$\offsetParameter$, so by bounded convergence $\Prob(\discrepancyTime > t)$ converges to its
-value at $\offsetParameter = 1$ as $\offsetParameter \uparrow 1$.
-The exercise of the notes: show that the number of limit orders before the first discrepancy is
-at least $k$ with probability at most $\offsetParameter^{k}$, deduce that its mean is at most
-$\offsetParameter/(1-\offsetParameter)$, and say on which paths the first bound is an equality.
-Averaged over the paths, the upper bound is
-$\Expectation[\offsetParameter^{\countingProc[\limitTypes](t)}]$, which the exponential kernel
-computes in closed form.
-}
-\end{frame}
-
-\begin{frame}
-  \frametitle{The generating functional of the counts --- 1 of 2}
-\[
- \pgfExponent\derivative(r)
- = -\decay\,\pgfExponent(r)
- + \excitation^{\transpose}\big(\pgfArgument(r) \circ e^{\pgfExponent(r)} - \mathbf{1}\big),
- \qquad \pgfExponent(0) = 0
-\]
-
-$\pgfArgument$: piecewise constant, with values in $[0,1]^{\numEventTypes}$
-
-$r$: the time left to the end of the window
-
-$\pgfExponent$: defined on $[0,\infty)$, in $[-\branchingMatrix^{\transpose}\mathbf{1}, 0]$
-\note{
-A Riccati equation, with $\circ$ the entrywise product and the exponential taken entrywise. The
-entry $\pgfExponent_{\eone}$ is indexed by the exciting type: an event of type $\eone$ begets
-events of type $e$ at the rate $\excitation\subscriptee e^{-\decay s}$, which is why the
-transpose appears.
-The box is invariant: on the face $\pgfExponent_e = 0$ the field points inwards, and on the face
-$\pgfExponent_e = -(\branchingMatrix^{\transpose}\mathbf{1})_e$ it is at least
-$\decay(\branchingMatrix^{\transpose}\mathbf{1})_e - (\excitation^{\transpose}\mathbf{1})_e = 0$.
-The field is locally Lipschitz, so the solution exists for all $r$.
-}
-\end{frame}
-
-\begin{frame}
-  \frametitle{The generating functional of the counts --- 2 of 2}
-\begin{prop}
-\label{prop.countGeneratingFunctional}
- \[
- \begin{gathered}
-  \Expectation\Big[ \prod_{s < \arrivalTimes[]_n \leq s+\forecastHorizon}
-  \pgfArgument_{\event[n]}(s + \forecastHorizon - \arrivalTimes[]_n)
-  \,\Big\vert\, \sigmaAlgebra_s \Big]
-  \\
-  = \exp\Big( \pgfExponent(\forecastHorizon)^{\transpose}\decayedCounts(s+)
-  + \int_0^{\forecastHorizon} \baseIntensity^{\transpose}
-  \big(\pgfArgument \circ e^{\pgfExponent} - \mathbf{1}\big)\,dr \Big)
- \end{gathered}
- \]
-\end{prop}
-
-Constant $\pgfArgument$: the generating function of the counts
-
-$\branchingRatio < 1$, stationary, $\pgfArgument = \mathbf{1}$ past $\forecastHorizon$: the integral to $\infty$
-\note{
-The proof is a martingale. Multiply the product over the events of $(s, u]$ by the exponential
-evaluated at the time left, $r = s + \forecastHorizon - u$, and at the state $\decayedCounts(u+)$.
-Between events its logarithm drifts; at an event of type $e$ it is multiplied by
-$\pgfArgument_e e^{\pgfExponent_e}$. Compensating the jumps with
-$\intensity[ ] = \baseIntensity + \excitation\decayedCounts$, the terms in $\baseIntensity$
-cancel and the drift is the Riccati equation applied to $\decayedCounts$, which vanishes. The
-process lies in $[0,1]$, so it is a martingale, and its values at $u = s + \forecastHorizon$ and
-$u = s$ are the two sides.
-The exercise of the notes: differentiate at $\pgfArgument = \mathbf{1}$ in the direction of
-$\unitVector_{\eone}$ and recover the forward mean of the counts of class 3.
-}
-\end{frame}
-
-\begin{frame}
-  \frametitle{The decoupling rate}
+  \frametitle{The mid-prices part at one quote}
 \begin{corol}
-\label{corol.decouplingRate}
- For $\branchingRatio < 1$,
- $\frac{1}{\forecastHorizon}\log\Expectation\big[
- \offsetParameter^{\countingProc[\limitTypes](s+\forecastHorizon)
- - \countingProc[\limitTypes](s)} \,\big\vert\, \sigmaAlgebra_s\big]
- \to -\decouplingRate(\offsetParameter)$, with
- $\decouplingRate(\offsetParameter) = (1-\offsetParameter)\stationaryIntensity[\limitTypes]
- + O\big((1-\offsetParameter)^{2}\big)$.
+\label{corol.partingAtOneQuote}
+ $\partingTime$ is the first time a best price of $\cks$ differs from that of $\hawOne$,
+ and then exactly one of the two best prices differs.
 \end{corol}
 
-$\pgfArgument = \mathbf{1} - (1-\offsetParameter)\mathbf{1}_{\limitTypes}$, constant
-
-$\decouplingRate(\offsetParameter) = -\baseIntensity^{\transpose}
-(\pgfArgument \circ e^{\pgfExponent_\infty} - \mathbf{1})$, with
-$\pgfExponent_\infty$ a zero of the field
+From the common opening book, event by event
 \note{
-At a constant argument the derivative of $\pgfExponent$ solves a linear system with non-negative
-off-diagonal entries from a non-positive start, so $\pgfExponent$ is non-increasing and converges
-to a zero of the field. The integrand converges, and the state term stays bounded.
-At $\offsetParameter = 1$ the zero is $0$, where the derivative of the field is
-$\hurwitzMatrix^{\transpose}$, invertible; the implicit function theorem gives the branch, and
-its derivative gives the first-order term, which is $\stationaryIntensity[\limitTypes]$ by the
-stationary intensity of class 3.
-So, to first order in $1-\offsetParameter$, the upper bound on the survival decays at the
-stationary rate of limit orders times the probability that an offset is not zero. The bound is
-attained along the paths on which every target offset is zero.
+The opening book is common. If the best prices agree before an event, by the lemma at most one
+of them differs after it, and if one does, the mid-prices differ. If they agree, so do the
+mid-prices. The books therefore part one best bid apart, or one best ask apart, and never both.
 }
 \end{frame}
 
 \begin{frame}
-  \frametitle{The touch walks}
+  \frametitle{What parts the mid-prices --- 1 of 2}
 \begin{center}
-\begin{tikzpicture}[x=0.95cm, y=0.42cm, font=\scriptsize]
-  \fill[gray!10] (0,1) rectangle (8.4,5);
-  \draw[-{Stealth}, gray!70] (0,0) -- (8.9,0) node[right] {$t$};
-  \draw[-{Stealth}, gray!70] (0,0) -- (0,7.2);
-  \foreach \y/\lab in {1/1, 5/\uniformDepth, 6/\uniformDepth+1} {
-    \draw[gray!45, dashed] (0,\y) -- (8.4,\y);
-    \node[left, gray!40!black] at (0,\y) {$\lab$};
-  }
-  \draw[blue!65, thick] plot[const plot] coordinates {
-    (0,3) (0.8,4) (1.5,3) (2.3,4) (3.0,5) (3.6,4) (4.5,5) (5.2,4) (6.1,5) (7.4,6) (8.4,6)};
-  \draw[orange!85, thick] plot[const plot] coordinates {
-    (0,3.08) (0.5,2.08) (1.2,3.08) (2.0,2.08) (2.7,1.08) (3.3,2.08) (4.1,3.08) (4.9,2.08)
-    (5.8,3.08) (6.6,4.08) (8.4,4.08)};
-  \fill[blue!65] (7.4,6) circle (2pt);
-  \draw[gray!60!black, dashed] (7.4,0) -- (7.4,6.6);
-  \node[below] at (7.4,0) {$\walkExitTime$};
-  \node[blue!55!black, right] at (8.4,6) {$\touchWalk{b}$};
-  \node[orange!70!black, right] at (8.4,4.08) {$\touchWalk{a}$};
+\begin{tikzpicture}[x=0.34cm, y=0.24cm, font=\scriptsize,
+    bid/.style={fill=blue!40, draw=blue!60}, ask/.style={fill=orange!40, draw=orange!65},
+    span/.style={{Stealth[length=3pt]}-{Stealth[length=3pt]}, gray!50!black}]
+  \begin{scope}
+    \booksizeaxis{0.4}{11.6}{6}{2}
+    \draw[gray!55] (0.4,0) -- (11.6,0);
+    \foreach \x in {1,...,5} \draw[bid] (\x-0.3,0) rectangle (\x+0.3,4);
+    \draw[bid] (6-0.3,0) rectangle (6+0.3,2);
+    \draw[ask] (8-0.3,0) rectangle (8+0.3,3);
+    \foreach \x in {9,10,11} \draw[ask] (\x-0.3,0) rectangle (\x+0.3,4);
+    \draw[gray!60] (6,2) -- (6,7.2) node[above, inner sep=1pt, text=black] {$\size^{\cks}$};
+    \draw[span] (6,-3.6) -- node[below] {$k$ ticks} (8,-3.6);
+    \node[below] at (6,-0.2) {$\bestBidPrice$};
+    \node[below] at (8,-0.2) {$\bestAskPrice$};
+    \node at (6,11) {$\cks$};
+  \end{scope}
+  \begin{scope}[xshift=4.6cm]
+    \booksizeaxis{0.4}{11.6}{6}{2}
+    \draw[gray!55] (0.4,0) -- (11.6,0);
+    \foreach \x/\h in {1/5, 2/2, 3/6, 4/3} \draw[bid] (\x-0.3,0) rectangle (\x+0.3,\h);
+    \draw[bid] (6-0.3,0) rectangle (6+0.3,1);
+    \foreach \x/\h in {8/2, 9/5, 10/1, 11/4} \draw[ask] (\x-0.3,0) rectangle (\x+0.3,\h);
+    \node[above] at (6,1) {$\size^{\hawOne}$};
+    \node[below] at (6,-0.2) {$\bestBidPrice$};
+    \node[below] at (8,-0.2) {$\bestAskPrice$};
+    \draw[span] (4,-3.6) -- node[below] {$g$} (6,-3.6);
+    \draw[span] (0.7,-7.4) -- node[below] {$\size^{\hawOne}(\tickSizeOfLOB\N)$} (6.3,-7.4);
+    \node at (6,11) {$\hawOne$};
+  \end{scope}
 \end{tikzpicture}
 \end{center}
 
-$\touchWalk{b} = \nthBestBidSize[1]_0 + \countingProc[3] - \countingProc[2]$,
-\quad
-$\touchWalk{a} = \nthBestAskSize[1]_0 + \countingProc[4] - \countingProc[1]$
+Side of the event: the side its CKS message acts on
 
-$\walkExitTime$: the first exit of either from $[1, \uniformDepth]$
+$g$: ticks from the touch of $\hawOne$ to the next occupied price
 \note{
-The bound of the last frames is attained on the paths on which every target offset is zero, and
-an opening spread of one tick gives a regime in which these paths are described by the counts
-alone. Each walk moves by one at each event acting on its touch. Here the bid walk leaves
-through $\uniformDepth + 1$: a limit buy at a full bid facing a spread of one tick, the case of
-the picture of the books parting.
+The side of the event is the side on which its CKS message acts: the opposite side for a market
+order, and for a limit order at a full touch facing a spread of one tick; its own side otherwise.
+The bid is drawn as the side of the event, as for a market sell or a withdrawal from the bid. On
+it $\size^{\cks}$ and $\size^{\hawOne}$ are the sizes at the two touches,
+$\size^{\hawOne}(\tickSizeOfLOB\N)$ is the size resting on the whole side of $\hawOne$, and $g$ the
+number of ticks from the touch of $\hawOne$ to the next occupied price behind it.
+Behind its touch the CKS book holds $\uniformDepth$ on every tick, so it moves a best price by one
+tick or not at all. $\hawOne$ may move it by $g$ ticks, and a limit order that improves its touch
+by any number of ticks inside the spread.
 }
 \end{frame}
 
 \begin{frame}
-  \frametitle{Pinned at one tick}
+  \frametitle{What parts the mid-prices --- 2 of 2}
 \begin{prop}
-\label{prop.spreadPinnedAtOneTick}
- At an opening spread of one tick,
- \[
-  \Prob(\discrepancyTime > t \mid \sigmaAlgebra^{\multiCountingProc})
-  = \offsetParameter^{\countingProc[\limitTypes](t)}
-  \quad \text{on } \{\walkExitTime > t\},
- \]
- and $\discrepancyTime \leq \walkExitTime$ at an exit through $\uniformDepth + 1$.
+\label{prop.partingProbability}
+ At agreeing best prices, $\LOBspread = k\tickSizeOfLOB$, given
+ $\sigmaAlgebra^{\multiCountingProc}$ and the earlier draws:\par\smallskip
+ {\footnotesize\hfill\begin{tabular}{@{}llll@{}}
+  \toprule
+  event & & $j^{\cks}$ & parting \\
+  \midrule
+  market & & $\indicator{\size^{\cks} = 1}$ & $\indicator{j^{\cks} \neq j^{\hawOne}}$ \\
+  limit, $k = 1$ & own touch $< \uniformDepth$ & $0$ & $0$ \\
+   & own touch $= \uniformDepth$ & $\indicator{\size^{\cks} = 1}$
+   & $\indicator{\size^{\cks} = 1}$ \\
+  limit, $k \geq 2$ & $\size^{\cks} < \uniformDepth$ & $0$
+   & $1 - (1-\offsetParameter)^{k-1}$ \\
+   & $\size^{\cks} = \uniformDepth$ & $1$
+   & $1 - \offsetParameter(1-\offsetParameter)^{k-2}$ \\
+  withdrawal & $\size^{\cks} \geq 2$ & $0$
+   & $\indicator{\size^{\hawOne} = 1}/\size^{\hawOne}(\tickSizeOfLOB\N)$ \\
+   & $\size^{\cks} = 1$ & $1$
+   & $1 - \indicator{\size^{\hawOne} = 1, \, g = 1}/\size^{\hawOne}(\tickSizeOfLOB\N)$ \\
+  \bottomrule
+ \end{tabular}\hfill\null\par}
 \end{prop}
 
-$0 \leq \Expectation[\offsetParameter^{\countingProc[\limitTypes](t)}]
-- \Prob(\discrepancyTime > t)
-\leq \Expectation[\offsetParameter^{\countingProc[\limitTypes](t)}; \walkExitTime \leq t]$
+$j^{\cks}$, $j^{\hawOne}$: the ticks each book moves the side of the event
 
-$\offsetParameter = 1$: $\discrepancyTime \geq \walkExitTime$, with equality at an exit through
-$\uniformDepth + 1$
+Parting: the probability that event $n$ parts the mid-prices
+
+Market order: $j^{\hawOne} = g\,\indicator{\size^{\hawOne} = 1}$
 \note{
-On $[0, \walkExitTime)$ the idealised book keeps its opening best prices, its touches are the
-walks, and every limit event has target offset zero: a limit sell finds the ask below
-$\uniformDepth$ at a spread of one tick and joins it, with target offset $1 - 1 - 0 = 0$. In particular the
-breach comes no sooner than the exit. In this regime the idealised mid-price does not move, and
-the bound is the generating functional. Once a best queue is cleared the spread opens to two
-ticks, and a limit order then keeps the books together with probability
-$\offsetParameter(1-\offsetParameter)$ below the cap and $\offsetParameter$ at it.
-Now to notebook 10, section 4. On the book with $\uniformDepth = 5$ the median first
-discrepancy is 1.47 s at $\offsetParameter = 1$, 0.32 s at 0.5, 0.21 s at 0.2 and 0.18 s at
-0.08. At $\offsetParameter = 1$ the bound is one and useless, and the books part at a spread of
-two on 48\% of the paths and at a full quote facing one tick on 46\%. On the book with
-$\uniformDepth = 50$ no touch fills or empties within the horizon, and the Riccati value is the
-answer.
+Each book moves the best price of the side of the event by $j^{\cks}$ and $j^{\hawOne}$ ticks,
+and no other best price, and the event parts the mid-prices exactly when the two differ. For a
+limit order the own touch is the touch of the CKS book on the side of the order.
+The CKS book holds $\uniformDepth$ on every tick behind its touch, so $j^{\cks}$ is zero or one. A
+market order or a withdrawal moves the touch it takes from exactly when that touch holds one
+share. A limit order at $k \geq 2$ opens a level one tick inside its touch exactly when that touch
+is full. At $k = 1$ it joins its touch if that is not full, and otherwise trades one share at the
+opposite touch, the touch of the side of the event, which moves exactly when it holds one share.
+A market order takes one share from the touch of $\hawOne$, which moves by $g$ ticks exactly when
+it held one. A withdrawal moves it exactly when it draws the touch, with probability
+$\size^{\hawOne}/\size^{\hawOne}(\tickSizeOfLOB\N)$, and the touch held one share; then also by
+$g$. A limit order at $k \geq 2$ is priced $k - 1 - \priceOffset_n$ ticks inside the touch of its
+side, so it moves the touch by $j$ ticks, $1 \leq j \leq k-1$, with probability
+$\offsetParameter(1-\offsetParameter)^{k-1-j}$, and not at all with probability
+$(1-\offsetParameter)^{k-1}$; at $k = 1$ it moves no best price.
+Each entry is the probability, given the path and the earlier draws, that the two moves differ.
+}
+\end{frame}
+
+\begin{frame}
+  \frametitle{At one tick, two shares a touch keep the book quiet}
+\begin{corol}
+\label{corol.quietBook}
+ At $\LOBspread = \tickSizeOfLOB$ with all four touches at two shares or more, no event moves a
+ best price, and $\partingTime = \firstMove^{\cks} \wedge \firstMove^{\hawOne}$
+ unless the books then move alike.
+\end{corol}
+
+$\firstMove^{\cks}$, $\firstMove^{\hawOne}$: the first move of a best price of each book
+
+Each first move: the first event emptying one of its touches
+\note{
+At a spread of one tick with every touch at two shares or more, every entry of the table is zero:
+a market order or a withdrawal takes one share from a touch of two or more, the CKS limit order at
+a full touch trades at an opposite touch of two or more, and a geometric limit order at one tick
+is placed at or behind its touch.
+Before the first move of either book no best price has moved, so the two agree on them and the
+spread is the opening tick. At that event at least one book moves, and the mid-prices part unless
+the other makes the same move. That needs a touch of one share in both books at the same event,
+emptied by the same market order or withdrawal, with $g = 1$ in $\hawOne$.
+}
+\end{frame}
+
+\begin{frame}
+  \frametitle{The CKS touches are walks less their running maximum}
+\begin{prop}
+\label{prop.cksTouchWalks}
+ For $t < \firstMove^{\cks}$,
+ \[
+  \nthBestBidSize[1,\cks]_t = \touchWalk{b}(t) - \big(\walkMaximum(t) - \uniformDepth\big),
+ \]
+ likewise the ask, and $\firstMove^{\cks}$ is the first time
+ $\walkMaximum - \touchWalk{b} \wedge \touchWalk{a}$ reaches $\uniformDepth$.
+\end{prop}
+
+$\touchWalk{b} = \uniformDepth + (\sideVector{b})^{\transpose}\multiCountingProc$: what arrives at
+the bid touch
+
+$\walkMaximum$: the running maximum of both walks, from $\uniformDepth$
+
+$\walkMaximum - \uniformDepth$: the limit orders sent to the opposite touch
+\note{
+$\touchWalk{a}$ is the same with $\sideVector{a} = \unitVector_4 - \unitVector_1 - \unitVector_6$.
+The proof is by induction on the events before $\firstMove^{\cks}$, before which no CKS best
+price has moved, so that the spread is one tick. A limit buy raises $\touchWalk{b}$ by one, and raises $\walkMaximum$
+exactly when $\touchWalk{b}$ was the maximum, that is when the CKS bid was full: the order then
+trades one share at the best ask, and the bid stays while the ask falls by one, as the two
+formulae say. Otherwise it joins the bid. A market sell and a withdrawal from the bid lower
+$\touchWalk{b}$, leave $\walkMaximum$, and take one share from the bid. A best price first moves
+at the event that takes the last share of a touch.
+The cap removes the same quantity from both touches, so it couples the two sides. Under balance
+the mean of each walk less $\uniformDepth$ is bounded in $t$, and $\firstMove^{\cks}$ is a
+function of the path.
+}
+\end{frame}
+
+\begin{frame}
+  \frametitle{The first move of the CKS book is a drawdown of $\uniformDepth$}
+\begin{center}
+\begin{tikzpicture}[x=1.05cm, y=0.3cm, font=\scriptsize]
+  \fill[gray!12] (0,0) -- (0,4) -- (0.6,4) -- (0.6,5) -- (2.6,5) -- (2.6,6) -- (4.9,6)
+    -- (4.9,7) -- (7.4,7) -- (7.4,3) -- (4.9,3) -- (4.9,2) -- (2.6,2) -- (2.6,1)
+    -- (0.6,1) -- (0.6,0) -- cycle;
+  \draw[-{Stealth}, gray!70] (0,0) -- (8.2,0) node[right] {$t$};
+  \draw[-{Stealth}, gray!70] (0,0) -- (0,8.6);
+  \draw[gray!45, dashed] (0,4) -- (7.4,4);
+  \node[left, gray!40!black] at (0,4) {$\uniformDepth$};
+  \draw[gray!65, line width=1.6pt] plot[const plot] coordinates {
+    (0,4) (0.6,5) (2.6,6) (4.9,7) (7.4,7)};
+  \draw[gray!65, dashed] plot[const plot] coordinates {
+    (0,0) (0.6,1) (2.6,2) (4.9,3) (7.4,3)};
+  \draw[blue!65, thick] plot[const plot] coordinates {
+    (0,4) (0.6,5) (1.4,4) (2.2,5) (2.6,6) (3.9,5) (4.4,6) (4.9,7) (5.9,6) (6.9,7) (7.4,7)};
+  \draw[orange!85, thick] plot[const plot] coordinates {
+    (0,4.1) (1.0,3.1) (1.8,4.1) (3.0,3.1) (3.4,4.1) (5.4,5.1) (6.4,4.1) (7.4,3.1)};
+  \fill[orange!85] (7.4,3.1) circle (2pt);
+  \draw[gray!60!black, dashed] (7.4,0) -- (7.4,8);
+  \node[below] at (7.4,0) {$\firstMove^{\cks}$};
+  \node[gray!50!black, right] at (7.5,7) {$\walkMaximum$};
+  \node[gray!50!black, right] at (7.5,2.2) {$\walkMaximum - \uniformDepth$};
+  \node[blue!55!black, above] at (6.9,7.2) {$\touchWalk{b}$};
+  \node[orange!70!black, below] at (6.9,4.0) {$\touchWalk{a}$};
+\end{tikzpicture}
+\end{center}
+
+A CKS touch: the height of its walk above $\walkMaximum - \uniformDepth$
+\note{
+The two walks, their running maximum, and the band of width $\uniformDepth$ below it. Each CKS
+touch is the height of its walk above the floor of the band. The bid walk sets the maximum three
+times: each time the CKS bid is full and a limit buy trades at the ask, which raises the floor
+under the ask walk. The ask walk meets the floor at $\firstMove^{\cks}$, where the CKS ask
+empties and the best ask moves up a tick.
+}
+\end{frame}
+
+\begin{frame}
+  \frametitle{The touch of $\hawOne$ has no cap}
+{\small
+\[
+ \nthBestBidSize[1,\hawOne]_t
+ = \uniformDepth
+ + \sum_{\substack{\arrivalTimes[]_n \leq t \\ \event[n] = 3}}
+ \indicator{\priceOffset_n = 0}
+ - \countingProc[2](t)
+ - \sum_{\substack{\arrivalTimes[]_n \leq t \\ \event[n] = 5}}
+ \indicator{p_n = \bestBidPrice_{\arrivalTimes[]_n -}}
+\]
+}
+
+For $t < \firstMove^{\hawOne}$, at a spread of one tick
+
+Joins: probability $\offsetParameter$; draws the touch:
+$\nthBestBidSize[1,\hawOne]/\size^{b,\hawOne}(\tickSizeOfLOB\N)$
+
+The whole bid: $L\uniformDepth$ to first order, by balance
+\note{
+Before its first move the spread of $\hawOne$ is the opening tick, and its best bid evolves by
+this count. A limit buy joins the touch when its offset is zero, with probability
+$\offsetParameter$, and goes behind it otherwise. A market sell takes one share. A withdrawal
+from the bid takes one share from the touch when it draws the touch, with probability the touch
+over the whole bid, and the whole bid is $L\uniformDepth + (\sideVector{b})^{\transpose}
+\multiCountingProc(t)$.
+Replace each indicator by its conditional mean, the counts by their stationary rates, and the
+whole bid by $L\uniformDepth$: that is the equation of the next frame.
+}
+\end{frame}
+
+\begin{frame}
+  \frametitle{The touch of $\hawOne$ follows a fluid limit}
+\begin{prop}
+\label{prop.fluidTouch}
+ Let $\uniformDepth \to \infty$ with $L$, $\offsetParameter$ and the specification fixed, and
+ let
+ $\fluidTouch\derivative = \offsetParameter\stationaryIntensity[3] - \stationaryIntensity[2]
+ - \stationaryIntensity[5]\fluidTouch/L$, $\fluidTouch(0) = 1$.
+ On any $[0, s_1]$ where $\fluidTouch > 0$,
+ $\sup_{s \leq s_1}\big\vert \nthBestBidSize[1,\hawOne]_{\uniformDepth s}/\uniformDepth
+ - \fluidTouch(s)\big\vert \to 0$ in probability.
+\end{prop}
+
+Time and size in units of $\uniformDepth$
+
+$\Prob(\firstMove^{\hawOne} > \uniformDepth s_1) \to 1$; the same of the ask
+\note{
+The proof is in three steps. First, a law of large numbers for the counts on the scale
+$\uniformDepth$: $\multiCountingProc(\uniformDepth s)/\uniformDepth \to s\stationaryIntensity$
+uniformly on $[0, s_1]$ in probability, from the identity for the count increments of class 4,
+Doob's inequality for the martingale, and second moments of the state bounded in time. In
+particular the whole bid over $\uniformDepth$ tends to $L$.
+Second, the draws: the indicators of the offsets and of the levels drawn, less their conditional
+means, sum to a martingale with increments bounded by one, which is $o(\uniformDepth)$
+uniformly.
+Third, Gronwall's inequality for the distance between the rescaled touch and $\fluidTouch$. Since
+$\fluidTouch$ stays positive on $[0, s_1]$, so does the touch, with probability tending to one,
+and $\hawOne$ makes no move before $\uniformDepth s_1$.
+}
+\end{frame}
+
+\begin{frame}
+  \frametitle{The fluid touch in the two regimes}
+\begin{center}
+\begin{tikzpicture}[x=0.68cm, y=1.35cm, font=\scriptsize]
+  \draw[-{Stealth}, gray!70] (0,0) -- (12.6,0) node[right] {$s$};
+  \draw[-{Stealth}, gray!70] (0,0) -- (0,2.25) node[above] {$\fluidTouch$};
+  \draw[gray!45, dashed] (0,1) -- (12,1);
+  \node[left, gray!40!black] at (0,1) {$1$};
+  \draw[gray!45, dashed] (0,1.6667) -- (12,1.6667);
+  \node[left, gray!40!black] at (0,1.6667) {$\fluidTouch_{\infty}$};
+  \draw[blue!65, thick] plot[domain=0:12, samples=60]
+    (\x, {1.6667 - 0.6667*exp(-0.15*\x)});
+  \draw[orange!85, thick] plot[domain=0:3.1334, samples=40]
+    (\x, {-1.6667 + 2.6667*exp(-0.15*\x)});
+  \fill[orange!85] (3.1334,0) circle (2pt);
+  \node[below] at (3.1334,0) {$\fluidEmptying$};
+  \node[blue!55!black, above left] at (12,1.6667)
+       {$\offsetParameter\stationaryIntensity[3] > \stationaryIntensity[2]$};
+  \node[orange!70!black, right] at (3.3,0.35)
+       {$\offsetParameter\stationaryIntensity[3] < \stationaryIntensity[2]$};
+\end{tikzpicture}
+\end{center}
+
+$\fluidTouch(s) = \fluidTouch_{\infty}
++ (1 - \fluidTouch_{\infty})\,e^{-\stationaryIntensity[5]s/L}$
+
+$\fluidTouch_{\infty} = L(\offsetParameter\stationaryIntensity[3] - \stationaryIntensity[2])/\stationaryIntensity[5]$
+\note{
+The equation is linear: the touch relaxes at the rate $\stationaryIntensity[5]/L$ towards
+$\fluidTouch_{\infty}$. Limit orders join it at the rate $\offsetParameter\stationaryIntensity[3]$, market
+orders take from it at the rate $\stationaryIntensity[2]$, and withdrawals at a rate proportional to the
+touch. The sign of $\offsetParameter\stationaryIntensity[3] - \stationaryIntensity[2]$ decides. Below the threshold
+$\fluidTouch_{\infty}$ is negative and the fluid touch reaches zero at $\fluidEmptying$; above
+it, the fluid touch settles at $\fluidTouch_{\infty} > 0$, above or below the opening depth.
+}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Below the threshold the touch of $\hawOne$ empties first}
+\begin{corol}
+\label{corol.twoRegimes}
+ As $\uniformDepth \to \infty$:
+ \begin{enumerate}[label={\emph{\roman{*}}.}]
+  \item if $\offsetParameter\stationaryIntensity[3] < \stationaryIntensity[2]$,
+        $\Prob(\partingTime = \firstMove^{\hawOne}) \to 1$ and
+        $\firstMove^{\hawOne}/\uniformDepth \to \fluidEmptying$ in probability;
+  \item if $\offsetParameter\stationaryIntensity[3] \geq \stationaryIntensity[2]$,
+        $\partingTime/\uniformDepth \to \infty$ in probability.
+ \end{enumerate}
+\end{corol}
+
+$\fluidEmptying = (L/\stationaryIntensity[5])
+\log\big(1 + \stationaryIntensity[5]/L(\stationaryIntensity[2] - \offsetParameter\stationaryIntensity[3])\big)$:
+the zero of $\fluidTouch$
+
+Threshold: $\offsetParameter = \stationaryIntensity[2]/\stationaryIntensity[3]$
+\note{
+In the first regime the CKS touch walks move by $o(\uniformDepth)$ on the scale $\uniformDepth$,
+so their drawdown stays below $\uniformDepth$ and the CKS book does not move. The touch of
+$\hawOne$ follows $\fluidTouch$ up to $\fluidEmptying$, and it cannot stay positive much beyond,
+where the continued solution is negative: its first move is near $\uniformDepth\fluidEmptying$.
+There the CKS touches are near $\uniformDepth$, so the CKS book does not make the same move, and
+the quiet book gives $\partingTime = \firstMove^{\hawOne}$.
+From the threshold up the fluid touch is positive on every $[0, s_1]$, and neither book moves on
+the scale $\uniformDepth$. The proof of part ii stops there.
+}
+\end{frame}
+
+\begin{frame}
+  \frametitle{The second regime is diffusive}
+\begin{remark}[Approximation]
+\label{approx.secondRegime}
+ If $\offsetParameter\stationaryIntensity[3] > \stationaryIntensity[2]$, away from the threshold
+ and for $L$ large, $\partingTime = \firstMove^{\cks}$ with probability close to one, of order
+ $\uniformDepth^2/(\sideVector{b})^{\transpose}\countCovarianceRate\sideVector{b}$.
+\end{remark}
+
+$\firstMove^{\cks}/\uniformDepth^2$: in law, a drawdown of one unit of a Brownian motion
+
+$\firstMove^{\hawOne}$: near the exhaustion of its side, on $L^2$ times that scale
+
+$\partingTime$: a function of the path
+\note{
+The touch of $\hawOne$ relaxes, at the rate $\stationaryIntensity[5]/(L\uniformDepth)$ per share
+of deviation, towards $(\fluidTouch_{\infty}/L)\,\size^{b,\hawOne}_t(\tickSizeOfLOB\N)$: that is
+$\fluidTouch_{\infty}\uniformDepth$ plus a multiple of the walk of the side, which has no drift. It fluctuates about that centre by $O(\sqrt{\uniformDepth})$, and reaches zero by a
+large deviation of the fluctuation, or when the side itself is nearly exhausted, at the scale
+$(L\uniformDepth)^2/(\sideVector{b})^{\transpose}\countCovarianceRate\sideVector{b}$ of the life
+of a side.
+The CKS book moves at the diffusive scale. By the functional central limit theorem for
+Hawkes processes of Bacry, Delattre, Hoffmann and Muzy, the two walks less $\uniformDepth$, over
+$\uniformDepth$, at time $\uniformDepth^2 s$, converge to a Brownian motion with the covariance
+of $(\sideVector{b})^{\transpose}\multiCountingProc$ and
+$(\sideVector{a})^{\transpose}\multiCountingProc$ per unit of time; and
+$\firstMove^{\cks}/\uniformDepth^2$ converges in law to the first time one coordinate falls one
+unit below the running maximum of both. Both scales are of order $\uniformDepth^2$, and they
+stand in the ratio of $\Expectation\firstMove^{\cks}$ to the life of a side, of order $1/L^2$:
+for $L$ large the CKS book moves first. The step to $\firstMove^{\cks}$ needs the continuity of the drawdown
+functional at Brownian paths, which is standard and not proved here, so the statement is an
+approximation.
+Now to notebook 10, section 2, When the mid-prices part.
+}
+\end{frame}
+
+\begin{frame}
+  \frametitle{The discrepancy of the mid-prices}
+\begin{defi}
+\label{def.discrepancy}
+ $\discrepancy_t := \midPriceOf{\cks}_t - \midPriceOf{\hawOne}_t$.
+\end{defi}
+
+$\discrepancy_t \in \tfrac{\tickSizeOfLOB}{2}\Z$: both mid-prices on the half-tick grid
+
+$\discrepancy^{\hawQ}_t$: the same, with $\hawQ$ in place of $\hawOne$
+\note{
+We write $\discrepancy$ and not $D$, which is the rate at which the covariance of the counts
+grows. The discrepancy is zero before the parting time, by the definition of
+$\partingTime$, and everything that follows is about what happens after it.
+}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Mean zero, and a variance made after $\partingTime$}
+\begin{prop}
+\label{prop.discrepancyMoments}
+ \begin{enumerate}[label={\emph{\roman{*}}.}]
+  \item $\discrepancy_t = 0$ on $\{\partingTime > t\}$;
+  \item the law of $\discrepancy_t$ is symmetric about zero, and
+        $\Expectation\discrepancy_t = 0$;
+  \item $\Variance\discrepancy_t = \Expectation[\discrepancy_t^{2};\, \partingTime \leq t]
+        \geq (\tickSizeOfLOB/2)^{2}\,\Prob(\discrepancy_t \neq 0)$;
+  \item $\Variance\discrepancy_t
+        = \Variance\Expectation[\discrepancy_t \mid \sigmaAlgebra^{\multiCountingProc}]
+        + \Expectation\Variance(\midPriceOf{\hawOne}_t \mid \sigmaAlgebra^{\multiCountingProc})$.
+ \end{enumerate}
+ The same holds for $\hawQ$.
+\end{prop}
+
+ii.: the mirror, with the same draws $(\priceOffset_n, U_n, \orderSize_n)$
+
+iv.: the flow part, then the placement part
+\note{
+Part i is the definition of $\partingTime$. Part ii is the mirror. The reflection
+$p \mapsto 2\midPrice_0 - p$ maps the tick grid and the opening book to themselves and exchanges
+the bid and the ask. On $G$ both placements commute with it, the type replaced by its mirror; a
+withdrawal drawn by $U_n$ reflects to the withdrawal of the other side that the same $U_n$
+defines. So the books of the mirror are the reflections of those of the path, and the discrepancy
+changes sign. By direction symmetry the mirror is a Hawkes process with the same specification,
+so it has the law of the path, and $G$ is invariant under the exchange.
+Part iii follows, a non-zero discrepancy being at least half a tick. Part iv is the law of total
+variance, the CKS book being a function of the path: the flow part is what the path decides, the
+placement part what the draws of $\hawOne$ add. It needs a conditioning event that is a function
+of the path. With orders of one share the part of $G$ that excludes an empty side is one, the
+part that excludes the floor is not, and part iv holds exactly on the first part. For $\hawQ$ the
+emptying of a side depends on the sizes, and the split is a statement on the draws that keep its
+sides occupied.
 }
 \end{frame}
 
@@ -578,551 +783,389 @@ answer.
 
 $\outerSize$: the size at the outer value of a moving best price
 
-Idealised book: every move one tick, $\outerSize = \uniformDepth$
+Idealised book: every move one tick, onto or off $\uniformDepth$
 \note{
-From here the geometric book carries the sizes of the flow. $\Delta$ on the left is the change of
-the size at each touch over the window, and $\Delta_n$ the change across the $n$-th event.
-When a best price moves, its outer size is the size at the outer of its two values, the lower of
-the two best bids and the higher of the two best asks, read on the book in which that value is
-best.
-The proof is the three cases of the contribution: a bid that does not move contributes the
-change at the touch, one that rises the new queue, one that falls minus the old one; sum and
-telescope. The identity uses the definition of the imbalance and no property of the mechanism.
+$\Delta$ on the left is the change of the size at each touch over the window, and $\Delta_n$ the
+change across the $n$-th event. When a best price moves, its outer size is the size at the outer
+of its two values, the lower of the two best bids and the higher of the two best asks, read on
+the book in which that value is best.
+The proof is the three cases of the contribution: a bid that does not move contributes the change
+at the touch, one that rises the new queue, one that falls minus the old one; sum and telescope.
+The identity uses the definition of the imbalance and no property of the mechanism.
 The right-hand side sums the moves of the best prices in ticks, each weighted by its outer size
-per tick moved. Under the assumption that weight is $\uniformDepth$ at every move, the right-hand
-side is $2\uniformDepth\,\Delta\midPrice_{t,\ofiWindow}/\tickSizeOfLOB$, and the identity is the
-update of the idealised book with its residual.
+per tick moved. Under the assumption of the idealised book that weight is $\uniformDepth$ at
+every move, and the identity is the update of the idealised book with its residual.
 }
 \end{frame}
 
 \begin{frame}
-  \frametitle{What a geometric order contributes}
-\begin{prop}
-\label{prop.geometricContribution}
+  \frametitle{An event placed behind its touch contributes nothing}
+\begin{lemma}
+\label{lemma.unitContribution}
+ With $\behindSet$ the events that $\hawOne$ places behind their touch,
+ $\orderFlowContribution^{\hawOne} = \pressure_{\event[n]}\indicator{n \notin \behindSet}$, and
  \[
-  \orderFlowContribution^{\geometricBook} =
-  \begin{cases}
-   \orderSize_n \wedge \nthBestAskSize[1,\geometricBook]_{\arrivalTimes[]_{n-1}}
-   & \text{market buy,} \\
-   -\big(\orderSize_n \wedge \nthBestBidSize[1,\geometricBook]_{\arrivalTimes[]_{n-1}}\big)
-   & \text{market sell,} \\
-   \pressure_{\event[n]}\,\orderSize_n\,
-   \indicator{\priceOffset_n \leq \LOBspread^{\geometricBook}_{\arrivalTimes[]_n-}/\tickSizeOfLOB - 1}
-   & \text{limit order.}
-  \end{cases}
+  \OFI^{\hawOne}_{t,t} = \pressure^{\transpose}\multiCountingProc(t)
+  - \sum_{n \in \behindSet,\, \arrivalTimes[]_n \leq t}\pressure_{\event[n]},
+  \qquad
+  \OFI^{\cks}_{t,t} = \pressure^{\transpose}\multiCountingProc(t).
  \]
-\end{prop}
+\end{lemma}
 
-Unit sizes, no withdrawals: $\OFI^{\geometricBook}_{t,t} - \OFI^{\idealisedBook}_{t,t}
-= -\sum_{\text{limit}} \pressure_{\event[n]}
-\indicator{\priceOffset_n \geq \LOBspread^{\geometricBook}_{\arrivalTimes[]_n-}/\tickSizeOfLOB}$
+$\behindSet$: limit orders and withdrawals, never a market order
+
+$\cks$: every event at its touch, the signed-size contribution
 \note{
-Both sides occupied before and after the event. A market buy that leaves the best ask in place
-contributes its size; one that clears it contributes what the best ask held, however far it
-walks. A limit order contributes its signed size when it reaches the best quote of its side,
-by joining or improving it, and nothing when it rests behind it. The signed-size contribution of
-class 4 is the case in which every order reaches it.
-With orders of one share and no withdrawals, the imbalance of the geometric book is that of the
-idealised book thinned by the limit orders placed behind their quotes. At
-$\offsetParameter = 1$ the thinning is empty, and both imbalances are the signed count
-$\pressure^{\transpose}\multiCountingProc(t)$.
+$\behindSet$ is the set of the indices $n$ for which the $n$-th event is a limit order or a
+withdrawal that $\hawOne$ places behind the touch of its side.
+With orders of one share: a market order contributes its pressure, the opposite touch holding at
+least one share; a limit order contributes its pressure at or inside its touch, and zero behind
+it; a withdrawal contributes its pressure at the touch, and zero behind it. These are the
+contributions of a geometric order at size one.
+For the CKS book every event reaches its touch, and its contribution is the signed size of class
+4.
 }
 \end{frame}
 
 \begin{frame}
-  \frametitle{A withdrawal contributes only at the best quote}
+  \frametitle{The discrepancy in three terms}
 \begin{prop}
-\label{prop.geometricWithdrawalContribution}
- A geometric withdrawal from the bid at the drawn price $p_n$ contributes
- \[
-  \orderFlowContribution^{\geometricBook}
-  = \pressure_{\event[n]}
-  \big(\orderSize_n \wedge \size^{b}_{\arrivalTimes[]_n-}(p_n)\big)
-  \indicator{p_n = \bestBidPrice_{\arrivalTimes[]_n-}} .
- \]
-\end{prop}
-
-Behind the best bid: nothing
-
-Unit sizes: the thinned imbalance, with the withdrawals drawn behind
-\note{
-Both sides occupied before and after the event, the sizes and the best bid those of the
-geometric book. The withdrawal removes the smaller of its size and what rests at the drawn
-price, and changes only the bid. Behind the best bid it changes neither best price nor the size
-at either. At the best bid it either leaves the bid in place, and the contribution is the change
-there, or it empties the queue and the bid falls, and the contribution is minus what the queue
-held; in both cases minus the size removed.
-With orders of size one the thinned imbalance therefore holds with withdrawals too, the sum
-running over the limit orders placed behind the best quote of their side and the withdrawals
-drawn behind it.
-}
-\end{frame}
-
-\begin{frame}
-  \frametitle{Without withdrawals the geometric book accumulates depth}
-\begin{prop}
-\label{prop.depthAccumulates}
- Without withdrawals, while no side of the geometric book is empty,
- \[
-  \size^{b}_t(\tickSizeOfLOB\N)
-  = \size^{b}_0(\tickSizeOfLOB\N)
-  + \sum_{\arrivalTimes[]_n \leq t, \, \event[n] = 3} \orderSize_n
-  - \sum_{\arrivalTimes[]_n \leq t, \, \event[n] = 2} \orderSize_n .
- \]
-\end{prop}
-
-$\size^{b}_t(\tickSizeOfLOB\N)$: the size on the whole bid
-
-$\stationaryIntensity[3] > \stationaryIntensity[2]$: a constant mean rate of gain
-
-Idealised book: capped at $\uniformDepth$, so its best prices move instead
-\note{
-A limit buy rests in full on the bid, a market sell that leaves the bid occupied removes its size
-from it, and no other event changes the bid. For $\branchingRatio < 1$ the increment over
-$(s, s+\forecastHorizon]$ has conditional mean
-$\meanSize(\unitVector_3 - \unitVector_2)^{\transpose}(\forecastHorizon\stationaryIntensity
-+ \excitation\meanResponseIntegral(\forecastHorizon)(\decayedCounts(s+) - m))$, by the forward
-mean of class 3. The ask is the same with the types 4 and 1, and gains at the same rate under
-direction symmetry.
-When limit orders arrive on each side at the rate of the market orders that consume it, the
-depth is a walk with no drift. That is how the withdrawal-free flow of the notebook is built.
-}
-\end{frame}
-
-\begin{frame}
-  \frametitle{Too few limit orders empty a side}
-\begin{corol}
-\label{corol.geometricExhaustion}
- With orders of size one, $\branchingRatio < 1$ and
- $\stationaryIntensity[3] \leq \stationaryIntensity[2] + \stationaryIntensity[5]$,
- the bid of the geometric book is empty in finite time almost surely.
-\end{corol}
-
-No withdrawals, or unit sizes: the first empty side free of $\offsetParameter$
-
-$u = \unitVector_3 - \unitVector_2 - \unitVector_5$: the balance of the bid
-\note{
-Mutatis mutandis the ask. The first part of the corollary, in the first caption: without
-withdrawals the depth identity of the last frame reads the size on each side off the events and
-the sizes alone; with orders of size one a withdrawal from an occupied side removes one share
-wherever it is drawn, and the identity holds with the withdrawals from the bid subtracted. A
-side is empty at the first event at which the balance reaches zero, whatever the offsets.
-The bid is occupied at $t$ only if $u^{\transpose}\multiCountingProc$ has stayed above minus
-the opening size of the bid. By the functional central limit theorem for Hawkes processes,
-$u^{\transpose}\multiCountingProc$ rescaled is a Brownian motion of drift
-$u^{\transpose}\stationaryIntensity \leq 0$, which falls below any level in finite time.
-}
-\end{frame}
-
-\begin{frame}
-  \frametitle{A stationary depth needs withdrawals and sizes}
-\begin{remark}
-\label{remark.depthBalance}
- A stationary depth of the geometric book needs
- $\stationaryIntensity[3] < \stationaryIntensity[2] + \stationaryIntensity[5]$,
- and sizes that are not all one.
-\end{remark}
-
-$\stationaryIntensity[3] > \stationaryIntensity[2] + \stationaryIntensity[5]$: a walk whose
-mean grows
-
-The excess absorbed by $\orderSize_n \wedge \size^{b}_{\arrivalTimes[]_n-}(p_n)$
-\note{
-A withdrawal takes the smaller of its size and what rests at the level drawn: the only term of
-the balance of the bid that depends on the book. The sizes enter that balance with the common
-mean $\meanSize$. If limit buys outrun market sells and withdrawals from the bid together, the
-size on the bid is at least a walk whose mean grows linearly, and has no stationary law. If they
-do not, with orders of size one the bid empties, by the last frame.
-So a stationary depth needs the withdrawals to outrun the limit orders in mean, and sizes that
-are not all one: the excess is then absorbed by the truncation of the withdrawals that draw a
-level holding less than their size, which acts the more often the thinner the book.
-}
-\end{frame}
-
-\begin{frame}
-  \frametitle{The distance in three terms}
-\begin{prop}
-\label{prop.distanceDecomposition}
- For $t < \breachTime$, no side of the geometric book empty on $[0,t]$,
+\label{prop.discrepancyDecomposition}
+ For every $t$,
  {\footnotesize
  \[
  \begin{aligned}
-  \tfrac{2\uniformDepth}{\tickSizeOfLOB}
-  \big(\midPriceOf{\geometricBook}_t - \midPriceOf{\idealisedBook}_t\big)
-  = {}& \big(\OFI^{\geometricBook}_{t,t} - \OFI^{\idealisedBook}_{t,t}\big) \\
-  & - \big[(\nthBestBidSize[1,\geometricBook]_t - \nthBestBidSize[1,\idealisedBook]_t)
-  - (\nthBestAskSize[1,\geometricBook]_t - \nthBestAskSize[1,\idealisedBook]_t)\big] \\
-  & - \sum_{\arrivalTimes[]_n \leq t, \, s \in \{b,a\}}
-  \signum(\Delta_n \price^{s,1,\geometricBook})\big(\outerSize^{s,\geometricBook}_n
-  - \uniformDepth\vert\Delta_n \price^{s,1,\geometricBook}\vert/\tickSizeOfLOB\big)
+  \frac{2\uniformDepth}{\tickSizeOfLOB}\,\discrepancy_t
+  = {}& \sum_{n \in \behindSet,\, \arrivalTimes[]_n \leq t}\pressure_{\event[n]} \\
+  & - \big[(\nthBestBidSize[1,\cks]_t - \nthBestBidSize[1,\hawOne]_t)
+  - (\nthBestAskSize[1,\cks]_t - \nthBestAskSize[1,\hawOne]_t)\big] \\
+  & + \sum_{\arrivalTimes[]_n \leq t, \, s \in \{b,a\}}
+  \signum(\Delta_n \price^{s,1,\hawOne})\big(\outerSize^{s,\hawOne}_n
+  - \uniformDepth\vert\Delta_n \price^{s,1,\hawOne}\vert/\tickSizeOfLOB\big).
  \end{aligned}
  \]
  }
 \end{prop}
 
-First: the flow the geometric book does not see
+First: the events $\hawOne$ places behind its touches
 
-Second: the residuals of the two books
+Second: the mismatch of the touches at $t$
 
-Third: the depth per tick moved, against $\uniformDepth$
+Third: the depth $\hawOne$ moves through, against $\uniformDepth$
 \note{
-Write the touch identity for the geometric book over $(0, t]$, add and subtract
-$\uniformDepth$ times each move in ticks, whose sum is $2\uniformDepth$ times the geometric
-displacement of the mid in ticks; subtract the identity of the idealised book, and use that the
-opening books coincide.
-The first term is the imbalance mismatch. The second, with its sign, is $2\uniformDepth$ over
-$\tickSizeOfLOB$ times the difference of the residuals of the idealised update, evaluated on each
-book. The third vanishes on every move of the geometric book that is by one tick onto or off a
-queue of $\uniformDepth$. With orders of one share and no withdrawals the first is the thinned
-imbalance, and vanishes at $\offsetParameter = 1$.
-In the notebook the first and the third are large and largely cancel: the orders the geometric
-book places behind its quotes are missing from its imbalance, and are also the depth its later
-moves travel through.
+For the CKS book, the update with the lemma: $2\uniformDepth/\tickSizeOfLOB$ times the
+displacement of its mid-price is the signed count, less the change of its bid touch, plus that of
+its ask touch. For $\hawOne$, write the touch identity over $(0, t]$, and add and subtract
+$\uniformDepth$ times each move in ticks, whose signed sum is $2\uniformDepth/\tickSizeOfLOB$
+times the displacement of its mid-price. Subtract, and use the lemma for the two imbalances.
+The second term is bounded when the touches of $\hawOne$ are. The third vanishes on every move of
+$\hawOne$ by one tick onto or off a queue of $\uniformDepth$.
 }
 \end{frame}
 
 \begin{frame}
-  \frametitle{The distance has no preferred sign}
+  \frametitle{The placement is a martingale of known variance}
 \begin{prop}
-\label{prop.mirrorSymmetry}
- For a direction-symmetric specification from $\swapMatrix z = z$ and an opening book
- symmetric about $\midPrice_0$,
- $(\midPriceOf{\geometricBook}_t - \midPriceOf{\idealisedBook}_t)\indicator{G_t}$ has a law
- symmetric about zero.
-\end{prop}
-
-Mirror: $(\arrivalTimes[]_n, \swapMatrix(\event[n]))_n$, with the same sizes and offsets
-
-$G_t$: no side exhausted, no price floored, on either path
-\note{
-The reflection $p \mapsto 2\midPrice_0 - p$ maps the tick grid to itself, since
-$2\midPrice_0 = \bestBidPrice_0 + \bestAskPrice_0$, and exchanges the bid and the ask. The
-matching rule and both placements commute with it, the type being replaced by its mirror: a
-limit buy one plus its offset ticks below the best ask reflects to a limit sell as many ticks
-above the reflected best bid, and a withdrawal drawn in proportion to the sizes of one side
-reflects to one drawn in proportion to the sizes of the other. On $G_t$ the books of the mirror
-are the reflections of the books of the path, so the distance changes sign.
-By direction symmetry the mirror has intensity
-$\swapMatrix\intensity[ ] = \baseIntensity + \excitation\swapMatrix\decayedCounts$: it is a
-Hawkes process with the same specification, from the same state, and has the law of the path.
-In particular the mean distance is zero.
-}
-\end{frame}
-
-\begin{frame}
-  \frametitle{The variance of the distance}
-\begin{prop}
-\label{prop.distanceSecondMoments}
- Conditionally on $t < \breachTime$ and no empty side of the geometric book on $[0,t]$,
+\label{prop.placementMartingale}
+ With $\behindProbability_n := \Prob(n \in \behindSet \mid \sigmaAlgebra^{\multiCountingProc},
+ \text{earlier draws})$, the sum
+ $\martingale^{\behindSet}_t := \sum_{\arrivalTimes[]_n \leq t}
+ \pressure_{\event[n]}(\indicator{n \in \behindSet} - \behindProbability_n)$ has, given
+ $\sigmaAlgebra^{\multiCountingProc}$, mean zero and variance
+ $\Expectation\big[\sum_{\arrivalTimes[]_n \leq t}
+ \behindProbability_n(1-\behindProbability_n) \,\big\vert\,
+ \sigmaAlgebra^{\multiCountingProc}\big]$, and
  \[
-  \Big\vert \Variance\Big(
-  \frac{\midPriceOf{\geometricBook}_t - \midPriceOf{\idealisedBook}_t}{\tickSizeOfLOB}\Big)
-  - Q_t \Big\vert \leq 1 + 2\sqrt{Q_t} .
+  \OFI^{\hawOne}_{t,t} = \pressure^{\transpose}\multiCountingProc(t)
+  - \sum_{\arrivalTimes[]_n \leq t}\pressure_{\event[n]}\behindProbability_n
+  - \martingale^{\behindSet}_t .
  \]
 \end{prop}
 
-$\effectiveImpact_t$: the slope of $\midPriceOf{\geometricBook}_t/\tickSizeOfLOB$ on
-$\pressure^{\transpose}\multiCountingProc(t)$; $\impactRemainder_t$: what it leaves
+$\behindProbability_n = (1-\offsetParameter)^{k_n}$: a limit order, $k_n$ the spread of $\hawOne$
 
-$Q_t = \big(\effectiveImpact_t - \tfrac{1}{2\uniformDepth}\big)^{2}
-\Variance\big(\pressure^{\transpose}\multiCountingProc(t)\big)
-+ \Variance(\impactRemainder_t)$
+$1 - \size^{\hawOne}/\size^{\hawOne}(\tickSizeOfLOB\N)$: a withdrawal; $0$: a market order
 \note{
-$\effectiveImpact_t$ is the covariance of the geometric mid with the signed count over the
-variance of the signed count, in ticks, and $\impactRemainder_t$ the displacement of the
-geometric mid that it does not explain. The orders of the idealised book have size one, so its
-imbalance is the signed count, and its displacement in ticks is the signed count over
-$2\uniformDepth$ plus a residual of at most a tick. By the choice of $\effectiveImpact_t$ the two
-parts of the distance are uncorrelated, and Cauchy--Schwarz bounds what the residual adds.
-The idealised mid moves by $1/(2\uniformDepth)$ a unit of signed count, the geometric mid by
-$\effectiveImpact_t$. The statement holds for any size law of the geometric book.
-Now to notebook 10, section 5: the three terms on one path of two minutes, then a fan of sixty
-paths over five minutes. The mean distance stays within two standard errors of zero. With unit
-sizes at $\offsetParameter = 1$, $2\uniformDepth\effectiveImpact_t$ is close to one; as
-$\offsetParameter$ falls, and with lognormal sizes, it exceeds one, and at small
-$\offsetParameter$ it drifts upwards with $t$.
+A limit order lands behind its touch exactly when $\priceOffset_n \geq k_n$, with $k_n$ the spread
+of $\hawOne$ in ticks before the event, which has probability $(1-\offsetParameter)^{k_n}$ by the
+geometric law. After $\partingTime$ the spreads of the two books differ, and $\behindProbability_n$
+is read on $\hawOne$. A
+withdrawal lands behind exactly when it does not draw the touch, with $\size^{\hawOne}$ the touch
+of its side and $\size^{\hawOne}(\tickSizeOfLOB\N)$ the side before the event.
+Given $\sigmaAlgebra^{\multiCountingProc}$, the partial sums of
+$\pressure_{\event[n]}(\indicator{n \in \behindSet} - \behindProbability_n)$ in the order of the
+events form a martingale in the filtration of the path and the draws of the first $n$ events,
+with increments bounded by one and of conditional variance
+$\behindProbability_n(1 - \behindProbability_n)$, since $\pressure_e^2 = 1$; martingale
+increments are orthogonal. The identity is the lemma.
+The imbalance of $\hawOne$ is the signed count, less what the state of $\hawOne$ predicts it
+places behind its touches, less a noise of the placement alone, whose variance is exact.
 }
 \end{frame}
 
 \begin{frame}
-  \frametitle{A withdrawal draws its level by size}
-\begin{center}
-\begin{tikzpicture}[x=0.85cm, y=0.3cm, font=\scriptsize]
-  \booksizeaxis{0.4}{7.6}{5}{5}
-  \draw[gray!55] (0.4,0) -- (7.6,0);
-  \foreach \x in {1,2,3,4,5,6}
-    \draw[fill=blue!25, draw=blue!45] (\x-0.3,0) rectangle (\x+0.3,5);
-  \draw[fill=blue!55, draw=blue!70] (7-0.3,0) rectangle (7+0.3,2);
-  \node[below] at (7,-0.2) {$\bestBidPrice$};
-  \node[left, gray!40!black] at (0.4,5) {$\uniformDepth$};
-  \draw[-{Stealth}, blue!65, thick] (7,6.6) -- (7,2.4);
-  \node[above, blue!55!black] at (7,6.6) {idealised};
-  \foreach \x in {1,2,3,4,5,6}
-    \draw[-{Stealth}, gray!60, dashed] (3.5,9.4) -- (\x,5.4);
-  \draw[-{Stealth}, gray!60, dashed] (3.5,9.4) -- (6.85,2.4);
-  \node[above, gray!40!black] at (3.5,9.4) {geometric, $\propto \size^{b}(p)$};
-\end{tikzpicture}
-\end{center}
-
-Idealised: one share from the best quote
-
-Geometric: $\orderSize_n \wedge \size^{b}(p_n)$ from a level $p_n$ drawn by size
-\note{
-We now restore the withdrawals. For the coupling the orders keep size one; for the distance the
-geometric book carries the sizes of the flow. The idealised book is the one drawn: a touch, and
-$\uniformDepth$ on every tick behind it. The idealised withdrawal takes a share from the touch;
-the geometric one draws its level over the whole side, in proportion to the size resting there.
-}
-\end{frame}
-
-\begin{frame}
-  \frametitle{A withdrawal agrees only at the best quote}
-\begin{lemma}
-\label{lemma.withdrawalAgreement}
- With unit sizes, books coinciding before a withdrawal at $\arrivalTimes[]_n < \breachTime$
- coincide after it iff $p_n$ is the best price of its side.
-\end{lemma}
-
-Given $\sigmaAlgebra^{\multiCountingProc}$ and the earlier marks:
-$\size^{\idealisedBook}_{\arrivalTimes[]_n-} /
-\size^{\idealisedBook}_{\arrivalTimes[]_n-}(\tickSizeOfLOB\N)$
-
-At most one over the number of levels of the side
-\note{
-The side is occupied, so the geometric withdrawal is sent and cancels one share at $p_n$; the
-idealised one cancels one share at the best price. The two messages are the same when $p_n$ is
-the best price, also when the queue there holds one share and both empty it; otherwise the size
-at the best price differs by one. The price is drawn in proportion to the sizes of the side,
-which before the event are those of the idealised book. Every level behind the best quote holds
-$\uniformDepth$, at least the size at the best quote, which gives the bound.
-}
-\end{frame}
-
-\begin{frame}
-  \frametitle{The survival law with withdrawals}
-\begin{prop}
-\label{prop.couplingSurvivalWithWithdrawals}
- With unit sizes,
+  \frametitle{The second regime in closed form}
+\begin{remark}[Approximation]
+\label{approx.secondRegimeVariance}
+ If $\offsetParameter\stationaryIntensity[3] > \stationaryIntensity[2]$ and $t$ is short against
+ the life of a side,
  \[
-  \Prob\big(\discrepancyTime > t \,\big\vert\, \sigmaAlgebra^{\multiCountingProc}\big)
-  = \offsetParameter^{\countingProc[\limitTypes](t)}
-  (1-\offsetParameter)^{\cumulativeTargetOffset(t)} \indicator{\breachTime > t}
-  \prod_{\arrivalTimes[]_n \leq t, \, \event[n] \in \{5,6\}}
-  \frac{\size^{\idealisedBook}_{\arrivalTimes[]_n-}}
-  {\size^{\idealisedBook}_{\arrivalTimes[]_n-}(\tickSizeOfLOB\N)} .
+  \Variance(\discrepancy_t/\tickSizeOfLOB)
+  = \frac{\pressure^{\transpose}\countCovarianceRate\pressure}{(2\uniformDepth)^{2}}\,t
+  + O(\sqrt{t}) + O\big(t\,\Prob(\firstMove^{\hawOne} \leq t)^{1/2}\big) .
  \]
-\end{prop}
+\end{remark}
 
-Many levels: the books part at the first withdrawal
+On $\{\firstMove^{\hawOne} > t\}$: $\discrepancy_t = \midPriceOf{\cks}_t - \midPrice_0$, a function
+of the path
 
-The comparison: on the two books as they are
+Last term: a bound on the placement part
+
+The rate of the CKS mid-price alone
 \note{
-By induction, with the two agreement lemmas: on the event that the books coincide before an
-event they are the idealised book, which is $\sigmaAlgebra^{\multiCountingProc}$-measurable, and
-the event keeps them together with the probability of its lemma, or one at a market order. The
-conventions are those of the survival law without withdrawals, and the books coincide on
-$[0, \discrepancyTime)$ as before.
-In a book of many levels each withdrawal factor is small, and the first discrepancy comes within
-a few hundredths of a second on the paths of the notebook. The coupling then says little, and
-the mid-prices are compared on the two books as they are.
+In the second regime, on horizons short against the life of a side,
+$(L\uniformDepth)^2/(\sideVector{b})^{\transpose}\countCovarianceRate\sideVector{b}$, a best price
+of $\hawOne$ moves only by a large deviation of its touch. On $\{\firstMove^{\hawOne} > t\}$ the
+mid-price of $\hawOne$ stays at $\midPrice_0$, and the discrepancy is the displacement of the CKS mid-price, which is
+$\sigmaAlgebra^{\multiCountingProc}$-measurable.
+The CKS update gives the displacement in ticks as the signed count over $2\uniformDepth$, plus a
+remainder of less than half a tick, since the CKS touches lie between one and $\uniformDepth$.
+The variance of the signed count grows as
+$t\,\pressure^{\transpose}\countCovarianceRate\pressure$, as in the forecast at long horizons of
+class 4, from no past up to a bounded term, and the cross term is $O(\sqrt{t})$ by the
+Cauchy--Schwarz inequality. The last term bounds what happens on $\{\firstMove^{\hawOne} \leq t\}$, and the placement part,
+by the same inequality, the fourth moments of both mid-prices less $\midPrice_0$ being $O(t^2)$.
 }
 \end{frame}
 
 \begin{frame}
-  \frametitle{The idealised mid-price is the signed count}
-\begin{equation}
-\label{eq.idealisedMidAsCount}
- \frac{\midPriceOf{\idealisedBook}_t - \midPriceOf{\idealisedBook}_0}{\tickSizeOfLOB}
- = \frac{\pressure^{\transpose}\multiCountingProc(t)}{2\uniformDepth}
- + \frac{\residual^{\idealisedBook}_{t,t}}{\tickSizeOfLOB} ,
- \qquad
- \Big\vert \frac{\residual^{\idealisedBook}_{t,t}}{\tickSizeOfLOB} \Big\vert \leq 1
-\end{equation}
-
-Unit sizes, every spread, $t < \breachTime$
-
-$\stationaryIntensity[3] < \stationaryIntensity[2] + \stationaryIntensity[5]$: the idealised
-spread opens in mean
-\note{
-Over a window on which the spread of the idealised book exceeds one tick, a limit buy contributes
-one to its bid, a market sell and a withdrawal from the bid minus one, and no other event
-contributes to it. By the touch identity, the position of the bid, its size at the touch plus
-$\uniformDepth$ for every tick of its price, moves by
-$(\unitVector_3 - \unitVector_2 - \unitVector_5)^{\transpose}$ times the increment of the
-counts, whose mean grows like the horizon times
-$\stationaryIntensity[3] - \stationaryIntensity[2] - \stationaryIntensity[5]$. When that is
-negative the bid falls in mean, the ask rises, and the spread opens until a side is consumed at
-the breach.
-The mid-price does not inherit the drift: the update of the idealised book and the signed-size
-contribution give the display at every spread. In the notebook the idealised mid stays within
-0.4 ticks of the signed count over $2\uniformDepth$ while its depth drifts.
-}
-\end{frame}
-
-\begin{frame}
-  \frametitle{Three hypotheses on the geometric book}
+  \frametitle{Two hypotheses on $\hawOne$ for the first regime}
 {\small
-\begin{enumerate}[label={H\arabic*.}, start=0]
- \item translation invariance: no side ever empty, no price floored;
-       $\geometricState_t = (\decayedCounts(t), \bookShape_t)$ Markov
- \item stationarity: $\geometricState$ stationary
- \item solvability: $\generatorL\poissonSolution = -\midDrift$, and
-       $\correctedMove_e(y) := \midMove_e(y) + \poissonSolution(y'_e) - \poissonSolution(y)$
-       square-integrable
+\begin{enumerate}[label={H\arabic*.}]
+ \item constant placement: $\behindProbability_n = \behindProbability_{\event[n]}$, for a vector
+       $\behindProbability \in [0,1]^{\numEventTypes}$;
+ \item fixed depth: $2\effectiveDepth(\midPriceOf{\hawOne}_t - \midPrice_0)/\tickSizeOfLOB
+       = \OFI^{\hawOne}_{t,t} + R_t$, with $\Expectation R_t^{2}$ bounded in $t$.
 \end{enumerate}
 }
 
-$\bookShape_t$: the geometric book translated to a best bid at zero
+$\effectiveDepth$: the slope of $\OFI^{\hawOne}_{t,t}$ on $\midPriceOf{\hawOne}_t$, in half ticks
 
-$\midMove_e(y)$: the geometric mid's move in ticks, type $e$ at $y$
-
-$\midDrift(y) = \sum_e \intensity(z)\,\Expectation^{\mathrm{mk}}\midMove_e(y)$, the mean over
-the marks
+H2: as if $\hawOne$ held $\effectiveDepth$ on every tick crossed
 \note{
-The geometric book, unlike the idealised one, may have a stationary depth, and we read it from
-its best bid. The move $\midMove_e(y)$ is random through the marks of the event, and $z$ is the
-first component of $y$.
-H0 is what makes the shape of the book a state: the reference price at which an empty side is
-priced and the floor at one tick are fixed outside the book, and a placement that reads either
-does not commute with a translation. H2 asks for a solution of the Poisson equation of the drift
-of the mid, with $\generatorL$ the extended generator of $\geometricState$ and $y'_e$ the state
-after the event; the corrected moves are then the jumps of a martingale.
+H1 asks that the probability of placing an event behind its touch depend on the type alone. At a
+spread of one tick it is $1 - \offsetParameter$ for a limit order, and the spread of $\hawOne$ is
+sometimes wider. H2 asks that $\hawOne$ move as if it held $\effectiveDepth$ on every tick it
+crosses: by the touch identity over $(0, t]$, $-R_t$ is the mismatch of its touches plus the depth
+term of the decomposition with $\effectiveDepth$ in place of $\uniformDepth$, and H2 asks that
+the two stay bounded in mean square.
+When the variance of the mid-price of $\hawOne$ grows without bound, H2 and the Cauchy--Schwarz
+inequality identify the depth:
+$\effectiveDepth = \lim_{t}(\tickSizeOfLOB/2)\,\CoVariance(\OFI^{\hawOne}_{t,t},
+\midPriceOf{\hawOne}_t)/\Variance\midPriceOf{\hawOne}_t$, the slope of the regression of the
+imbalance of $\hawOne$ on its mid-price, counted in half ticks. The mean outer size per tick
+crossed at the moves of $\hawOne$ is a different statistic, and the two need not agree.
+Both are hypotheses on $\hawOne$, and neither follows from the model.
 }
 \end{frame}
 
 \begin{frame}
-  \frametitle{The stationary rate of the distance --- 1 of 2}
-\[
-\begin{aligned}
- \effectiveImpact
- &= \frac{\Expectation\big[\sum_e \intensity(\decayedCounts(0))\,\clusterPressure_e\,
- \Expectation^{\mathrm{mk}}\correctedMove_e(\geometricState_0)\big]}
- {\pressure^{\transpose}\countCovarianceRate\pressure} , \\
- \orthogonalVolatility^{2}
- &= \Expectation\Big[\sum_e \intensity(\decayedCounts(0))\,
- \Expectation^{\mathrm{mk}}\big(\correctedMove_e(\geometricState_0)
- - \effectiveImpact\,\clusterPressure_e\big)^{2}\Big]
-\end{aligned}
-\]
-
-$\clusterPressure = (I - \branchingMatrix)^{-\transpose}\pressure$: the signed pressure of a
-cluster
-
-$\pressure^{\transpose}\countCovarianceRate\pressure
-= \sum_e \stationaryIntensity[e]\,\clusterPressure_e^{2}$
-
-$\orthogonalVolatility^{2} \geq$ the mean variance of $\correctedMove_e$ over the marks
-\note{
-$\clusterPressure_e$ is the expected signed pressure of the cluster of an event of type $e$:
-the event and all its descendants. The effective impact is the covariation of the corrected
-moves of the geometric mid with the cluster pressures, per unit of variance of the signed count;
-$\orthogonalVolatility^{2}$ is the rate of the part of the geometric mid that the signed count
-does not explain. The lower bound holds because $\effectiveImpact\,\clusterPressure_e$ does not
-depend on the marks, so the marks make $\orthogonalVolatility^{2}$ positive as soon as they
-change the corrected move on a set of positive probability.
-}
-\end{frame}
-
-\begin{frame}
-  \frametitle{The stationary rate of the distance --- 2 of 2}
-\begin{prop}
-\label{prop.stationaryDistanceRate}
- Direction-symmetric, $\branchingRatio < 1$, H0 to H2: as $t \to \infty$,
- $\effectiveImpact_t \to \effectiveImpact$,
- $\Variance(\impactRemainder_t)/t \to \orthogonalVolatility^{2}$, and
+  \frametitle{The first regime in closed form}
+\begin{remark}[Approximation]
+\label{approx.firstRegimeVariance}
+ Under H1 and H2, with
+ $c := \mathbf{1}/(2\uniformDepth) - (\mathbf{1} - \behindProbability)/(2\effectiveDepth)$,
  \[
-  \frac{\Variance(\Delta_t)}{t}
-  \to \Big(\effectiveImpact - \frac{1}{2\uniformDepth}\Big)^{2}
-  \pressure^{\transpose}\countCovarianceRate\pressure + \orthogonalVolatility^{2} .
+  \Variance\Big(\frac{\discrepancy_t}{\tickSizeOfLOB}\Big)
+  = t\,(\pressure\circ c)^{\transpose}\countCovarianceRate\,(\pressure\circ c)
+  + t\sum_{e}\frac{\behindProbability_e(1-\behindProbability_e)\,\stationaryIntensity[e]}
+  {(2\effectiveDepth)^{2}}
+  + O(\sqrt{t}) .
  \]
+\end{remark}
+
+First term: the flow part; second: the placement part
+
+The split between the two: qualitative
+
+$\pressure_e c_e$: the impact of type $e$ on $\cks$, less that on $\hawOne$
+\note{
+Under H1 the predicted placement is $(\pressure\circ\behindProbability)^{\transpose}
+\multiCountingProc(t)$, so by H2 and the placement martingale the mid-price of $\hawOne$ in ticks
+is $(\pressure\circ(\mathbf{1}-\behindProbability))^{\transpose}\multiCountingProc(t)
+/(2\effectiveDepth)$, less $\martingale^{\behindSet}_t/(2\effectiveDepth)$, plus a bounded term. The CKS
+mid-price is the signed count over $2\uniformDepth$ plus less than half a tick. Subtract.
+Given the path, the expected discrepancy is the signed count weighted, type by type, by the
+difference between the impact $\pressure_e/(2\uniformDepth)$ of one event on the CKS book and its
+impact $\pressure_e(1-\behindProbability_e)/(2\effectiveDepth)$ on $\hawOne$. The mirror maps an
+event of type $e$ placed behind its touch to one of type $\swapMatrix(e)$ placed behind, so under
+H1 $\behindProbability_{\swapMatrix(e)} = \behindProbability_e$; the entries of $c$ are then equal
+on the two members of a pair and those of $\pressure$ opposite, so
+$(\pressure\circ c)^{\transpose}\stationaryIntensity = 0$ by the balance, that conditional mean is
+$(\pressure\circ c)^{\transpose}(\multiCountingProc(t) - t\stationaryIntensity)$ up to a bounded
+term, and its variance is the flow part. The placement part is the variance of the martingale, uncorrelated
+with the path. In the second regime the impact on $\hawOne$ is zero, and the closed form is that
+of the last frame but one.
+The approximation is a first-order description of the first regime, and its attribution of the
+variance to the flow and to the placement is qualitative.
+Now to notebook 10, section 3, The discrepancy: mean and variance.
+}
+\end{frame}
+
+\begin{frame}
+  \frametitle{With random sizes the book is never quiet}
+\begin{prop}
+\label{prop.partingProbabilitySizes}
+ In $\hawQ$ the touch of the side of the event moves:
+ \begin{itemize}
+  \item market order: iff $\xi_n \geq \size^{\hawQ}$, possibly several levels;
+  \item withdrawal: iff it draws the touch and $\xi_n \geq \size^{\hawQ}$.
+ \end{itemize}
 \end{prop}
 
-$\Delta_t = (\midPriceOf{\geometricBook}_t - \midPriceOf{\geometricBook}_0)/\tickSizeOfLOB
-- \pressure^{\transpose}\multiCountingProc(t)/(2\uniformDepth)$
+$\xi_n := \orderSize_n/\meanSize$: the units of the $n$-th order, $\Expectation\xi_n = 1$
 
-On $\{t < \breachTime\}$: within one tick of the distance of the increments
+Probabilities: $\Prob(\xi_n \geq \size^{\hawQ})$, times
+$\size^{\hawQ}/\size^{\hawQ}(\tickSizeOfLOB\N)$ for a withdrawal
+
+Lognormal $\xi_n$: positive at every touch, so no quiet book
 \note{
-$\effectiveImpact_t$ and $\impactRemainder_t$ are those of the second-moment statement, on the
-increment of the geometric mid. By H2 and Dynkin's formula the geometric displacement in ticks
-is a square-integrable martingale, jumping by the corrected move at each event, plus a bounded
-term. The signed count is a martingale jumping by $\clusterPressure_e$, plus a bounded term in
-the state. The two martingales jump at the same times; their covariation and variances grow
-linearly by H1, and the bounded terms contribute $O(\sqrt{t})$. The idealised book enters only
-through the last frame but one, whatever its depth does, so the rate is a property of the
-geometric book alone. An effective impact alone governs the distance only if the corrected move
-is $\effectiveImpact\,\clusterPressure_e$ almost surely.
-Now to notebook 10, section 6. The variance of the change of the distance over a window $h$ is
-read as $c + rh$: at $\offsetParameter = 0.08$, $r = 0.168$, $2\uniformDepth\effectiveImpact
-= 0.39$ and $\orthogonalVolatility^{2} = 0.118$; at $0.2$, $r = 0.119$, $0.17$ and $0.023$.
-H0 is checked as the share of the quadratic variation of the geometric mid made across an empty
-side: 50\% at $\offsetParameter = 1$, 99\% at 0.5, and none at 0.2 and below.
+The statements on the parting time are now read for the CKS book against $\hawQ$, with the sizes
+of $\hawQ$ in units of $\meanSize$, so that its opening levels hold $\uniformDepth$ units and its
+$n$-th order $\xi_n$. Limit orders keep their row of the table, since their price does not
+depend on their size. The
+lemma on one best price and the parting at one quote hold with the same proof: a market buy walks
+the ask and moves only it, up.
+The other two rows change. A market order moves the touch exactly
+when its size is at least the touch, to the first price at which the cumulated size of the side
+exceeds it, possibly several occupied levels away. A withdrawal moves it exactly when it draws the
+touch and its size is at least the touch, and then by $g$ ticks. The lognormal law is unbounded,
+so both probabilities are positive at every touch, and the corollary of the quiet book fails for
+$\hawQ$.
 }
 \end{frame}
 
 \begin{frame}
-  \frametitle{Deleting the withdrawals is not neutral}
+  \frametitle{The fluid scale of $\hawQ$ is that of $\hawOne$}
 \begin{remark}
-\label{remark.withdrawalsDeleted}
- Withdrawals deleted without choosing $(\branchingMatrix, \stationaryIntensity)$ anew may leave
- $\stationaryIntensity[3] > \stationaryIntensity[2]$; at $\offsetParameter = 1$ the geometric
- mid-price then stops.
+\label{remark.fluidScaleWithSizes}
+ To first order the fluid touch, $\fluidEmptying$ and the two regimes are those of $\hawOne$;
+ $\hawQ$ first moves at a touch of $O(1)$ units, not of zero.
 \end{remark}
 
-Distance rate: $\pressure^{\transpose}\countCovarianceRate\pressure/(2\uniformDepth)^{2}$,
-the idealised mid's
+At the touch: $\xi_n$ units in, $\xi_n \wedge \size^{\hawQ}$ out
 
-A measure of accumulated depth, not of the placement
+$\Expectation\xi_n = 1$, $\Variance\xi_n < \infty$: the three steps go through
+
+Two truncations: at the touch, and of the withdrawals behind it
 \note{
-Setting the baselines of the withdrawal types and their rows and columns of $\excitation$ to
-zero, without solving for the baseline again, may leave the limit flow above the consuming flow.
-The geometric book then thickens on both sides at a constant mean rate. At
-$\offsetParameter = 1$ a limit order narrows a spread of more than one tick and otherwise joins
-the best queue of its side, so the best queues are walks of positive drift, and the geometric mid
-moves only when a market order clears one. Once neither is cleared again it stops, and the
-distance grows as the idealised mid does.
-This is why the withdrawal-free flow of the notebook is balanced on purpose: deleting the
-withdrawals from the resilient kernel without rescaling leaves limit orders arriving faster than
-the market orders that consume their side, by about a tenth of a share a second.
+In the equation of the touch of $\hawOne$, read for $\hawQ$ in units, a limit order that joins
+the touch brings $\xi_n$ units, and a market order or a withdrawal at the touch removes
+$\xi_n \wedge \size^{\hawQ}$, with $\size^{\hawQ}$ the touch before the event. With
+$\Expectation\xi_n = 1$ and $\Variance\xi_n$ finite, the three steps of the fluid limit go
+through, $\xi_n$ entering the martingale of the draws, save for two truncations: at the touch,
+which acts only when the touch holds a number of units of order one; and of the withdrawals
+behind the touch from levels holding fewer than $\xi_n$ units, which changes the size of a side by
+an amount that the argument does not control. To first order, therefore, the equation of the
+fluid touch, the time $\fluidEmptying$ and the two regimes are unchanged.
 }
 \end{frame}
 
 \begin{frame}
-  \frametitle{The two regimes}
-\begin{remark}
-\label{remark.twoRegimes}
-\upshape
-\begin{center}
-{\small
-\renewcommand{\arraystretch}{1.4}
-\setlength{\tabcolsep}{4pt}
-\begin{tabular}{@{}lll@{}}
-\toprule
- & without withdrawals & with withdrawals \\
-\midrule
-the coupling & informative: the survival law & at most $1/\text{levels}$ a withdrawal \\
-geometric depth & empties, or thickens & may be stationary \\
-$\effectiveImpact$ & no limit & a limit, under H0 to H2 \\
-\bottomrule
-\end{tabular}
+  \frametitle{The sizes add one term}
+\begin{prop}
+\label{prop.discrepancyDecompositionSizes}
+ With $\behindSet$ read on $\hawQ$, and sizes in units of $\meanSize$,
+ {\small
+ \[
+ \begin{aligned}
+  \frac{2\uniformDepth}{\tickSizeOfLOB}\,\discrepancy^{\hawQ}_t
+  = {}& \sum_{n \in \behindSet,\, \arrivalTimes[]_n \leq t}\pressure_{\event[n]}
+  - [\text{touches}] + [\text{depth}] \\
+  & + \sum_{\arrivalTimes[]_n \leq t}\pressure_{\event[n]}(1 - \hat{\xi}_n)
+  \indicator{n \notin \behindSet} .
+ \end{aligned}
+ \]
+ }
+\end{prop}
+
+$\hat{\xi}_n$: the units the $n$-th message brings to its touch
+
+Touches, depth: the brackets of the three terms, read on $\hawQ$
+
+$\Expectation\discrepancy^{\hawQ}_t = 0$: the mirror leaves the sizes unchanged
+\note{
+The proof of the three terms, with the contribution of a geometric order at general sizes,
+$\meanSize\,\pressure_{\event[n]}\hat{\xi}_n\indicator{n \notin \behindSet}$. $\hat{\xi}_n$ is
+$\xi_n \wedge \size^{\hawQ}$ for a market order or a withdrawal at the touch $\size^{\hawQ}$ it
+acts on, and $\xi_n$ otherwise; behind the touch it multiplies zero.
+The new term is the cost of the sizes, and vanishes when every order carries one unit. The mean
+is still zero, and the variance still splits into a flow part and a placement part: the
+reflection leaves the sizes unchanged.
 }
-\end{center}
+\end{frame}
+
+\begin{frame}
+  \frametitle{What the sizes add}
+\begin{remark}
+\label{remark.whatTheSizesAdd}
+ Under H1 and H2 read on $\hawQ$, $\effectiveDepth$ in units, the truncation at the touch set
+ aside, the rate of the placement part gains
+ \[
+  \Variance\xi_n\sum_{e}\frac{(1 - \behindProbability_e)\,\stationaryIntensity[e]}
+  {(2\effectiveDepth)^{2}} .
+ \]
 \end{remark}
 
-Without withdrawals, $\offsetParameter = 1$, unit sizes: the distance in touches and depth
+Per event: $\behindProbability_n(1-\behindProbability_n)
++ (1-\behindProbability_n)\Variance\xi_n$, the variance of $\xi_n\indicator{n \notin \behindSet}$
 
-With withdrawals: the idealised depth drifts, its mid does not
+Market orders: $\behindProbability_e = 0$, the whole of $\Variance\xi_n$
+
+The displayed term: only part of the variance from the sizes
 \note{
-The two settings make different statements provable. Without withdrawals the first discrepancy
-is decided by the limit orders alone and its conditional law is the survival law; at
-$\offsetParameter = 1$ with orders of size one the two imbalances coincide on every path, so the
-whole distance is carried by the sizes at the touches and by the depth. But the geometric book
-has no stationary depth there: with unit sizes and limit orders no faster than the market orders
-that consume them a side empties, and with faster ones the book thickens, so no effective impact
-is defined as a limit.
-With withdrawals the coupling says little, each withdrawal keeping the books together with
-probability at most one over the number of levels of its side. The geometric book may have a
-stationary depth, and the rate of the distance is a property of the geometric book alone, under
-H0 to H2; the depth of the idealised book drifts, and its mid-price does not inherit the drift.
-Now to notebook 10, section 7, the two regimes side by side.
+Given the path and the earlier draws, $\xi_n$ is independent of whether the $n$-th event is placed
+behind, with mean one, and that has probability $\behindProbability_n$, read on $\hawQ$. Where
+$\hat{\xi}_n = \xi_n$, as for every limit order and every event acting on a touch of more than
+$\xi_n$ units, the increment
+$\pressure_{\event[n]}(1 - \xi_n\indicator{n \notin \behindSet} - \behindProbability_n)$ has
+conditional mean zero and the variance of the first caption: the placement, as with orders of one
+share, and the size of every event that reaches its touch. The proof of the first regime with
+these increments adds the displayed term to the rate of the placement part.
+That term is neither the whole of what the sizes add to the variance nor a bound on it. The truncation is not negligible:
+at each move of $\hawQ$ by a market order or a withdrawal at its touch, $\hat{\xi}_n$ is the size
+of the touch and not $\xi_n$, and the sum of $\pressure_{\event[n]}(\xi_n - \hat{\xi}_n)$ over
+these moves has a variance that grows with their number. The sizes also make the depth of
+$\hawQ$ random, through its outer sizes, and its whole-book imbalance random given the path, of
+variance $\Variance\xi_n\,\groundProc(t)$ in units. The closed form carries none of the three.
+Whether an event moves a touch now depends on its size more than on the order of the events, and
+part of the variance moves from the flow part to the placement part.
+}
+\end{frame}
+
+\begin{frame}
+  \frametitle{A side of $\hawQ$ empties sooner}
+\[
+ \size^{b,\hawQ}_t(\tickSizeOfLOB\N)
+ \approx \meanSize\Big(L\uniformDepth
+ + \sum_{\arrivalTimes[]_n \leq t}(\sideVector{b})_{\event[n]}\,\xi_n\Big)
+\]
+
+$\approx$: up to the truncation of the withdrawals
+
+Variance rate: $\meanSize^{2}\big[(\sideVector{b})^{\transpose}\countCovarianceRate
+\sideVector{b} + \Variance\xi_n\,(\stationaryIntensity[3] + \stationaryIntensity[2]
++ \stationaryIntensity[5])\big]$
+
+Lifetime of a side: $(L\uniformDepth)^{2}$ over the bracket
+\note{
+A side of $\hawQ$ holds $L\uniformDepth$ units plus the sizes of the limit orders on it, less
+those of the market orders and the withdrawals that take from it. Given the path its mean is
+$\meanSize$ times the side of $\hawOne$, and its variance grows as $\Variance\xi_n$ times the
+number of these events. So its variance rate is the variance rate of $\hawOne$ plus
+$\meanSize^2\Variance\xi_n(\stationaryIntensity[3] + \stationaryIntensity[2]
++ \stationaryIntensity[5])$, and a side lasts a time of the order of $(L\uniformDepth)^2$ over the
+bracket, shorter than for $\hawOne$: the event $G$ holds on shorter horizons.
+Now to notebook 10, section 4, Uncertain sizes.
 }
 \end{frame}

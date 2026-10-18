@@ -3,8 +3,8 @@
 These are *examples*, not defaults.  A default invites a reader to skip the choice, and
 the choice is the subject; an example invites them to open it and see what a specification
 looks like.  Nothing here is computed at import time: each constant is a list of records
-in the sense of :class:`unito26.lob.frames.FrameSerializable`, and the loaders below are
-the only way in.
+in the sense of :class:`unito26.lob.frames.FrameSerializable`, or a number, and the loaders
+below are the only way in.
 
 **The mechanism the kernel encodes.**  A queue survives because what depletes it calls
 forth what refills it.  So whenever an event depletes one side -- a market sell eating the
@@ -70,6 +70,7 @@ checked although the code that produced them is gone.
 
 from __future__ import annotations
 
+from unito26.lob.coupling import SizeUnit
 from unito26.lob.hawkes import HawkesParams
 from unito26.lob.simulate import MarkParams
 
@@ -86,10 +87,14 @@ __all__ = [
     "resilient_mark_params",
     "shallow_mark_params",
     "deep_mark_params",
-    "WITHDRAWAL_FREE_ORDER_FLOW_PARAMS",
+    "BALANCED_ORDER_FLOW_PARAMS",
     "UNIT_MARK_PARAMS",
-    "withdrawal_free_order_flow_params",
+    "UNCERTAIN_SIZE_MARK_PARAMS",
+    "UNCERTAIN_SIZE_UNIT",
+    "balanced_order_flow_params",
     "unit_mark_params",
+    "uncertain_size_mark_params",
+    "uncertain_size_unit",
     "SELF_EXCITING_PAIR_PARAMS",
     "CROSS_EXCITING_PAIR_PARAMS",
     "ASYMMETRIC_PAIR_PARAMS",
@@ -284,98 +289,112 @@ DEEP_MARK_PARAMS: list[dict] = [
      "SigmaLogSize": 0.8, "Lot": 10},
 ]
 
-#: The resilient flow without withdrawals: the flow on which the idealised and the geometric
-#: placement of the same events can agree.  The withdrawal coordinates, components and causes
-#: 4 and 5, are zero in the kernel and in the baseline, and the remaining block keeps the
-#: resilient shape, rescaled to a branching ratio of 0.5.  The baselines are
-#: ``mu = (I - Gamma) lambda*`` for a stationary intensity of 2.5 events a second of each of
-#: the four order types, so that on each side limit orders arrive at the rate of the market
-#: orders that consume it, and the total rate is 10 a second.  The limit-order baseline is
-#: 0.242 against a stationary 2.5; at a branching ratio of 0.6 it would be negative.  The
-#: endogenous fraction is 0.690.
-WITHDRAWAL_FREE_ORDER_FLOW_PARAMS: list[dict] = [
-    {"Component": 0, "Cause": 0, "BaseIntensity": 1.3094171014,
-     "Kernel": 1.4779649775, "Decay": 4.0},
+#: The resilient shape at a branching ratio of 0.5, balanced on each side: limit orders
+#: arrive at the rate at which market orders and withdrawals take from the side.  The
+#: stationary intensity is one market order a second on each side, 2.5 limit orders and 1.5
+#: withdrawals, ``lambda* = (1, 1, 2.5, 2.5, 1.5, 1.5)`` in type order, a total rate of 10 a
+#: second, and the flow is direction-symmetric.  The baselines are
+#: ``mu = (I - Gamma) lambda*``: 0.442 for a market order, 0.521 for a limit order and 1.140
+#: for a withdrawal, the smallest against a stationary 1.  The endogenous fraction is 0.579.
+BALANCED_ORDER_FLOW_PARAMS: list[dict] = [
+    {"Component": 0, "Cause": 0, "BaseIntensity": 0.4423762335,
+     "Kernel": 1.2951261673, "Decay": 4.0},
     {"Component": 0, "Cause": 1, "BaseIntensity": None,
-     "Kernel": 0.3284366617, "Decay": 4.0},
+     "Kernel": 0.2878058150, "Decay": 4.0},
     {"Component": 0, "Cause": 2, "BaseIntensity": None,
-     "Kernel": 0.0492654993, "Decay": 4.0},
+     "Kernel": 0.0431708722, "Decay": 4.0},
     {"Component": 0, "Cause": 3, "BaseIntensity": None,
-     "Kernel": 0.0492654993, "Decay": 4.0},
+     "Kernel": 0.0431708722, "Decay": 4.0},
     {"Component": 0, "Cause": 4, "BaseIntensity": None,
-     "Kernel": 0.0000000000, "Decay": 4.0},
+     "Kernel": 0.1439029075, "Decay": 4.0},
     {"Component": 0, "Cause": 5, "BaseIntensity": None,
-     "Kernel": 0.0000000000, "Decay": 4.0},
+     "Kernel": 0.1439029075, "Decay": 4.0},
     {"Component": 1, "Cause": 0, "BaseIntensity": None,
-     "Kernel": 0.3284366617, "Decay": 4.0},
-    {"Component": 1, "Cause": 1, "BaseIntensity": 1.3094171014,
-     "Kernel": 1.4779649775, "Decay": 4.0},
+     "Kernel": 0.2878058150, "Decay": 4.0},
+    {"Component": 1, "Cause": 1, "BaseIntensity": 0.4423762335,
+     "Kernel": 1.2951261673, "Decay": 4.0},
     {"Component": 1, "Cause": 2, "BaseIntensity": None,
-     "Kernel": 0.0492654993, "Decay": 4.0},
+     "Kernel": 0.0431708722, "Decay": 4.0},
     {"Component": 1, "Cause": 3, "BaseIntensity": None,
-     "Kernel": 0.0492654993, "Decay": 4.0},
+     "Kernel": 0.0431708722, "Decay": 4.0},
     {"Component": 1, "Cause": 4, "BaseIntensity": None,
-     "Kernel": 0.0000000000, "Decay": 4.0},
+     "Kernel": 0.1439029075, "Decay": 4.0},
     {"Component": 1, "Cause": 5, "BaseIntensity": None,
-     "Kernel": 0.0000000000, "Decay": 4.0},
+     "Kernel": 0.1439029075, "Decay": 4.0},
     {"Component": 2, "Cause": 0, "BaseIntensity": None,
-     "Kernel": 0.1642183309, "Decay": 4.0},
+     "Kernel": 0.1439029075, "Decay": 4.0},
     {"Component": 2, "Cause": 1, "BaseIntensity": None,
-     "Kernel": 3.1201482859, "Decay": 4.0},
-    {"Component": 2, "Cause": 2, "BaseIntensity": 0.2419979510,
-     "Kernel": 0.1642183309, "Decay": 4.0},
+     "Kernel": 2.7341552420, "Decay": 4.0},
+    {"Component": 2, "Cause": 2, "BaseIntensity": 0.5213350222,
+     "Kernel": 0.1439029075, "Decay": 4.0},
     {"Component": 2, "Cause": 3, "BaseIntensity": None,
-     "Kernel": 0.1642183309, "Decay": 4.0},
+     "Kernel": 0.1439029075, "Decay": 4.0},
     {"Component": 2, "Cause": 4, "BaseIntensity": None,
-     "Kernel": 0.0000000000, "Decay": 4.0},
+     "Kernel": 2.7341552420, "Decay": 4.0},
     {"Component": 2, "Cause": 5, "BaseIntensity": None,
-     "Kernel": 0.0000000000, "Decay": 4.0},
+     "Kernel": 0.1439029075, "Decay": 4.0},
     {"Component": 3, "Cause": 0, "BaseIntensity": None,
-     "Kernel": 3.1201482859, "Decay": 4.0},
+     "Kernel": 2.7341552420, "Decay": 4.0},
     {"Component": 3, "Cause": 1, "BaseIntensity": None,
-     "Kernel": 0.1642183309, "Decay": 4.0},
+     "Kernel": 0.1439029075, "Decay": 4.0},
     {"Component": 3, "Cause": 2, "BaseIntensity": None,
-     "Kernel": 0.1642183309, "Decay": 4.0},
-    {"Component": 3, "Cause": 3, "BaseIntensity": 0.2419979510,
-     "Kernel": 0.1642183309, "Decay": 4.0},
+     "Kernel": 0.1439029075, "Decay": 4.0},
+    {"Component": 3, "Cause": 3, "BaseIntensity": 0.5213350222,
+     "Kernel": 0.1439029075, "Decay": 4.0},
     {"Component": 3, "Cause": 4, "BaseIntensity": None,
-     "Kernel": 0.0000000000, "Decay": 4.0},
+     "Kernel": 0.1439029075, "Decay": 4.0},
     {"Component": 3, "Cause": 5, "BaseIntensity": None,
-     "Kernel": 0.0000000000, "Decay": 4.0},
+     "Kernel": 2.7341552420, "Decay": 4.0},
     {"Component": 4, "Cause": 0, "BaseIntensity": None,
-     "Kernel": 0.0000000000, "Decay": 4.0},
+     "Kernel": 0.1439029075, "Decay": 4.0},
     {"Component": 4, "Cause": 1, "BaseIntensity": None,
-     "Kernel": 0.0000000000, "Decay": 4.0},
+     "Kernel": 0.1439029075, "Decay": 4.0},
     {"Component": 4, "Cause": 2, "BaseIntensity": None,
-     "Kernel": 0.0000000000, "Decay": 4.0},
+     "Kernel": 0.1439029075, "Decay": 4.0},
     {"Component": 4, "Cause": 3, "BaseIntensity": None,
-     "Kernel": 0.0000000000, "Decay": 4.0},
-    {"Component": 4, "Cause": 4, "BaseIntensity": 0.0000000000,
-     "Kernel": 0.0000000000, "Decay": 4.0},
+     "Kernel": 0.1439029075, "Decay": 4.0},
+    {"Component": 4, "Cause": 4, "BaseIntensity": 1.1402427313,
+     "Kernel": 0.1439029075, "Decay": 4.0},
     {"Component": 4, "Cause": 5, "BaseIntensity": None,
-     "Kernel": 0.0000000000, "Decay": 4.0},
+     "Kernel": 0.1439029075, "Decay": 4.0},
     {"Component": 5, "Cause": 0, "BaseIntensity": None,
-     "Kernel": 0.0000000000, "Decay": 4.0},
+     "Kernel": 0.1439029075, "Decay": 4.0},
     {"Component": 5, "Cause": 1, "BaseIntensity": None,
-     "Kernel": 0.0000000000, "Decay": 4.0},
+     "Kernel": 0.1439029075, "Decay": 4.0},
     {"Component": 5, "Cause": 2, "BaseIntensity": None,
-     "Kernel": 0.0000000000, "Decay": 4.0},
+     "Kernel": 0.1439029075, "Decay": 4.0},
     {"Component": 5, "Cause": 3, "BaseIntensity": None,
-     "Kernel": 0.0000000000, "Decay": 4.0},
+     "Kernel": 0.1439029075, "Decay": 4.0},
     {"Component": 5, "Cause": 4, "BaseIntensity": None,
-     "Kernel": 0.0000000000, "Decay": 4.0},
-    {"Component": 5, "Cause": 5, "BaseIntensity": 0.0000000000,
-     "Kernel": 0.0000000000, "Decay": 4.0},
+     "Kernel": 0.1439029075, "Decay": 4.0},
+    {"Component": 5, "Cause": 5, "BaseIntensity": 1.1402427313,
+     "Kernel": 0.1439029075, "Decay": 4.0},
 ]
 
-#: Orders of one share, each limit order one tick from the opposite touch: the marks under
-#: which the geometric placement acts at the touches, as the idealised one does.
-#: ``SigmaLogSize`` is positive because the schema requires it; a size other than one is a
-#: draw forty standard deviations out.
+#: Orders of one share, at a ``DepthDecay`` of 0.2.  At a spread of one tick the geometric
+#: placement sends a limit order to its touch with probability ``eta`` and behind it
+#: otherwise, so its touch is fed at ``eta lambda_L`` and consumed at no less than
+#: ``lambda_M``.  Below ``eta = lambda_M / lambda_L = 0.4``, as here, the touch of the
+#: geometric book drains on average and that of the CKS book does not.  ``SigmaLogSize`` is
+#: positive because the schema requires it; a size other than one is a draw forty standard
+#: deviations out.
 UNIT_MARK_PARAMS: list[dict] = [
-    {"DepthDecay": 1.0, "MeanLogSize": 0.0,
+    {"DepthDecay": 0.2, "MeanLogSize": 0.0,
      "SigmaLogSize": 0.01, "Lot": 1},
 ]
+
+#: Orders of a hundred shares on average, at the depth decay of the unit marks: lognormal
+#: with log-sd 0.8 and ``MeanLogSize = ln 100 - 0.8^2 / 2``, so that the mean before rounding
+#: to a share is ``exp(MeanLogSize + SigmaLogSize^2 / 2) = 100``.  On a book whose every size
+#: is a hundred times the unit book's, they are the unit marks with the size made uncertain,
+#: read in units of ``UNCERTAIN_SIZE_UNIT`` shares.
+UNCERTAIN_SIZE_MARK_PARAMS: list[dict] = [
+    {"DepthDecay": 0.2, "MeanLogSize": 4.2851701860,
+     "SigmaLogSize": 0.8, "Lot": 1},
+]
+
+#: ``mbar``, the mean size of the marks above, in shares.
+UNCERTAIN_SIZE_UNIT: int = 100
 
 #: Three flows of two abstract types, at the decay of the flows above.  They are for reading
 #: self-excitation before it is given a meaning in the book.
@@ -462,14 +481,25 @@ def trending_mark_params() -> MarkParams:
     return MarkParams.from_records(TRENDING_MARK_PARAMS)
 
 
-def withdrawal_free_order_flow_params() -> HawkesParams:
-    """The resilient shape with no withdrawals, limit orders balancing market orders."""
-    return HawkesParams.from_records(WITHDRAWAL_FREE_ORDER_FLOW_PARAMS)
+def balanced_order_flow_params() -> HawkesParams:
+    """The resilient shape, limit orders balancing market orders and withdrawals."""
+    return HawkesParams.from_records(BALANCED_ORDER_FLOW_PARAMS)
 
 
 def unit_mark_params() -> MarkParams:
-    """Orders of one share, limit orders one tick from the opposite touch."""
+    """Orders of one share."""
     return MarkParams.from_records(UNIT_MARK_PARAMS)
+
+
+def uncertain_size_mark_params() -> MarkParams:
+    """Orders of lognormal size, a hundred shares on average."""
+    return MarkParams.from_records(UNCERTAIN_SIZE_MARK_PARAMS)
+
+
+def uncertain_size_unit() -> SizeUnit:
+    """``mbar`` of :func:`uncertain_size_mark_params`: the shares in the unit its sizes are
+    read in."""
+    return SizeUnit(UNCERTAIN_SIZE_UNIT)
 
 
 def self_exciting_pair_params() -> HawkesParams:
