@@ -184,14 +184,14 @@ $S^{\mathrm{CKS}}$, $S^{\mathrm{haw}\text{-}1}$ the touches of that side;
 $S^{\mathrm{haw}\text{-}1}(\tau\mathbb N)$ the size on it in haw-1; $g$ the ticks from the
 touch of haw-1 to the next occupied price behind it. Each book moves the best price of the
 side of the event, by $j^{\mathrm{CKS}}$ and $j^{\mathrm{haw}\text{-}1}$ ticks, and no
-other; for a market order $j^{\mathrm{haw}\text{-}1} = g\,\mathbf 1\{S^{\mathrm{haw}\text{-}1}
-= 1\}$. The event parts the mid-prices exactly when $j^{\mathrm{CKS}} \ne
+other. The event parts the mid-prices exactly when $j^{\mathrm{CKS}} \ne
 j^{\mathrm{haw}\text{-}1}$. For a limit order the *own touch* is the CKS touch on the side
 of the order. Given $\mathfrak F^N$ and the earlier draws:
 
 | event | $j^{\mathrm{CKS}}$ | probability of parting |
 | --- | --- | --- |
-| market order | $\mathbf 1\{S^{\mathrm{CKS}} = 1\}$ | $\mathbf 1\{j^{\mathrm{CKS}} \ne j^{\mathrm{haw}\text{-}1}\}$ |
+| market order, $S^{\mathrm{CKS}} \ge 2$ | $0$ | $\mathbf 1\{S^{\mathrm{haw}\text{-}1} = 1\}$ |
+| market order, $S^{\mathrm{CKS}} = 1$ | $1$ | $1 - \mathbf 1\{S^{\mathrm{haw}\text{-}1} = 1,\ g = 1\}$ |
 | limit order, $k = 1$, own touch $< \bar S$ | $0$ | $0$ |
 | limit order, $k = 1$, own touch $= \bar S$ | $\mathbf 1\{S^{\mathrm{CKS}} = 1\}$ | $\mathbf 1\{S^{\mathrm{CKS}} = 1\}$ |
 | limit order, $k \ge 2$, $S^{\mathrm{CKS}} < \bar S$ | $0$ | $1 - (1-\eta)^{k-1}$ |
@@ -223,13 +223,17 @@ share; then by $g$.
 
 The offsets are independent of $\mathfrak F^N$ and the earlier draws; the level of a
 withdrawal is drawn on the book before the event. Each entry is the probability that the
-two moves differ: at $k = 1$, $j^{\mathrm{haw}\text{-}1} = 0$; at $k \ge 2$,
+two moves differ: for a market order, $j^{\mathrm{haw}\text{-}1} \ne 0$ exactly when
+$S^{\mathrm{haw}\text{-}1} = 1$, and $j^{\mathrm{haw}\text{-}1} = 1$ exactly when moreover
+$g = 1$; for a limit order at $k = 1$, $j^{\mathrm{haw}\text{-}1} = 0$; at $k \ge 2$,
 $\mathbb P(j^{\mathrm{haw}\text{-}1} \ne 0) = 1 - (1-\eta)^{k-1}$ and
 $\mathbb P(j^{\mathrm{haw}\text{-}1} \ne 1) = 1 - \eta(1-\eta)^{k-2}$; for a withdrawal,
 $\mathbb P(j^{\mathrm{haw}\text{-}1} \ne 0) = \mathbf 1\{S^{\mathrm{haw}\text{-}1} =
 1\}/S^{\mathrm{haw}\text{-}1}(\tau\mathbb N)$ and $\mathbb P(j^{\mathrm{haw}\text{-}1} = 1)
 = \mathbf 1\{S^{\mathrm{haw}\text{-}1} = 1, g = 1\}/S^{\mathrm{haw}\text{-}1}(\tau\mathbb
-N)$. $\square$
+N)$. In both books a market order acts on the side of the event as a withdrawal that draws
+the touch, and its rows are those of the withdrawal with the probability of that draw set to
+one. $\square$
 
 At a spread of one tick the offsets play no part: a limit order parts the mid-prices only
 when CKS sends it to an opposite touch of one share, a market order or a withdrawal only

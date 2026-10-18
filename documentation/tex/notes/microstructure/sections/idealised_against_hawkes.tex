@@ -254,8 +254,7 @@ the parting time is decided by the moves of the best prices alone.
  and $g$ the number of ticks from the touch of $\hawOne$ to the next occupied price behind it.
  Each book moves the best price of the side of the event,
  by $j^{\cks}$ and $j^{\hawOne}$ ticks,
- and no other best price;
- for a market order $j^{\hawOne} = g \, \indicator{\size^{\hawOne} = 1}$.
+ and no other best price.
  The event parts the mid-prices exactly when $j^{\cks} \neq j^{\hawOne}$.
  For a limit order the \emph{own touch} is the touch of $\cks$ on the side of the order.
  Given $\sigmaAlgebra^{\multiCountingProc}$ and the draws of the earlier events,
@@ -265,9 +264,12 @@ the parting time is decided by the moves of the best prices alone.
    \toprule
    event & $j^{\cks}$ & probability of parting \\
    \midrule
-   market order
-   & $\indicator{\size^{\cks} = 1}$
-   & $\indicator{j^{\cks} \neq j^{\hawOne}}$ \\
+   market order, $\size^{\cks} \geq 2$
+   & $0$
+   & $\indicator{\size^{\hawOne} = 1}$ \\
+   market order, $\size^{\cks} = 1$
+   & $1$
+   & $1 - \indicator{\size^{\hawOne} = 1, \, g = 1}$ \\
    limit order, $k = 1$, own touch $< \uniformDepth$
    & $0$
    & $0$ \\
@@ -337,6 +339,9 @@ the parting time is decided by the moves of the best prices alone.
  event,
  which is a function of $\sigmaAlgebra^{\multiCountingProc}$ and of the earlier draws.
  Each entry of the table is the probability that the two moves differ:
+ for a market order,
+ $j^{\hawOne} \neq 0$ exactly when $\size^{\hawOne} = 1$,
+ and $j^{\hawOne} = 1$ exactly when moreover $g = 1$;
  for a limit order at $k = 1$, $j^{\hawOne} = 0$;
  at $k \geq 2$,
  $j^{\hawOne} \neq 0$ with probability $1 - (1-\offsetParameter)^{k-1}$
@@ -346,6 +351,11 @@ the parting time is decided by the moves of the best prices alone.
  $\indicator{\size^{\hawOne} = 1} / \size^{\hawOne}(\tickSizeOfLOB\N)$
  and $j^{\hawOne} = 1$ with probability
  $\indicator{\size^{\hawOne} = 1, \, g = 1} / \size^{\hawOne}(\tickSizeOfLOB\N)$.
+ In both books a market order acts on the side of the event
+ as a withdrawal that draws the touch,
+ and its rows are those of the withdrawal
+ with the probability $\size^{\hawOne}/\size^{\hawOne}(\tickSizeOfLOB\N)$ of that draw
+ set to one.
 \end{proof}
 
 At a spread of one tick the offsets play no part in the table:
@@ -1397,7 +1407,7 @@ hold with $\hawQ$ in place of $\hawOne$, with the same proofs:
 a market buy walks the ask, and moves only it, up.
 In Proposition \ref{prop.partingProbability} the rows of the limit orders are unchanged,
 since the price of a limit order does not depend on its size,
-and the other two change.
+and those of the market orders and of the withdrawals change.
 
 \begin{prop}\label{prop.partingProbabilitySizes}
  In Proposition \ref{prop.partingProbability}, with $\hawQ$ in place of $\hawOne$,

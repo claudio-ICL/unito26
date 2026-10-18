@@ -133,13 +133,15 @@ far the identity carries over to the second.
  \STATE cancel one share at the touch of the side $d$
  \ELSIF{the touch of the side $d$ holds less than $\uniformDepth$}
  \STATE submit one share at that touch
- \ELSIF{the spread is one tick}
- \STATE submit one share at the touch of the side $-d$, where it trades
  \ELSE
- \STATE submit one share one tick inside the spread, a new touch
+ \STATE submit one share at that touch improved by one tick
  \ENDIF
 \end{algorithmic}
 }
+
+$\LOBspread = \tickSizeOfLOB$: the improved price is the opposite touch, a trade
+
+$\LOBspread > \tickSizeOfLOB$: the improved price is a free tick, a new touch
 
 Nothing drawn beyond the event: $\cks$ is $\sigmaAlgebra^{\multiCountingProc}$-measurable
 
@@ -148,8 +150,9 @@ The placement of class 4 under which the idealised book holds
 Each event of the Hawkes process becomes one message of one share, read against the book as it
 stands, and the matching is the ordinary matching of the book. A market order is a limit order of
 one share at the opposite touch, so its market part is its whole size. A limit order at a full
-touch opens a new touch one tick inside the spread; at a spread of one tick there is no such
-tick, and it trades one share at the opposite touch, as a market order would.
+touch is priced one tick better than that touch, and the matching decides what it does: at a
+spread of one tick that price is the opposite touch, where it trades one share, as a market order
+would; at a wider spread the tick is free, and the order opens a new touch there.
 The sizes are units because an order of two shares may reach past a touch that holds one, against
 part ii of the assumption. $\sigmaAlgebra^{\multiCountingProc}$ is the $\sigma$-algebra of the
 arrival times and the types: the CKS book is a function of the opening book and of the path.
@@ -408,7 +411,8 @@ by any number of ticks inside the spread.
   \toprule
   event & & $j^{\cks}$ & parting \\
   \midrule
-  market & & $\indicator{\size^{\cks} = 1}$ & $\indicator{j^{\cks} \neq j^{\hawOne}}$ \\
+  market & $\size^{\cks} \geq 2$ & $0$ & $\indicator{\size^{\hawOne} = 1}$ \\
+   & $\size^{\cks} = 1$ & $1$ & $1 - \indicator{\size^{\hawOne} = 1, \, g = 1}$ \\
   limit, $k = 1$ & own touch $< \uniformDepth$ & $0$ & $0$ \\
    & own touch $= \uniformDepth$ & $\indicator{\size^{\cks} = 1}$
    & $\indicator{\size^{\cks} = 1}$ \\
@@ -428,7 +432,7 @@ $j^{\cks}$, $j^{\hawOne}$: the ticks each book moves the side of the event
 
 Parting: the probability that event $n$ parts the mid-prices
 
-Market order: $j^{\hawOne} = g\,\indicator{\size^{\hawOne} = 1}$
+Market order: a withdrawal that draws the touch
 \note{
 Each book moves the best price of the side of the event by $j^{\cks}$ and $j^{\hawOne}$ ticks,
 and no other best price, and the event parts the mid-prices exactly when the two differ. For a
@@ -438,10 +442,10 @@ market order or a withdrawal moves the touch it takes from exactly when that tou
 share. A limit order at $k \geq 2$ opens a level one tick inside its touch exactly when that touch
 is full. At $k = 1$ it joins its touch if that is not full, and otherwise trades one share at the
 opposite touch, the touch of the side of the event, which moves exactly when it holds one share.
-A market order takes one share from the touch of $\hawOne$, which moves by $g$ ticks exactly when
-it held one. A withdrawal moves it exactly when it draws the touch, with probability
-$\size^{\hawOne}/\size^{\hawOne}(\tickSizeOfLOB\N)$, and the touch held one share; then also by
-$g$. A limit order at $k \geq 2$ is priced $k - 1 - \priceOffset_n$ ticks inside the touch of its
+In $\hawOne$ a withdrawal moves the touch exactly when it draws it, with probability
+$\size^{\hawOne}/\size^{\hawOne}(\tickSizeOfLOB\N)$, and the touch held one share; then by $g$.
+In both books a market order is a withdrawal that draws the touch for sure: its rows are those of
+the withdrawal with that probability set to one. A limit order at $k \geq 2$ is priced $k - 1 - \priceOffset_n$ ticks inside the touch of its
 side, so it moves the touch by $j$ ticks, $1 \leq j \leq k-1$, with probability
 $\offsetParameter(1-\offsetParameter)^{k-1-j}$, and not at all with probability
 $(1-\offsetParameter)^{k-1}$; at $k = 1$ it moves no best price.
@@ -1032,11 +1036,11 @@ Lognormal $\xi_n$: positive at every touch, so no quiet book
 \note{
 The statements on the parting time are now read for the CKS book against $\hawQ$, with the sizes
 of $\hawQ$ in units of $\meanSize$, so that its opening levels hold $\uniformDepth$ units and its
-$n$-th order $\xi_n$. Limit orders keep their row of the table, since their price does not
+$n$-th order $\xi_n$. Limit orders keep their rows of the table, since their price does not
 depend on their size. The
 lemma on one best price and the parting at one quote hold with the same proof: a market buy walks
 the ask and moves only it, up.
-The other two rows change. A market order moves the touch exactly
+The rows of market orders and withdrawals change. A market order moves the touch exactly
 when its size is at least the touch, to the first price at which the cumulated size of the side
 exceeds it, possibly several occupied levels away. A withdrawal moves it exactly when it draws the
 touch and its size is at least the touch, and then by $g$ ticks. The lognormal law is unbounded,
