@@ -41,7 +41,8 @@ The package ships five specifications of the pair, all at $\decay = 4$ per secon
 
 \begin{question}
 \label{question.whichOrderFlowSpecificationsAreRefused}
-The constructor of \codehl{HawkesParams} checks the specification it is given.
+The constructor of \codehl{HawkesParams} checks the specification it is given,
+after turning the lists it receives into arrays of floats.
 \begin{lstlisting}[caption={\protect\codehl{unito26.lob.hawkes.HawkesParams}: the checks of the constructor and the branching ratio, abridged.}, label=listing.whichOrderFlowSpecificationsAreRefusedChecks]
 def __post_init__(self) -> None:
 # ...

@@ -103,6 +103,7 @@ def set_size(self, direction: int, price: int, size: int) -> None:
 \end{lstlisting}
 Two variants of its \codehl{best\_price} read the best price off the integer,
 and a market buy for the whole ask side arrives,
+priced at \codehl{sys.maxsize}, above every price of the band,
 matched as in Listing~\ref{listing.tickArrayIntegersSubmit}.
 \begin{lstlisting}[caption={Alternative A}, label=listing.bitmapBestAskA]
 class Book(BitmapBook):
@@ -285,7 +286,7 @@ and the flood fills them in four passes.
 \begin{question}
 \label{question.askWindowsOfTheTwoBitmaps}
 The gap statistics of a side are read on a window of its integer,
-the bits from the touch to the deepest reported level, shifted down so that the deepest is bit 0.
+the bits from the touch to the deepest reported level, shifted down so that the lower end of the window is bit 0.
 For the ask side and the reported depth $L$, \codehl{span\_bits(SELL, L)} returns
 \codehl{keep\_lowest\_set\_bits(bits, L)} in \codehl{BitmapBook}
 and \codehl{keep\_highest\_set\_bits(bits, L)} in \codehl{TickArrayBook},

@@ -501,7 +501,7 @@ from the terms of Question~\ref{question.signedCountDriftOnTheOneWayPair},
 and the drift $\forecastHorizon\pressure^{\transpose}\excitation z$
 of Corollary~\ref{notes:corol.contrastAsDrift},
 both per unit of mean size.
-To three digits, $e^{-0.7} = 0.497$ and $e^{-3.3} = 0.037$.
+To four digits, $e^{-0.7} = 0.4966$ and $e^{-3.3} = 0.0369$.
 \begin{lstlisting}[caption={The forecast after a burst of buys}, label=listing.regimeSignAfterABurstOfBuys]
 pressure, z, h = np.array([1.0, -1.0]), np.array([2.0, 0.5]), 0.5
 for params in (config.self_exciting_pair_params(),
@@ -523,7 +523,7 @@ so $\pressure^{\transpose}\hurwitzMatrix = (\signedExcitation - 4)\pressure^{\tr
 and the forecast is
 $\signedExcitation\big(1 - e^{(\signedExcitation - 4)\forecastHorizon}\big)/(4 - \signedExcitation)
 \cdot (z_1 - z_2)$:
-$2.6 \cdot 0.503/1.4 \cdot 1.5$ and $-2.6 \cdot 0.963/6.6 \cdot 1.5$.
+$2.6 \cdot 0.5034/1.4 \cdot 1.5$ and $-2.6 \cdot 0.9631/6.6 \cdot 1.5$.
 The self-exciting pair forecasts continuation and the cross-exciting pair reversal,
 as Corollary~\ref{notes:corol.regimeSign} reads them;
 the drift is the slope at $\forecastHorizon = 0$,

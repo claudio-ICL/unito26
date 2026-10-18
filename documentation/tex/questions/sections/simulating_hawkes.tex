@@ -460,6 +460,8 @@ self.rng = rng if isinstance(rng, np.random.Generator) else np.random.default_rn
 # ...
 \end{lstlisting}
 Two generators built by \codehl{np.random.default\_rng(5)} draw the same numbers.
+The weakly exciting pair has a total rate of 2 events a second,
+so that a path of ten seconds is empty with a negligible probability.
 \begin{lstlisting}[caption={Paths from a seed and from a generator}, label=listing.seedsOfAnOrderFlowMonteCarloRun]
 params = config.weakly_exciting_pair_params()
 rng = np.random.default_rng(5)
