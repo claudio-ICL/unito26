@@ -1,0 +1,730 @@
+\notebook{05-inheritance}
+The questions of this section concern Appendix~\ref{notes:chap.objectOrientedProgramming}.
+Most of them are asked of the five books of Section~\ref{notes:sec.fasterBook}:
+\codehl{AggregateBook} and its four subclasses
+\codehl{CachedBestBook}, \codehl{HeapBook}, \codehl{BitmapBook} and \codehl{TickArrayBook},
+of \codehl{unito26.lob.orderbook},
+which inherit its matching
+and override how a side is stored and how its best price is found.
+
+\begin{question}
+\label{question.writesToABookAndAMessage}
+The spread of a book is a property of \codehl{AggregateBook}, quoted below.
+The class declares no \codehl{\_\_slots\_\_},
+its constructor binds \codehl{bids} and \codehl{asks} as attributes of the instance,
+two dictionaries,
+and neither the class nor the instance binds a name \codehl{best\_bid}.
+\codehl{limit\_order} returns an instance of \codehl{Message}, of \codehl{unito26.lob.messages},
+a data class declared under \codehl{@dataclass(frozen=True, slots=True)}
+with the fields \codehl{time}, \codehl{size}, \codehl{price}, \codehl{direction} and \codehl{kind}.
+\begin{lstlisting}[caption={\protect\codehl{unito26.lob.orderbook.AggregateBook}: the spread, its docstring elided.}, label=listing.writesToABookAndAMessageSpread]
+@property
+def spread(self) -> int | None:
+    # ...
+    bid, ask = self.best_bid_price, self.best_ask_price
+    return None if bid is None or ask is None else ask - bid
+\end{lstlisting}
+Each of the five numbered statements of the second listing is run on its own,
+after the two lines of the first.
+\begin{lstlisting}[caption={A book and a message}, label=listing.writesToABookAndAMessageSetUp]
+book = AggregateBook.from_levels({99: 100}, {101: 100})
+message = limit_order(1.0, 50, 100, BUY)
+\end{lstlisting}
+\begin{lstlisting}[caption={Five statements, each run on its own}, label=listing.writesToABookAndAMessageStatements]
+book.best_bid = 100        # (1)
+book.spread = 1            # (2)
+half = book.spread() / 2   # (3)
+book.bids = {100: 50}      # (4)
+message.size = 0           # (5)
+\end{lstlisting}
+Which of the statements raise an exception?
+\begin{choices}
+ \correctchoice (2), (3) and (5), and no other.
+ \choice (1), (2), (3) and (5), and no other.
+ \choice (3) and (5), and no other.
+ \choice (2) and (5), and no other.
+ \choice (2), (3), (4) and (5), and no other.
+\end{choices}
+\explanation{No class binds \codehl{best\_bid},
+so (1) creates an attribute of the instance, Remark~\ref{notes:remark.misspeltAttribute},
+and (4) rebinds one the instance has: neither raises.
+A property refuses assignment, Remark~\ref{notes:remark.completeRule};
+its reading is the integer 2, which cannot be called, Table~\ref{notes:tab.kindsOfMethod};
+and a frozen data class refuses the assignment of a field.}
+\end{question}
+
+\begin{question}
+\label{question.frozenSubmitResultHoldsAList}
+With \codehl{record=True}, \codehl{apply} returns a \codehl{SubmitResult}, quoted below,
+whose list \codehl{fills} holds one \codehl{Fill} for each price the order traded at.
+\codehl{Fill}, of \codehl{unito26.lob.messages}, is a frozen data class
+with the fields \codehl{price}, \codehl{size} and \codehl{aggressor}.
+After a message, \codehl{book.last\_traded\_size} is the number of shares the message traded.
+\codehl{FrozenInstanceError}, of the module \codehl{dataclasses},
+is the error raised by an assignment to a field of a frozen data class.
+\begin{lstlisting}[caption={\protect\codehl{unito26.lob.orderbook.SubmitResult}, abridged: its docstrings and one property are cut.}, label=listing.frozenSubmitResultHoldsAListQuote]
+@dataclass(frozen=True, slots=True)
+class SubmitResult:
+    # ...
+    fills: list[Fill] = field(default_factory=list)
+    deltas: list[LevelDelta] = field(default_factory=list)
+    unfilled: int = 0
+    # ...
+    @property
+    def market_order_size(self) -> int:
+        # ...
+        return sum(fill.size for fill in self.fills)
+\end{lstlisting}
+\begin{lstlisting}[caption={A fill appended, and the fills rebound}, label=listing.frozenSubmitResultHoldsAListRun]
+book = AggregateBook.from_levels({99: 100}, {101: 100, 102: 80})
+result = book.apply(market_order(1.0, 150, BUY), record=True)
+result.fills.append(result.fills[0])
+print(result.market_order_size, book.last_traded_size)
+result.fills = result.fills[:1]
+print(result.market_order_size)
+\end{lstlisting}
+What happens?
+\begin{choices}
+ \choice It raises \codehl{FrozenInstanceError} at the call of \codehl{append}, and prints nothing.
+ \choice It prints \codehl{150 150}, then raises \codehl{FrozenInstanceError}.
+ \correctchoice It prints \codehl{250 150}, then raises \codehl{FrozenInstanceError}.
+ \choice It prints \codehl{250 150}, then \codehl{100}.
+\end{choices}
+\explanation{A frozen instance cannot rebind its fields,
+and the list a field refers to stays mutable, Remark~\ref{notes:remark.frozenIsShallow}:
+the append succeeds, and the property, computed at every reading, sums $100 + 50 + 100$.
+The assignment to \codehl{fills} is refused,
+and \codehl{book.last\_traded\_size}, the 150 shares of the order, is changed by neither.}
+\end{question}
+
+\begin{question}
+\label{question.bandMarginShadowedOnTheInstance}
+\codehl{TickArrayBook} keeps the sizes of the prices of a band, from a floor to a ceiling,
+and refuses a write outside it.
+Its class method \codehl{for\_prices}, quoted below, sizes the band to the prices it is given,
+with a margin on either side;
+\codehl{grid\_prices} returns these prices as they are.
+\codehl{AggregateBook} binds \codehl{BAND\_MARGIN = 64} in the body of the class,
+and a narrower band costs less memory.
+Two ways of narrowing it are tried.
+\begin{lstlisting}[caption={\protect\codehl{unito26.lob.orderbook.TickArrayBook.for\_prices}.}, label=listing.bandMarginShadowedOnTheInstanceQuote]
+@classmethod
+def for_prices(cls, prices: Iterable[int], strict: bool = False) -> "TickArrayBook":
+    prices = grid_prices(prices)
+    low, high = (min(prices), max(prices)) if prices else (0, 0)
+    return cls(
+        floor=low - cls.BAND_MARGIN,
+        width=high - low + 1 + 2 * cls.BAND_MARGIN,
+        strict=strict,
+    )
+\end{lstlisting}
+\begin{lstlisting}[caption={A margin bound on an instance, and one bound on a subclass}, label=listing.bandMarginShadowedOnTheInstanceRun]
+class NarrowBook(TickArrayBook):
+    BAND_MARGIN = 0
+
+prices = [1000, 1010]
+wide = TickArrayBook.for_prices(prices)
+wide.BAND_MARGIN = 0
+again = wide.for_prices(prices)
+narrow = NarrowBook.for_prices(prices)
+print(again.floor, again.width, narrow.floor, narrow.width)
+\end{lstlisting}
+What does the snippet print?
+\begin{choices}
+ \choice \codehl{1000 11 1000 11}
+ \correctchoice \codehl{936 139 1000 11}
+ \choice \codehl{936 139 936 139}
+ \choice \codehl{1000 11 936 139}
+\end{choices}
+\explanation{A class method receives the class of the instance, Table~\ref{notes:tab.kindsOfMethod},
+and \codehl{cls.BAND\_MARGIN} is searched in the classes alone,
+Definition~\ref{notes:def.attributeReference}:
+the attribute bound on \codehl{wide} is never read, and the margin stays 64.
+\codehl{NarrowBook} binds its own margin, which is found before that of \codehl{AggregateBook}.}
+\end{question}
+
+\begin{question}
+\label{question.bypassedWritesOnThreeBooks}
+\codehl{CachedBestBook} and \codehl{HeapBook} keep the two dictionaries of \codehl{AggregateBook}
+as their storage, and beside them an index of the best price, which their \codehl{set\_size} maintains.
+\codehl{from\_levels} writes every level through \codehl{set\_size},
+and the property \codehl{best\_bid\_price} returns \codehl{self.best\_price(BUY)}.
+In \codehl{HeapBook}, \codehl{heapq.heappush} adds an entry to a list kept as a heap,
+whose least entry is \codehl{heap[0]},
+and \codehl{heapq.heappop} removes that entry.
+\begin{lstlisting}[caption={\protect\codehl{unito26.lob.orderbook.CachedBestBook}, abridged: its docstrings and comments are cut.}, label=listing.bypassedWritesOnThreeBooksCached]
+class CachedBestBook(AggregateBook):
+    # ...
+    def __init__(self, strict: bool = False):
+        super().__init__(strict)
+        self._cached: dict[int, int | None] = {BUY: None, SELL: None}
+
+    def set_size(self, direction: int, price: int, size: int) -> None:
+        super().set_size(direction, price, size)
+        self._cached[direction] = self._best_after(direction, price, size)
+
+    def _best_after(self, direction: int, price: int, size: int) -> int | None:
+        # ...
+        best = self._cached[direction]
+        # ...
+        if size > 0 and (best is None or price * direction > best * direction):
+            return price
+        if size == 0 and price == best:
+            # ...
+            return self._rescan(direction)
+        # ...
+        return best
+
+    def _rescan(self, direction: int) -> int | None:
+        levels = self.levels_map(direction)
+        if not levels:
+            return None
+        return max(levels) if direction == BUY else min(levels)
+
+    def best_price(self, direction: int) -> int | None:
+        return self._cached[direction]
+\end{lstlisting}
+\begin{lstlisting}[caption={\protect\codehl{unito26.lob.orderbook.HeapBook}: the constructor, the write and the best price, a comment cut.}, label=listing.bypassedWritesOnThreeBooksHeap]
+def __init__(self, strict: bool = False):
+    super().__init__(strict)
+    self._heaps: dict[int, list[int]] = {BUY: [], SELL: []}
+
+def set_size(self, direction: int, price: int, size: int) -> None:
+    super().set_size(direction, price, size)
+    if size > 0:
+        # ...
+        heapq.heappush(self._heaps[direction], -price if direction == BUY else price)
+
+def best_price(self, direction: int) -> int | None:
+    heap = self._heaps[direction]
+    levels = self.levels_map(direction)
+    while heap:
+        price = -heap[0] if direction == BUY else heap[0]
+        if price in levels:
+            return price
+        heapq.heappop(heap)  # stale entry: the level is gone
+    return None
+\end{lstlisting}
+The snippet writes to the bid dictionary of each book directly.
+\begin{lstlisting}[caption={Two writes past \protect\codehl{set\_size}}, label=listing.bypassedWritesOnThreeBooksRun]
+prices = []
+for cls in (AggregateBook, CachedBestBook, HeapBook):
+    book = cls.from_levels({99: 100, 98: 50}, {101: 100})
+    book.bids[100] = 50
+    del book.bids[99]
+    prices.append(book.best_bid_price)
+print(prices)
+\end{lstlisting}
+What does the snippet print?
+\begin{choices}
+ \choice \codehl{[100, 100, 100]}
+ \choice \codehl{[100, 99, 100]}
+ \choice \codehl{[100, 99, 99]}
+ \correctchoice \codehl{[100, 99, 98]}
+ \choice \codehl{[100, 98, 98]}
+\end{choices}
+\explanation{The two writes bypass \codehl{set\_size}, and with it the index of each subclass,
+against hypothesis \emph{iii.} of Proposition~\ref{notes:prop.invariantByInduction}.
+The plain book scans its dictionary and finds 100; the cache still holds 99,
+a price no longer in the book.
+The heap holds 99 and 98 and not 100:
+lazy deletion discards the stale 99, and nothing has told the heap of 100.}
+\end{question}
+
+\begin{question}
+\label{question.lookupsCountedThroughTheInheritedMatching}
+The subclass below counts the calls of \codehl{best\_price}.
+The class method \codehl{from\_levels} creates the book by calling \codehl{cls(strict)},
+writes every level through \codehl{set\_size},
+and ends by calling \codehl{check\_invariants},
+which reads the properties \codehl{best\_bid\_price} and \codehl{best\_ask\_price} once each;
+they return \codehl{self.best\_price(BUY)} and \codehl{self.best\_price(SELL)}.
+\codehl{apply} passes an order to \codehl{submit}, quoted below.
+A market buy carries a price above every price of the book,
+and for a market order \codehl{resting\_price} returns \codehl{last\_fill\_price}:
+what is left of it rests at the price it last traded at.
+\begin{lstlisting}[caption={\protect\codehl{unito26.lob.orderbook.AggregateBook.submit}, abridged: the recording of fills and of level changes is cut.}, label=listing.lookupsCountedThroughTheInheritedMatchingSubmit]
+def submit(self, message: Message, record: bool) -> SubmitResult | None:
+    # ...
+    remaining = message.size
+    direction = message.direction
+    limit_price = message.price
+    # ...
+    last_fill_price = None
+    # ...
+    while remaining > 0:
+        best = self.best_price(-direction)
+        # ...
+        if best is None or best * direction > limit_price * direction:
+            break
+        resting = self.size_at(-direction, best)
+        traded = min(remaining, resting)
+        remaining -= traded
+        self.set_size(-direction, best, resting - traded)
+        # ...
+        last_fill_price = best
+    # ...
+    rest_price = self.resting_price(limit_price, last_fill_price)
+    if remaining > 0 and rest_price is not None:
+        resting = self.size_at(direction, rest_price) + remaining
+        self.set_size(direction, rest_price, resting)
+\end{lstlisting}
+\begin{lstlisting}[caption={A book that counts its lookups}, label=listing.lookupsCountedThroughTheInheritedMatchingClass]
+class CountingBook(AggregateBook):
+    def __init__(self, strict):
+        super().__init__(strict)
+        self.lookups = 0
+
+    def best_price(self, direction):
+        self.lookups += 1
+        return super().best_price(direction)
+\end{lstlisting}
+\begin{lstlisting}[caption={Two market buys}, label=listing.lookupsCountedThroughTheInheritedMatchingRun]
+book = CountingBook.from_levels({99: 100}, {101: 100, 102: 80, 105: 20})
+stream = [market_order(1.0, 190, BUY), market_order(2.0, 40, BUY)]
+counts = [book.lookups]
+for message in stream:
+    book.apply(message, record=False)
+    counts.append(book.lookups)
+print(counts, book.best_bid_price)
+\end{lstlisting}
+What does the snippet print?
+\begin{choices}
+ \choice \codehl{[0, 3, 5] 105}
+ \choice \codehl{[0, 0, 0] 105}
+ \choice \codehl{[2, 5, 6] 105}
+ \choice \codehl{[2, 5, 7] 99}
+ \correctchoice \codehl{[2, 5, 7] 105}
+\end{choices}
+\explanation{Every \codehl{self.best\_price} of the inherited code, that of the check included,
+is the override, Proposition~\ref{notes:prop.lateBinding}: two lookups before any order.
+The buy of 190 looks up 101, 102 and 105, and stops when nothing remains.
+The buy of 40 takes the 10 left at 105, looks up an empty side, and rests 30 at 105 on the bid.}
+\end{question}
+
+\begin{question}
+\label{question.rescansCountedThroughTheCache}
+The subclass below counts the rescans of the cache of \codehl{CachedBestBook},
+Listing~\ref{listing.bypassedWritesOnThreeBooksCached}.
+The matching is that of Listing~\ref{listing.lookupsCountedThroughTheInheritedMatchingSubmit},
+and a withdrawal writes the reduced size at its price through \codehl{set\_size}.
+\begin{lstlisting}[caption={A cached book that counts its rescans}, label=listing.rescansCountedThroughTheCacheClass]
+class AuditedBook(CachedBestBook):
+    def __init__(self, strict):
+        super().__init__(strict)
+        self.rescans = 0
+
+    def _rescan(self, direction):
+        self.rescans += 1
+        return super()._rescan(direction)
+\end{lstlisting}
+\begin{lstlisting}[caption={Five messages}, label=listing.rescansCountedThroughTheCacheRun]
+book = AuditedBook.from_levels(
+    {99: 100, 98: 50}, {101: 100, 102: 80, 105: 20}
+)
+stream = [
+    market_order(1.0, 150, BUY),
+    withdrawal(2.0, 20, 105, SELL),
+    withdrawal(3.0, 50, 98, BUY),
+    limit_order(4.0, 40, 100, BUY),
+    market_order(5.0, 40, SELL),
+]
+for message in stream:
+    book.apply(message, record=False)
+print(book.rescans)
+\end{lstlisting}
+What does the snippet print?
+\begin{choices}
+ \choice \codehl{0}
+ \correctchoice \codehl{2}
+ \choice \codehl{3}
+ \choice \codehl{4}
+ \choice \codehl{5}
+\end{choices}
+\explanation{\codehl{\_best\_after}, a function of \codehl{CachedBestBook},
+calls \codehl{self.\_rescan}, which on an \codehl{AuditedBook} is the override,
+Proposition~\ref{notes:prop.lateBinding}.
+It is called when a write empties the cached best price: 101 in the first message, 100 in the last.
+The withdrawals empty 105 and 98, behind the touches,
+and the limit buy moves the best bid to 100 without a scan.}
+\end{question}
+
+\begin{question}
+\label{question.indexedBookWithoutSuper}
+The subclass below keeps the occupied prices of each side in a set, and finds its best prices there.
+It is completed by one of two definitions of \codehl{set\_size}.
+\codehl{best\_bid\_size} returns \codehl{size\_at(BUY, p)} at the best bid $p$,
+and \codehl{size\_at} reads the dictionary of the side, with 0 for a price it does not hold.
+The matching is that of Listing~\ref{listing.lookupsCountedThroughTheInheritedMatchingSubmit},
+and \codehl{last\_traded\_size} is the number of shares the last message traded.
+\begin{lstlisting}[caption={A book that indexes its prices in a set}, label=listing.indexedBookWithoutSuperClass]
+class IndexedBook(AggregateBook):
+    def __init__(self, strict):
+        super().__init__(strict)
+        self.occupied = {BUY: set(), SELL: set()}
+
+    def best_price(self, direction):
+        prices = self.occupied[direction]
+        if not prices:
+            return None
+        return max(prices) if direction == BUY else min(prices)
+\end{lstlisting}
+\begin{lstlisting}[caption={Alternative A}, label=listing.indexedBookWithoutSuperA]
+    def set_size(self, direction, price, size):
+        super().set_size(direction, price, size)
+        if size > 0:
+            self.occupied[direction].add(price)
+        else:
+            self.occupied[direction].discard(price)
+\end{lstlisting}
+\begin{lstlisting}[caption={Alternative B}, label=listing.indexedBookWithoutSuperB]
+    def set_size(self, direction, price, size):
+        if size > 0:
+            self.occupied[direction].add(price)
+        else:
+            self.occupied[direction].discard(price)
+\end{lstlisting}
+\begin{lstlisting}[caption={Run once with each alternative}, label=listing.indexedBookWithoutSuperRun]
+book = IndexedBook.from_levels({99: 100, 98: 50}, {101: 100, 102: 80})
+print(book.spread, book.best_bid_size)
+book.apply(market_order(1.0, 150, BUY), record=False)
+print(book.best_ask_price, book.last_traded_size)
+\end{lstlisting}
+Alternative A prints \codehl{2 100}, then \codehl{102 150}.
+What does Alternative B do?
+\begin{choices}
+ \choice It prints \codehl{2 100}, then \codehl{102 150}.
+ \choice It prints \codehl{2 0}, then \codehl{102 150}.
+ \correctchoice It prints \codehl{2 0}, then \codehl{None 0}.
+ \choice It prints \codehl{2 0}, and \codehl{apply} never returns.
+ \choice It raises \codehl{AttributeError}.
+\end{choices}
+\explanation{Without \codehl{super().set\_size} the dictionaries are never written:
+the set gives the right spread, and every size reads 0.
+The matching then trades 0 at 101 and at 102,
+and each write of the size 0 removes the price from the set, until the ask side is empty.}
+\end{question}
+
+\begin{question}
+\label{question.copyOfABookWithAVenue}
+A desk tags each book with the venue whose feed it replays.
+\codehl{copy} and \codehl{\_empty\_like} are functions of \codehl{AggregateBook}, quoted below;
+\codehl{CachedBestBook} binds neither, and its constructor takes \codehl{strict} alone.
+Two definitions of the subclass are tried.
+\begin{lstlisting}[caption={\protect\codehl{unito26.lob.orderbook.AggregateBook}: the copy, docstrings elided.}, label=listing.copyOfABookWithAVenueQuote]
+def copy(self) -> "AggregateBook":
+    # ...
+    clone = self._empty_like()
+    for direction in (BUY, SELL):
+        for price, size in self.levels_map(direction).items():
+            clone.set_size(direction, price, size)
+    return clone
+# ...
+def _empty_like(self) -> "AggregateBook":
+    # ...
+    return type(self)(self.strict)
+\end{lstlisting}
+\begin{lstlisting}[caption={Alternative A}, label=listing.copyOfABookWithAVenueA]
+class VenueBook(CachedBestBook):
+    def __init__(self, venue, strict):
+        super().__init__(strict)
+        self.venue = venue
+\end{lstlisting}
+\begin{lstlisting}[caption={Alternative B}, label=listing.copyOfABookWithAVenueB]
+class VenueBook(CachedBestBook):
+    def __init__(self, strict, venue="MTA"):
+        super().__init__(strict)
+        self.venue = venue
+\end{lstlisting}
+\begin{lstlisting}[caption={Run once with each alternative}, label=listing.copyOfABookWithAVenueRun]
+book = VenueBook(venue="XETRA", strict=False)
+book.set_size(BUY, 99, 100)
+clone = book.copy()
+print(clone.venue, clone.best_bid_price)
+\end{lstlisting}
+What happens?
+\begin{choices}
+ \correctchoice A raises \codehl{TypeError}; B prints \codehl{MTA 99}.
+ \choice Both print \codehl{XETRA 99}.
+ \choice A raises \codehl{TypeError}; B prints \codehl{XETRA 99}.
+ \choice A prints \codehl{False 99}; B prints \codehl{MTA 99}.
+ \choice A raises \codehl{TypeError}; B prints \codehl{MTA None}.
+\end{choices}
+\explanation{\codehl{\_empty\_like} calls the class of the book with \codehl{strict} alone:
+in A it binds \codehl{False} to \codehl{venue} and leaves \codehl{strict} without a value,
+which raises \codehl{TypeError},
+and in B it builds a book of the default venue.
+The copy writes through \codehl{clone.set\_size}, which on a \codehl{VenueBook} is that of
+\codehl{CachedBestBook}, Definition~\ref{notes:def.attributeReference},
+so the cache of the clone holds 99.}
+\end{question}
+
+\begin{question}
+\label{question.buildingABookOfAGivenClass}
+Code that compares the books builds a book of a class it is handed.
+The class method \codehl{for\_prices} of \codehl{AggregateBook} is quoted below.
+The constructor of \codehl{CachedBestBook} takes \codehl{strict} alone.
+That of \codehl{TickArrayBook} takes \codehl{floor}, \codehl{width} and \codehl{strict},
+the first two without a default,
+and its \codehl{for\_prices}, Listing~\ref{listing.bandMarginShadowedOnTheInstanceQuote},
+computes them from the prices.
+\begin{lstlisting}[caption={\protect\codehl{unito26.lob.orderbook.AggregateBook.for\_prices}, its docstring elided.}, label=listing.buildingABookOfAGivenClassQuote]
+@classmethod
+def for_prices(
+    cls, prices: Iterable[int], strict: bool = False
+) -> "AggregateBook":
+    # ...
+    return cls(strict)
+\end{lstlisting}
+\begin{lstlisting}[caption={Three builders}, label=listing.buildingABookOfAGivenClassBuilders]
+def fill(book, bids, asks):
+    for direction, levels in ((BUY, bids), (SELL, asks)):
+        for price, size in levels.items():
+            book.set_size(direction, price, size)
+    return book
+
+def build_a(cls, bids, asks):
+    return fill(cls(False), bids, asks)
+
+def build_b(cls, bids, asks):
+    prices = list(bids) + list(asks)
+    return fill(AggregateBook.for_prices(prices), bids, asks)
+
+def build_c(cls, bids, asks):
+    prices = list(bids) + list(asks)
+    return fill(cls.for_prices(prices), bids, asks)
+\end{lstlisting}
+\begin{lstlisting}[caption={Each builder, handed each of two classes}, label=listing.buildingABookOfAGivenClassRun]
+bids, asks = {99: 100}, {101: 100}
+for build in (build_a, build_b, build_c):
+    names = []
+    for cls in (CachedBestBook, TickArrayBook):
+        try:
+            names.append(type(build(cls, bids, asks)).__name__)
+        except TypeError:
+            names.append("TypeError")
+    print(names)
+\end{lstlisting}
+The snippet prints three lines, of two names each.
+What are they?
+\begin{choices}
+ \choice \codehl{CachedBestBook} and \codehl{TickArrayBook}, on every line.
+ \choice \codehl{CachedBestBook} and \codehl{TypeError};
+  then \codehl{CachedBestBook} and \codehl{TickArrayBook}, twice.
+ \choice \codehl{CachedBestBook} and \codehl{TickArrayBook};
+  then \codehl{AggregateBook} twice;
+  then \codehl{CachedBestBook} and \codehl{TickArrayBook}.
+ \correctchoice \codehl{CachedBestBook} and \codehl{TypeError};
+  then \codehl{AggregateBook} twice;
+  then \codehl{CachedBestBook} and \codehl{TickArrayBook}.
+ \choice \codehl{CachedBestBook} and \codehl{TypeError};
+  then \codehl{AggregateBook} twice;
+  then \codehl{CachedBestBook} and \codehl{TypeError}.
+\end{choices}
+\explanation{\codehl{cls(False)} gives \codehl{TickArrayBook} a floor and no width.
+A class method receives the class on which it is called, Table~\ref{notes:tab.kindsOfMethod},
+so \codehl{build\_b} builds an \codehl{AggregateBook} whatever it is handed.
+\codehl{build\_c} finds the override of \codehl{TickArrayBook}, which computes the band,
+as Remark~\ref{notes:remark.limitsOfSubstitution} prescribes.}
+\end{question}
+
+\begin{question}
+\label{question.fiveBooksOnPricesOutsideTheBand}
+\codehl{AXIS\_B\_VARIANTS}, of \codehl{unito26.lob.orderbook}, is the tuple of the five books,
+\codehl{AggregateBook}, \codehl{CachedBestBook}, \codehl{HeapBook}, \codehl{BitmapBook}
+and \codehl{TickArrayBook}, in this order.
+\codehl{from\_levels} creates a book through \codehl{cls.for\_prices}, given the prices of both sides.
+That of \codehl{TickArrayBook} is Listing~\ref{listing.bandMarginShadowedOnTheInstanceQuote},
+with \codehl{BAND\_MARGIN} equal to 64;
+that of \codehl{BitmapBook}, and the check that opens each of the two writes, are quoted below.
+The other three books keep dictionaries, and accept any price.
+\begin{lstlisting}[caption={\protect\codehl{unito26.lob.orderbook.BitmapBook}: the floor, and the check that opens a write.}, label=listing.fiveBooksOnPricesOutsideTheBandBitmap]
+@classmethod
+def for_prices(cls, prices: "Iterable[int]", strict: bool = False) -> "BitmapBook":
+    # ...
+    prices = grid_prices(prices)
+    floor = min(prices) - cls.BAND_MARGIN if prices else 0
+    return cls(floor=floor, strict=strict)
+# ...
+def set_size(self, direction: int, price: int, size: int) -> None:
+    # ...
+    if price < self.floor:
+        raise ValueError(
+            # ...
+        )
+    super().set_size(direction, price, size)
+\end{lstlisting}
+\begin{lstlisting}[caption={\protect\codehl{unito26.lob.orderbook.TickArrayBook.set\_size}: the check that opens it.}, label=listing.fiveBooksOnPricesOutsideTheBandTickArray]
+def set_size(self, direction: int, price: int, size: int) -> None:
+    slot = price - self.floor
+    if not 0 <= slot < self.width:
+        raise ValueError(
+            # ...
+        )
+\end{lstlisting}
+\begin{lstlisting}[caption={Two limit orders, each given to a fresh book of each class}, label=listing.fiveBooksOnPricesOutsideTheBandRun]
+stream = [limit_order(1.0, 10, 166, SELL), limit_order(2.0, 10, 34, BUY)]
+for message in stream:
+    refused = []
+    for cls in AXIS_B_VARIANTS:
+        book = cls.from_levels({99: 100}, {101: 100})
+        try:
+            book.apply(message, record=False)
+        except ValueError:
+            refused.append(cls.__name__)
+    print(refused)
+\end{lstlisting}
+What does the snippet print?
+\begin{choices}
+ \choice \codehl{[]}, then \codehl{[]}.
+ \choice \codehl{['TickArrayBook']}, then \codehl{['TickArrayBook']}.
+ \choice \codehl{['BitmapBook', 'TickArrayBook']} on both lines.
+ \choice \codehl{[]}, then \codehl{['BitmapBook', 'TickArrayBook']}.
+ \correctchoice \codehl{['TickArrayBook']}, then \codehl{['BitmapBook', 'TickArrayBook']}.
+\end{choices}
+\explanation{Both books have the floor $99 - 64 = 35$,
+and the band of \codehl{TickArrayBook} is $101 - 99 + 1 + 128 = 131$ wide, with the ceiling $35 + 130 = 165$.
+Neither order is marketable: the sell would rest above the ceiling, the buy below both floors,
+and \codehl{BitmapBook} has no ceiling.
+Each substitutes for \codehl{AggregateBook} only on the prices it can hold,
+Remark~\ref{notes:remark.limitsOfSubstitution}.}
+\end{question}
+
+\begin{question}
+\label{question.cachedBestPriceWhenTheTouchEmpties}
+A book holds 100 shares bid at 1000,
+and $\occupiedLevels$ ask levels of 100 shares each, from 1001 to $1000 + \occupiedLevels$.
+A stream of 1000 messages alternates a market buy and a limit sell at 1001, of one size:
+10 shares in the stream $S$, and 100 in the stream $E$.
+Each pair of messages returns the book to where it was.
+\codehl{AggregateBook} and \codehl{CachedBestBook},
+Listing~\ref{listing.bypassedWritesOnThreeBooksCached},
+each fold each stream with \codehl{apply(message, record=False)},
+and the time per message is measured at $\occupiedLevels = 10^{3}$ and $\occupiedLevels = 10^{4}$.
+\codehl{best\_price} of \codehl{AggregateBook} takes the least key of the dictionary of the asks,
+which costs $O(\occupiedLevels)$.
+\begin{lstlisting}[caption={The book and the two streams}, label=listing.cachedBestPriceWhenTheTouchEmptiesStreams]
+def deep_book(cls, depth):
+    asks = {1001 + k: 100 for k in range(depth)}
+    return cls.from_levels({1000: 100}, asks)
+
+def stream(size):
+    messages = []
+    for k in range(500):
+        messages.append(market_order(2.0 * k, size, BUY))
+        messages.append(limit_order(2.0 * k + 1, size, 1001, SELL))
+    return messages
+\end{lstlisting}
+Which statement holds?
+\begin{choices}
+ \choice \codehl{CachedBestBook} is faster on both streams, by a factor that grows with $\occupiedLevels$.
+ \choice On both streams the time per message of \codehl{CachedBestBook} is about the same at both depths,
+  and that of \codehl{AggregateBook} grows about tenfold.
+ \choice \codehl{AggregateBook} is faster on both streams, having no cache to repair.
+ \correctchoice On $S$ the time per message of \codehl{CachedBestBook} is about the same at both depths,
+  and that of \codehl{AggregateBook} grows about tenfold;
+  on $E$ both grow about tenfold.
+ \choice Neither time per message changes noticeably with $\occupiedLevels$, on either stream.
+\end{choices}
+\explanation{\codehl{AggregateBook} scans the $\occupiedLevels$ asks at every market buy.
+A buy of 10 leaves 1001 occupied and the cache stands;
+a buy of 100 empties the cached best price, and \codehl{\_rescan} pays the same scan,
+while the limit sell restores the cache without one.
+The cost of an operation lies outside equation~\eqref{notes:eq.commutingFold},
+Remark~\ref{notes:remark.limitsOfSubstitution}.}
+\end{question}
+
+\begin{question}
+\label{question.abstractMethodRaisesAtInstantiation}
+\codehl{FrameSerializable}, of \codehl{unito26.lob.frames}, is the abstract base class quoted below,
+and \codehl{pa} is \codehl{pandera.pandas}.
+The class \codehl{TouchFrame} writes the touch of a book as a table of one row, and never reads one.
+\codehl{\_HawkesState}, of \codehl{unito26.lob.hawkes}, holds the state of a simulated Hawkes process,
+and each of its two subclasses binds \codehl{step};
+\codehl{\_crossing} is \codehl{None} when the state is created,
+and \codehl{total\_intensity} is then the sum of the baseline, here $1.0$.
+\begin{lstlisting}[caption={\protect\codehl{unito26.lob.frames.FrameSerializable}, abridged: three declarations, and two forms derived from them.}, label=listing.abstractMethodRaisesAtInstantiationFrames]
+class FrameSerializable(ABC):
+    # ...
+    @classmethod
+    @abstractmethod
+    def schema(cls) -> pa.DataFrameSchema:
+        # ...
+    @abstractmethod
+    def to_frame(self) -> pd.DataFrame:
+        """This object as a validated frame."""
+
+    @classmethod
+    @abstractmethod
+    def from_frame(cls, frame: pd.DataFrame) -> "FrameSerializable":
+        """Rebuild from a frame, validating it first."""
+
+    def to_records(self) -> list[dict]:
+        return [
+            {column: _plain(value) for column, value in row.items()}
+            for row in self.to_frame().to_dict("records")
+        ]
+    # ...
+    def to_json(self, indent: int) -> str:
+        return json.dumps(self.to_records(), indent=indent)
+\end{lstlisting}
+\begin{lstlisting}[caption={\protect\codehl{unito26.lob.hawkes.\_HawkesState}, abridged.}, label=listing.abstractMethodRaisesAtInstantiationState]
+def step(self) -> tuple[float, int]:
+    raise NotImplementedError
+
+def events(self, horizon: float) -> Iterator[tuple[float, int]]:
+    # ...
+    while True:
+        if self._crossing is not None:
+            time, event_type = self._crossing
+            self._crossing = None
+        else:
+            time, event_type = self.step()
+        if time > horizon:
+            self._crossing = (time, event_type)
+            return
+        yield time, event_type
+\end{lstlisting}
+\begin{lstlisting}[caption={The touch as a table}, label=listing.abstractMethodRaisesAtInstantiationTouch]
+class TouchFrame(FrameSerializable):
+    def __init__(self, bid, ask):
+        self.bid, self.ask = bid, ask
+
+    @classmethod
+    def schema(cls):
+        return pa.DataFrameSchema({"Bid": pa.Column(int)})
+
+    def to_frame(self):
+        frame = pd.DataFrame({"Bid": [self.bid], "Ask": [self.ask]})
+        return self.schema().validate(frame)
+\end{lstlisting}
+\begin{lstlisting}[caption={The first run}, label=listing.abstractMethodRaisesAtInstantiationFirst]
+book = AggregateBook.from_levels({99: 100}, {101: 100})
+touch = TouchFrame(book.best_bid_price, book.best_ask_price)
+print(touch.to_json(0))
+\end{lstlisting}
+\begin{lstlisting}[caption={The second run}, label=listing.abstractMethodRaisesAtInstantiationSecond]
+params = HawkesParams([0.5, 0.5], [[0.2, 0.0], [0.0, 0.2]], 1.0)
+source = _HawkesState(params, 7)
+print(source.total_intensity)
+print(next(source.events(10.0)))
+\end{lstlisting}
+Which statement holds?
+\begin{choices}
+ \correctchoice The first raises \codehl{TypeError} at the call of \codehl{TouchFrame}, and prints nothing;
+  the second prints \codehl{1.0}, then raises \codehl{NotImplementedError}.
+ \choice The first prints the table as JSON, since \codehl{from\_frame} is never called;
+  the second prints \codehl{1.0}, then raises \codehl{NotImplementedError}.
+ \choice The first raises \codehl{TypeError} at the call of \codehl{TouchFrame},
+  and the second at the call of \codehl{\_HawkesState}; neither prints anything.
+ \choice The first raises \codehl{NotImplementedError} at the call of \codehl{to\_json};
+  the second prints \codehl{1.0}, then raises \codehl{NotImplementedError}.
+\end{choices}
+\explanation{A class that leaves an abstract method unbound cannot be instantiated,
+Section~\ref{notes:sec.abstractClasses}:
+\codehl{TouchFrame} does not bind \codehl{from\_frame},
+and the call of the class raises before any method runs.
+\codehl{\_HawkesState} declares nothing abstract:
+it is created, and its own \codehl{step} raises at the first event,
+Remark~\ref{notes:remark.twoFormsOfAbstract}.}
+\end{question}

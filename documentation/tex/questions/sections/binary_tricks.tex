@@ -1,0 +1,396 @@
+\notebook{11-binary-tricks}
+The questions of this section concern the integers of Appendix~\ref{notes:chap.integersInBinary}
+and the books of Section~\ref{notes:sec.fasterBook} that hold the occupied prices of a side as one of them.
+\codehl{TickArrayBook} and \codehl{BitmapBook} are classes of \codehl{unito26.lob.orderbook},
+subclasses of \codehl{AggregateBook} that inherit its matching.
+\codehl{TickArrayBook(floor, width)} indexes the band of $\bandWidth$ prices
+from its floor $\bandFloor$ to its \codehl{ceiling}, $\bandFloor + \bandWidth - 1$;
+it keeps the size at $p$ on each side in the entry $p - \bandFloor$ of a list,
+and the occupied prices of the side \codehl{d} as the set bits of the integer \codehl{\_bits[d]}.
+\codehl{BitmapBook(floor)} keeps its sizes in the dictionaries of \codehl{AggregateBook},
+and its occupied prices in \codehl{\_bits[d]} as well.
+\codehl{book.best\_bid\_price} and \codehl{book.best\_ask\_price} are
+\codehl{book.best\_price(BUY)} and \codehl{book.best\_price(SELL)},
+and \codehl{book.spread} is the second less the first, or \codehl{None} when either is \codehl{None}.
+\codehl{ReportedDepth} is an integer type of \codehl{unito26.lob.messages},
+and the functions of \codehl{unito26.lob.binary\_gaps} are imported by name.
+
+\begin{question}
+\label{question.tickArrayIntegersAfterACrossingBuy}
+A limit buy that crosses the spread reaches a \codehl{TickArrayBook} of ten ticks.
+The book inherits the matching of \codehl{AggregateBook}, quoted below;
+\codehl{resting\_price} returns the limit price of a limit order,
+and for a market order the price of its last fill.
+\begin{lstlisting}[caption={\protect\codehl{unito26.lob.orderbook.AggregateBook.submit}, abridged.}, label=listing.tickArrayIntegersSubmit]
+def submit(self, message: Message, record: bool) -> SubmitResult | None:
+# ...
+    remaining = message.size
+    direction = message.direction
+    limit_price = message.price
+# ...
+    while remaining > 0:
+        best = self.best_price(-direction)
+# ...
+        if best is None or best * direction > limit_price * direction:
+            break
+        resting = self.size_at(-direction, best)
+        traded = min(remaining, resting)
+        remaining -= traded
+        self.set_size(-direction, best, resting - traded)
+# ...
+    rest_price = self.resting_price(limit_price, last_fill_price)
+    if remaining > 0 and rest_price is not None:
+        resting = self.size_at(direction, rest_price) + remaining
+        self.set_size(direction, rest_price, resting)
+\end{lstlisting}
+\codehl{TickArrayBook} writes a size, and finds the best price, as follows.
+\begin{lstlisting}[caption={\protect\codehl{unito26.lob.orderbook.TickArrayBook}: a write, and the best price, abridged.}, label=listing.tickArrayIntegersWrite]
+def set_size(self, direction: int, price: int, size: int) -> None:
+    slot = price - self.floor
+# ...
+    self._sizes[direction][slot] = size
+    bit = 1 << (price - self.floor if direction == BUY else self.ceiling - price)
+    if size > 0:
+        self._bits[direction] |= bit
+    else:
+        self._bits[direction] &= ~bit
+
+def best_price(self, direction: int) -> int | None:
+    bits = self._bits[direction]
+    if not bits:
+        return None
+    index = bits.bit_length() - 1
+    return self.floor + index if direction == BUY else self.ceiling - index
+\end{lstlisting}
+\begin{lstlisting}[caption={The two integers after a crossing buy}, label=listing.tickArrayIntegersRun]
+book = TickArrayBook(floor=200, width=10)
+for price, size in ((203, 50), (202, 40), (200, 70)):
+    book.set_size(BUY, price, size)
+for price, size in ((205, 60), (206, 30), (208, 90)):
+    book.set_size(SELL, price, size)
+book.apply(limit_order(1.0, 100, 206, BUY), record=False)
+print(book._bits[BUY], book._bits[SELL],
+      book.best_bid_price, book.best_ask_price)
+\end{lstlisting}
+What does the snippet print?
+\begin{choices}
+ \choice \codehl{77 256 206 208}
+ \choice \codehl{77 4 206 208}
+ \correctchoice \codehl{77 2 206 208}
+ \choice \codehl{13 2 203 208}
+ \choice \codehl{77 26 206 205}
+\end{choices}
+\explanation{The ceiling is 209, so the asks at 205, 206 and 208 are bits 4, 3 and 1, the integer 26.
+By Proposition~\ref{notes:prop.decompositionOfLimitOrder}
+the buy takes 60 at 205 and 30 at 206, clearing bits 4 and 3,
+and rests its last 10 at 206, bit 6 of the bids: $13 + 64 = 77$.
+Counted up from the floor, as the bids are, the ask left at 208 would be bit 8, the integer 256.}
+\end{question}
+
+\begin{question}
+\label{question.bitmapBestAskFromTheWrongEnd}
+\codehl{BitmapBook} writes a size as below,
+the bit of a price counted up from the floor on both sides.
+\begin{lstlisting}[caption={\protect\codehl{unito26.lob.orderbook.BitmapBook.set\_size}, abridged.}, label=listing.bitmapBestAskSetSize]
+def set_size(self, direction: int, price: int, size: int) -> None:
+# ...
+    super().set_size(direction, price, size)
+    bit = 1 << (price - self.floor)
+    if size > 0:
+        self._bits[direction] |= bit
+    else:
+        self._bits[direction] &= ~bit
+\end{lstlisting}
+Two variants of its \codehl{best\_price} read the best price off the integer,
+and a market buy for the whole ask side arrives,
+priced at \codehl{sys.maxsize}, above every price of the band,
+matched as in Listing~\ref{listing.tickArrayIntegersSubmit}.
+\begin{lstlisting}[caption={Alternative A}, label=listing.bitmapBestAskA]
+class Book(BitmapBook):
+    def best_price(self, direction):
+        return self.floor + self._bits[direction].bit_length() - 1
+\end{lstlisting}
+\begin{lstlisting}[caption={Alternative B}, label=listing.bitmapBestAskB]
+class Book(BitmapBook):
+    def best_price(self, direction):
+        bits = self._bits[direction]
+        if direction == BUY:
+            return self.floor + bits.bit_length() - 1
+        return self.floor + (bits & -bits).bit_length() - 1
+\end{lstlisting}
+\begin{lstlisting}[caption={Run once with each alternative}, label=listing.bitmapBestAskRun]
+book = Book(floor=95)
+for price, size in ((98, 40), (97, 60)):
+    book.set_size(BUY, price, size)
+for price, size in ((101, 30), (102, 50), (105, 20)):
+    book.set_size(SELL, price, size)
+before = book.best_ask_price
+book.apply(market_order(1.0, 100, BUY), record=False)
+print(before, book.best_ask_price, book.spread)
+\end{lstlisting}
+What happens?
+\begin{choices}
+ \choice Both print \codehl{101 None None}.
+ \correctchoice A prints \codehl{105 94 -4}; B prints \codehl{101 94 -4}.
+ \choice A prints \codehl{105 None None}; B prints \codehl{101 None None}.
+ \choice Both print \codehl{101 94 -4}.
+ \choice A prints \codehl{105 95 -3}; B prints \codehl{101 95 -3}.
+\end{choices}
+\explanation{Counted up from the floor, the best ask is the lowest set bit,
+which B finds by Proposition~\ref{notes:prop.lowestSetBit};
+A returns the highest ask, 105, and its market buy fills from the top of the side.
+On the emptied side the integer is $0$, and so is \codehl{0 \& -0};
+the \codehl{bit\_length} of $0$ is $0$,
+so both return $95 - 1 = 94$, a price below the bid of 98, and no error:
+neither variant tests for an empty side.}
+\end{question}
+
+\begin{question}
+\label{question.occupancyWrittenByAddition}
+Two variants of the write of Listing~\ref{listing.tickArrayIntegersWrite}
+update the integer of occupied prices with other operators.
+After a message,
+\codehl{book.best\_bid\_size} is the entry of the list of bid sizes at the best bid.
+\begin{lstlisting}[caption={Alternative A}, label=listing.occupancyByAdditionA]
+class Book(TickArrayBook):
+    def set_size(self, direction, price, size):
+        self._sizes[direction][price - self.floor] = size
+        bit = 1 << (price - self.floor if direction == BUY
+                    else self.ceiling - price)
+        if size > 0:
+            self._bits[direction] += bit
+        else:
+            self._bits[direction] -= bit
+\end{lstlisting}
+\begin{lstlisting}[caption={Alternative B}, label=listing.occupancyByAdditionB]
+class Book(TickArrayBook):
+    def set_size(self, direction, price, size):
+        sizes = self._sizes[direction]
+        slot = price - self.floor
+        bit = 1 << (slot if direction == BUY else self.ceiling - price)
+        if (sizes[slot] > 0) != (size > 0):
+            self._bits[direction] ^= bit
+        sizes[slot] = size
+\end{lstlisting}
+\begin{lstlisting}[caption={Run once with each alternative}, label=listing.occupancyByAdditionRun]
+book = Book(floor=95, width=12)
+for price, size in ((99, 100), (98, 60)):
+    book.set_size(BUY, price, size)
+book.apply(market_order(1.0, 40, SELL), record=False)
+print(book.best_bid_price, book.best_bid_size)
+\end{lstlisting}
+What happens?
+\begin{choices}
+ \choice Both print \codehl{99 60}.
+ \choice A prints \codehl{99 60}; B prints \codehl{98 60}.
+ \choice A prints \codehl{100 60}; B prints \codehl{99 60}.
+ \correctchoice A prints \codehl{100 0}; B prints \codehl{99 60}.
+ \choice A prints \codehl{100 0}; B prints \codehl{98 60}.
+\end{choices}
+\explanation{Addition agrees with $\bitOr$ only on a bit that is clear.
+The market sell leaves 60 at 99, a write to a price whose bit 4 is set,
+and $24 + 16 = 40$ carries into bit 5:
+the best bid becomes 100, where nothing rests.
+B flips the bit only when the price passes between empty and occupied,
+which a partial fill does not.}
+\end{question}
+
+\begin{question}
+\label{question.occupancyClearedWithMinusForTilde}
+In the variant below of the write of Listing~\ref{listing.tickArrayIntegersWrite},
+the line that clears the bit of an emptied price has a minus where the package has a tilde.
+\codehl{withdrawal(t, q, p, d)} removes $q$ shares from the size at $p$ on the side $d$
+through \codehl{set\_size},
+and \codehl{book.occupied\_levels(d, L)} walks the set bits of the side $d$ from the highest down,
+returning for each the pair of its price and the size the list holds there,
+at most $L$ of them.
+\begin{lstlisting}[caption={A minus for a tilde}, label=listing.occupancyClearedWithMinus]
+class Book(TickArrayBook):
+    def set_size(self, direction, price, size):
+        self._sizes[direction][price - self.floor] = size
+        bit = 1 << (price - self.floor if direction == BUY
+                    else self.ceiling - price)
+        if size > 0:
+            self._bits[direction] |= bit
+        else:
+            self._bits[direction] &= -bit
+
+book = Book(floor=95, width=12)
+for price, size in ((99, 100), (98, 60), (96, 40)):
+    book.set_size(BUY, price, size)
+book.apply(withdrawal(1.0, 60, 98, BUY), record=False)
+print(book.best_bid_price, book.occupied_levels(BUY, ReportedDepth(3)))
+\end{lstlisting}
+What does the snippet print?
+\begin{choices}
+ \choice \codehl{98 [(98, 0)]}
+ \choice \codehl{99 [(99, 100), (98, 0), (96, 40)]}
+ \choice \codehl{99 [(99, 100), (96, 40)]}
+ \choice \codehl{99 [(99, 100)]}
+ \correctchoice \codehl{99 [(99, 100), (98, 0)]}
+\end{choices}
+\explanation{By Definition~\ref{notes:def.twosComplementSequence},
+$-8 = \neg 7$ has every bit from 3 upwards set and the three below clear,
+so $26 \bitAnd (-8) = 24$:
+the emptied price at bit 3 stays, and every deeper one, 96 among them, is cleared.
+The tilde gives $\neg 8 = -9$, which clears bit 3 alone,
+Proposition~\ref{notes:prop.twosComplement}.}
+\end{question}
+
+\begin{question}
+\label{question.gapsOfTheUncutBidOccupancy}
+A gap of a side is a maximal run of empty prices lying between two occupied ones.
+Two functions of the package, and a one-liner, are applied to the bid integer of a
+\codehl{TickArrayBook}.
+\codehl{bin(n)} is the string \codehl{"0b"} followed by the binary digits of $n > 0$, the highest first,
+and \codehl{s.count(t)} is the number of non-overlapping occurrences of \codehl{t} in \codehl{s}.
+\begin{lstlisting}[caption={\protect\codehl{unito26.lob.binary\_gaps}: two functions, their docstrings elided.}, label=listing.gapsUncutFunctions]
+def measure_largest_binary_gap(n: int) -> int:
+# ...
+    count = 0
+    while (n & (n + 1)) != 0:
+        count += 1
+        n |= n >> 1
+    return count
+
+
+def count_binary_gaps(n: int) -> int:
+# ...
+    if not n:
+        return 0
+    return (n & ~(n << 1)).bit_count() - 1
+\end{lstlisting}
+\begin{lstlisting}[caption={Three readings of the bid integer}, label=listing.gapsUncutRun]
+book = TickArrayBook(floor=95, width=12)
+for price, size in ((104, 10), (103, 20), (100, 30), (99, 40)):
+    book.set_size(BUY, price, size)
+bits = book._bits[BUY]
+print(count_binary_gaps(bits), bin(bits)[2:].count("10"),
+      measure_largest_binary_gap(bits))
+\end{lstlisting}
+What does the snippet print?
+\begin{choices}
+ \correctchoice \codehl{1 2 4}
+ \choice \codehl{1 1 2}
+ \choice \codehl{1 2 2}
+ \choice \codehl{1 1 4}
+ \choice \codehl{2 2 4}
+\end{choices}
+\explanation{The integer is $1100110000$ in binary:
+one gap of two ticks, 101 and 102, above four trailing zeros, the empty prices from 95 to 98.
+\codehl{count\_binary\_gaps} keeps one bit per run of ones, Proposition~\ref{notes:prop.runsOfOnes},
+and trailing zeros make no run;
+the one-liner also counts the step from the lowest one into them,
+and the flood fills them in four passes.
+\codehl{span\_bits} shifts the window down to an odd integer first.}
+\end{question}
+
+\begin{question}
+\label{question.askWindowsOfTheTwoBitmaps}
+The gap statistics of a side are read on a window of its integer,
+the bits from the touch to the deepest reported level, shifted down so that the lower end of the window is bit 0.
+For the ask side and the reported depth $L$, \codehl{span\_bits(SELL, L)} returns
+\codehl{keep\_lowest\_set\_bits(bits, L)} in \codehl{BitmapBook}
+and \codehl{keep\_highest\_set\_bits(bits, L)} in \codehl{TickArrayBook},
+\codehl{bits} being the ask integer of each.
+\codehl{count\_trailing\_zeros(n)} is the number of zeros below the lowest set bit of $n > 0$.
+\begin{lstlisting}[caption={\protect\codehl{unito26.lob.binary\_gaps}: three functions, their docstrings elided.}, label=listing.askWindowsFunctions]
+def discard_trailing_zeros(n: int) -> int:
+# ...
+    return n >> count_trailing_zeros(n) if n else 0
+
+
+def keep_highest_set_bits(n: int, count: int) -> int:
+# ...
+    if n.bit_count() <= count:
+        return discard_trailing_zeros(n)
+    low, high = 0, n.bit_length() - 1  # (n >> low).bit_count() >= count throughout
+    while low < high:
+        mid = (low + high + 1) // 2
+        if (n >> mid).bit_count() >= count:
+            low = mid
+        else:
+            high = mid - 1
+    return n >> low
+
+
+def keep_lowest_set_bits(n: int, count: int) -> int:
+# ...
+    rest = n
+    for _ in range(count):
+        rest &= rest - 1
+    return discard_trailing_zeros(n ^ rest)
+\end{lstlisting}
+\begin{lstlisting}[caption={The window of three ask levels, in either book}, label=listing.askWindowsRun]
+asks = {101: 30, 102: 50, 105: 20, 106: 40}
+bitmap = BitmapBook(floor=95)
+array = TickArrayBook(floor=95, width=12)
+for price, size in asks.items():
+    bitmap.set_size(SELL, price, size)
+    array.set_size(SELL, price, size)
+depth = ReportedDepth(3)
+print(bin(bitmap.span_bits(SELL, depth)),
+      bin(array.span_bits(SELL, depth)))
+\end{lstlisting}
+What does the snippet print?
+\begin{choices}
+ \choice \codehl{0b11001 0b11001}
+ \choice \codehl{0b10011 0b10011}
+ \choice \codehl{0b110011 0b110011}
+ \correctchoice \codehl{0b10011 0b11001}
+ \choice \codehl{0b11001 0b10011}
+\end{choices}
+\explanation{\codehl{BitmapBook} counts the asks up from the floor, bits 6, 7, 10 and 11,
+and three passes of \codehl{rest \&= rest - 1} clear the lowest three, which \codehl{n \^{} rest} recovers:
+101 lands on bit 0.
+\codehl{TickArrayBook} counts them down from the ceiling, bits 5, 4, 1 and 0,
+and the bisection of Proposition~\ref{notes:prop.rankByShift} cuts at bit 1:
+105 lands on bit 0, and each window is the other read backwards.}
+\end{question}
+
+\begin{question}
+\label{question.lowestSetBitCostsTheBand}
+\codehl{BitmapBook} finds its best price as below,
+and \codehl{TickArrayBook} as in Listing~\ref{listing.tickArrayIntegersWrite}.
+CPython stores a non-negative integer as its digits in base $2^{30}$, together with their number.
+\begin{lstlisting}[caption={\protect\codehl{unito26.lob.orderbook.BitmapBook.best\_price}}, label=listing.lowestSetBitCostsBitmap]
+def best_price(self, direction: int) -> int | None:
+    bits = self._bits[direction]
+    if not bits:
+        return None
+    if direction == BUY:
+        return self.floor + bits.bit_length() - 1
+    return self.floor + (bits & -bits).bit_length() - 1
+\end{lstlisting}
+For a width $\bandWidth$, \codehl{width} below,
+two books hold the same two asks, one a tick above the floor and one $\bandWidth - 1$ ticks above it.
+\begin{lstlisting}[caption={The two books of a width}, label=listing.lowestSetBitCostsBooks]
+bitmap = BitmapBook(floor=0)
+array = TickArrayBook(floor=0, width=width)
+for price in (1, width - 1):
+    bitmap.set_size(SELL, price, 100)
+    array.set_size(SELL, price, 100)
+\end{lstlisting}
+\codehl{bitmap.best\_ask\_price} and \codehl{array.best\_ask\_price} are read many times,
+for $\bandWidth = 10^{3}, 10^{4}, 10^{5}, 10^{6}$,
+and the time of one read is recorded.
+Which statement holds?
+\begin{choices}
+ \correctchoice A read of \codehl{array} takes about the same time at every width;
+  a read of \codehl{bitmap} grows with $\bandWidth$, about in proportion to it at the larger widths,
+  and at $\bandWidth = 10^{6}$ is many times slower.
+ \choice Both reads take about the same time at every width:
+  each is a fixed number of operations on one integer.
+ \choice Both reads grow about in proportion to $\bandWidth$:
+  the two integers are equally wide.
+ \choice A read of \codehl{bitmap} takes about the same time at every width,
+  and a read of \codehl{array} grows with $\bandWidth$:
+  its best ask is the highest set bit, at the far end of an integer of $\bandWidth$ bits,
+  where that of \codehl{bitmap} is bit 1.
+\end{choices}
+\explanation{\codehl{bit\_length} reads the stored number of digits and the highest one, in $O(1)$;
+the negation and $\bitAnd$ build new integers digit by digit, in $O(\bandWidth)$,
+wherever the lowest set bit lies,
+Section~\ref{notes:sec.binaryCosts}.
+Counting the asks down from the ceiling makes the best ask the highest set bit.}
+\end{question}

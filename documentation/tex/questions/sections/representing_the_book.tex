@@ -1,0 +1,342 @@
+\notebook{01-representing-the-book}
+The questions of this section concern the aggregated book of Section~\ref{notes:sec.orderDrivenMarkets}
+and the two dictionaries that hold it in the package,
+Section~\ref{notes:sec.foldImplementation}.
+
+\begin{question}
+\label{question.signedStateToSides}
+The worked examples of the package write a book as one map of signed sizes,
+bid sizes positive and ask sizes negative.
+The map below carries a price, 1001, whose size has fallen to zero.
+Two functions split it into the two sides that the book holds,
+and the book is built by the class method \codehl{from\_levels}, quoted below.
+\begin{lstlisting}[caption={\protect\codehl{unito26.lob.orderbook.AggregateBook.from\_levels}, abridged.}, label=listing.signedStateFromLevels]
+@classmethod
+def from_levels(
+    cls, bids: dict[int, int], asks: dict[int, int], strict: bool = False
+) -> "AggregateBook":
+# ...
+    book = cls.for_prices(list(bids) + list(asks), strict)
+    for direction, levels in ((BUY, bids), (SELL, asks)):
+        for price, size in levels.items():
+            if size <= 0:
+                raise ValueError(f"level at {price} must hold positive size")
+            book.set_size(direction, price, size)
+    book.check_invariants()
+    return book
+\end{lstlisting}
+\begin{lstlisting}[caption={Alternative A}, label=listing.signedStateSidesA]
+def to_sides(state):
+    bids = {p: s for p, s in state.items() if s > 0}
+    asks = {p: -s for p, s in state.items() if s < 0}
+    return bids, asks
+\end{lstlisting}
+\begin{lstlisting}[caption={Alternative B}, label=listing.signedStateSidesB]
+def to_sides(state):
+    bids = {p: s for p, s in state.items() if s > 0}
+    asks = {p: -s for p, s in state.items() if p not in bids}
+    return bids, asks
+\end{lstlisting}
+\begin{lstlisting}[caption={Run once with each alternative}, label=listing.signedStateRun]
+state = {1000: 100, 999: 200, 998: 150, 1001: 0, 1002: -120, 1003: -180}
+bids, asks = to_sides(state)
+book = AggregateBook.from_levels(bids, asks)
+print(book.best_ask_price, book.spread)
+\end{lstlisting}
+What happens?
+\begin{choices}
+ \choice Both alternatives print \codehl{1002 2}.
+ \choice Alternative A prints \codehl{1002 2}; Alternative B prints \codehl{1001 1}.
+ \correctchoice Alternative A prints \codehl{1002 2}; Alternative B raises \codehl{ValueError}.
+ \choice Alternative A raises \codehl{ValueError}; Alternative B prints \codehl{1001 1}.
+\end{choices}
+\explanation{Alternative B places every price that is not a bid on the ask side,
+the emptied 1001 among them, with size 0,
+and \codehl{from\_levels} refuses a level that holds nothing.
+Alternative A drops it, as \codehl{set\_size} would.}
+\end{question}
+
+\begin{question}
+\label{question.imbalanceOverGridLevels}
+The queue imbalance $\queueImbalance$ of equation~\eqref{notes:eq.queueImbalance} sums
+the sizes $\nthBestBidSize[i]$ and $\nthBestAskSize[i]$ for $i \le n$,
+where level $i$ is the price $\bestBidPrice - (i-1)\tickSizeOfLOB$ on the bid side
+and $\bestAskPrice + (i-1)\tickSizeOfLOB$ on the ask side,
+whether or not anything rests there.
+The method below computes it,
+\codehl{bid\_size(i)} and \codehl{ask\_size(i)} being the sizes at those prices.
+\begin{lstlisting}[caption={\protect\codehl{unito26.lob.orderbook.AggregateBook.queue\_imbalance}, abridged.}, label=listing.imbalanceMethod]
+def queue_imbalance(self, n: GridDepth) -> float:
+# ...
+    bid_total = sum(self.bid_size(i) for i in range(1, n + 1))
+    ask_total = sum(self.ask_size(i) for i in range(1, n + 1))
+    total = bid_total + ask_total
+    if total == 0:
+        return float("nan")
+    return (bid_total - ask_total) / total
+\end{lstlisting}
+\begin{lstlisting}[caption={An imbalance over the first $n$ occupied levels, and the two compared}, label=listing.imbalanceOccupied]
+book = AggregateBook.from_levels(
+    {1000: 100, 998: 300, 997: 200}, {1001: 150, 1002: 50, 1004: 400}
+)
+
+def imbalance(book, n):
+    bids = sorted(book.bids.items(), reverse=True)[:n]
+    asks = sorted(book.asks.items())[:n]
+    b = sum(size for _, size in bids)
+    a = sum(size for _, size in asks)
+    return (b - a) / (b + a)
+
+print(round(book.queue_imbalance(GridDepth(2)), 3),
+      round(imbalance(book, 2), 3))
+\end{lstlisting}
+What does the snippet print?
+\begin{choices}
+ \choice \codehl{-0.333 -0.333}
+ \choice \codehl{0.333 0.333}
+ \choice \codehl{0.333 -0.333}
+ \correctchoice \codehl{-0.333 0.333}
+\end{choices}
+\explanation{The first two grid levels are 1000 and 999 on the bid, 1001 and 1002 on the ask:
+$(100 - 200)/300$.
+The first two occupied levels reach 998 on the bid: $(400 - 200)/600$.
+The two indexings agree only where no gap falls within the first $n$ levels,
+Remark~\ref{notes:remark.gridAgainstOccupied}.}
+\end{question}
+
+\begin{question}
+\label{question.microPriceTowardsTheThinSide}
+The micro-price $\microPrice$ of equation~\eqref{notes:eq.microPrice}
+is computed by the package as below,
+and compared with a size-weighted mid.
+\begin{lstlisting}[caption={\protect\codehl{unito26.lob.orderbook.AggregateBook}: the micro-price, its docstring elided.}, label=listing.microPriceProperty]
+@property
+def micro_price(self) -> float | None:
+# ...
+    spread, mid = self.spread, self.mid_price
+    if spread is None or mid is None:
+        return None
+    return mid + spread * self.queue_imbalance(GridDepth(1)) / 2
+\end{lstlisting}
+\begin{lstlisting}[caption={A size-weighted mid, and the two compared}, label=listing.weightedMid]
+def weighted_mid(book):
+    bid, ask = book.best_bid_price, book.best_ask_price
+    b, a = book.best_bid_size, book.best_ask_size
+    return (bid * b + ask * a) / (b + a)
+
+book = AggregateBook.from_levels({1000: 300}, {1002: 100})
+print(book.micro_price, weighted_mid(book))
+\end{lstlisting}
+What does the snippet print?
+\begin{choices}
+ \correctchoice \codehl{1001.5 1000.5}
+ \choice \codehl{1000.5 1001.5}
+ \choice \codehl{1001.5 1001.5}
+ \choice \codehl{1001.0 1001.0}
+\end{choices}
+\explanation{$\queueImbalance[1] = (300 - 100)/400 = 1/2$,
+so $\microPrice = 1001 + 2 \cdot \tfrac12 / 2 = 1001.5$:
+the ask price carries the bid size,
+and the micro-price leans towards the thin side, here the ask.
+The size-weighted mid gives each price its own size, $400200/400 = 1000.5$.}
+\end{question}
+
+\begin{question}
+\label{question.floatPricesSplitALevel}
+Three orders arrive with prices in currency, on a tick of $0.01$.
+The first and the second are both at 10.04,
+one read from a feed and one computed from a count of ticks.
+In binary floating point
+\codehl{10.04 / 0.01} evaluates to \codehl{1003.9999999999999},
+\codehl{1004 * 0.01} to \codehl{10.040000000000001}
+and that divided by \codehl{0.01} to \codehl{1004.0000000000001},
+and \codehl{10.03 / 0.01} to \codehl{1002.9999999999999}.
+\begin{lstlisting}[caption={Sizes keyed by price in ticks}, label=listing.floatPrices]
+tick = 0.01
+orders = [(10.04, 100), (1004 * tick, 50), (10.03, 70)]
+levels = {}
+for price, size in orders:
+    key = int(price / tick)
+    levels[key] = levels.get(key, 0) + size
+print(levels)
+\end{lstlisting}
+What does the snippet print?
+\begin{choices}
+ \choice \codehl{\{1004: 150, 1003: 70\}}
+ \correctchoice \codehl{\{1003: 100, 1004: 50, 1002: 70\}}
+ \choice \codehl{\{1003: 150, 1002: 70\}}
+ \choice \codehl{\{1003: 170, 1004: 50\}}
+\end{choices}
+\explanation{\codehl{int} truncates towards zero,
+so the order at 10.04 read from the feed lands on 1003, a tick off,
+the one computed from a count of ticks on 1004,
+and the order at 10.03 on 1002, also a tick off.
+\codehl{round}, as in \codehl{TickGrid.to\_ticks} of \codehl{unito26.lob.messages},
+gives \codehl{\{1004: 150, 1003: 70\}}.}
+\end{question}
+
+\begin{question}
+\label{question.recorderAliasesTheSide}
+The method \codehl{levels\_map} of the book returns the dictionary that holds a side,
+\codehl{book.bids} for \codehl{BUY} and \codehl{book.asks} for \codehl{SELL}.
+The method \codehl{apply} processes one message,
+a submission by the matching of Algorithm~\ref{notes:algo.bookFold}
+and a withdrawal by removing size.
+Two lists record the bid side after each message.
+\begin{lstlisting}[caption={Two records of the bid side}, label=listing.recorderAliases]
+book = AggregateBook.from_levels({1000: 100}, {1002: 120})
+stream = [
+    limit_order(1.0, 50, 1001, BUY),
+    market_order(2.0, 30, SELL),
+    withdrawal(3.0, 120, 1002, SELL),
+]
+shared, copied = [], []
+for message in stream:
+    book.apply(message, record=False)
+    shared.append(book.levels_map(BUY))
+    copied.append(dict(book.levels_map(BUY)))
+print(shared[0])
+print(copied[0])
+\end{lstlisting}
+What does the snippet print?
+\begin{choices}
+ \choice \codehl{\{1000: 100, 1001: 50\}} on both lines.
+ \choice \codehl{\{1000: 100\}}, then \codehl{\{1000: 100, 1001: 50\}}.
+ \correctchoice \codehl{\{1000: 100, 1001: 20\}}, then \codehl{\{1000: 100, 1001: 50\}}.
+ \choice \codehl{\{1000: 100, 1001: 20\}} on both lines.
+\end{choices}
+\explanation{Every entry of \codehl{shared} is the one dictionary \codehl{book.bids},
+which the market sell later reduces to 20 at 1001;
+\codehl{copied[0]} is a copy taken after the first message.
+The withdrawal acts on the ask side and does not touch the bids.}
+\end{question}
+
+\begin{question}
+\label{question.sizeIsNotVolume}
+After each message,
+\codehl{book.last\_traded\_size} is the number of shares the message traded,
+its $\marketOrderSize$, and zero for a withdrawal.
+The snippet below also sums the decreases of the size at the best bid.
+\begin{lstlisting}[caption={Decreases of the best size against the traded size}, label=listing.sizeIsNotVolume]
+book = AggregateBook.from_levels({1000: 100, 999: 200}, {1002: 120})
+stream = [
+    market_order(1.0, 30, SELL),
+    withdrawal(2.0, 50, 1000, BUY),
+    limit_order(3.0, 40, 1000, BUY),
+    market_order(4.0, 70, SELL),
+]
+drops, traded = 0, 0
+before = book.best_bid_size
+for message in stream:
+    book.apply(message, record=False)
+    drops += max(before - book.best_bid_size, 0)
+    before = book.best_bid_size
+    traded += book.last_traded_size
+print(drops, traded)
+\end{lstlisting}
+What does the snippet print?
+\begin{choices}
+ \choice \codehl{100 100}
+ \correctchoice \codehl{80 100}
+ \choice \codehl{140 100}
+ \choice \codehl{80 80}
+\end{choices}
+\explanation{The volume is $30 + 70 = 100$.
+The decreases count the withdrawal of 50, which trades nothing,
+and miss the last market sell,
+which empties 1000 and leaves the larger queue at 999 as the best bid:
+$30 + 50 = 80$.
+Size and volume are different quantities, Remark~\ref{notes:remark.sizeVersusVolume}.}
+\end{question}
+
+\begin{question}
+\label{question.paddingSentinelsInTheSpread}
+A LOBSTER orderbook file pads an empty level with the price $9999999999$ on the ask side
+and $-9999999999$ on the bid side.
+The frame below holds four rows of the first level, in ticks,
+and a filter meant to drop the padded rows.
+\begin{lstlisting}[caption={A mean spread after a filter}, label=listing.paddingSentinels]
+book = pd.DataFrame({
+    "AskPrice1": [1002, 1003, 9999999999, 1002],
+    "BidPrice1": [1000, -9999999999, 1001, 1001],
+})
+clean = book[book.BidPrice1 > 0]
+print(len(clean), (clean.AskPrice1 - clean.BidPrice1).mean())
+\end{lstlisting}
+What does the snippet print?
+\begin{choices}
+ \choice \codehl{2} and \codehl{1.5}.
+ \choice \codehl{3} and \codehl{1.5}.
+ \choice \codehl{4} and a number near $3.3 \times 10^{9}$.
+ \correctchoice \codehl{3} and a number near $3.3 \times 10^{9}$.
+\end{choices}
+\explanation{The two sentinels have opposite signs:
+the filter drops the padded bid and keeps the padded ask,
+whose spread of $9999999999 - 1001$ dominates the mean of three rows.
+Dropping both, the mean of the spreads 2 and 1 is 1.5.}
+\end{question}
+
+\begin{question}
+\label{question.levelsAreOneIndexed}
+Levels are counted from 1 in the notes:
+$\nthBestBidPrice[i] = \bestBidPrice - (i-1)\tickSizeOfLOB$.
+Two helpers read the size at the $i$-th bid level of a book with a gap.
+\begin{lstlisting}[caption={Two readings of the $i$-th bid level}, label=listing.levelsOneIndexed]
+book = AggregateBook.from_levels(
+    {1000: 100, 998: 150, 997: 50}, {1002: 120, 1003: 180}
+)
+
+def size_a(book, i):
+    return book.size_at(BUY, book.best_bid_price - (i - 1))
+
+def size_b(book, i):
+    return book.size_at(BUY, book.best_bid_price - i)
+
+print([size_a(book, i) for i in (1, 2, 3)])
+print([size_b(book, i) for i in (1, 2, 3)])
+\end{lstlisting}
+What does the snippet print?
+\begin{choices}
+ \correctchoice \codehl{[100, 0, 150]}, then \codehl{[0, 150, 50]}.
+ \choice \codehl{[100, 150, 50]}, then \codehl{[150, 50, 0]}.
+ \choice \codehl{[100, 0, 150]} on both lines.
+ \choice \codehl{[0, 150, 50]}, then \codehl{[100, 0, 150]}.
+\end{choices}
+\explanation{\codehl{size\_at} reads a price, and 999 is a grid level holding nothing,
+so \codehl{size\_a} gives $\nthBestBidSize[i]$ for $i = 1, 2, 3$.
+\codehl{size\_b} reads one level further:
+it is $\nthBestBidSize[i+1]$, a 0-indexed level read as a 1-indexed one.}
+\end{question}
+
+\begin{question}
+\label{question.sizeAtOnADictAgainstAList}
+One side of a book with $\ell$ occupied levels is held in two ways:
+as a dictionary from price to size,
+and as a list of pairs \codehl{(price, size)} sorted by price.
+The size at a price is read from each as below,
+and both are timed on the same queries, at prices drawn among the occupied ones,
+for $\ell = 10^{3}$ and $\ell = 10^{4}$.
+\begin{lstlisting}[caption={Two readings of the size at a price}, label=listing.sizeAtDictList]
+def size_at_a(levels: dict[int, int], price: int) -> int:
+    return levels.get(price, 0)
+
+def size_at_b(levels: list[tuple[int, int]], price: int) -> int:
+    for level_price, size in levels:
+        if level_price == price:
+            return size
+    return 0
+\end{lstlisting}
+Which statement holds?
+\begin{choices}
+ \choice B is faster, its levels being sorted.
+ \choice The time of a query grows about tenfold with $\ell$ for both,
+  and A is faster by a constant factor.
+ \correctchoice A is faster,
+  its time per query is about the same at both values of $\ell$,
+  and that of B grows about tenfold.
+ \choice Neither time per query changes noticeably with $\ell$.
+\end{choices}
+\explanation{A dictionary finds a key by its hash in a time that does not grow with $\ell$;
+the scan of B visits on average half the levels,
+and does not use the order of the list.}
+\end{question}

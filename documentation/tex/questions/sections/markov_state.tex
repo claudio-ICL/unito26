@@ -1,0 +1,521 @@
+\notebook{09-the-markov-state}
+The questions of this section concern the decayed counts $\decayedCounts$
+of equation~\eqref{notes:eq.decayedCounts},
+the Markov property of Theorem~\ref{notes:thm.markovState}
+and its homogeneity in time,
+and their use in the forward means of Proposition~\ref{notes:prop.forwardMean}.
+The two types are the market buys and the market sells,
+the first and the second component of every vector,
+numbered 0 and 1 by the package.
+\codehl{Clock} and \codehl{decayed\_counts\_at} are imported from \codehl{unito26.lob.hawkes};
+a \codehl{Clock} is an array of times at which a state is read.
+For a specification \codehl{params},
+\codehl{params.forward\_mean\_state(z, h)} is $m_{s,s+h}(z)$
+of equation~\eqref{notes:eq.forwardMeanState},
+and \codehl{params.forward\_mean\_counts(z, h)} is the right-hand side
+of equation~\eqref{notes:eq.forwardMeanCounts} at $t = s + h$,
+each a vector with a component per type.
+\codehl{ExponentialHawkes(params, rng)} simulates a path started empty at the time 0,
+$\multiCountingProc(0) = 0$ and $\decayedCounts(0+) = 0$.
+\codehl{simulator.events(T)} yields the pairs \codehl{(time, type)} of its events
+up to the time $T$, in order,
+and a later call continues the same path.
+The one-way pair, \codehl{config.one\_way\_pair\_params()}, has
+\begin{equation*}
+ \baseIntensity = \begin{pmatrix} 0.4 \\ 0.1 \end{pmatrix},
+ \qquad
+ \excitation = \begin{pmatrix} 0.8 & 0 \\ 4 & 2.4 \end{pmatrix},
+ \qquad
+ \decay = 4 ,
+\end{equation*}
+so that a buy excites both types and a sell excites only the sells.
+
+\begin{question}
+\label{question.restartTheStateAfterAMarketSell}
+The package reads the state of a path on a clock with the function below,
+in which \codehl{state} starts as a copy of \codehl{initial\_state},
+the state $\decayedCounts(0+)$.
+\begin{lstlisting}[caption={\protect\codehl{unito26.lob.hawkes.decayed\_counts\_at}, abridged.}, label=listing.restartTheStateAfterAMarketSellQuote]
+def decayed_counts_at(
+    decay: Decay,
+    times: np.ndarray,
+    types: np.ndarray,
+    initial_state: np.ndarray,
+    clock: Clock,
+) -> np.ndarray:
+# ...
+    beta = float(decay)
+# ...
+    last = 0.0
+    event = 0
+    out = np.empty((clock.size, state.size))
+    for k, now in enumerate(clock):
+        while event < times.size and times[event] < now:
+            state *= np.exp(-beta * (times[event] - last))
+            state[types[event]] += 1.0
+            last = times[event]
+            event += 1
+        out[k] = state * np.exp(-beta * (now - last))
+    return out
+\end{lstlisting}
+A path of four market orders is read at the times 3 and 5 from its whole history,
+and again from its second order, a market sell at $s = 2$:
+the events kept are shifted by $s$, as is the clock,
+and the reading starts from a state \codehl{z} at $s$.
+With $\decay = \log 2$, $e^{-\decay} = 1/2$.
+\begin{lstlisting}[caption={Four restarts at a market sell}, label=listing.restartTheStateAfterAMarketSellRun]
+beta = np.log(2.0)
+times = np.array([1.0, 2.0, 3.0, 4.0])
+types = np.array([0, 1, 1, 0])
+clock = Clock(np.array([3.0, 5.0]))
+zero = np.zeros(2)
+k = 1
+s = times[k]
+whole = decayed_counts_at(beta, times, types, zero, clock)
+before = decayed_counts_at(beta, times, types, zero, Clock([s]))[0]
+after = before + np.eye(2)[types[k]]
+
+def restart(z, keep):
+    return decayed_counts_at(
+        beta, times[keep] - s, types[keep], z, Clock(clock - s)
+    )
+
+for z, keep in ((before, times >= s), (before, times > s),
+                (after, times > s), (after, times >= s)):
+    print(np.allclose(restart(z, keep), whole))
+\end{lstlisting}
+What does the snippet print, line by line?
+\begin{choices}
+ \choice \codehl{False}, \codehl{False}, \codehl{True}, \codehl{False}
+ \choice \codehl{False}, \codehl{True}, \codehl{False}, \codehl{False}
+ \correctchoice \codehl{True}, \codehl{False}, \codehl{True}, \codehl{False}
+ \choice \codehl{True}, \codehl{True}, \codehl{True}, \codehl{True}
+\end{choices}
+\explanation{The strict inequality reads $\decayedCounts$ before the jump of an event on the clock,
+so \codehl{before} is $\decayedCounts(s) = (0.5, 0)$
+and \codehl{after} is $\decayedCounts(s+) = (0.5, 1)$.
+A restart reproduces the whole history when it counts the sell at $s$ exactly once:
+in the state, or as the event at the shifted time 0,
+which precedes the shifted clock and is read.}
+\end{question}
+
+\begin{question}
+\label{question.millisecondClockKeepsTheState}
+A feed stamps events in milliseconds after the open,
+and the one-way pair is a specification in seconds.
+The snippet below writes the same specification on the clock in milliseconds,
+reads the state at one second after three market orders,
+and forecasts the market orders of the next half second.
+\begin{lstlisting}[caption={The state and the forecast on two clocks}, label=listing.millisecondClockKeepsTheState]
+seconds = config.one_way_pair_params()
+millis = HawkesParams(
+    baseline=seconds.baseline / 1000,
+    excitation=seconds.excitation / 1000,
+    decay=seconds.decay / 1000,
+)
+times = np.array([0.2, 0.35, 0.9])
+types = np.array([0, 1, 1])
+zero = np.zeros(2)
+z = decayed_counts_at(seconds.decay, times, types, zero, Clock([1.0]))[0]
+z_ms = decayed_counts_at(
+    millis.decay, 1000 * times, types, zero, Clock([1000.0])
+)[0]
+expected = seconds.forward_mean_counts(z, 0.5)
+print(np.allclose(z_ms, z / 1000), np.allclose(z_ms, z))
+print(np.allclose(millis.forward_mean_counts(z_ms, 0.5), expected),
+      np.allclose(millis.forward_mean_counts(z_ms, 500.0), expected))
+\end{lstlisting}
+What does the snippet print?
+\begin{choices}
+ \correctchoice \codehl{False True}, then \codehl{False True}.
+ \choice \codehl{True False}, then \codehl{False True}.
+ \choice \codehl{False True}, then \codehl{True False}.
+ \choice \codehl{False True}, then \codehl{False False}.
+\end{choices}
+\explanation{By Remark~\ref{notes:remark.timeRescaling} the flow on the new clock
+has the decayed counts $\decayedCounts(t/c)$, with $c = 1000$:
+each term $e^{-\decay(t - \arrivalTimes_{j})}$ is unchanged when the times are multiplied by $c$
+and the decay divided by it.
+The intensities are rates and are divided by $c$;
+the expected counts are numbers of events, the same over the same half second,
+which on the new clock is a horizon of 500.}
+\end{question}
+
+\begin{question}
+\label{question.totalIntensityIsNotTheState}
+A desk summarises the flow by the total intensity
+$\totalIntensity = \mathbf{1}\transpose(\baseIntensity + \excitation\decayedCounts)$,
+which sets the rate of the next market order,
+and forecasts from it the number of market orders over the next ten seconds.
+The snippet compares two states on each of two specifications.
+The first is the self-exciting pair, with $\decay = 4$ and
+\begin{equation*}
+ \baseIntensity = \begin{pmatrix} 0.25 \\ 0.25 \end{pmatrix},
+ \qquad
+ \excitation = \begin{pmatrix} 2.8 & 0.2 \\ 0.2 & 2.8 \end{pmatrix};
+\end{equation*}
+the second is the one-way pair.
+Their branching ratios are 0.75 and 0.6,
+and over ten seconds $e^{-\decay(1 - \branchingRatio)h}$ is $e^{-10}$ and $e^{-16}$,
+negligible at two decimals.
+The option \codehl{z} of a format prints a negative number that rounds to zero as \codehl{0.00}.
+\begin{lstlisting}[caption={Two states of equal total intensity}, label=listing.totalIntensityIsNotTheState]
+def total_intensity(params, z):
+    return (params.baseline + params.excitation @ z).sum()
+
+def total_count(params, z):
+    return params.forward_mean_counts(z, 10.0).sum()
+
+for params, z1, z2 in (
+    (config.self_exciting_pair_params(), [1.0, 0.0], [0.5, 0.5]),
+    (config.one_way_pair_params(), [0.5, 0.0], [0.0, 1.0]),
+):
+    z1, z2 = np.array(z1), np.array(z2)
+    gap = total_intensity(params, z1) - total_intensity(params, z2)
+    more = total_count(params, z1) - total_count(params, z2)
+    print(f"{gap:z.2f} {more:z.2f}")
+\end{lstlisting}
+What does the snippet print?
+\begin{choices}
+ \choice \codehl{0.00 0.00} on both lines.
+ \correctchoice \codehl{0.00 0.00}, then \codehl{0.00 0.19}.
+ \choice \codehl{0.00 0.00}, then \codehl{0.00 -0.19}.
+ \choice \codehl{0.00 0.00}, then \codehl{0.00 -0.31}.
+\end{choices}
+\explanation{$\totalIntensity$ weights $z$ by the column sums of $\excitation$, $(3, 3)$ and $(4.8, 2.4)$,
+and the states of each pair have equal weights.
+Over ten seconds the expected count weights $z$ by the expected numbers of descendants $C_{\eone} - 1$
+of equation~\eqref{notes:eq.responseIntegral}, $(3, 3)$ and $(3.375, 1.5)$,
+which are proportional to the column sums on the first pair only:
+$0.5 \cdot 3.375 - 1.5 = 0.1875$.
+The cluster sizes $C_{\eone}$, which count the ancestor too, give $-0.31$.
+$\totalIntensity$ is a function of the state of Theorem~\ref{notes:thm.markovState}, not a state.}
+\end{question}
+
+\begin{question}
+\label{question.fanStartsTheClockAtZero}
+At $s = 30$ a desk holds the state $z = \decayedCounts(s+) = (0.5, 2)$ of the one-way pair
+and estimates
+$\Expectation[\multiCountingProc(s+1) - \multiCountingProc(s) \mid \decayedCounts(s+) = z]$
+by the mean of independent draws of one of the four functions below.
+\codehl{ExponentialHawkes.from\_state(params, z, rng)} is a simulator at the time 0 whose state is \codehl{z}.
+\codehl{simulator.time} is the time the simulator has reached,
+\codehl{simulator.decayed\_counts} its state,
+and \codehl{events} draws each event by the method \codehl{step}, quoted below with \codehl{\_advance}.
+In it \codehl{total\_intensity} is $\totalIntensity$ computed from the state,
+\codehl{\_baseline\_total} is $\mathbf{1}\transpose\baseIntensity$,
+and \codehl{\_draw\_type\_and\_jump} draws the type
+with probabilities proportional to $\baseIntensity + \excitation\decayedCounts$,
+adds its unit vector to the state, and returns it.
+\begin{lstlisting}[caption={\protect\codehl{unito26.lob.hawkes.ExponentialHawkes.step}, abridged.}, label=listing.fanStartsTheClockAtZeroStep]
+def step(self) -> tuple[float, int]:
+    beta = self.params.decay
+    excess = self.total_intensity - self._baseline_total  # D >= 0
+
+    u1, u2 = self.rng.random(2)
+# ...
+    wait_baseline = -np.log(u1) / self._baseline_total
+# ...
+    if excess <= 0.0:
+        wait_excited = np.inf
+    else:
+        remaining = 1.0 + beta * np.log(u2) / excess
+        wait_excited = -np.log(remaining) / beta if remaining > 0.0 else np.inf
+
+    self._advance(min(wait_baseline, wait_excited))
+    return self.time, self._draw_type_and_jump()
+\end{lstlisting}
+\begin{lstlisting}[caption={\protect\codehl{unito26.lob.hawkes.\_HawkesState.\_advance}}, label=listing.fanStartsTheClockAtZeroAdvance]
+def _advance(self, elapsed: float) -> None:
+    """Decay the state forward by ``elapsed``, without an event."""
+    self.time += elapsed
+    self.decayed_counts *= np.exp(-self.params.decay * elapsed)
+\end{lstlisting}
+\begin{lstlisting}[caption={Four estimates of the expected counts after $s$}, label=listing.fanStartsTheClockAtZeroEstimates]
+params = config.one_way_pair_params()
+z, s, h = np.array([0.5, 2.0]), 30.0, 1.0
+
+def counts(simulator, start):
+    ahead = [e for t, e in simulator.events(start + h) if t > start]
+    return np.bincount(ahead, minlength=2)
+
+def estimate_a(rng):
+    return counts(ExponentialHawkes.from_state(params, z, rng), 0.0)
+
+def estimate_b(rng):
+    return counts(ExponentialHawkes.from_state(params, z, rng), s)
+
+def estimate_c(rng):
+    return counts(ExponentialHawkes(params, rng), s)
+
+def estimate_d(rng):
+    simulator = ExponentialHawkes.from_state(params, z, rng)
+    simulator.time = s
+    return counts(simulator, s)
+\end{lstlisting}
+Which estimates tend to the expectation as the number of draws grows?
+\begin{choices}
+ \choice \codehl{estimate\_a} only.
+ \choice \codehl{estimate\_a}, \codehl{estimate\_b} and \codehl{estimate\_d}.
+ \choice \codehl{estimate\_a}, \codehl{estimate\_c} and \codehl{estimate\_d}.
+ \correctchoice \codehl{estimate\_a} and \codehl{estimate\_d}.
+ \choice All four.
+\end{choices}
+\explanation{The waiting times and the type that the step draws depend on the state alone;
+the time is only accumulated and returned,
+so the path after a time has a law fixed by the state at that time:
+\codehl{estimate\_d} is \codehl{estimate\_a} on a clock moved by $s$.
+\codehl{estimate\_b} counts thirty seconds after the path was at $z$,
+and \codehl{estimate\_c} on a path that was never set to $z$;
+both estimate about the stationary count $h\stationaryIntensity = (0.5, 1.5)$.}
+\end{question}
+
+\begin{question}
+\label{question.forecastBetweenEventsFollowsTheFlow}
+A desk forecasts the market orders of the second that follows $t = 10$,
+a time at which no event occurs.
+It keeps the time \codehl{last} of the last event at or before $t$
+and the state \codehl{state} just after it,
+which \codehl{simulator.decayed\_counts} holds while \codehl{events} waits at that event.
+\begin{lstlisting}[caption={Four forecasts on a timer}, label=listing.forecastBetweenEventsFollowsTheFlowForecasts]
+params = config.one_way_pair_params()
+t, h = 10.0, 1.0
+
+def forecast_a(last, state):
+    z = state * np.exp(-params.decay * (t - last))
+    return params.forward_mean_counts(z, h)
+
+def forecast_b(last, state):
+    return params.forward_mean_counts(state, h)
+
+def forecast_c(last, state):
+    return (params.forward_mean_counts(state, t - last + h)
+            - params.forward_mean_counts(state, t - last))
+
+def forecast_d(last, state):
+    z = state * np.exp(-params.decay * t)
+    return params.forward_mean_counts(z, h)
+\end{lstlisting}
+\begin{lstlisting}[caption={The forecasts against the counts realised}, label=listing.forecastBetweenEventsFollowsTheFlowRun]
+rng = np.random.default_rng(9)
+forecasts = (forecast_a, forecast_b, forecast_c, forecast_d)
+errors = {forecast: [] for forecast in forecasts}
+for _ in range(3000):
+    simulator = ExponentialHawkes(params, rng)
+    last, state = 0.0, np.zeros(2)
+    for time, _ in simulator.events(t):
+        last, state = time, simulator.decayed_counts.copy()
+    ahead = [event_type for _, event_type in simulator.events(t + h)]
+    realised = np.bincount(ahead, minlength=2)
+    for forecast in forecasts:
+        errors[forecast].append(realised - forecast(last, state))
+\end{lstlisting}
+For which forecasts does the mean of \codehl{errors[forecast]} tend to zero in both components
+as the number of paths grows?
+\begin{choices}
+ \correctchoice \codehl{forecast\_a} only.
+ \choice \codehl{forecast\_a} and \codehl{forecast\_c}.
+ \choice \codehl{forecast\_c} only.
+ \choice \codehl{forecast\_a} and \codehl{forecast\_b}.
+\end{choices}
+\explanation{Between events the state follows the flow $e^{-\decay u}z$ of Theorem~\ref{notes:thm.markovState},
+so \codehl{forecast\_a} conditions on $\decayedCounts(t+)$, the history at $t$.
+\codehl{forecast\_c} conditions on the state after the last event alone,
+and so averages over paths with further events before $t$,
+which this path has not had: it overstates both components, the sells most.
+\codehl{forecast\_b} omits the flow, and \codehl{forecast\_d} runs it from the open.}
+\end{question}
+
+\begin{question}
+\label{question.forecastAfterAMarketSellUsesThePostJumpState}
+A forecast of the market orders in the second that follows an event
+is checked on simulated paths of the one-way pair.
+The event is the first market sell of each path, at $s$,
+and the forecast is made from the state read at $s$,
+with or without the unit vector of the sell.
+The value $e^{-1.6} \approx 0.20$ may be used.
+\begin{lstlisting}[caption={The error of a forecast made at the $k$-th event}, label=listing.forecastAfterAMarketSellUsesThePostJumpStateError]
+params = config.one_way_pair_params()
+h = 1.0
+
+def forecast_error(times, types, k, post_jump):
+    s = times[k]
+    z = decayed_counts_at(params.decay, times, types, np.zeros(2),
+                          Clock(times[k:k + 1]))[0]
+    if post_jump:
+        z = z + np.eye(2)[types[k]]
+    ahead = (times > s) & (times <= s + h)
+    realised = np.bincount(types[ahead], minlength=2)
+    return realised - params.forward_mean_counts(z, h)
+
+def path(rng, horizon):
+    events = list(ExponentialHawkes(params, rng).events(horizon))
+    times = np.array([time for time, _ in events])
+    types = np.array([event_type for _, event_type in events])
+    return times, types
+\end{lstlisting}
+\begin{lstlisting}[caption={The errors at the first market sell}, label=listing.forecastAfterAMarketSellUsesThePostJumpStateRun]
+rng = np.random.default_rng(7)
+errors = {False: [], True: []}
+for _ in range(2000):
+    times, types = path(rng, 30.0)
+    k = np.flatnonzero(types == 1)[0]
+    for post_jump in errors:
+        error = forecast_error(times, types, k, post_jump)
+        errors[post_jump].append(error)
+\end{lstlisting}
+Every path has its first sell before the time 29.
+Which statement holds of the mean errors, realised less forecast?
+\begin{choices}
+ \choice Both forecasts are unbiased: the mean errors are close to zero in both components.
+ \correctchoice The forecast without the jump understates the sells by about 1.2 and not the buys;
+  the forecast with it is unbiased.
+ \choice The forecast without the jump understates both the buys and the sells;
+  the forecast with it is unbiased.
+ \choice The forecast without the jump is unbiased;
+  the forecast with it overstates the sells, counting the sell at $s$ twice.
+\end{choices}
+\explanation{\codehl{decayed\_counts\_at} reads $\decayedCounts(s)$, before the jump,
+and the forward mean is conditional on $\decayedCounts(s+) = \decayedCounts(s) + \unitVector_{2}$,
+Remark~\ref{notes:remark.prePostJump}.
+Without the jump the forecast misses the descendants in $(s, s+1]$ of the sell at $s$,
+$\excitation\meanResponseIntegral(1)\unitVector_{2}$.
+The sells excite only the sells, so $\hurwitzMatrix\unitVector_{2} = -1.6\,\unitVector_{2}$
+and this is $(0, 2.4 \cdot (1 - e^{-1.6})/1.6) \approx (0, 1.2)$.}
+\end{question}
+
+\begin{question}
+\label{question.forecastFromAStoppingTime}
+The check of Listing~\ref{listing.forecastAfterAMarketSellUsesThePostJumpStateError}
+is repeated with the state after the jump,
+and with four rules for the event at which the forecast is made,
+each returning its index in the path.
+\begin{lstlisting}[caption={Four rules for the time of the forecast}, label=listing.forecastFromAStoppingTimeRules]
+def first_after_ten(times, types):
+    return np.flatnonzero(times > 10.0)[0]
+
+def first_after_a_lull(times, types):
+    lull = np.diff(times, prepend=0.0) > 0.5
+    return np.flatnonzero((times > 10.0) & lull)[0]
+
+def first_before_a_lull(times, types):
+    lull = np.diff(times, append=np.inf) > 0.5
+    return np.flatnonzero((times > 10.0) & lull)[0]
+
+def largest_state(times, types):
+    zero = np.zeros(2)
+    z = decayed_counts_at(params.decay, times, types, zero, Clock(times))
+    total = (z + np.eye(2)[types]).sum(axis=1)
+    return np.argmax(total[times < 39.0])
+\end{lstlisting}
+\begin{lstlisting}[caption={The errors at the four times}, label=listing.forecastFromAStoppingTimeRun]
+rng = np.random.default_rng(8)
+rules = (first_after_ten, first_after_a_lull,
+         first_before_a_lull, largest_state)
+errors = {rule: [] for rule in rules}
+for _ in range(2000):
+    times, types = path(rng, 40.0)
+    for rule in rules:
+        k = rule(times, types)
+        errors[rule].append(forecast_error(times, types, k, True))
+\end{lstlisting}
+On every path each rule returns an event before the time 39.
+For which rules does the mean error tend to zero in both components
+as the number of paths grows?
+\begin{choices}
+ \choice All four.
+ \choice \codehl{first\_after\_ten} only.
+ \choice \codehl{first\_after\_ten}, \codehl{first\_after\_a\_lull} and \codehl{first\_before\_a\_lull}.
+ \choice \codehl{first\_after\_ten}, \codehl{first\_after\_a\_lull} and \codehl{largest\_state}.
+ \correctchoice \codehl{first\_after\_ten} and \codehl{first\_after\_a\_lull}.
+\end{choices}
+\explanation{The law of the path after $s$ is fixed by $\decayedCounts(s+)$
+at a fixed time and at a stopping time,
+whose occurrence is decided by the path up to it.
+The gap before an event is known when it arrives.
+\codehl{first\_before\_a\_lull} picks events after which nothing arrives for half a second,
+and \codehl{largest\_state} the event after which the state is never as high again before the time 39:
+both look ahead, and the flow after them is quieter than the forecast.}
+\end{question}
+
+\begin{question}
+\label{question.forecastAWindowThatOpensLater}
+At $s = 30$ a desk holds the state $z = \decayedCounts(s+) = (0.5, 2)$ of the one-way pair
+and wants the expected market buys and sells of the second second from now,
+$\Expectation[\multiCountingProc(s+2) - \multiCountingProc(s+1) \mid \decayedCounts(s+) = z]$.
+\begin{lstlisting}[caption={Four forecasts of a window that opens one second ahead}, label=listing.forecastAWindowThatOpensLater]
+params = config.one_way_pair_params()
+s, z = 30.0, np.array([0.5, 2.0])
+
+def window_a(z):
+    return (params.forward_mean_counts(z, 2.0)
+            - params.forward_mean_counts(z, 1.0))
+
+def window_b(z):
+    m = params.forward_mean_state(z, 1.0)
+    return params.forward_mean_counts(m, 1.0)
+
+def window_c(z):
+    return params.forward_mean_counts(z, 1.0)
+
+def window_d(z):
+    return (params.forward_mean_counts(z, s + 2.0)
+            - params.forward_mean_counts(z, s + 1.0))
+\end{lstlisting}
+Which functions return it?
+\begin{choices}
+ \choice \codehl{window\_a} only.
+ \correctchoice \codehl{window\_a} and \codehl{window\_b}.
+ \choice \codehl{window\_a}, \codehl{window\_b} and \codehl{window\_d}.
+ \choice \codehl{window\_a} and \codehl{window\_d}.
+ \choice All four.
+\end{choices}
+\explanation{By Proposition~\ref{notes:prop.forwardMean} the expectation over $(s, s+h]$
+given $\decayedCounts(s+) = z$ depends on the window only through $h$,
+and \codehl{window\_a} differences the horizons 2 and 1.
+\codehl{window\_b} conditions on the state at $s+1$ and averages over it:
+the forecast is affine in the state,
+so the average is the forecast from the mean state $m_{s,s+1}(z)$.
+\codehl{window\_d} measures the horizons from the time 0, and gives about $\stationaryIntensity$;
+\codehl{window\_c} forecasts the first second.}
+\end{question}
+
+\begin{question}
+\label{question.liveStateByRecursionAgainstRecomputation}
+A live forecaster needs the state $\decayedCounts(\arrivalTimes[ ]_{k}+)$ after every event of a stream.
+The two functions below return the same array, a row per event.
+\codehl{np.bincount(types, weights, minlength=2)} returns, for each type,
+the sum of the weights of its events.
+Each function is timed on the first $n$ events of one path of the one-way pair,
+for $n = 1000, 2000, 4000, 8000, 16000$.
+\begin{lstlisting}[caption={Two ways to the state after every event}, label=listing.liveStateByRecursionAgainstRecomputation]
+def live_states_a(decay, times, types):
+    state, last, out = np.zeros(2), 0.0, []
+    for now, event_type in zip(times, types):
+        state = state * np.exp(-decay * (now - last))
+        state[event_type] += 1.0
+        last = now
+        out.append(state)
+    return np.array(out)
+
+def live_states_b(decay, times, types):
+    out = []
+    for k in range(len(times)):
+        weights = np.exp(-decay * (times[k] - times[: k + 1]))
+        out.append(np.bincount(types[: k + 1], weights, minlength=2))
+    return np.array(out)
+\end{lstlisting}
+Which statement holds of the time per event?
+\begin{choices}
+ \choice B is faster at every $n$, its exponentials being computed by one call of numpy.
+ \choice Both are about the same at every $n$, and A is faster by a constant factor.
+ \choice Both grow several-fold from $n = 1000$ to $n = 16000$.
+ \correctchoice That of A is about the same at every $n$,
+  and that of B grows several-fold from $n = 1000$ to $n = 16000$.
+\end{choices}
+\explanation{A carries the state by the update~\eqref{notes:eq.update_of_exponential_intensity},
+a fixed amount of work per event.
+B evaluates~\eqref{notes:eq.decayedCounts} afresh at the $k$-th event over the $k$ events so far,
+$O(n^2)$ in all;
+numpy removes the interpreter's loop over the $k$ terms, not the terms.}
+\end{question}

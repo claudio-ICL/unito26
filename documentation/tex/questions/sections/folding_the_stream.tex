@@ -1,0 +1,518 @@
+\notebook{04-folding-the-stream}
+The questions of this section concern the fold~\eqref{notes:eq.bookFold} of the message stream
+into the aggregated book,
+its implementation in Section~\ref{notes:sec.foldImplementation},
+and the LOBSTER message file described at the end of Section~\ref{notes:sec.messageFiles}.
+
+\begin{question}
+\label{question.foldByReduceOverApply}
+The fold~\eqref{notes:eq.bookFold} can be written with \codehl{reduce}, from \codehl{functools}:
+\codehl{reduce(f, [y1, y2], x0)} returns \codehl{f(f(x0, y1), y2)}.
+The method \codehl{apply} of the book processes one message in place,
+and returns what \codehl{submit} or \codehl{withdraw} returns,
+which is \codehl{None} when \codehl{record} is \codehl{False}.
+The method \codehl{copy} is quoted below.
+\begin{lstlisting}[caption={\protect\codehl{unito26.lob.orderbook.AggregateBook.copy}, its docstring elided.}, label=listing.foldByReduceOverApplyCopy]
+def copy(self) -> "AggregateBook":
+# ...
+    clone = self._empty_like()
+    for direction in (BUY, SELL):
+        for price, size in self.levels_map(direction).items():
+            clone.set_size(direction, price, size)
+    return clone
+\end{lstlisting}
+\begin{lstlisting}[caption={Three folds}, label=listing.foldByReduceOverApplyFolds]
+def fold_a(book, messages):
+    for message in messages:
+        book.apply(message, record=False)
+    return book
+
+def transition(book, message):
+    after = book.copy()
+    after.apply(message, record=False)
+    return after
+
+def fold_b(book, messages):
+    return reduce(transition, messages, book)
+
+def fold_c(book, messages):
+    return reduce(lambda b, m: b.apply(m, record=False), messages, book)
+\end{lstlisting}
+\begin{lstlisting}[caption={Run once with each fold}, label=listing.foldByReduceOverApplyRun]
+stream = [limit_order(1.0, 50, 1001, BUY), market_order(2.0, 80, SELL)]
+book = AggregateBook.from_levels({1000: 100}, {1002: 120})
+final = fold(book, stream)
+print(final.best_bid_size, book.best_bid_size)
+\end{lstlisting}
+What does each fold do?
+\begin{choices}
+ \choice \codehl{fold\_a} and \codehl{fold\_b} print \codehl{70 70};
+  \codehl{fold\_c} raises \codehl{AttributeError}.
+ \choice \codehl{fold\_a} prints \codehl{70 70} and \codehl{fold\_b} prints \codehl{70 100};
+  \codehl{fold\_c} prints \codehl{70 70}.
+ \correctchoice \codehl{fold\_a} prints \codehl{70 70} and \codehl{fold\_b} prints \codehl{70 100};
+  \codehl{fold\_c} raises \codehl{AttributeError}.
+ \choice \codehl{fold\_a} and \codehl{fold\_b} print \codehl{70 100};
+  \codehl{fold\_c} raises \codehl{AttributeError}.
+\end{choices}
+\explanation{The limit buy rests 50 at 1001,
+and the market sell takes them and 30 of the 100 at 1000.
+\codehl{fold\_a} changes the book it is given and returns it;
+\codehl{fold\_b} changes only copies, and \codehl{book} keeps its opening 100.
+In \codehl{fold\_c} the accumulator after the first message is the \codehl{None}
+that \codehl{apply} returns, and the second step calls \codehl{apply} on it.}
+\end{question}
+
+\begin{question}
+\label{question.copyingFoldAgainstInPlaceFold}
+The folds \codehl{fold\_a} and \codehl{fold\_b}
+of Listing~\ref{listing.foldByReduceOverApplyFolds}
+are timed on one stream of 1000 messages:
+limit orders and withdrawals of 10 shares at the five prices nearest each touch,
+none of which crosses the spread.
+Each fold starts from a book with $\ell$ occupied prices on each side,
+for $\ell = 10$, $100$ and $1000$.
+The book finds a best price by applying the builtin \codehl{max} or \codehl{min}
+to the prices of a side.
+Which statement holds?
+\begin{choices}
+ \choice The two take about the same time at every $\ell$:
+  the messages reach only the five prices nearest each touch.
+ \correctchoice The copying fold \codehl{fold\_b} is the slower,
+  by a factor that grows with $\ell$ and exceeds ten at $\ell = 1000$.
+ \choice The copying fold \codehl{fold\_b} is the slower,
+  by a factor of about two at every $\ell$: it does the work of each message twice.
+ \choice The two slow down by about the same factor from $\ell = 10$ to $\ell = 1000$,
+  since each scans the $\ell$ prices of a side at every submission.
+\end{choices}
+\explanation{A copy calls the Python method \codehl{set\_size} once for each of the $2\ell$
+occupied prices, at every message.
+Both folds scan a side at every submission,
+but inside a builtin, at a cost per price far below that of a method call,
+so the copy dominates the time of \codehl{fold\_b} as $\ell$ grows.}
+\end{question}
+
+\begin{question}
+\label{question.recursiveFoldOverAStream}
+The fold~\eqref{notes:eq.bookFold} can also be written as a recursion,
+as in \codehl{fold\_a} below.
+The default limit on the depth of recursion in Python,
+\codehl{sys.getrecursionlimit()}, is 1000 frames,
+and a call that would exceed it raises \codehl{RecursionError}.
+\begin{lstlisting}[caption={A recursive fold and a loop}, label=listing.recursiveFoldOverAStreamFolds]
+def fold_a(book, messages):
+    if not messages:
+        return book
+    book.apply(messages[0], record=False)
+    return fold_a(book, messages[1:])
+
+def fold_b(book, messages):
+    for message in messages:
+        book.apply(message, record=False)
+    return book
+\end{lstlisting}
+\begin{lstlisting}[caption={Run with each fold, for $n = 500$ and for $n = 5000$}, label=listing.recursiveFoldOverAStreamRun]
+stream = [limit_order(float(t), 10, 1000, BUY) for t in range(n)]
+print(fold(AggregateBook(), stream).best_bid_size)
+\end{lstlisting}
+What happens?
+\begin{choices}
+ \choice Both folds print \codehl{5000} at $n = 500$ and \codehl{50000} at $n = 5000$.
+ \choice \codehl{fold\_a} raises \codehl{RecursionError} at both lengths;
+  \codehl{fold\_b} prints \codehl{5000}, then \codehl{50000}.
+ \choice Both folds print \codehl{5000} at $n = 500$
+  and raise \codehl{RecursionError} at $n = 5000$.
+ \correctchoice \codehl{fold\_a} prints \codehl{5000} at $n = 500$
+  and raises \codehl{RecursionError} at $n = 5000$;
+  \codehl{fold\_b} prints \codehl{5000}, then \codehl{50000}.
+\end{choices}
+\explanation{Python keeps the frame of a call in tail position,
+so \codehl{fold\_a} holds $n+1$ frames of its own at its deepest;
+\codehl{apply} and the methods it calls return before the next message is taken,
+and add a few frames at a time, not a few per message.
+\codehl{fold\_b} keeps one frame for any length,
+and $n$ orders of 10 shares at one price rest as $10n$ at 1000.}
+\end{question}
+
+\begin{question}
+\label{question.messagesThatCommuteInTheFold}
+The fold~\eqref{notes:eq.bookFold} applies the messages in the order of the stream.
+The snippet below applies each of three pairs of messages to one opening book in both orders,
+and compares the two final configurations.
+A withdrawal removes at most the size resting at its price.
+\begin{lstlisting}[caption={Three pairs of messages, each applied in both orders}, label=listing.messagesThatCommuteInTheFoldPairs]
+def final(pair):
+    book = AggregateBook.from_levels(
+        {1000: 100, 999: 200}, {1002: 120, 1003: 80}
+    )
+    for message in pair:
+        book.apply(message, record=False)
+    return book.bids, book.asks
+
+bid_1001 = limit_order(1.0, 50, 1001, BUY)
+ask_1001 = limit_order(1.0, 40, 1001, SELL)
+cancel = withdrawal(1.0, 30, 1000, BUY)
+sell_80 = market_order(1.0, 80, SELL)
+sell_30 = market_order(1.0, 30, SELL)
+pairs = {"i": (bid_1001, ask_1001), "ii": (cancel, sell_80),
+         "iii": (bid_1001, sell_30)}
+for name, (m, n) in pairs.items():
+    print(name, final((m, n)) == final((n, m)))
+\end{lstlisting}
+Which pairs print \codehl{False}?
+\begin{choices}
+ \correctchoice Pairs ii and iii.
+ \choice All three pairs.
+ \choice Pair iii alone.
+ \choice Pairs i and iii.
+\end{choices}
+\explanation{In pair i the two limit orders meet at 1001 in either order,
+and the 10 shares by which the buy exceeds the sell rest on the bid.
+In pair ii the withdrawal first leaves 70 at 1000 and the market sell takes 10 at 999;
+the market sell first leaves 20, and the withdrawal can remove no more, so 999 keeps 200.
+In pair iii the market sell meets the bid at 1001 only if it arrives after it.}
+\end{question}
+
+\begin{question}
+\label{question.recorderAlignedWithTheOrderbookFile}
+Row $k$ of a LOBSTER orderbook file is the configuration
+after the event on row $k$ of the message file.
+Three lists record the book during a fold, to be compared with such a file row by row.
+The method \codehl{copy} returns an independent book with the same levels,
+and a price whose size reaches zero is removed from the book.
+\begin{lstlisting}[caption={Three records of one fold}, label=listing.recorderAlignedWithTheOrderbookFileRecords]
+book = AggregateBook.from_levels({1000: 100}, {1002: 120})
+stream = [
+    limit_order(1.0, 50, 1001, BUY),
+    market_order(2.0, 80, SELL),
+    withdrawal(3.0, 70, 1000, BUY),
+]
+a, b, c = [], [], []
+for message in stream:
+    b.append(book.copy())
+    book.apply(message, record=False)
+    a.append(book)
+    c.append(book.copy())
+for states in (a, b, c):
+    print([state.best_bid_price for state in states])
+\end{lstlisting}
+What does the snippet print?
+\begin{choices}
+ \choice \codehl{[1001, 1000, None]}, \codehl{[1000, 1001, 1000]}, \codehl{[1001, 1000, None]}.
+ \correctchoice \codehl{[None, None, None]}, \codehl{[1000, 1001, 1000]}, \codehl{[1001, 1000, None]}.
+ \choice \codehl{[None, None, None]}, \codehl{[1001, 1000, None]}, \codehl{[1001, 1000, None]}.
+ \choice \codehl{[1000, 1000, 1000]}, \codehl{[1000, 1001, 1000]}, \codehl{[1001, 1000, 1000]}.
+\end{choices}
+\explanation{Every entry of \codehl{a} is the book itself, which ends with no bid,
+the withdrawal having emptied 1000.
+\codehl{b} copies the book before each message, one row behind the file;
+\codehl{c} copies it after, and is the list that matches the file row by row.}
+\end{question}
+
+\begin{question}
+\label{question.runTwiceOverOneGenerator}
+Two books are compared by folding the same stream through each,
+as in Section~\ref{notes:sec.fasterBook}.
+The driver \codehl{run}, of \codehl{unito26.lob.session}, is quoted below;
+\codehl{last\_traded\_size} is the number of shares the last message traded,
+and a \codehl{Counter} reads 0 at a key it does not hold.
+\begin{lstlisting}[caption={\protect\codehl{unito26.lob.session.run}, its docstring elided.}, label=listing.runTwiceOverOneGeneratorQuote]
+def run(book: AggregateBook, messages: Iterable[Message]) -> Counter:
+# ...
+    tally: Counter = Counter()
+    for message in messages:
+        book.apply(message, record=False)
+        tally["messages"] += 1
+        tally["fills"] += book.last_fill_count
+        tally["traded"] += book.last_traded_size
+        if message.kind is MessageType.WITHDRAW:
+            tally["withdrawals"] += 1
+    return tally
+\end{lstlisting}
+\begin{lstlisting}[caption={One stream, two books}, label=listing.runTwiceOverOneGeneratorStream]
+bids, asks = {1000: 100}, {1002: 120}
+book_a = AggregateBook.from_levels(bids, asks)
+book_b = AggregateBook.from_levels(bids, asks)
+messages = [limit_order(1.0, 50, 1001, BUY), market_order(2.0, 80, SELL)]
+stream = (message for message in messages)
+first, second = run(book_a, stream), run(book_b, stream)
+print(first["traded"], second["traded"], book_b.best_bid_size)
+\end{lstlisting}
+What does the snippet do?
+\begin{choices}
+ \choice It prints \codehl{80 80 70}.
+ \choice It prints \codehl{80 0 70}.
+ \correctchoice It prints \codehl{80 0 100}.
+ \choice It raises \codehl{KeyError}.
+\end{choices}
+\explanation{The first loop over a generator consumes it:
+the second call of \codehl{run} folds nothing and returns an empty \codehl{Counter},
+which reads 0 at a missing key.
+\codehl{from\_levels} writes the levels into dictionaries of the new book,
+so \codehl{book\_b} still holds 100 at 1000.
+For this reason Section~\ref{notes:sec.fasterBook} materialises the stream
+before two books are compared.}
+\end{question}
+
+\begin{question}
+\label{question.spreadsRefoldedFromEmpty}
+The spread after every message of a stream can be read off one fold,
+or off a fold of each prefix of the stream from the empty book $\mathcal{B}_0 = \varnothing$.
+The two functions below use \codehl{run} of Listing~\ref{listing.runTwiceOverOneGeneratorQuote}.
+They are timed on streams of $n = 250$, $500$ and $1000$ messages,
+limit orders and withdrawals at the five prices nearest each touch,
+so that the book never holds more than ten prices.
+\begin{lstlisting}[caption={Two series of spreads}, label=listing.spreadsRefoldedFromEmptySeries]
+def spreads_a(messages):
+    spreads = []
+    for k in range(1, len(messages) + 1):
+        book = AggregateBook()
+        run(book, messages[:k])
+        spreads.append(book.spread)
+    return spreads
+
+def spreads_b(messages):
+    book, spreads = AggregateBook(), []
+    for message in messages:
+        book.apply(message, record=False)
+        spreads.append(book.spread)
+    return spreads
+\end{lstlisting}
+Which statement holds?
+\begin{choices}
+ \choice The two lists are equal, and \codehl{spreads\_a} is the slower
+  by a factor about the same at every $n$.
+ \choice \codehl{spreads\_a} is the faster:
+  \codehl{run} records nothing, whereas \codehl{spreads\_b} reads the spread after every message.
+ \choice The two lists differ by one position:
+  the first entry of \codehl{spreads\_a} is the spread of the empty book.
+ \correctchoice The two lists are equal, and \codehl{spreads\_a} is the slower
+  by a factor that about doubles with each doubling of $n$.
+\end{choices}
+\explanation{The prefix \codehl{messages[:k]} ends with the $k$-th message,
+so the two lists are equal.
+\codehl{spreads\_a} applies $1 + 2 + \dots + n = n(n+1)/2$ messages against the $n$ of
+\codehl{spreads\_b}, each at a cost bounded by the ten prices of the book,
+and the ratio grows as $(n+1)/2$.}
+\end{question}
+
+\begin{question}
+\label{question.deltaLogReplayIsIdempotent}
+\codehl{DeltaLog.record}, of \codehl{unito26.lob.delta\_log}, quoted below,
+folds a stream through a book
+and keeps, for each message, the level changes it made:
+each a \codehl{LevelDelta} carrying the side, the price,
+and the new size resting there, \codehl{resting}, which is zero when the price empties.
+\codehl{MarketSession.from\_delta\_log} replays them through \codehl{set\_size},
+as \codehl{replay\_deltas} does below.
+A feed may deliver a record twice, or lose one.
+\begin{lstlisting}[caption={\protect\codehl{unito26.lob.delta\_log.DeltaLog.record}}, label=listing.deltaLogReplayIsIdempotentRecord]
+@classmethod
+def record(cls, book: AggregateBook, messages: Iterable[Message]) -> "DeltaLog":
+    opening_bids = dict(book.levels_map(BUY))
+    opening_asks = dict(book.levels_map(SELL))
+    times: list[float] = []
+    entries: list[tuple[int, float, LevelDelta]] = []
+    for sequence, message in enumerate(messages):
+        result = book.apply(message, record=True)
+        times.append(message.time)
+        entries += [(sequence, message.time, delta) for delta in result.deltas]
+    return cls(opening_bids, opening_asks, times, entries)
+\end{lstlisting}
+\begin{lstlisting}[caption={A repeated and a lost record}, label=listing.deltaLogReplayIsIdempotentReplays]
+opening = ({1000: 100, 999: 200}, {1002: 120})
+stream = [
+    limit_order(1.0, 50, 1000, BUY),
+    market_order(2.0, 120, SELL),
+    withdrawal(3.0, 40, 999, BUY),
+]
+log = DeltaLog.record(AggregateBook.from_levels(*opening), stream)
+deltas = [delta for _, _, delta in log.entries]
+
+def replay_messages(messages):
+    book = AggregateBook.from_levels(*opening)
+    for message in messages:
+        book.apply(message, record=False)
+    return book.bids
+
+def replay_deltas(deltas):
+    book = AggregateBook.from_levels(*opening)
+    for delta in deltas:
+        book.set_size(delta.side, delta.price, delta.resting)
+    return book.bids
+
+clean = replay_messages(stream)
+print(replay_messages(stream[:1] + stream) == clean,
+      replay_deltas(deltas[:1] + deltas) == clean,
+      replay_deltas(deltas[1:]) == clean,
+      replay_deltas(deltas[:-1]) == clean)
+\end{lstlisting}
+What does the snippet print?
+\begin{choices}
+ \correctchoice \codehl{False True True False}
+ \choice \codehl{False False False False}
+ \choice \codehl{False True False False}
+ \choice \codehl{False True True True}
+\end{choices}
+\explanation{The log holds three bid deltas: 150 at 1000, then 30 at 1000, then 160 at 999.
+A delta writes an absolute size, so a repeat delivered next to the original changes nothing,
+and the loss of one is made good by the next delta at its price;
+the last delta has no successor, and without it 999 keeps 200.
+A repeated submission adds its 50 shares twice.}
+\end{question}
+
+\begin{question}
+\label{question.recordedStreamFoldedFromEmpty}
+A recorded stream begins in the middle of a session,
+with messages about orders posted before the recording did,
+while the fold~\eqref{notes:eq.bookFold} starts from $\mathcal{B}_0 = \varnothing$.
+A withdrawal removes at most the size resting at its price,
+and a book built with \codehl{strict=True} raises \codehl{ValueError} instead
+when a withdrawal asks for more.
+The remainder of a submission rests at the price that \codehl{resting\_price}, quoted below,
+returns for it, and nowhere when that is \codehl{None};
+\codehl{is\_market\_price} is true for the sentinel prices of market orders.
+\begin{lstlisting}[caption={\protect\codehl{unito26.lob.orderbook.AggregateBook.resting\_price}, its docstring elided.}, label=listing.recordedStreamFoldedFromEmptyRestingPrice]
+@staticmethod
+def resting_price(limit_price: int, last_fill_price: int | None) -> int | None:
+# ...
+    if not is_market_price(limit_price):
+        return limit_price
+    return last_fill_price
+\end{lstlisting}
+\begin{lstlisting}[caption={One stream, three opening books}, label=listing.recordedStreamFoldedFromEmptyFold]
+stream = [
+    withdrawal(1.0, 40, 1000, BUY),
+    market_order(2.0, 80, SELL),
+    limit_order(3.0, 30, 1001, SELL),
+]
+
+def fold(book):
+    for message in stream:
+        book.apply(message, record=False)
+    print(book.best_bid_price, book.best_ask_price)
+
+fold(AggregateBook.from_levels({1000: 100, 999: 50}, {1002: 120}))
+fold(AggregateBook())
+fold(AggregateBook(strict=True))
+\end{lstlisting}
+What does the snippet do?
+\begin{choices}
+ \choice It prints \codehl{999 1001}, \codehl{None 1001} and \codehl{None 1001}.
+ \correctchoice It prints \codehl{999 1001} and \codehl{None 1001},
+  then raises \codehl{ValueError}.
+ \choice It prints \codehl{999 1001} and \codehl{None 0},
+  then raises \codehl{ValueError}.
+ \choice It prints \codehl{999 1001}, then raises \codehl{ValueError}.
+\end{choices}
+\explanation{From the opening book the withdrawal leaves 60 at 1000,
+the market sell takes them and 20 of the 50 at 999, and the limit sell rests at 1001.
+From an empty book the withdrawal removes nothing,
+the market sell trades nothing and has no last fill price to rest at,
+and only the limit sell rests.
+The strict book refuses the first message.}
+\end{question}
+
+\begin{question}
+\label{question.lobsterExecutionsReplayed}
+The rows below are executions of visible orders, of type 4, from a LOBSTER message file:
+an incoming order met three resting orders.
+Each row gives the time, the size and the price of the fill,
+and the direction of the resting order executed,
+by Remark~\ref{notes:remark.passiveDirection}.
+A fold of the file replays each row as a message, in one of three ways,
+through \codehl{run} of Listing~\ref{listing.runTwiceOverOneGeneratorQuote}.
+The remainder of a market order rests at the price
+that \codehl{resting\_price} of Listing~\ref{listing.recordedStreamFoldedFromEmptyRestingPrice}
+returns.
+\begin{lstlisting}[caption={Three replays of an execution}, label=listing.lobsterExecutionsReplayedReplays]
+rows = [(1.0, 60, 1000, BUY), (1.0, 40, 1000, BUY), (1.0, 50, 999, BUY)]
+
+def replay_a(t, size, price, d):
+    return withdrawal(t, size, price, d)
+
+def replay_b(t, size, price, d):
+    return market_order(t, size, -d)
+
+def replay_c(t, size, price, d):
+    return market_order(t, size, d)
+\end{lstlisting}
+\begin{lstlisting}[caption={Run once with each replay}, label=listing.lobsterExecutionsReplayedRun]
+book = AggregateBook.from_levels({1000: 100, 999: 200}, {1002: 120})
+tally = run(book, [replay(*row) for row in rows])
+print(book.best_bid_price, book.best_bid_size, tally["traded"])
+\end{lstlisting}
+What does each replay print?
+\begin{choices}
+ \choice \codehl{replay\_a} and \codehl{replay\_b} print \codehl{999 150 150};
+  \codehl{replay\_c} prints \codehl{1002 30 120}.
+ \choice \codehl{replay\_a} prints \codehl{999 150 0}, \codehl{replay\_b} \codehl{1002 30 120},
+  and \codehl{replay\_c} \codehl{999 150 150}.
+ \correctchoice \codehl{replay\_a} prints \codehl{999 150 0}, \codehl{replay\_b} \codehl{999 150 150},
+  and \codehl{replay\_c} \codehl{1002 30 120}.
+ \choice \codehl{replay\_a} prints \codehl{999 150 0}, \codehl{replay\_b} \codehl{999 150 150},
+  and \codehl{replay\_c} \codehl{1000 100 120}.
+\end{choices}
+\explanation{A withdrawal at the price of the row and a market order of the aggressor,
+of direction $-d$, leave the same book whenever every fill is at the best price,
+as here; only the second counts the 150 shares as traded.
+\codehl{replay\_c} reads the column as the aggressor's direction and buys:
+it takes 60, 40 and 20 at 1002 and rests the last 30 at 1002, the price of its last fill.}
+\end{question}
+
+\begin{question}
+\label{question.lobsterHaltRowsReplayed}
+The function \codehl{to\_message} below converts a row of a LOBSTER message file,
+giving the time, the type, the size, the price and the direction, into a message.
+A row of type 5 is the execution of a hidden order, which rests at no visible level.
+A trading halt writes rows of type 7 with size 0 and direction $-1$,
+whose price column carries a status code:
+$-1$ when trading halts, $0$ when quoting resumes and $1$ when trading resumes.
+A message is checked when it is constructed, and only then, by the method quoted below;
+\codehl{market\_order} gives a sell the price 0 and a buy the price \codehl{sys.maxsize}.
+\begin{lstlisting}[caption={\protect\codehl{unito26.lob.messages.Message.\_\_post\_init\_\_}}, label=listing.lobsterHaltRowsReplayedValidation]
+def __post_init__(self) -> None:
+    if self.direction not in (BUY, SELL):
+        raise ValueError(f"direction must be +1 (buy) or -1 (sell), got {self.direction!r}")
+    if self.size < 0:
+        raise ValueError(f"size must be non-negative, got {self.size}")
+    if self.price < 0:
+        raise ValueError(f"price must be non-negative, got {self.price}")
+\end{lstlisting}
+\begin{lstlisting}[caption={A conversion of rows to messages}, label=listing.lobsterHaltRowsReplayedConversion]
+def to_message(t, kind, size, price, d):
+    if kind in (2, 3):
+        return withdrawal(t, size, price, d)
+    if kind in (4, 5):
+        return market_order(t, size, -d)
+    return limit_order(t, size, price, d)
+\end{lstlisting}
+\begin{lstlisting}[caption={A hidden execution and a halt, replayed}, label=listing.lobsterHaltRowsReplayedRun]
+rows = [
+    (34200.0, 5, 30, 1001, SELL),
+    (36023.0, 7, 0, -1, SELL),
+    (36323.0, 7, 0, 0, SELL),
+    (36723.0, 7, 0, 1, SELL),
+]
+book = AggregateBook.from_levels({1000: 100}, {1002: 120})
+for row in rows:
+    try:
+        book.apply(to_message(*row), record=False)
+        print(row[3], book.best_bid_size, book.best_ask_size)
+    except ValueError:
+        print(row[3], "ValueError")
+\end{lstlisting}
+What does the snippet print?
+\begin{choices}
+ \choice \codehl{1001 70 120}, \codehl{-1 ValueError}, \codehl{0 70 120}, \codehl{1 70 120}.
+ \choice \codehl{1001 100 90}, \codehl{-1 100 90}, \codehl{0 100 90}, \codehl{1 100 90}.
+ \choice \codehl{1001 100 90}, \codehl{-1 ValueError}, \codehl{0 ValueError}, \codehl{1 100 90}.
+ \correctchoice \codehl{1001 100 90}, \codehl{-1 ValueError}, \codehl{0 100 90}, \codehl{1 100 90}.
+\end{choices}
+\explanation{The hidden execution of a resting sell becomes a market buy of 30,
+which takes 30 at 1002, a visible level the hidden fill never touched.
+\codehl{Message} refuses the price $-1$ and accepts the codes 0 and 1 as prices,
+and an order of size 0 trades nothing and rests nowhere.
+Neither type moves a visible level:
+on their rows the orderbook file repeats the configuration before them.}
+\end{question}
