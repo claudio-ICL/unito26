@@ -323,7 +323,7 @@ its work is about $n \cdot n/13$, quadratic in $n$.
 A makes two cumulative sums and $n$ binary searches of $\log_2 n$ steps each,
 about $4.8$ times the comparisons at $n = 4000$ as at $n = 1000$;
 the fixed cost of its calls of numpy does not grow,
-and at these sizes it weighs as much as the searches.}
+and at $n = 1000$ it is of the order of the searches.}
 \end{question}
 
 \begin{question}
@@ -425,7 +425,7 @@ print(cost.tolist())
 What happens?
 \begin{choices}
  \choice Both print \codehl{[1.25, 1.25, nan]}.
- \choice A prints \codehl{[1.25, 1.25, 1.0]}; B prints \codehl{[1.25, nan, 1.0]}.
+ \choice A prints \codehl{[1.25, 1.25, 1.0]}; B prints \codehl{[1.25, nan, nan]}.
  \correctchoice A prints \codehl{[1.25, 1.25, nan]}; B prints \codehl{[1.25, nan, nan]}.
  \choice Both print \codehl{[1.25, nan, nan]}.
 \end{choices}

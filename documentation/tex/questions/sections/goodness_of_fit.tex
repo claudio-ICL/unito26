@@ -312,7 +312,7 @@ The cross-exciting pair has the baselines and the decay of the self-exciting pai
 and the rows of its excitation matrix swapped,
 $\excitation = ((0.2, 2.8), (2.8, 0.2))$:
 a market buy mostly excites market sells.
-A path of the self-exciting pair, with about 1900 buys,
+A path of the self-exciting pair, with about 2000 buys,
 is tested against each specification twice:
 through the residuals of the ground process,
 the increments of $\compensator_0 + \compensator_1$ between consecutive events of either type,
@@ -355,7 +355,9 @@ to reduce the variance of the estimate.
 Each of $-\log U$ and $-\log(1-U)$ is $\mathrm{Exp}(1)$,
 and their correlation is $1 - \pi^2/6 \approx -0.64$.
 The compensator of the flow is $2t$, so the residuals are twice the waits.
-\codehl{f"\{r:+.1f\}"} writes \codehl{r} with its sign and one decimal.
+\codehl{f"\{r:+.1f\}"} writes \codehl{r} with its sign and one decimal,
+so that a correlation that rounds to zero prints \codehl{+0.0} or \codehl{-0.0};
+on this seed the correlation of Alternative A is positive.
 \begin{lstlisting}[caption={Alternative A}, label=listing.antitheticWaitsA]
 def waits_a(rng, n):
     return -np.log(rng.random(n)) / 2
@@ -407,7 +409,7 @@ for buys, sells in (model, (trades, trades), (trades, trades + 0.001)):
     tau_sell = np.diff(sells, prepend=0.0)
     print(stats.kstest(tau_buy, "expon").pvalue > 0.01,
           stats.kstest(tau_sell, "expon").pvalue > 0.01,
-          round(np.corrcoef(tau_buy, tau_sell)[0, 1], 1))
+          round(abs(np.corrcoef(tau_buy, tau_sell)[0, 1]), 1))
 \end{lstlisting}
 What does the snippet print?
 \begin{choices}
@@ -454,7 +456,7 @@ What does the snippet print, approximately, line by line?
 \begin{choices}
  \correctchoice 0.5, 0.25, and a number close to 0.
  \choice A number close to 0 on every line.
- \choice 0.5, 0.5, and a number close to 0.
+ \choice 0.5 on every line.
  \choice 0.5, then a number close to 0 twice.
  \choice 0.25, 0.25, and a number close to 0.
 \end{choices}

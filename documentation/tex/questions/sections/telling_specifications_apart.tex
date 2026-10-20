@@ -313,16 +313,19 @@ What happens?
  \choice Both print numbers near $4.4$ and $2.5$.
  \choice A prints numbers near $1.25$ and $5.6$; B prints numbers near $4.4$ and $2.5$.
  \correctchoice A prints numbers near $4.4$ and $2.5$; B prints numbers near $1.25$ and $5.6$.
- \choice A prints numbers near $4.4$ and $2.5$;
-  the loop of B does not end, a sell having $1.6$ direct offspring under $\branchingMatrix^{\transpose}$.
+ \choice The loop of A does not end on the clusters of a buy,
+  nor that of B on the clusters of a sell:
+  a buy has $1.2$ direct offspring under $\branchingMatrix$,
+  and a sell $1.6$ under $\branchingMatrix^{\transpose}$.
 \end{choices}
 \explanation{In A the expected next generation is $\branchingMatrix$ times the current one,
 so the mean sizes are the column sums of $(I - \branchingMatrix)^{-1}$, $(4.375, 2.5)$,
 Proposition~\ref{notes:prop.clusterSize};
 a sell has only sell children, and its cluster is $1/(1 - 0.6)$.
 B follows $\branchingMatrix^{\transpose}$, whose spectral radius is also $0.6$,
-so its clusters are finite in spite of the column sum $1.6$,
-and its mean sizes are the row sums $(1.25, 5.625)$.}
+and its mean sizes are the row sums $(1.25, 5.625)$.
+The clusters of both are finite,
+in spite of the column sums $1.2$ of $\branchingMatrix$ and $1.6$ of $\branchingMatrix^{\transpose}$.}
 \end{question}
 
 \begin{question}
@@ -412,7 +415,7 @@ What does the snippet print?
 \begin{choices}
  \choice \codehl{[1. 1.4] 1.0} on both lines.
  \correctchoice \codehl{[1. 1.4] 1.0}, then \codehl{[1. 6.6] 1.0}
- \choice \codehl{[1. 1.4] 1.0}, then \codehl{[1. 6.6] 0.15}
+ \choice \codehl{[1. 1.4] 0.71}, then \codehl{[1. 6.6] 0.15}
  \choice \codehl{[0.25 0.35] 4.0}, then \codehl{[0.25 1.65] 4.0}
 \end{choices}
 \explanation{$\branchingMatrix$ has diagonal $0.7$ and off-diagonal $0.05$ in the self-exciting pair,
@@ -498,7 +501,7 @@ Which of the four statistics differ between the two lines
 by much more than their sampling error?
 \begin{choices}
  \choice None: the two pairs share $\baseIntensity$, $\stationaryIntensity$ and $\branchingRatio$.
- \choice The Fano factor alone.
+ \choice The correlation alone.
  \correctchoice The correlation and the share of sells followed by a sell, and only they.
  \choice The Fano factor, the correlation and the share of sells followed by a sell.
  \choice The share of sells followed by a sell alone:

@@ -4,17 +4,21 @@ A question of ``documentation/tex/questions/sections`` writes exactly one of its
 ``\\correctchoice``, and its section names, by ``\\notebook``, a notebook of
 ``notebooks/sample-questions``.  That notebook runs the code of the question and closes it
 with one call ``verify("question.<label>", "<letter>", [...])``, which evaluates every choice
-and asserts that the one lettered there holds and that no other does.
+and asserts that the one lettered there holds and that no other does.  Beside it, the
+notebook ``<notebook>-worked-solutions`` answers the same questions by hand, each under a
+heading ``## 6.1 · `question.<label>``` and with a line ``**Answer: (D).**``.
 
-Running the notebooks is what makes the letters true.  These tests read the two without
-running either, and keep them in step:
+Running the notebooks is what makes the letters true.  These tests read them without
+running any, and keep them in step:
 
 - a listing whose caption names an object of the package is a quote of it, held to the
   source as the quotes of the lecture notes are;
 - every other listing of a question occurs, line for line, in a code cell of its notebook,
   so that the code verified is the code printed;
 - the letter the notebook verifies is the letter of the key, for every question, and no
-  notebook verifies a question that does not exist.
+  notebook verifies a question that does not exist;
+- the worked solutions of a section answer each of its questions once, in order, under
+  the number the document gives it and with the letter of the key.
 
 A snippet of a question is never run here: an alternative offered as a choice is often
 wrong on purpose.
@@ -31,7 +35,9 @@ from tests.test_notes_quote_the_package import QUOTED, occurs, resolve, runs
 
 ROOT = pathlib.Path(__file__).parents[1]
 SECTIONS = ROOT / "documentation" / "tex" / "questions" / "sections"
+MAIN = SECTIONS.parent / "main.tex"
 NOTEBOOKS = ROOT / "notebooks" / "sample-questions"
+WORKED = "-worked-solutions"
 LETTERS = "ABCDE"
 WIDTH = 75
 
@@ -45,6 +51,9 @@ CHOICE = re.compile(r"\\(correctchoice|choice)(?![a-z])")
 NOTEBOOK = re.compile(r"\\notebook\{([\w-]+)\}")
 COMMENT = re.compile(r"(?<!\\)%.*")
 VERIFY = re.compile(r'verify\(\s*"(question\.\w+)",\s*"([A-E])"')
+INPUT = re.compile(r"^\\input\{(\w+)\}", re.M)
+HEADING = re.compile(r"^## (\d+)\.(\d+) · `(question\.\w+)`", re.M)
+ANSWER = re.compile(r"\*\*Answer: \(([A-E])\)\.\*\*")
 
 
 def prose(body: str) -> str:
@@ -53,17 +62,22 @@ def prose(body: str) -> str:
 
 
 def questions() -> list[dict]:
+    paths = sorted(SECTIONS.glob("*.tex"))
+    stems = [path.stem for path in paths]
+    order = [name for name in INPUT.findall(MAIN.read_text()) if name in stems]
     found = []
-    for path in sorted(SECTIONS.glob("*.tex")):
+    for path in paths:
         text = path.read_text()
         notebook = NOTEBOOK.search(text)
-        for match in QUESTION.finditer(text):
+        section = order.index(path.stem) + 1 if path.stem in order else None
+        for position, match in enumerate(QUESTION.finditer(text), start=1):
             body = match["body"]
             label = LABEL.search(prose(body))
             kinds = CHOICE.findall(prose(body))
             found.append({
                 "file": path.name,
                 "label": label[1] if label else f"{path.name}:{match.start()}",
+                "number": (section, position),
                 "notebook": notebook[1] if notebook else None,
                 "key": [LETTERS[i] for i, kind in enumerate(kinds) if kind == "correctchoice"],
                 "choices": len(kinds),
@@ -93,11 +107,34 @@ def verifications() -> list[tuple[str, str, str]]:
     return found
 
 
+def entries(notebook: str) -> list[tuple[str, tuple[int, int], str | None]]:
+    """``(label, number, letter)`` for every worked solution of a notebook, in order."""
+    path = NOTEBOOKS / f"{notebook}.ipynb"
+    found = []
+    for cell in json.loads(path.read_text(encoding="utf-8"))["cells"]:
+        if cell["cell_type"] != "markdown":
+            continue
+        text = "".join(cell["source"])
+        headings = list(HEADING.finditer(text))
+        ends = [heading.start() for heading in headings[1:]] + [len(text)]
+        for heading, end in zip(headings, ends):
+            answer = ANSWER.search(text, heading.end(), end)
+            letter = answer[1] if answer else None
+            found.append((heading[3], (int(heading[1]), int(heading[2])), letter))
+    return found
+
+
 QUESTIONS = questions()
+BY_LABEL = {question["label"]: question for question in QUESTIONS}
 SNIPPETS = [
     pytest.param(question, options, body, id=f"{question['label']}:{k}")
     for question in QUESTIONS
     for k, (options, body) in enumerate(question["listings"])
+]
+ENTRIES = [
+    pytest.param(label, number, letter, id=f"{path.stem}:{label}")
+    for path in sorted(NOTEBOOKS.glob("*.ipynb"))
+    for label, number, letter in entries(path.stem)
 ]
 
 
@@ -158,3 +195,19 @@ def test_every_verification_names_a_question():
     labels = {question["label"] for question in QUESTIONS}
     orphans = [(notebook, label) for notebook, label, _ in verifications() if label not in labels]
     assert not orphans, f"verified, and not a question: {orphans}"
+
+
+@pytest.mark.parametrize("notebook", sorted({question["notebook"] for question in QUESTIONS}))
+def test_the_worked_solutions_answer_every_question_of_the_section_in_order(notebook):
+    worked = f"{notebook}{WORKED}"
+    assert (NOTEBOOKS / f"{worked}.ipynb").is_file(), f"{notebook} has no {worked}"
+    expected = [question["label"] for question in QUESTIONS if question["notebook"] == notebook]
+    assert [label for label, _, _ in entries(worked)] == expected
+
+
+@pytest.mark.parametrize("label, number, letter", ENTRIES)
+def test_a_worked_solution_is_numbered_and_lettered_as_its_question(label, number, letter):
+    question = BY_LABEL.get(label)
+    assert question is not None, f"{label} is not a question"
+    assert number == question["number"], f"{label} is numbered {number}, not {question['number']}"
+    assert [letter] == question["key"], f"{label} answers {letter}, the key is {question['key']}"

@@ -8,7 +8,8 @@ the end, built from the questions themselves.
 Every answer can be read off running code. Each section names, by `\notebook{NN-name}` on its
 first line, a notebook of `notebooks/sample-questions/` that runs the code of every question
 of the section, evaluates every choice, and asserts that the key holds and that no other choice
-does. `tests/test_sample_questions.py` holds the document and the notebooks together.
+does. Beside it, `NN-name-worked-solutions` answers the same questions by hand, as in the
+examination. `tests/test_sample_questions.py` holds the document and the notebooks together.
 
 | section | label | file | notebook |
 | --- | --- | --- | --- |
@@ -118,6 +119,31 @@ by the stem, with its module. An output is asked of `print`, whose `str` form is
   standard errors. Timings are taken with `timeit` over a ladder of sizes, and the ratios that
   decide the choices are printed.
 - A notebook runs in a few minutes at most. Outputs are not committed.
+
+## The worked solutions of a section
+
+`notebooks/sample-questions/NN-name-worked-solutions.ipynb`, beside the notebook of the
+section, kernel `python3`. It answers the questions as the examination asks them to be
+answered, by hand, and runs no snippet.
+
+- A first markdown cell: the title, what an entry holds, the form of a citation, and the
+  notebook that verifies the section.
+- A code cell importing from `math` what the calculator uses, if it uses anything.
+- A markdown cell `# Section N · <title>`, then the facts that two or more questions use,
+  numbered, each stated once with its citation.
+- One entry per question, in the order of the document, opened by
+  `## N.k · \`question.<label>\`` and a line `**Answer: (X).**`. The solution traces the code
+  by hand and cites the notes for every formula it uses; `**The other choices.**` names the
+  misreading that gives each wrong choice. The test reads the heading and the answer line.
+- A code cell is a calculator: arithmetic on the numbers of the question, its value the
+  number the prose quotes.
+- The notes are cited by number and label, `Theorem 1.3.43 (\`thm.dassiosZhao\`)`,
+  `eq. (1.3.41, \`eq.dzDraws\`)`: the number of the build the entry was written against, and
+  the label, which survives renumbering. An unlabelled statement is described, not numbered.
+- Outputs are not committed.
+
+`worked_examples_for_final_lecture` is the notebook of the lecture that went through
+Sections 6 and 7; their worked solutions repeat it.
 
 ## Building, running, testing
 
