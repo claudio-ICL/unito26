@@ -114,7 +114,7 @@ What happens?
   Alternative B prints \codehl{[(1000, 100), (999, 200), (998, 100)]}, then \codehl{998 1002 120}.
  \choice Both alternatives print \codehl{[(999, 300)]}, then \codehl{998 999 100}.
  \choice Alternative A prints \codehl{[(1000, 100), (999, 200)]}, then \codehl{998 999 100};
-  Alternative B raises \codehl{TypeError}.
+  Alternative B prints \codehl{[(1000, 100), (999, 200), (998, 50)]}, then \codehl{998 999 50}.
 \end{choices}
 \explanation{The loop of A stops at 998, the first bid below the limit.
 B stops after $\marketOrderSize = \min(400, 100 + 200) = 300$ shares,
@@ -234,9 +234,9 @@ What happens?
   the variant prints \codehl{998 100 350 249750}.
  \choice Both print \codehl{998 100 350 349700}.
  \choice Alternative A prints \codehl{998 100 350 349700};
-  the variant prints \codehl{998 100 350 349650}.
- \choice Alternative A prints \codehl{998 100 350 349700};
-  the variant prints \codehl{998 100 350} and a number larger than $10^{20}$.
+  the variant prints \codehl{998 100 350 349550}.
+ \choice Alternative A prints \codehl{999 50 250 249850};
+  the variant prints \codehl{999 50 250 249750}.
 \end{choices}
 \explanation{The price of a fill is read again only by line~13, to place what remains of the order,
 and both orders fill in full,
@@ -274,7 +274,7 @@ messages = [
 After which messages do Alternative~A and the variant leave the same book?
 \begin{choices}
  \choice After (i) only.
- \choice After (i) and (iii).
+ \choice After (i), (ii) and (iii).
  \correctchoice After (i) and (ii).
  \choice After (i), (ii) and (iv).
  \choice After all four.
@@ -329,7 +329,7 @@ What happens?
 \begin{choices}
  \choice It prints \codehl{True} three times.
  \correctchoice It prints \codehl{True}, \codehl{False}, \codehl{True}.
- \choice It prints \codehl{True}, \codehl{False}, \codehl{False}.
+ \choice It prints \codehl{False}, \codehl{False}, \codehl{True}.
  \choice It prints \codehl{True}, \codehl{False},
   and raises \codehl{ValueError} on the third message, whose resting part has no shares.
 \end{choices}

@@ -168,7 +168,7 @@ and unit length does not make them so.}
 \label{question.blockExponentialOfOneMarketBuy}
 The package computes $e^{\hurwitzMatrix \forecastHorizon}$, $\meanResponseIntegral(\forecastHorizon)$
 and $\int_{0}^{\forecastHorizon} \meanResponseIntegral(u) \, du$,
-the matrices of equation~\eqref{notes:eq.forwardMeanCounts},
+the matrices of equations~\eqref{notes:eq.forwardMeanState} and~\eqref{notes:eq.forwardMeanCounts},
 from one exponential of a matrix of $3d \times 3d$ entries,
 by the function below.
 \begin{lstlisting}[caption={\protect\codehl{unito26.lob.hawkes.\_mean\_response\_blocks}, its docstring elided.}, label=listing.meanResponseBlocks]
@@ -489,9 +489,12 @@ hence with every $e^{\hurwitzMatrix u}$ and with $\meanResponseIntegral(\forecas
 so the first two agree.
 The third is $z^{\transpose}\excitation\meanResponseIntegral(\forecastHorizon)\pressure
 = \pressure^{\transpose}\big(\excitation\meanResponseIntegral(\forecastHorizon)\big)^{\transpose} z$,
-and the fourth transposes the kernel alone;
-on the one-way pair, where a buy excites sells and no sell excites a buy,
-neither gives the same number.}
+and the fourth transposes the kernel alone.
+On the one-way pair $\pressure^{\transpose}\excitation = (-3.2, -2.4)$
+and $\excitation\pressure = (0.8, 1.6)$,
+while $\meanResponseIntegral(\forecastHorizon) \geq 0$ has a positive diagonal and $z > 0$:
+the reference is negative,
+and the third and the fourth are positive.}
 \end{question}
 
 \begin{question}

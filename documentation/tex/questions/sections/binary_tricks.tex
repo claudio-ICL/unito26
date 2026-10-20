@@ -84,7 +84,7 @@ What does the snippet print?
 By Proposition~\ref{notes:prop.decompositionOfLimitOrder}
 the buy takes 60 at 205 and 30 at 206, clearing bits 4 and 3,
 and rests its last 10 at 206, bit 6 of the bids: $13 + 64 = 77$.
-Counted up from the floor, as the bids are, the ask left at 208 would be bit 8, the integer 256.}
+Counted up from the floor, as \codehl{BitmapBook} counts them, the ask left at 208 would be bit 8, the integer 256.}
 \end{question}
 
 \begin{question}
@@ -233,8 +233,9 @@ What does the snippet print?
 $-8 = \neg 7$ has every bit from 3 upwards set and the three below clear,
 so $26 \bitAnd (-8) = 24$:
 the emptied price at bit 3 stays, and every deeper one, 96 among them, is cleared.
-The tilde gives $\neg 8 = -9$, which clears bit 3 alone,
-Proposition~\ref{notes:prop.twosComplement}.}
+The tilde gives $\neg 8 = -9$,
+by the same definition the complement of the bits of 8,
+which clears bit 3 alone.}
 \end{question}
 
 \begin{question}
@@ -288,7 +289,8 @@ and the flood fills them in four passes.
 \begin{question}
 \label{question.askWindowsOfTheTwoBitmaps}
 The gap statistics of a side are read on a window of its integer,
-the bits from the touch to the deepest reported level, shifted down so that the lower end of the window is bit 0.
+the bits from the touch to the deepest reported level,
+shifted down so that the lowest set bit of the window is bit 0.
 For the ask side and the reported depth $L$, \codehl{span\_bits(SELL, L)} returns
 \codehl{keep\_lowest\_set\_bits(bits, L)} in \codehl{BitmapBook}
 and \codehl{keep\_highest\_set\_bits(bits, L)} in \codehl{TickArrayBook},
@@ -322,7 +324,7 @@ def keep_lowest_set_bits(n: int, count: int) -> int:
     return discard_trailing_zeros(n ^ rest)
 \end{lstlisting}
 \begin{lstlisting}[caption={The window of three ask levels, in either book}, label=listing.askWindowsRun]
-asks = {101: 30, 102: 50, 105: 20, 106: 40}
+asks = {101: 30, 102: 50, 104: 20, 106: 40}
 bitmap = BitmapBook(floor=95)
 array = TickArrayBook(floor=95, width=12)
 for price, size in asks.items():
@@ -334,18 +336,18 @@ print(bin(bitmap.span_bits(SELL, depth)),
 \end{lstlisting}
 What does the snippet print?
 \begin{choices}
- \choice \codehl{0b11001 0b11001}
- \choice \codehl{0b10011 0b10011}
- \choice \codehl{0b110011 0b110011}
- \correctchoice \codehl{0b10011 0b11001}
- \choice \codehl{0b11001 0b10011}
+ \choice \codehl{0b1101 0b1101}
+ \choice \codehl{0b1011 0b1011}
+ \choice \codehl{0b101011 0b110101}
+ \correctchoice \codehl{0b1011 0b1101}
+ \choice \codehl{0b1101 0b1011}
 \end{choices}
-\explanation{\codehl{BitmapBook} counts the asks up from the floor, bits 6, 7, 10 and 11,
+\explanation{\codehl{BitmapBook} counts the asks up from the floor, bits 6, 7, 9 and 11,
 and three passes of \codehl{rest \&= rest - 1} clear the lowest three, which \codehl{n \^{} rest} recovers:
 101 lands on bit 0.
-\codehl{TickArrayBook} counts them down from the ceiling, bits 5, 4, 1 and 0,
-and the bisection of Proposition~\ref{notes:prop.rankByShift} cuts at bit 1:
-105 lands on bit 0, and each window is the other read backwards.}
+\codehl{TickArrayBook} counts them down from the ceiling, bits 5, 4, 2 and 0,
+and the bisection of Proposition~\ref{notes:prop.rankByShift} cuts at bit 2:
+104 lands on bit 0, and each window is the other read backwards.}
 \end{question}
 
 \begin{question}

@@ -617,7 +617,8 @@ def stream(size):
 \end{lstlisting}
 Which statement holds?
 \begin{choices}
- \choice \codehl{CachedBestBook} is faster on both streams, by a factor that grows with $\occupiedLevels$.
+ \choice On $S$ neither time per message changes noticeably with $\occupiedLevels$,
+  and on $E$ both grow about tenfold.
  \choice On both streams the time per message of \codehl{CachedBestBook} is about the same at both depths,
   and that of \codehl{AggregateBook} grows about tenfold.
  \choice \codehl{AggregateBook} is faster on both streams, having no cache to repair.
@@ -717,8 +718,8 @@ Which statement holds?
   the second prints \codehl{1.0}, then raises \codehl{NotImplementedError}.
  \choice The first raises \codehl{TypeError} at the call of \codehl{TouchFrame},
   and the second at the call of \codehl{\_HawkesState}; neither prints anything.
- \choice The first raises \codehl{NotImplementedError} at the call of \codehl{to\_json};
-  the second prints \codehl{1.0}, then raises \codehl{NotImplementedError}.
+ \choice The first prints the table as JSON;
+  the second raises \codehl{TypeError} at the call of \codehl{\_HawkesState}, and prints nothing.
 \end{choices}
 \explanation{A class that leaves an abstract method unbound cannot be instantiated,
 Section~\ref{notes:sec.abstractClasses}:

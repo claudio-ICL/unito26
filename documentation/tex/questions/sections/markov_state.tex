@@ -86,10 +86,10 @@ for z, keep in ((before, times >= s), (before, times > s),
 \end{lstlisting}
 What does the snippet print, line by line?
 \begin{choices}
- \choice \codehl{False}, \codehl{False}, \codehl{True}, \codehl{False}
+ \choice \codehl{False}, \codehl{False}, \codehl{True}, \codehl{True}
  \choice \codehl{False}, \codehl{True}, \codehl{False}, \codehl{False}
  \correctchoice \codehl{True}, \codehl{False}, \codehl{True}, \codehl{False}
- \choice \codehl{True}, \codehl{True}, \codehl{True}, \codehl{True}
+ \choice \codehl{False} on every line
 \end{choices}
 \explanation{The strict inequality reads $\decayedCounts$ before the jump of an event on the clock,
 so \codehl{before} is $\decayedCounts(s) = (0.5, 0)$
@@ -128,7 +128,7 @@ print(np.allclose(millis.forward_mean_counts(z_ms, 0.5), expected),
 What does the snippet print?
 \begin{choices}
  \correctchoice \codehl{False True}, then \codehl{False True}.
- \choice \codehl{True False}, then \codehl{False True}.
+ \choice \codehl{True False}, then \codehl{False False}.
  \choice \codehl{False True}, then \codehl{True False}.
  \choice \codehl{False True}, then \codehl{False False}.
 \end{choices}
@@ -316,7 +316,7 @@ as the number of paths grows?
  \correctchoice \codehl{forecast\_a} only.
  \choice \codehl{forecast\_a} and \codehl{forecast\_c}.
  \choice \codehl{forecast\_c} only.
- \choice \codehl{forecast\_a} and \codehl{forecast\_b}.
+ \choice \codehl{forecast\_b} only.
 \end{choices}
 \explanation{Between events the state follows the flow $e^{-\decay u}z$ of Theorem~\ref{notes:thm.markovState},
 so \codehl{forecast\_a} conditions on $\decayedCounts(t+)$, the history at $t$.
@@ -466,8 +466,8 @@ Which functions return it?
 \begin{choices}
  \choice \codehl{window\_a} only.
  \correctchoice \codehl{window\_a} and \codehl{window\_b}.
- \choice \codehl{window\_a}, \codehl{window\_b} and \codehl{window\_d}.
- \choice \codehl{window\_a} and \codehl{window\_d}.
+ \choice \codehl{window\_d} only.
+ \choice \codehl{window\_b} only.
  \choice All four.
 \end{choices}
 \explanation{By Proposition~\ref{notes:prop.forwardMean} the expectation over $(s, s+h]$
