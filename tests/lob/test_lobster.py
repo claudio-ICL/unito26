@@ -75,19 +75,23 @@ class TestTheMessageSchemaRefusesWhatItDoesNot:
             lobster.load_messages(write(tmp_path / "m.csv", [row]))
 
     @pytest.mark.parametrize("narrow", ["int8", "Int8"])
-    def test_a_narrow_dtype_would_have_laundered_this_one(self, tmp_path, narrow):
-        """``Type`` 260 becomes 4 -- a valid execution -- when the column is 8 bits wide.
+    def test_a_narrow_dtype_cannot_be_trusted_with_this_one(self, tmp_path, narrow):
+        """``Type`` 260 does not survive a column 8 bits wide.
 
-        Narrowing launders the corruption a declared dtype is supposed to catch: the wrap
-        happens inside ``read_csv``, silently, and any membership check then passes.  Read
-        as ``int64`` the value survives to be refused, which is why the schema is wide.
+        Depending on the pandas version, ``read_csv`` either refuses the cast or wraps 260
+        to 4 -- a valid execution -- silently, so that any membership check then passes.
+        Read as ``int64`` the value survives to be refused, which is why the schema is wide.
         """
         path = write(tmp_path / "m.csv", ["34200.0,260,1,10,2238100,1"])
-        laundered = pd.read_csv(
-            path, header=None, names=frames.lobster_message_file_columns(),
-            dtype={"Type": narrow},
-        )
-        assert laundered["Type"].iloc[0] == LobsterEvent.EXECUTION_VISIBLE
+        try:
+            narrowed = pd.read_csv(
+                path, header=None, names=frames.lobster_message_file_columns(),
+                dtype={"Type": narrow},
+            )
+        except (ValueError, TypeError):
+            pass
+        else:
+            assert narrowed["Type"].iloc[0] == LobsterEvent.EXECUTION_VISIBLE
 
         with pytest.raises(pe.SchemaError):
             lobster.load_messages(path)
