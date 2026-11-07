@@ -9,7 +9,7 @@ dependencies:
   - matplotlib
   - notebook
   - numpy
-  - pandas
+  - pandas=3.0.5
   - pandera>=0.32
   - plotly
   - pyarrow
