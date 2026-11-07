@@ -8,15 +8,15 @@ on:
 jobs:
   test:
     name: pytest
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: "3.14.3"
       - name: Install package and test deps
         run: |
-          python -m pip install --upgrade pip
-          python -m pip install -e ".[test]"
+          python -m pip install pip==26.2.1
+          python -m pip install -c constraints.txt -e ".[test]"
       - name: Run tests
         run: python -m pytest tests/ -q
